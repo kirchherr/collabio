@@ -5,7 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
-import { officeBookmarkAttributes, officeBookmarkFragment, officeBookmarkInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
+import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -19,8 +19,8 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   }
   let count = 0;
   const styles = officeStyles(content.attrs?.styles || []);
-  const bookmarks = officeBookmarkInventory(content);
-  const bookmarkIds = new Set(bookmarks.map(({ id }) => id));
+  const targets = officeReferenceInventory(content);
+  const targetsById = new Map(targets.map((entry) => [entry.id, entry]));
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
     if (value.type === "pageBreak") {
@@ -36,7 +36,10 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       marker.setAttribute("role", "separator"); marker.setAttribute("aria-label", "Abschnittsumbruch");
       return marker;
     }
-    if (value.type === "image") return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom);
+    if (value.type === "image") {
+      const target = value.attrs?.figureId == null ? null : targetsById.get(value.attrs.figureId);
+      return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom, target?.number ?? null);
+    }
     if (value.type === "bookmark") {
       const attrs = officeBookmarkAttributes(value.attrs), marker = dom.createElement("span");
       marker.id = officeBookmarkFragment(attrs.id); marker.className = "office-print-bookmark";
@@ -55,9 +58,10 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         }
         if (mark.type === "crossReference") {
           const attrs = officeCrossReferenceAttributes(mark.attrs);
-          const wrapper = dom.createElement(bookmarkIds.has(attrs.targetId) ? "a" : "span");
+          const target = targetsById.get(attrs.targetId);
+          const wrapper = dom.createElement(target ? "a" : "span");
           wrapper.setAttribute("data-office-cross-reference", attrs.targetId);
-          if (bookmarkIds.has(attrs.targetId)) wrapper.setAttribute("href", `#${officeBookmarkFragment(attrs.targetId)}`);
+          if (target) wrapper.setAttribute("href", `#${target.fragment}`);
           else wrapper.setAttribute("data-office-cross-reference-broken", "true");
           wrapper.append(text); text = wrapper;
           continue;

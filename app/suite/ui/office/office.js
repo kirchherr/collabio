@@ -22,7 +22,7 @@ import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMA
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
-import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
+import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -261,6 +261,7 @@ function notice(text = "", error = false) {
 function normalizedDocument(document) {
   officeImageReferences(document);
   officeBookmarkInventory(document);
+  officeReferenceInventory(document);
   const styles = officeStyles(document?.attrs?.styles || []);
   let nodes = 0;
   let characters = 0;
@@ -1214,7 +1215,7 @@ function openCrossReferenceDialog() {
   const editor = state.editor, characters = linkCharacters(editor);
   if (!characters.length) return;
   let inventory;
-  try { inventory = officeBookmarkInventory(editor.getJSON()); } catch { return; }
+  try { inventory = officeReferenceInventory(editor.getJSON()); } catch { return; }
   const existing = commonCrossReference(characters);
   if (!inventory.length && !existing) return;
   closeCrossReferenceDialog();
@@ -1239,7 +1240,7 @@ function commitCrossReference(remove = false) {
   const targetId = remove ? null : $("cross-reference-target").value;
   let attrs = null, transaction = action.editor.state.tr, changed = false;
   try {
-    const inventory = officeBookmarkInventory(action.editor.getJSON());
+    const inventory = officeReferenceInventory(action.editor.getJSON());
     if (!remove) {
       attrs = officeCrossReferenceAttributes({ targetId });
       if (!inventory.some(({ id }) => id === attrs.targetId)) throw new Error("missing-target");
@@ -1270,12 +1271,13 @@ function jumpToCrossReference() {
   const targetId = $("cross-reference-target").value;
   let targetPosition = null;
   action.editor.state.doc.descendants((entry, position) => {
-    if (targetPosition === null && entry.type.name === "bookmark" && entry.attrs.id === targetId) targetPosition = position;
+    if (targetPosition === null && ((entry.type.name === "bookmark" && entry.attrs.id === targetId) ||
+        (entry.type.name === "image" && entry.attrs.figureId === targetId))) targetPosition = position;
   });
   if (targetPosition === null) return;
   closeCrossReferenceDialog();
   action.editor.view.dispatch(action.editor.state.tr.setSelection(NodeSelection.create(action.editor.state.doc, targetPosition)).scrollIntoView());
-  focusEditor(action.editor); updateEditorState(); notice("Zum Lesezeichen gesprungen.");
+  focusEditor(action.editor); updateEditorState(); notice("Zum Verweisziel gesprungen.");
 }
 
 const transferableMarks = ["bold", "italic", "underline", "strike", "textStyle"];
@@ -4515,7 +4517,7 @@ $("cross-reference-form").addEventListener("submit", (event) => { event.preventD
 $("cross-reference-remove").addEventListener("click", () => commitCrossReference(true));
 $("cross-reference-jump").addEventListener("click", jumpToCrossReference);
 $("cross-reference-target").addEventListener("change", () => {
-  const inventory = officeBookmarkInventory(state.editor.getJSON()), targetId = $("cross-reference-target").value;
+  const inventory = officeReferenceInventory(state.editor.getJSON()), targetId = $("cross-reference-target").value;
   $("cross-reference-jump").disabled = !inventory.some(({ id }) => id === targetId);
   $("cross-reference-status").textContent = officeCrossReferenceDescription({ targetId }, inventory);
   $("cross-reference-status").classList.remove("error");
@@ -4673,7 +4675,7 @@ const pageControls = installOfficePageControls({ state, allowed: paragraphAllowe
 const imageControls = installOfficeImageControls({ state,
   allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || state.editor.state.selection.node?.type.name === "image"),
   current: characterActionCurrent,
-  validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied });
+  validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {

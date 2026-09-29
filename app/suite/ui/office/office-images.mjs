@@ -1,6 +1,8 @@
+import { officeFigureCaption, officeFigureFragment, officeFigureId } from "./office-figures.mjs";
+
 const keys = ["documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
   "width", "height", "align", "alt", "caption", "decorative", "lockAspect"];
-export const officeImageKeys = [...keys, "crop", "wrap"];
+export const officeImageKeys = [...keys, "crop", "wrap", "figureId"];
 export function officeImageWrap(wrap) {
   if (!wrap || Object.keys(wrap).length !== 2 || !["left", "right"].includes(wrap.side) ||
       !Number.isInteger(wrap.gap) || wrap.gap < 0 || wrap.gap > 48) throw new Error("image-wrap");
@@ -46,6 +48,10 @@ export function officeImageAttributes(attrs) {
   const result = Object.fromEntries(keys.map((key) => [key, attrs[key]]));
   if (attrs.crop != null) result.crop = officeImageCrop(attrs);
   if (attrs.wrap != null) result.wrap = officeImageWrap(attrs.wrap);
+  if (attrs.figureId != null) {
+    result.figureId = officeFigureId(attrs.figureId);
+    if (!attrs.caption.trim()) throw new Error("image-figure-caption");
+  }
   return result;
 }
 
@@ -60,7 +66,7 @@ export function officeImageReferences(content) {
   return result;
 }
 
-export function officeImageFigure(attrs, url, dom = document) {
+export function officeImageFigure(attrs, url, dom = document, figureNumber = null) {
   attrs = officeImageAttributes(attrs);
   if (typeof url !== "string" || !url.startsWith("blob:")) throw new Error("image-url");
   const figure = dom.createElement("figure"); figure.className = "office-image";
@@ -80,8 +86,9 @@ export function officeImageFigure(attrs, url, dom = document) {
     viewport.append(image); figure.append(viewport);
   } else figure.append(image);
   if (attrs.caption) {
-    const caption = dom.createElement("figcaption"); caption.textContent = attrs.caption; figure.append(caption);
+    const caption = dom.createElement("figcaption"); caption.textContent = officeFigureCaption(attrs, figureNumber); figure.append(caption);
   }
+  if (attrs.figureId != null) { figure.id = officeFigureFragment(attrs.figureId); figure.dataset.officeFigure = attrs.figureId; }
   return figure;
 }
 

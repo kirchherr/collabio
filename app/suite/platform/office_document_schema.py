@@ -93,6 +93,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     bookmarks = 0
     bookmark_ids: set[str] = set()
     bookmark_labels: set[str] = set()
+    figure_ids: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -300,6 +301,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 validate_image_attributes(attrs)
             except ValueError:
                 reject()
+            figure_id = attrs.get("figureId")
+            if figure_id is not None:
+                if figure_id in figure_ids or figure_id in bookmark_ids:
+                    reject()
+                figure_ids.add(figure_id)
         elif kind == "bookmark":
             bookmarks += 1
             identifier, label = attrs.get("id"), attrs.get("label")
@@ -321,6 +327,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             bookmark_ids.add(identifier)
             bookmark_labels.add(label.lower())
+            if identifier in figure_ids:
+                reject()
         elif kind == "orderedList":
             if (
                 set(attrs) - {"start"}

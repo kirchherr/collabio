@@ -12,7 +12,10 @@ export function installImageCropControls(getAction, isCurrent) {
     if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 1600 || height > 1600) return;
     const wrap = $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber };
     try {
-      const figure = officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height, wrap, align: $("image-align").value }, owner.url);
+      const numbered = $("image-numbered").checked;
+      const figure = officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height, wrap, align: $("image-align").value,
+        caption: $("image-caption").value, figureId: numbered ? owner.attrs.figureId || "figure-000000000000000000000000" : null },
+      owner.url, document, numbered ? owner.figureNumber : null);
       const layout = document.createElement("div"); layout.className = "image-layout-preview"; layout.append(figure);
       if (wrap) {
         const sample = document.createElement("p"); sample.className = "image-layout-sample";

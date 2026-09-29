@@ -3,6 +3,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
 import { installImageCropControls } from "./office-image-crop-controls.mjs";
+import { officeFigureInventory } from "./office-figures.mjs";
 
 export function officeImageExtension(context, accessDenied) {
   return Node.create({
@@ -11,14 +12,15 @@ export function officeImageExtension(context, accessDenied) {
     parseHTML: () => [],
     renderHTML: () => ["figure", { class: "office-image" }, "Bild"],
     addNodeView() {
-      return ({ node }) => {
+      return ({ node, editor }) => {
         const dom = document.createElement("div"); dom.className = "office-image-node";
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
-          url = value; dom.replaceChildren(officeImageFigure(current.attrs, url));
+          const target = current.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === current.attrs.figureId);
+          url = value; dom.replaceChildren(officeImageFigure(current.attrs, url, document, target?.number ?? null));
         }).catch((error) => {
           if (destroyed) return;
           if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
@@ -29,7 +31,11 @@ export function officeImageExtension(context, accessDenied) {
             if (next.type !== current.type || next.attrs.assetId !== current.attrs.assetId || next.attrs.versionId !== current.attrs.versionId ||
                 next.attrs.manifestHash !== current.attrs.manifestHash) return false;
             current = next; applyOfficeImageLayout(dom, next.attrs);
-            if (url) dom.replaceChildren(officeImageFigure(next.attrs, url)); return true;
+            if (url) {
+              const target = next.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === next.attrs.figureId);
+              dom.replaceChildren(officeImageFigure(next.attrs, url, document, target?.number ?? null));
+            }
+            return true;
           },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
@@ -41,7 +47,7 @@ export function officeImageExtension(context, accessDenied) {
   });
 }
 
-export function installOfficeImageControls({ state, allowed, current, validate, focus, notice, accessDenied }) {
+export function installOfficeImageControls({ state, allowed, current, validate, focus, notice, accessDenied, reference }) {
   const $ = (id) => document.getElementById(id);
   let action = null;
   const valid = () => action && current(action);
@@ -62,12 +68,14 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const id of ["image-remove", "image-up", "image-down"]) $(id).disabled = !valid() || action?.busy || !action?.selected;
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
+    $("image-caption").required = $("image-numbered").checked;
     $("image-wrap-gap").disabled = $("image-wrap").value === "none";
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
     $("image-lock").checked = attrs.lockAspect;
     $("image-decorative").checked = uploaded ? false : attrs.decorative;
+    $("image-numbered").checked = attrs.figureId != null;
     $("image-wrap").value = attrs.wrap?.side ?? "none";
     $("image-wrap-gap").value = attrs.wrap?.gap ?? 16;
     cropControls.fill(action);
@@ -87,6 +95,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks,
       selected, attrs: selected ? officeImageAttributes(editor.state.selection.node.attrs) : null,
       controller: new AbortController(), busy: false, url: null };
+    const figures = officeFigureInventory(editor.getJSON());
+    action.figureNumber = selected ? figures.find(({ id }) => id === action.attrs.figureId)?.number ?? figures.length + 1 : figures.length + 1;
     $("image-title").textContent = selected ? "Bild bearbeiten" : "Bild einfügen";
     $("image-upload-section").hidden = selected;
     $("image-edit-actions").hidden = !selected;
@@ -137,11 +147,13 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       const tr = editor.state.tr;
       if (operation === "apply") {
         if (!$("image-form").reportValidity()) return;
+        const numbered = $("image-numbered").checked;
         const attrs = officeImageAttributes({ ...owner.attrs,
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
           caption: $("image-caption").value, lockAspect: $("image-lock").checked, crop: cropControls.value(),
           wrap: $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
+          figureId: numbered ? owner.attrs.figureId || `figure-${reference().replaceAll("-", "").slice(0, 24)}` : null,
         });
         if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
         else tr.replaceSelectionWith(editor.schema.nodes.image.create(attrs));
@@ -166,6 +178,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-file").addEventListener("change", update);
   $("image-upload").addEventListener("click", upload);
   $("image-decorative").addEventListener("change", update);
+  $("image-numbered").addEventListener("change", () => { update(); if (valid()) cropControls.preview(action); });
+  $("image-caption").addEventListener("input", () => { update(); if (valid()) cropControls.preview(action); });
   for (const id of ["image-wrap", "image-wrap-gap", "image-align"]) $(id).addEventListener("input", () => {
     if (!valid()) return;
     update(); cropControls.preview(action);

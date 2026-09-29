@@ -17,6 +17,15 @@ test("Office image model keeps immutable references and correct text offsets", (
   expect(describeOfficeBlock(image).text).toContain("<caption>");
 });
 
+test("Office image model keeps legacy captions and admits only captioned stable figures", () => {
+  const figureId = "figure-aaaaaaaaaaaaaaaaaaaaaaaa";
+  expect(officeImageAttributes({ ...attrs, figureId })).toEqual({ ...attrs, figureId });
+  expect(officeImageAttributes({ ...attrs, figureId: null })).toEqual(attrs);
+  for (const change of [{ figureId: "figure-short" }, { figureId, caption: "" }, { figureId, caption: "   " }]) {
+    expect(() => officeImageAttributes({ ...attrs, ...change })).toThrow();
+  }
+});
+
 test("Office image model rejects active attributes and counts references", () => {
   for (const change of [{ src: "https://external.invalid/image.png" }, { width: true }, { decorative: true }, { alt: "" }, { align: "float" }, { pixelWidth: 4097 }]) {
     expect(() => officeImageAttributes({ ...attrs, ...change })).toThrow();

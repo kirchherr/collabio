@@ -1,3 +1,5 @@
+import { officeFigureFragment, officeFigureInventory } from "./office-figures.mjs";
+
 export const OFFICE_BOOKMARK_LIMIT = 100;
 export const OFFICE_BOOKMARK_LABEL_MAX = 64;
 
@@ -50,14 +52,29 @@ export function officeBookmarkInventory(document) {
   return entries;
 }
 
+export function officeReferenceInventory(document) {
+  const bookmarks = officeBookmarkInventory(document).map((entry) => ({
+    ...entry, kind: "bookmark", fragment: officeBookmarkFragment(entry.id),
+  }));
+  const figures = officeFigureInventory(document).map((entry) => ({
+    ...entry, fragment: officeFigureFragment(entry.id),
+  }));
+  const ids = new Set();
+  for (const entry of [...bookmarks, ...figures]) {
+    if (ids.has(entry.id)) throw new TypeError("Duplicate Office reference target");
+    ids.add(entry.id);
+  }
+  return [...bookmarks, ...figures];
+}
+
 export function officeBookmarkDescription(value) {
   const attrs = officeBookmarkAttributes(value);
   return `Lesezeichen: ${attrs.label}`;
 }
 
-export function officeCrossReferenceDescription(value, bookmarks = null) {
+export function officeCrossReferenceDescription(value, targets = null) {
   const attrs = officeCrossReferenceAttributes(value);
-  if (bookmarks === null) return `Querverweis: ${attrs.targetId}`;
-  const target = bookmarks.find((entry) => entry.id === attrs.targetId);
+  if (targets === null) return `Querverweis: ${attrs.targetId}`;
+  const target = targets.find((entry) => entry.id === attrs.targetId);
   return target ? `Querverweis: ${target.label}` : `Querverweis: Ziel nicht verfügbar (${attrs.targetId})`;
 }

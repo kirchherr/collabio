@@ -200,7 +200,7 @@ function blockText(block, nested = false) {
     case "pageBreak": return "Neue Seite";
     case "sectionBreak": return "Neuer Abschnitt";
     case "bookmark": return officeBookmarkDescription(block.attrs);
-    case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.caption}\n${block.attrs.contentHash}`;
+    case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.figureId ? `Nummerierte Abbildung · ${block.attrs.figureId}\n` : ""}${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
       const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];

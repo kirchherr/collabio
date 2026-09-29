@@ -149,6 +149,8 @@
           <label>Alternativtext<input id="image-alt" maxlength="500" autocomplete="off" /></label>
           <label class="confirmation"><input id="image-decorative" type="checkbox" />Dekorativ – benötigt keinen Alternativtext</label>
           <label>Bildunterschrift (optional)<input id="image-caption" maxlength="1000" autocomplete="off" /></label>
+          <label class="confirmation"><input id="image-numbered" type="checkbox" />Als Abbildung nummerieren und als Querverweisziel anbieten</label>
+          <p class="paragraph-help">Die Abbildungsnummer folgt automatisch der Reihenfolge im Dokument. Verschieben aktualisiert die sichtbaren Nummern; das Verweisziel bleibt stabil.</p>
           <div id="image-edit-actions" class="image-fields"><button class="button secondary" id="image-up" type="button">Nach oben</button><button class="button secondary" id="image-down" type="button">Nach unten</button><button class="button danger" id="image-remove" type="button">Aus Entwurf entfernen</button></div>
           <p id="image-status" role="status" aria-live="polite"></p>
         </div><footer><button class="button secondary" id="image-cancel" type="button">Abbrechen</button><button class="button primary" id="image-apply" type="submit" disabled>In Entwurf übernehmen</button></footer>
@@ -212,8 +214,8 @@
     <dialog class="office-dialog paragraph-dialog" id="cross-reference-dialog" aria-labelledby="cross-reference-title">
       <form id="cross-reference-form"><header><h2 id="cross-reference-title">Querverweis bearbeiten</h2><button class="icon-button" id="cross-reference-close" type="button" aria-label="Querverweisdialog schließen">×</button></header>
         <div class="dialog-body"><p>Ausgewählter Text: <q id="cross-reference-selection"></q></p><label>Ziel<select id="cross-reference-target" required></select></label>
-          <p class="paragraph-help">Ein Querverweis bleibt dokumentintern. Springen ändert nur die lokale Auswahl und lädt keine Adresse.</p>
-          <p id="cross-reference-status" role="status" aria-live="polite"></p><div class="review-actions"><button class="quiet-button" id="cross-reference-jump" type="button">Zum Lesezeichen springen</button><button class="quiet-button" id="cross-reference-remove" type="button">Querverweis entfernen</button></div>
+          <p class="paragraph-help">Ein Querverweis bleibt dokumentintern. Lesezeichen und nummerierte Abbildungen stehen als Ziele bereit. Springen ändert nur die lokale Auswahl und lädt keine Adresse.</p>
+          <p id="cross-reference-status" role="status" aria-live="polite"></p><div class="review-actions"><button class="quiet-button" id="cross-reference-jump" type="button">Zum Ziel springen</button><button class="quiet-button" id="cross-reference-remove" type="button">Querverweis entfernen</button></div>
         </div><footer><button class="button secondary" id="cross-reference-cancel" type="button">Abbrechen</button><button class="button primary" id="cross-reference-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>
     </dialog>

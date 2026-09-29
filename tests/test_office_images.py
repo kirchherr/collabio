@@ -111,6 +111,44 @@ def test_images_are_bounded_leaf_nodes_and_preserve_review_offsets() -> None:
         validate_office_document(excessive)
 
 
+def test_numbered_figures_add_only_a_stable_optional_identity() -> None:
+    legacy = image_document()
+    assert validate_office_document(legacy) == legacy
+    numbered = deepcopy(legacy)
+    numbered["content"][0]["attrs"]["figureId"] = "figure-" + "f" * 24
+    assert validate_office_document(numbered) == numbered
+    assert image_references(numbered)[0]["caption"] == "<literal>"
+    assert image_references(numbered)[0]["figureId"] == "figure-" + "f" * 24
+
+
+@pytest.mark.parametrize("figure_id", ["figure-short", "bookmark-" + "f" * 24, "figure-" + "F" * 24])
+def test_numbered_figures_reject_invalid_identifiers(figure_id: str) -> None:
+    document = image_document()
+    document["content"][0]["attrs"]["figureId"] = figure_id
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_numbered_figures_require_captions_and_unique_unambiguous_targets() -> None:
+    document = image_document()
+    attrs = document["content"][0]["attrs"]
+    attrs["figureId"] = "figure-" + "a" * 24
+    attrs["caption"] = " "
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+    attrs["caption"] = "Stable caption"
+    duplicate = deepcopy(document["content"][0])
+    document["content"].insert(1, duplicate)
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+    document["content"].pop(1)
+    document["content"].append(
+        {"type": "paragraph", "content": [{"type": "bookmark", "attrs": {"id": attrs["figureId"], "label": "Collision"}}]}
+    )
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
 def test_image_normalization_rejects_input_before_contacting_worker() -> None:
     for data, mime in (
         (b"<svg/>", "image/svg+xml"),
