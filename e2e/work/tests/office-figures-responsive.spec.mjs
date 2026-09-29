@@ -23,7 +23,8 @@ async function upload(page, objectId, color, caption) {
 
 async function selectReferenceText(page) {
   const paragraph = officeEditor(page).locator("p").first();
-  await paragraph.click(); await paragraph.selectText();
+  await paragraph.click(); await page.keyboard.press("Home");
+  await page.keyboard.down("Shift"); await page.keyboard.press("End"); await page.keyboard.up("Shift");
   await expect(page.locator("#cross-reference-options")).toBeEnabled();
 }
 
