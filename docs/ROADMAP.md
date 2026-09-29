@@ -1761,14 +1761,22 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      zwei echte getaggte PDFs, frischer Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout
      und Live-Pruefung sind gruen. Implementierung als Commitserie `1559bb5` bis `42a6f67` veroeffentlicht.
 
-279. [ ] Native Tabellenbeschriftungen und stabile Tabellennummern umsetzen: Tabellen erhalten eine optionale
+279. [x] Native Tabellenbeschriftungen und stabile Tabellennummern unter ADR-0102 umgesetzt: Tabellen erhalten eine optionale
      semantische Beschriftung und dokumentlokale stabile Ziel-ID; sichtbare Nummern werden aus der Dokumentreihenfolge
      abgeleitet. Bearbeiten, Entfernen, Undo, Historie, Vergleich, Kopien, Druck und Querverweise behalten exakte
      Identitaet und sichere gebrochene Ziele. Abbildungen und Tabellen fuehren getrennte Nummernfolgen. Freie
-     Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat.
+     Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat. Volle Python-Qualitaet,
+     eine komplette 398/398-Browser-/Modellmatrix, responsive Sichtpruefung, zwei echte getaggte A4-PDFs, frischer
+     Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen.
+     Implementierung als Commitserie `e757b7e` bis `d2fe43f` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 278 / PLANS 139 ist abgeschlossen; als Naechstes folgt
-Roadmap 279 / PLANS 140 mit nativen Tabellenbeschriftungen und stabilen Tabellennummern.
+280. [ ] Native freie Dokumentfelder umsetzen: Ein begrenzter dokumenteigener Schluessel-/Wert-Katalog und explizite
+     Feldknoten sollen wiederverwendbare Werte in Text sowie Kopf-/Fusszeilen einsetzen, ohne Skripte, externe
+     Aufloesung oder stilles Umschreiben. Undo, Speichern, Historie, Vergleich, Kopien, Druck und gebrochene Felder
+     muessen exakt bleiben. Dokumentuebergreifende Verweise, Rueckverweise, Formeln und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 279 / PLANS 140 ist abgeschlossen; als Naechstes folgt
+Roadmap 280 / PLANS 141 mit nativen freien Dokumentfeldern.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

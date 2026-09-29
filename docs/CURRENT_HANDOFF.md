@@ -2,58 +2,50 @@
 
 Updated: 2026-09-29
 
-Roadmap 278 / PLANS 139 is complete and published under ADR-0101. Native Office now lets a document-owned image carry
-an optional semantic figure identity. Visible `Abbildung N` labels are derived from current document order while the
-restricted stable ID survives moves, immutable versions, comparison and independent copies. Existing explicit
-cross-references can target bookmarks or figures without ambiguity; removed figures leave inert broken references.
-Editor and print share the same numbering inventory, and print emits semantic figure/caption markup plus a fixed local
-destination. Table captions, arbitrary page fields, cross-document references, backlinks and DOCX remain separate.
+Roadmap 279 / PLANS 140 is complete and published under ADR-0102. Native Office tables can carry a bounded literal
+caption and stable document-local destination ID. Visible `Tabelle N` labels follow the current order of captioned
+tables while figures retain their independent sequence. Caption add/edit/remove, undo, immutable history, comparison,
+independent copies, print and explicit cross-references preserve exact identity. Removed captions leave inert broken
+references. Free document fields, cross-document references, backlinks and DOCX remain separate.
 
-## Roadmap 278 source and validation evidence
+## Roadmap 279 source and validation evidence
 
-Implementation commits `1559bb5` through `42a6f67eb99cafe46ad6616d07c234fc71cccdb4` are published on
-`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 799 files, Mypy
-over 596 sources and complete Pytest; only the known Starlette/AnyIO warning remains. A complete regression run passed
-394/394 in 31.2 minutes. The isolated environment was then rebuilt from empty tmpfs and the same 394/394 matrix passed
-again in 29.0 minutes on the exact source state later dumped for recovery. Final report SHA-256:
-`e0256d5e0534e312216729162ccf81235b0a1984985a8750ecbca25df6883c0e`.
+Implementation commits `e757b7e` through `d2fe43f6b4dfe39b8057b5339ecc497361f1ea67` are published on
+`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 803 files,
+Mypy over 599 sources and complete Pytest; only the known Starlette/AnyIO warning remains. The complete desktop/mobile
+browser and model matrix passed 398/398 in 29.8 minutes. Report SHA-256:
+`59520ae80d52ddedf84c7fed0692af9309b3e59f236a992d779f4151e3d3ff7a`.
 
-Independent inspection passed the desktop/mobile print dialogs and both actual one-page A4 PDFs. They contain the
-reordered `Abbildung 1: Details` and `Abbildung 2: Overview` labels, are tagged, and each contains exactly one local
-destination link with no external action, JavaScript or form. Desktop/mobile screenshot SHA-256 values are
-`41efce5ed54c8a2af966e727ae6e15b698aa95f9cd7ecc7716c39b29edcc3922` and
-`9ba9e37e379a653557083a82927bb47f69694160ba012a9623ca4b6da14bd426`; PDF SHA-256 values are
-`3e99ec1de16ce8cdcda50b1fe04bec6c13ff11364a8db3892232e4f427f07c76` and
-`4013c6a5633dcc6e4f2fd8935dd27d06eae849a16aa5abfd810c77e1b2757dea`.
+Desktop/mobile print previews and the independently rendered actual PDF passed visual review. Both actual PDFs are
+tagged one-page A4 documents with exact `Tabelle 1: Overview revised` and `Tabelle 2: Details` labels, a local
+cross-reference, no JavaScript and no form. QPDF found no syntax or stream errors. Desktop/mobile screenshot hashes
+are `86d1a9c46bf237ea5359b1f90072507b68390468262e876f4df6a3f2dff76da2` and
+`c9b4dd7cc8cbf20f618a0ed370d6ff533acc6bad353508da84940b63ac66fd1f`; PDF hashes are
+`a765e49ebb853996e30392f0f9bf292f93eec6fda75b256f047258d3b63d330c` and
+`f111846c20476c3bb26ee8b9adf33334f0942986d223895bbf3ffb1033fc7731`.
 
-Fresh recovery into `collabio_work_e2e_278_restore` verified 503 documents, 1,002 exact Office versions, 157
-multi-version documents, 1,107 source objects, 50 image assets/77 saved references, 10 review threads/18 events and 11
-suggestions/seven decisions. The five legacy/add/reorder/broken/reset figure versions, canonical legacy hash, exact
-ACLs, foreign-tenant denial and every prior fixture passed. Dump SHA-256:
-`373ebdc98b8fd2bd0b94d9eb9d858e3f4e2de8143db6168b1b8fbae31ed783fb`; recovery report file SHA-256:
-`e5f8a3400b6ef22605ab3bebcb7a7c30c627a01d0fad1b971a491cee2ed53359`; embedded report hash:
-`sha256:ace93c6a6fe790d4604d480b36224572117f32034027053299c219faefb4e072`; PostgreSQL restore hash:
-`sha256:a91aa31269595aebcbdb7861a0504482c58168eee878d892ab0ad5c497ed4c89`; exact S3 restore hash:
-`sha256:7b7db092068c9e919391f865a74745400fb78f77346f1b4209c398b17157c9ea`.
+Fresh recovery into `collabio_work_e2e_279_restore` verified 506 documents, 1,013 exact Office versions, 160
+multi-version documents, 1,118 source objects, 50 image assets/77 saved references, 10 review threads/18 events and 11
+suggestions/seven decisions. Exact legacy/add/reorder/broken/reset table-caption versions, canonical legacy hash,
+every earlier fixture, ACLs and foreign-tenant denial passed. Dump SHA-256:
+`a9c581b7f57142eb21fd8c42fb8e00ca6f03945b95fea9a2f0de760fb9fc8898`; recovery file SHA-256:
+`38d124812404904b96489279c193b9886140a295c5c8e5bf12ec235832bfc2ef`; embedded report hash:
+`sha256:d29870f5669811e24c4a048b7a9e4314e12cf45e116230117a713f51111ac3a4`; PostgreSQL restore hash:
+`sha256:f53ee6449bbecc6321ca298f45c6cc89b630376ba5c9f77e1fae5f976b85f1df`.
 
-Main backup `collabio-20260929T132807Z.dump` passed verification and isolated restore; backup SHA-256 is
-`1165a61401ea322220a2bccae9ef4cfd07b7721a03c7e74fa7f4c1f85984541f`. Foundation gate
-`sha256:fe71e2eced4a401a74ead5d94c538cd28cba0db5a5bb5824bc15975f479f1e33` verified 85 migrations/95 tables and
+Main backup `collabio-20260929T150312Z.dump` passed verification and isolated restore; backup SHA-256 is
+`400a53e5707d388a636ba8fa9797f86c96c4335df68091be22db0f324be6c67b`. Foundation gate
+`sha256:25a1a4cd10cf6b29de629db801b1afcaf9869761fda45ee6311e882f0a9bd39a` verified 85 migrations/95 tables and
 three objects/two tenants. Business gate passed 3/3 with hash
-`sha256:39dcd98334d306dbbc83f45a959bdb74f3ef19e41ba28101d676430c13931177`, no business write and no tenant
-activation. API-only rollout with pilot 0 created container `e1d81cdeb1ba` on image
-`sha256:16ce91b2ad8feea1e0292830a5a1658a1fb2f490001af4b21b7b4d786c815e63`. Health, Work-to-Office link,
-served figure bundle/CSS, CSP/no-store and pilot 0 passed. Exact Work-E2E services were removed and auxiliary
-test/restore services stopped; final Collabio status is running(4), with loopback ports 8000/5433/29000/29001
-unchanged. Ordinary Office, pilot, indexing, cloud AI, DOCX and engine admission remain closed.
+`sha256:a6a4ba6b4993c255d43fa93ca0c8219f7da2e6ebe57b19a751d1877af7a9145a`, no business write and no tenant
+activation. API-only rollout with pilot 0 created container `8cf701a7c9c1` on image
+`sha256:26edf5cca7fbcac1a1efac63d44b5f27d59eafbcafaf933c4649e71706da9637`. Health, Work link, served table
+controls/bundle, CSP/no-store and pilot 0 passed. Exact Work-E2E services were removed and auxiliary test/restore
+services stopped; final Collabio status is running(4), with loopback ports 8000/5433/29000/29001 unchanged.
 
 Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Next:
-Roadmap 279 / PLANS 140, native table captions with a separate deterministic numbering sequence and stable table
-references.
-
-Published evidence closeout commit `1b1f14fa3379c967ffb6f79ff6448339793f4457` was fast-forwarded to the clean
-dev001 source. The dependency-free figure schema/image/recovery selection passed in full after publication; health
-stayed ok and Collabio stayed running(4).
+Roadmap 280 / PLANS 141, bounded native free document fields. Ordinary pilot, indexing, cloud AI, DOCX and engine
+admission remain closed.
 
 Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
 document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove

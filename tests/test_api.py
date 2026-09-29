@@ -1273,6 +1273,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "docs/modules/OFFICE_NATIVE_DOCUMENTS.md" in office_native["evidence_refs"]
     assert "e2e/work/tests/office-tables.spec.mjs" in office_native["evidence_refs"]
     assert "e2e/work/tests/office-tables-responsive.spec.mjs" in office_native["evidence_refs"]
+    assert "tests/test_office_table_captions.py" in office_native["evidence_refs"]
+    assert "e2e/work/tests/office-table-captions-responsive.spec.mjs" in office_native["evidence_refs"]
+    assert "table_captions_use_stable_unique_local_ids_and_order_derived_numbers" in office_native["guardrails"]
     assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())

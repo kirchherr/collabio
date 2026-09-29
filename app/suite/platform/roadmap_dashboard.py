@@ -804,6 +804,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Der Schreibarbeitsplatz /office bietet native strukturierte Dokumente mit Formatierung, "
                         "Tabellen, Gliederung, Suchen/Ersetzen und Versionsgeschichte. Kontextaktionen bearbeiten "
                         "Tabellenzeilen, Spalten und Kopfzeilen; Entfernen verlangt eine Bestaetigung. "
+                        "Optionale Tabellenbeschriftungen besitzen stabile dokumentlokale Ziele; sichtbare Nummern "
+                        "folgen der Dokumentreihenfolge getrennt von Abbildungen. "
                         "Versionsgebundene Kommentare erlauben bestaetigte Antworten, Erledigen und Wiedereroeffnen; "
                         "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
@@ -870,6 +872,12 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-search.spec.mjs",
                         "e2e/work/tests/office-tables.spec.mjs",
                         "e2e/work/tests/office-tables-responsive.spec.mjs",
+                        "app/suite/ui/office/office-tables.mjs",
+                        "tests/test_office_table_captions.py",
+                        "tests/test_office_table_captions_recovery.py",
+                        "e2e/work/tests/office-table-captions-model.spec.mjs",
+                        "e2e/work/tests/office-table-captions-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0102-native-office-table-captions.md",
                         "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
                         "ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md",
@@ -914,6 +922,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
                         "table_removal_requires_explicit_confirmation",
+                        "table_captions_use_stable_unique_local_ids_and_order_derived_numbers",
+                        "table_and_figure_numbering_sequences_remain_independent",
                         "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
                         "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
                         "review_events_append_only_with_exact_comment_sources_and_receipts",

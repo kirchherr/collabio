@@ -1,7 +1,7 @@
 # ADR-0102: Native Office table captions, numbering and references
 
 Date: 2026-09-29
-Status: proposed; development validation pending; ordinary tenant and production admission remain closed
+Status: accepted; development validation complete; ordinary tenant and production admission remain closed
 
 Native Office tables may carry an optional literal `caption` and stable `tableId`. Both attributes are present together
 or absent together, so every captioned table is an unambiguous document-local destination while legacy tables retain

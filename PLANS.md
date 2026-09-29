@@ -267,17 +267,25 @@ DOCX interchange separate. Full Python quality, two complete 394-case browser/mo
 two real tagged PDFs, fresh five-version recovery, main backup/restore, both release gates, API-only rollout and live
 verification passed. Published as implementation commits `1559bb5` through `42a6f67`.
 
-140. [ ] Add native table captions and stable table numbering. Let tables carry an optional semantic caption and a
+140. [x] Add native table captions and stable table numbering. Let tables carry an optional semantic caption and a
 stable document-local destination ID, derive a separate table-number sequence from document order, and preserve exact
 identity through undo, save, history, comparison, copies, print and explicit cross-references. Keep arbitrary page
-fields, cross-document references, backlinks and DOCX interchange separate.
+fields, cross-document references, backlinks and DOCX interchange separate. Full Python quality, one complete
+398-case browser/model run, responsive visual review, two real tagged A4 PDFs, fresh five-version recovery, main
+backup/restore, both release gates, API-only rollout and live verification passed. Published as implementation commits
+`e757b7e` through `d2fe43f`.
+
+141. [ ] Add native free document fields. Store a bounded document-owned key/value catalog and explicit field nodes
+for reuse in body and running text without scripts, external resolution or silent rewrites. Preserve exact undo,
+save, history, comparison, copies, print and broken-field behavior. Keep cross-document references, backlinks,
+formulas and DOCX interchange separate.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete and published through Roadmap 278 / PLANS 139. Roadmap 279 / PLANS 140 adds native table captions, deterministic table numbering and explicit stable table references. Preserve the complete 394-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Arbitrary page fields, cross-document references, backlinks, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete and published through Roadmap 279 / PLANS 140. Roadmap 280 / PLANS 141 adds bounded native free document fields. Preserve the complete 398-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Cross-document references, backlinks, formulas, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
