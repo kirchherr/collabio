@@ -23,6 +23,7 @@ from work_e2e_paragraph import seed_synthetic_office_paragraphs
 from work_e2e_running_text import seed_synthetic_office_running_text
 from work_e2e_sections import seed_synthetic_office_sections
 from work_e2e_styles import seed_synthetic_office_styles
+from work_e2e_tables import seed_synthetic_office_tables
 
 SYNTHETIC_PRINCIPALS = (
     "work-user-e2e",
@@ -112,6 +113,7 @@ def main() -> int:
         environment=os.environ, client=client
     )
     figure_document_count, figure_version_count = seed_synthetic_office_figures(environment=os.environ, client=client)
+    table_document_count, table_version_count = seed_synthetic_office_tables(environment=os.environ, client=client)
 
     print(
         json.dumps(
@@ -131,7 +133,8 @@ def main() -> int:
                 + section_document_count
                 + link_document_count
                 + bookmark_document_count
-                + figure_document_count,
+                + figure_document_count
+                + table_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
@@ -143,6 +146,7 @@ def main() -> int:
                 "synthetic_office_link_version_count": link_version_count,
                 "synthetic_office_bookmark_version_count": bookmark_version_count,
                 "synthetic_office_figure_version_count": figure_version_count,
+                "synthetic_office_table_caption_version_count": table_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,

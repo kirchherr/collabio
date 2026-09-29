@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { BASE_URL } from "./support.mjs";
+import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import { OFFICE_HEADERS, officeEditor, openOffice, createOfficeDocument, saveOffice } from "./office-support.mjs";
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
@@ -56,6 +56,7 @@ test("Office table captions renumber, preserve stable references and print seman
   const printed = page.locator(`#print-preview #office-table-${ids[1]}`);
   await expect(printed.locator("caption")).toHaveText("Tabelle 2: Details");
   await expect(page.locator("#print-preview a[data-office-cross-reference]")).toHaveAttribute("href", `#office-table-${ids[1]}`);
+  await page.locator("#print-preview").screenshot({ path: `${ARTIFACT_DIR}/office-table-captions-${testInfo.project.name}.png` });
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1); await expect.poll(() => prints[0].pdf).not.toBeNull();
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Link");
