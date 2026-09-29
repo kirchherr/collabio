@@ -250,18 +250,27 @@ automatic link recognition, arbitrary fields and DOCX interchange separate. Full
 browser/model run, responsive visual review, two real PDFs, fresh four-version recovery, main backup/restore, both
 release gates, API-only rollout and live verification passed. Published as implementation commit `12e8fca`.
 
-138. [ ] Add native document-local bookmarks and internal cross-references under ADR-0100. Store bounded unique
+138. [x] Add native document-local bookmarks and internal cross-references under ADR-0100. Store bounded unique
 bookmark atoms and explicit selected-text references to stable IDs. Provide responsive insert/rename/remove and
 deliberate-jump controls, safe broken-target behavior, isolated undo, exact history/comparison/reuse positions,
 semantic internal PDF anchors and a five-version legacy/add/rename/broken/reset recovery fixture. Keep automatic
-captions, page fields, cross-document references, backlinks, URL previews and DOCX interchange separate.
+captions, page fields, cross-document references, backlinks, URL previews and DOCX interchange separate. Full Python
+quality, one complete 389-case browser/model run, responsive visual review, two real PDFs, fresh five-version recovery,
+main backup/restore, both release gates, API-only rollout and live verification passed. Published as implementation
+commits `6c4c6e0` through `7e61f72`.
+
+139. [ ] Add native figure captions and stable figure numbering. Let document-owned images carry an optional semantic
+caption, derive numbering deterministically from document order, and preserve exact image/caption identity through
+undo, save, history, comparison, copies and print. Reuse stable destination IDs for explicit figure references and
+safe broken-target behavior. Keep table captions, arbitrary page fields, cross-document references, backlinks and
+DOCX interchange separate.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete and published through Roadmap 276 / PLANS 137. Roadmap 277 / PLANS 138 implements native document-local bookmarks and internal cross-references under ADR-0100. Preserve the complete 384-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Automatic captions/page fields, cross-document references, backlinks, URL previews, arbitrary fields/floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete and published through Roadmap 277 / PLANS 138. Roadmap 278 / PLANS 139 adds native figure captions, deterministic figure numbering and explicit stable figure references. Preserve the complete 389-case browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Table captions, arbitrary page fields, cross-document references, backlinks, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

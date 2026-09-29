@@ -1,6 +1,58 @@
 # Current Project Handoff
 
-Updated: 2026-09-28
+Updated: 2026-09-29
+
+Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
+document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove
+and deliberate jump are responsive and isolated in undo/redo. Removing a destination leaves a visible inert broken
+reference. Save, immutable history, comparison, copies, search, reviews and suggestions preserve exact structure and
+positions. Printing creates a local destination and link only for a resolved target; it never creates an external
+action. Automatic captions, page fields, cross-document references, backlinks, URL previews and DOCX remain separate.
+
+## Roadmap 277 source and validation evidence
+
+Implementation commits `6c4c6e0`, `6543564`, `ef4c6d0`, `31431c4` and `7e61f72` are published on
+`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 796 files,
+Mypy over 594 sources and complete Pytest; only the known Starlette/AnyIO warning remains. One complete final
+browser/model run passed 389/389 cases in 29.1 minutes with zero skipped, retries or flakes. Result JSON SHA-256:
+`1a41d7db667b48d770428f116463b4c6cf263c1903feaa39002a65b923824a53`. The focused final bookmark run passed
+5/5 cases in 19.1 seconds.
+
+Root reviewed the desktop/mobile bookmark dialogs and both one-page A4 PDFs. Dialog screenshot SHA-256 values are
+`0ff68c128209e6580055f939dd424405087627f7b5764f614c208a00acd9a7ee` and
+`1d3efa32378a242b09ffd042390c430e69d035032a047190b11769ecd050aec2`. PDF SHA-256 values are
+`40cfc9f0ea1467474b12058a7b0c4d13f3280df1dff995a8cc2bb6f1a49c7450` and
+`93ae567a1ddac20bf3b431cba904845261b37708c1b5eb41c03b03a7b6116f4e`. Independent inspection confirmed one A4
+page, tagging, no JavaScript or forms, exactly one local `/Dest` link annotation and no external `/A` action in each
+PDF. QA metadata SHA-256: `91a956951fa4ae14298c2f3970eb3c83160d589173871afa6f5f496349be7566`.
+
+Fresh recovery into `collabio_work_e2e_277_restore` verified 500 documents, 991 exact Office versions, 154
+multi-version documents, 1,090 source objects, 44 image assets/62 saved references, 10 review threads/18 events and
+11 suggestions/seven decisions. The five legacy/add/stable-ID-rename/broken/reset bookmark versions, canonical legacy
+hash, exact ACLs, foreign-tenant denial and all earlier fixtures passed. Dump SHA-256:
+`93e87ca2422b179d7b0e11058760babfff50495d11598c0dfc4068c483e2ec7b`; recovery report file SHA-256:
+`13e309027007111cc25cead36678a30959db2e9300634dbe27c0a4d413fa9ec0`; embedded report hash:
+`sha256:c7a5624cf3d2e93f8e31e5329b09ae931bb9ae12d62ca4b84243a720f9b494a6`. PostgreSQL restore report hash is
+`sha256:6a1610f7cc08abb2544cd33d8fdabff8e3b2ea6e7043ee578d7635876f121daa`; exact S3 restore report hash is
+`sha256:fa5860ad775f8487c901acef6c3806b6ddc41757b69e7d7a04d7e4cf0ce46882`.
+
+Main backup `collabio-20260929T072600Z.dump` verified with SHA-256
+`a95a2b18b2bc98752fc46b74df421c4a5972410f6cc239b8f7fec38c0bf05086`; only ordinary `collabio_restore` was
+refreshed. Foundation seed 0 verified 85 migrations, 95 tables and three restored objects/two tenants; gate hash
+`sha256:7a9d65c12787744c0207e9b9578ba1fa94dfed3a1e4f11fa8172242873d2c865`, file SHA-256
+`f9abab1323ceb0c15a4b94c3d6abf8d16df1396ef4ba19c1d68ce7bd52b5eecf`. Business release passed 3/3 without
+blockers, writes or activation; gate hash `sha256:8ab5174e2baced6612e8c44b42470e2119efe5a7791c6e6a0865d199b485f84a`,
+file SHA-256 `df89f7fb5c530779ff00c17b1591d5502144fbbf598873ac38bcdaf2b7476d07`.
+
+API-only rollout with pilot 0 created container `ea7d6fb5eb93` on image
+`sha256:4f8f6537fe8c008006174dcde4dfafa68b5739087cbb7cfbe0ba9aed205877e4`. Live verification passed health,
+Office shell, bookmark/cross-reference controls and runtime, CSP/no-store and ordinary Office 404; metadata SHA-256
+`61398ee72b5ac3cb638912f9157929e01644907d0ab60adf158e1c518b832b31`. Exact Work-E2E services were removed and
+test/restore services stopped. Cleanup metadata SHA-256:
+`41fb25c51047bbb19d270afc6c8d6afb599a80a76583569ed9dd91558cdb2efa`. Final Collabio status is running(4), health
+is ok and loopback ports 8000/5433/29000/29001 are unchanged. The regular decoder, main stores, Webcut and provider
+nodes are unchanged. Ordinary Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed.
+Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used.
 
 Roadmap 276 / PLANS 137 is complete and published under ADR-0099. Native Office now supports explicit safe links on
 exact selected text. Only bounded absolute HTTPS and simple `mailto:` targets are accepted. Add, edit, remove and

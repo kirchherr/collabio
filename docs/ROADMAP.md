@@ -1741,19 +1741,25 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      responsiver Sichttest, frischer Vier-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und
      Live-Pruefung sind gruen. Implementierung als Commit `12e8fca` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 276 / PLANS 137 ist abgeschlossen. Hyperlinks bleiben bewusst
-von Lesezeichen/Querverweisen, URL-Vorschauen, freien Feldern, abschnittsweisen ersten Seiten, Nummern-Neustarts,
-Editor-Pagination, schwebenden Objekten und DOCX getrennt.
-
-277. [ ] Native Lesezeichen und interne Querverweise unter ADR-0100 umsetzen: Stabile dokumentlokale Anker besitzen
+277. [x] Native Lesezeichen und interne Querverweise unter ADR-0100 umgesetzt: Stabile dokumentlokale Anker besitzen
      begrenzte eindeutige Namen; Querverweise markieren expliziten Text und referenzieren nur eine stabile Anker-ID.
      Einfuegen, Umbenennen, Entfernen, bewusstes Springen und gebrochene Ziele bleiben responsiv und undo-faehig.
      Speichern, Historie, Vergleich, Kopien, Suche, Reviews und Vorschlaege behalten exakte Struktur und Positionen.
      Semantischer interner PDF-Druck und ein frischer Altformat/Hinzufuegen/Umbenennen/Gebrochen/Reset-Restore
      schliessen den Slice. Automatische Beschriftungen, Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise,
-     URL-Vorschauen und DOCX bleiben separat.
+     URL-Vorschauen und DOCX bleiben separat. Volle Python-Qualitaet, ein kompletter Lauf mit 389/389 Browser-/
+     Modellfaellen, responsive Sichtpruefung, zwei echte PDFs, frischer Fuenf-Versionen-Restore, Hauptsicherung,
+     beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen. Implementierung als Commitserie `6c4c6e0`
+     bis `7e61f72` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 277 / PLANS 138 ist in Umsetzung.
+278. [ ] Native Abbildungsbeschriftungen und stabile Abbildungsnummern umsetzen: Dokumenteigene Bilder erhalten eine
+     optionale semantische Beschriftung; Nummern werden deterministisch aus der Dokumentreihenfolge abgeleitet und
+     bleiben in Editor, Historie, Vergleich, Kopien und Druck konsistent. Einfuegen, Bearbeiten, Entfernen und Undo
+     bleiben responsiv. Querverweise auf Abbildungen verwenden stabile Ziel-IDs und zeigen gebrochene Ziele sicher an.
+     Tabellenbeschriftungen, freie Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 277 / PLANS 138 ist abgeschlossen; als Naechstes folgt
+Roadmap 278 / PLANS 139 mit nativen Abbildungsbeschriftungen und stabilen Abbildungsnummern.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

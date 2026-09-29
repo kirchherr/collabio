@@ -352,7 +352,7 @@ and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `colla
 `collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore`,
 `collabio_work_e2e_270_restore`, `collabio_work_e2e_271_restore`, `collabio_work_e2e_272_restore`,
 `collabio_work_e2e_273_restore`, `collabio_work_e2e_274_restore`, `collabio_work_e2e_275_restore` or
-`collabio_work_e2e_276_restore` target,
+`collabio_work_e2e_276_restore` or `collabio_work_e2e_277_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -383,6 +383,12 @@ lineage, authoritative current ACLs and all prior formatting, image, review and 
 is retained under `e2e/work/artifacts/office-276-recovery-backup`; the metadata-only report is retained under
 `e2e/work/artifacts/roadmap-276`. Never run this proof while browser writes are active, and never replace an earlier
 numbered target, dump or receipt.
+
+Roadmap 277 adds exact legacy/add/stable-ID-rename/broken/reset bookmark versions. The proof validates canonical
+bookmark atoms and cross-reference marks, predecessor lineage, authoritative current ACLs and all prior fixtures. Its
+separate dump is retained under `e2e/work/artifacts/office-277-recovery-backup`; browser, PDF, recovery, live and
+cleanup metadata are retained under `e2e/work/artifacts/roadmap-277`. Never replace an earlier numbered target, dump
+or receipt.
 
 ## Evidence
 
