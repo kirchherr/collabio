@@ -1699,11 +1699,7 @@ function currentTable(editor = state.editor) {
 function currentTableNode(editor = state.editor) {
   const rect = currentTable(editor);
   if (!editor || !rect) return null;
-  let result = null;
-  editor.state.doc.descendants((entry, position) => {
-    if (result === null && entry === rect.table) result = { entry, position };
-  });
-  return result;
+  return { entry: rect.table, position: rect.tableStart - 1 };
 }
 
 function tableActionSnapshot(kind, command) {
