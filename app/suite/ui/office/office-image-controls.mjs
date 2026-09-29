@@ -154,7 +154,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       const tr = editor.state.tr;
       if (operation === "apply") {
         if (!$("image-form").reportValidity()) return;
-        const numbered = owner.numbered;
+        // Read the submitted control directly. The dialog can refresh its
+        // preview between the checkbox change and submit; the form remains
+        // the authoritative source for the user's current choice.
+        const numbered = $("image-numbered").checked;
         const attrs = officeImageAttributes({ ...owner.attrs,
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
