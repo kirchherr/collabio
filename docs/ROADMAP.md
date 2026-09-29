@@ -1770,32 +1770,36 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen.
      Implementierung als Commitserie `e757b7e` bis `d2fe43f` veroeffentlicht.
 
-280. [ ] Native freie Dokumentfelder umsetzen: Ein begrenzter dokumenteigener Schluessel-/Wert-Katalog und explizite
+280. [x] Native freie Dokumentfelder umgesetzt: Ein begrenzter dokumenteigener Schluessel-/Wert-Katalog und explizite
      Feldknoten sollen wiederverwendbare Werte in Text sowie Kopf-/Fusszeilen einsetzen, ohne Skripte, externe
      Aufloesung oder stilles Umschreiben. Undo, Speichern, Historie, Vergleich, Kopien, Druck und gebrochene Felder
      muessen exakt bleiben. Dokumentuebergreifende Verweise, Rueckverweise, Formeln und DOCX bleiben separat.
 
-281. [ ] Ein natives generiertes Inhaltsverzeichnis umsetzen: Ein expliziter Block leitet seine Eintraege bis zur
+281. [x] Ein natives generiertes Inhaltsverzeichnis umgesetzt: Ein expliziter Block leitet seine Eintraege bis zur
      gewaehlten Ebene aus der aktuellen Ueberschriftenreihenfolge ab, ohne gerenderten Altstand zu speichern.
 
-282. [ ] Native Fussnoten umsetzen: Begrenzte literale Noten mit stabilen lokalen IDs und dokumentreihenfolgeabhaengiger
+282. [x] Native Fussnoten umgesetzt: Begrenzte literale Noten mit stabilen lokalen IDs und dokumentreihenfolgeabhaengiger
      Nummerierung muessen in Editor, Versionen, Vergleich, Kopien und semantischem Druck exakt bleiben.
 
-283. [ ] Native Endnoten umsetzen: Eine von Fussnoten getrennte Nummernfolge und ein eigener Druckabschnitt muessen
+283. [x] Native Endnoten umgesetzt: Eine von Fussnoten getrennte Nummernfolge und ein eigener Druckabschnitt halten
      dieselben Inertheits-, Undo-, Versions- und Recovery-Grenzen einhalten.
 
-284. [ ] Native Quellenverweise und Literaturverzeichnis umsetzen: Ein begrenzter dokumenteigener Quellenkatalog,
+284. [x] Native Quellenverweise und Literaturverzeichnis umgesetzt: Ein begrenzter dokumenteigener Quellenkatalog,
      explizite Verweise, sichere fehlende Quellen und ein abgeleitetes Verzeichnis duerfen keine externe Aufloesung
      oder Netzwerkanfrage ausloesen.
 
-285. [ ] Native Formeln umsetzen: Begrenzter Quelltext und barrierefreie Beschreibung werden als literale inerte
+285. [x] Native Formeln umgesetzt: Begrenzter Quelltext und barrierefreie Beschreibung werden als literale inerte
      Daten gespeichert und semantisch gedruckt; Auswertung, Makros und externe Formel-Engines bleiben geschlossen.
 
-286. [ ] Einen nativen lokalen Referenznavigator umsetzen: Eine abgeleitete Uebersicht zeigt Felder, Noten, Quellen
+286. [x] Einen nativen lokalen Referenznavigator umgesetzt: Eine abgeleitete Uebersicht zeigt Felder, Noten, Quellen
      und Formeln samt gebrochenen Zielen, ohne persistierte Rueckverweise oder dokumentuebergreifende Suche.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 279 / PLANS 140 ist abgeschlossen; Roadmap 280–286 /
-PLANS 141–147 werden als gemeinsamer semantischer Dokumentzug unter ADR-0103 validiert.
+Native Office bleibt vor CRM. Roadmap 280–286 / PLANS 141–147 ist als gemeinsamer semantischer Dokumentzug unter
+ADR-0103 abgeschlossen und veroeffentlicht. Volle Python-Qualitaet, die komplette 403/403-Browser-/Modellmatrix,
+responsive Sichtpruefung, ein unabhaengig geprueftes getaggtes A4-PDF, ein frischer Zehn-Versionen-Restore,
+Hauptsicherung, Restore- und Release-Gates, API-only-Rollout mit Pilot 0 und Live-Pruefung sind gruen. Der Restore
+verifizierte 586 Dokumente, 1.161 exakte Office-Versionen, 204 Dokumente mit Historie und 1.299 SourceObjects.
+Dokumentuebergreifende Verweise, globale Rueckverweise, Formel-Auswertung und DOCX bleiben separat.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

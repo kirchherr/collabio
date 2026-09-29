@@ -1,7 +1,7 @@
 # Native Office Documents
 
-Status: Roadmap 252–286 implemented under validation; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 279 / PLANS 140 table captions; 280–286 / PLANS 141–147 native semantic fields, generated navigation, notes, citations, formulas and reference overview
+Status: Roadmap 252–286 implemented, validated and published; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 286 / PLANS 147 native semantic fields, generated navigation, notes, citations, formulas and reference overview
 Module: `office_documents` / version 0.1.0
 Decisions: ADR-0079 through ADR-0103; current semantic structures: `ARCHITECTURE_DECISIONS/ADR-0103-native-office-semantic-structures.md`
 
@@ -42,6 +42,18 @@ All operations remain ordinary undoable draft transactions and use the existing 
 comparison, independent copies and semantic print retain the exact structures. A ten-version recovery lineage covers
 legacy, each additive structure, broken catalog targets and a final legacy reset. Cross-document references, global
 backlinks, mathematical evaluation and DOCX interchange remain separate authorization and fidelity work.
+
+Full Python quality passed Ruff, formatting for 807 files, Mypy over 602 sources and complete Pytest. The complete
+desktop/mobile browser and model matrix passed 403/403; its archived report is
+`sha256:e07b3ad7cc88364f78b628e11bd8535dacdfcbce7a684efd2c4b34543a1a9977`. The final focused workflow passed with
+report `sha256:e88435f84fe6e045f587f0d17bfde5b69d18ec00f6925cd6bdee828b5043d072`. Its actual one-page A4 PDF is tagged,
+contains no JavaScript or form, and has SHA-256 `bac235bd08aab13a01d1aa7e95dfeaa27d68cf1f1e29d916ce74f6c811dfa73f`.
+
+Fresh recovery into `collabio_work_e2e_286_restore` verified 586 documents, 1,161 exact Office versions, 204
+multi-version documents, 1,299 source objects and all ten semantic fixture versions. The recovery report file is
+`sha256:26392ff2d3097c71d87c7ae835a8c470a9b36bd6260d8983ad1ab788203ad478`; its embedded report hash is
+`sha256:ea7b720c37a029b13814eda7ad367b371bc9d2c22a665ea37d7cd29130fafcfa`. Main backup/restore, foundation and
+business gates, API-only rollout with pilot 0, live bundle/security checks and exact cleanup passed.
 
 ## Native table captions, numbering and references (Roadmap 279)
 

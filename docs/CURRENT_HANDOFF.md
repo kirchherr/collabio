@@ -2,6 +2,59 @@
 
 Updated: 2026-09-29
 
+Roadmap 280–286 / PLANS 141–147 are complete and published under ADR-0103. Native Office now provides one bounded
+semantic structure workflow for document-owned free fields, a heading-derived table of contents, independently
+numbered footnotes and endnotes, a local citation catalog with generated bibliography, inert literal formulas with
+accessible descriptions, and a derived local reference navigator. Removing catalog entries leaves explicit safe
+broken references. Values, stable identities and catalogs remain exact through undo, confirmed CAS save, immutable
+history, comparison, independent copies and semantic print. Generated numbering and lists follow current document
+order and are not persisted as stale output. Running text resolves only explicit `{{field:key}}` tokens against the
+same saved version. No source fetch, formula evaluation, script, macro, external engine, cross-document lookup or
+global backlink was opened.
+
+## Roadmap 280–286 source and validation evidence
+
+Implementation commits `ddaecb4` through `8c77833` are published on `kirchherr/kb-write-unit-of-work` and synchronized
+to dev001. Full quality passed Ruff, formatting for 807 files, Mypy over 602 sources and complete Pytest; only the
+known Starlette/AnyIO warning remains. The complete desktop/mobile browser and model matrix passed 403/403 in 30.9
+minutes. Its immutable archived report SHA-256 is
+`e07b3ad7cc88364f78b628e11bd8535dacdfcbce7a684efd2c4b34543a1a9977`. The final focused semantic workflow passed
+after the PDF callback was awaited explicitly; report SHA-256 is
+`e88435f84fe6e045f587f0d17bfde5b69d18ec00f6925cd6bdee828b5043d072`.
+
+Root reviewed the desktop structure dialog. Screenshot SHA-256 is
+`5db0bb2b83e169f52238b89c053eb2563d9b5cd7f495a27eb4d0ab17afcb07f4`. The actual print artifact is a tagged
+one-page A4 PDF with the generated bibliography and reference navigator, table of contents, formula, footnote and
+endnote. It has no JavaScript or form; PDF SHA-256 is
+`bac235bd08aab13a01d1aa7e95dfeaa27d68cf1f1e29d916ce74f6c811dfa73f`.
+
+Fresh recovery into `collabio_work_e2e_286_restore` verified 586 documents, 1,161 exact Office versions, 204
+multi-version documents, 1,299 source objects, 60 image assets/89 saved references, 11 review threads/20 events and 12
+suggestions/eight decisions. All ten legacy/additive/broken/reset semantic versions, every earlier Office fixture,
+authoritative ACLs and foreign-tenant denial passed. Dump SHA-256 is
+`3fac5ac9479baf2f1b5ee5f0ea64917544daa491dae05933fcd38a9b8fff2a19`; recovery report file SHA-256 is
+`26392ff2d3097c71d87c7ae835a8c470a9b36bd6260d8983ad1ab788203ad478`; embedded report hash is
+`sha256:ea7b720c37a029b13814eda7ad367b371bc9d2c22a665ea37d7cd29130fafcfa`; PostgreSQL restore hash is
+`sha256:424873d0b2e33093b769aa40e03f6081c14b8830fb1521f0c79c96e0c832e6e0`.
+
+Main backup `collabio-20260929T170813Z.dump` passed verification and isolated restore; SHA-256 is
+`6378e1d0a4db9b81839c560cf67feb2c8989603b5a4f364165dd2d0d18a9a75b`. The restore drill passed with report hash
+`sha256:5e0d46f2af2ff7f128e3cf59950211a51bf98c66e0eecb5835aae6af05247028`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:3f4253a804ad9bb3bc2d1af7d174c1f5b4ab9bb07ed4b6c13b6ab8ba05a5b56a`. The business gate passed 3/3 without
+business writes or tenant activation; gate hash is
+`sha256:e05a49d621414193e881dcaf56285571bfe86df358be66c103bd88f3a1b74ba8`. Pilot preflight stayed deliberately
+blocked with zero candidates and no state change; evidence hash is
+`sha256:1888b20333502d24c919bdd7eb5497ff9ef0008fbf55009f14394467307844ca`.
+
+API-only rollout with pilot 0 created container `2570bdb02175` on image
+`sha256:dac0f47b71e31b1dc4c2cc59e3f41eda4374fed11a2d061ded584b36e4f2a8bb`. Live verification passed health, the
+Office structure control and semantic bundle markers, strict CSP/no-store and pilot 0. Exact Work-E2E services were
+removed and postgres-test, postgres-restore and minio-restore were stopped. Final Collabio status is running(4), with
+loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` and `review.md` remain unread, untracked
+and unpublished. No subagents were used. Next Office work should add bounded document-local outbound cross-document
+reference records with a fresh authoritative target ACL/version check; global backlinks remain a later separate step.
+
 Roadmap 279 / PLANS 140 is complete and published under ADR-0102. Native Office tables can carry a bounded literal
 caption and stable document-local destination ID. Visible `Tabelle N` labels follow the current order of captioned
 tables while figures retain their independent sequence. Caption add/edit/remove, undo, immutable history, comparison,

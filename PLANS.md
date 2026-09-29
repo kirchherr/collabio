@@ -275,29 +275,29 @@ fields, cross-document references, backlinks and DOCX interchange separate. Full
 backup/restore, both release gates, API-only rollout and live verification passed. Published as implementation commits
 `e757b7e` through `d2fe43f`.
 
-141. [ ] Add native free document fields. Store a bounded document-owned key/value catalog and explicit field nodes
+141. [x] Add native free document fields. Store a bounded document-owned key/value catalog and explicit field nodes
 for reuse in body and running text without scripts, external resolution or silent rewrites. Preserve exact undo,
 save, history, comparison, copies, print and broken-field behavior. Keep cross-document references, backlinks,
 formulas and DOCX interchange separate.
 
-142. [ ] Add a native generated table of contents derived from current heading order and bounded depth without storing stale rendered entries.
+142. [x] Add a native generated table of contents derived from current heading order and bounded depth without storing stale rendered entries.
 
-143. [ ] Add native footnotes with stable local identities, order-derived numbering and semantic print output.
+143. [x] Add native footnotes with stable local identities, order-derived numbering and semantic print output.
 
-144. [ ] Add native endnotes with an independent sequence and exact version, comparison, copy and recovery behavior.
+144. [x] Add native endnotes with an independent sequence and exact version, comparison, copy and recovery behavior.
 
-145. [ ] Add native citations and a generated bibliography backed only by a bounded document-owned source catalog; never fetch a source.
+145. [x] Add native citations and a generated bibliography backed only by a bounded document-owned source catalog; never fetch a source.
 
-146. [ ] Add native inert formulas with bounded literal source and required accessible text; keep evaluation and external engines closed.
+146. [x] Add native inert formulas with bounded literal source and required accessible text; keep evaluation and external engines closed.
 
-147. [ ] Add a native local reference navigator derived from fields, notes, citations and formulas, including visible broken targets without cross-document lookup.
+147. [x] Add a native local reference navigator derived from fields, notes, citations and formulas, including visible broken targets without cross-document lookup.
 
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete and published through Roadmap 279 / PLANS 140. Roadmap 280–286 / PLANS 141–147 add the bounded local semantic structure family under ADR-0103. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Cross-document references, global backlinks, formula evaluation, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete and published through Roadmap 286 / PLANS 147. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue next with document-local outbound cross-document reference records and fresh target ACL/version validation before adding global backlinks. Formula evaluation, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
