@@ -80,6 +80,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1); await expect.poll(() => prints[0].pdf).not.toBeNull();
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Link");
+  await page.locator("#print-close").click();
 
   await selectImage(page, 0);
   await page.locator("#image-options").click(); await page.locator("#image-remove").click();
