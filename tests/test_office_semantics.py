@@ -88,11 +88,11 @@ def test_office_inline_semantics_reject_malformed_identifiers(node: dict[str, ob
 
 def test_office_formulas_are_bounded_literal_text_not_executable_objects() -> None:
     value = semantic_document()
-    value["content"][5]["attrs"]["source"] = "x" * 1001  # type: ignore[index]
+    value["content"][4]["attrs"]["source"] = "x" * 1001  # type: ignore[index]
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(value)
     value = semantic_document()
-    value["content"][5]["attrs"]["engine"] = "javascript"  # type: ignore[index]
+    value["content"][4]["attrs"]["engine"] = "javascript"  # type: ignore[index]
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(value)
 
