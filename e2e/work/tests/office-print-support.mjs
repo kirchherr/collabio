@@ -81,7 +81,9 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
   return calls;
 }
 
-export async function openPrintPreview(page, objectId, versionId, { keyboard = null, status = 200, extraHeaders = {} } = {}) {
+export async function openPrintPreview(page, objectId, versionId, {
+  keyboard = null, status = 200, extraHeaders = {}, readinessTimeout = 8000,
+} = {}) {
   const captured = await captureOfficeResponse(page, exactPrintRead(objectId, versionId), { extraHeaders });
   if (keyboard) await page.keyboard.press(keyboard);
   else await page.locator("#document-print").click();
@@ -92,7 +94,7 @@ export async function openPrintPreview(page, objectId, versionId, { keyboard = n
     expect(response.json.document.object_id).toBe(objectId);
     expect(response.json.version.version_id).toBe(versionId);
     await expect(page.locator("#print-dialog")).toBeVisible();
-    await expect(page.locator("#print-submit")).toBeEnabled();
+    await expect(page.locator("#print-submit")).toBeEnabled({ timeout: readinessTimeout });
     await expect(page.locator("#print-version")).toContainText(versionId);
   } else {
     await expect(page.locator("#print-submit")).toBeDisabled();

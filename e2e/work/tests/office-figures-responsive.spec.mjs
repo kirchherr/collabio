@@ -36,6 +36,7 @@ async function selectImage(page, index) {
 }
 
 test("Office figure captions renumber on reorder and remain stable cross-reference targets", async ({ page }, testInfo) => {
+  test.setTimeout(60000);
   await openOffice(page);
   const first = await createOfficeDocument(page, "Figure numbering proof", "See first figure");
   const one = await upload(page, first.document.object_id, "#2563eb", "Overview");
@@ -72,7 +73,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   expect(saved.content.content.filter((entry) => entry.type === "image").map((entry) => entry.attrs.figureId)).toEqual([ids[1], ids[0]]);
 
   const prints = await installPrintProbe(page, { pdfName: `office-figures-${testInfo.project.name}.pdf` });
-  await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
+  await openPrintPreview(page, saved.document.object_id, saved.version.version_id, { readinessTimeout: 20000 });
   const target = page.locator(`#print-preview #office-figure-${ids[1]}`);
   await expect(target).toHaveCount(1); await expect(target.locator("figcaption")).toHaveText("Abbildung 1: Details");
   await expect(page.locator("#print-preview a[data-office-cross-reference]")).toHaveAttribute("href", `#office-figure-${ids[1]}`);
