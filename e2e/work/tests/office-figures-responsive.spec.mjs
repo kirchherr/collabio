@@ -35,8 +35,9 @@ async function selectText(locator, from, to) {
 
 async function selectImage(page, index) {
   const node = officeEditor(page).locator(".office-image-node").nth(index);
-  await node.click();
+  if (!(await node.evaluate((element) => element.classList.contains("ProseMirror-selectednode")))) await node.click();
   await expect(node).toHaveClass(/ProseMirror-selectednode/);
+  await expect(page.locator("#image-options")).toHaveText("Bild bearbeiten …");
 }
 
 test("Office figure captions renumber on reorder and remain stable cross-reference targets", async ({ page }, testInfo) => {
