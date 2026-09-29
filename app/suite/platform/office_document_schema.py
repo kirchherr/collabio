@@ -94,6 +94,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     bookmark_ids: set[str] = set()
     bookmark_labels: set[str] = set()
     figure_ids: set[str] = set()
+    table_ids: set[str] = set()
+    numbered_tables = 0
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -243,7 +245,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
 
     def visit(node: Any, depth: int) -> None:
-        nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks
+        nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks, numbered_tables
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -303,7 +305,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             figure_id = attrs.get("figureId")
             if figure_id is not None:
-                if figure_id in figure_ids or figure_id in bookmark_ids:
+                if figure_id in figure_ids or figure_id in bookmark_ids or figure_id in table_ids:
                     reject()
                 figure_ids.add(figure_id)
         elif kind == "bookmark":
@@ -315,6 +317,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", identifier) is None
                 or identifier in bookmark_ids
+                or identifier in table_ids
                 or not isinstance(label, str)
                 or not 1 <= len(label) <= 64
                 or label != label.strip()
@@ -327,7 +330,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             bookmark_ids.add(identifier)
             bookmark_labels.add(label.lower())
-            if identifier in figure_ids:
+            if identifier in figure_ids or identifier in table_ids:
                 reject()
         elif kind == "orderedList":
             if (
@@ -339,6 +342,29 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif kind == "codeBlock":
             if set(attrs) - {"language"} or attrs.get("language") is not None:
                 reject()
+        elif kind == "table":
+            if attrs:
+                identifier, caption = attrs.get("tableId"), attrs.get("caption")
+                if (
+                    set(attrs) != {"tableId", "caption"}
+                    or not isinstance(identifier, str)
+                    or re.fullmatch(r"table-[a-f0-9]{24}", identifier) is None
+                    or identifier in table_ids
+                    or identifier in bookmark_ids
+                    or identifier in figure_ids
+                    or not isinstance(caption, str)
+                    or not caption.strip()
+                    or len(caption) > 1000
+                    or any(
+                        ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                        for c in caption
+                    )
+                ):
+                    reject()
+                numbered_tables += 1
+                if numbered_tables > 100:
+                    reject()
+                table_ids.add(identifier)
         elif kind in {"tableCell", "tableHeader"}:
             if set(attrs) - {"colspan", "rowspan", "colwidth"}:
                 reject()

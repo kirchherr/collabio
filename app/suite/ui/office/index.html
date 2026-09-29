@@ -70,6 +70,7 @@
               <label>Spalten<select id="table-column-action"><option value="">Spalten …</option><option value="addColumnBefore">Spalte links</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteColumn">Ausgewählte Spalten entfernen …</option></select></label>
               <label>Auswahl<select id="table-select"><option value="">Auswählen …</option><option value="cell">Zelle</option><option value="row">Zeile</option><option value="column">Spalte</option><option value="table">Ganze Tabelle</option></select></label>
               <button class="button secondary" id="table-header-toggle" type="button" aria-pressed="false">Kopfzeile</button>
+              <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog">Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button">Tabelle entfernen …</button>
             </div>
             <p class="table-help">Kopfzeile formatiert die erste Zeile. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
@@ -214,7 +215,7 @@
     <dialog class="office-dialog paragraph-dialog" id="cross-reference-dialog" aria-labelledby="cross-reference-title">
       <form id="cross-reference-form"><header><h2 id="cross-reference-title">Querverweis bearbeiten</h2><button class="icon-button" id="cross-reference-close" type="button" aria-label="Querverweisdialog schließen">×</button></header>
         <div class="dialog-body"><p>Ausgewählter Text: <q id="cross-reference-selection"></q></p><label>Ziel<select id="cross-reference-target" required></select></label>
-          <p class="paragraph-help">Ein Querverweis bleibt dokumentintern. Lesezeichen und nummerierte Abbildungen stehen als Ziele bereit. Springen ändert nur die lokale Auswahl und lädt keine Adresse.</p>
+          <p class="paragraph-help">Ein Querverweis bleibt dokumentintern. Lesezeichen, nummerierte Abbildungen und Tabellen stehen als Ziele bereit. Springen ändert nur die lokale Auswahl und lädt keine Adresse.</p>
           <p id="cross-reference-status" role="status" aria-live="polite"></p><div class="review-actions"><button class="quiet-button" id="cross-reference-jump" type="button">Zum Ziel springen</button><button class="quiet-button" id="cross-reference-remove" type="button">Querverweis entfernen</button></div>
         </div><footer><button class="button secondary" id="cross-reference-cancel" type="button">Abbrechen</button><button class="button primary" id="cross-reference-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>
@@ -240,6 +241,12 @@
       </form>
     </dialog>
     <dialog class="office-dialog compact" id="table-remove-dialog" aria-labelledby="table-remove-title"><header><h2 id="table-remove-title">Tabelleninhalt entfernen?</h2></header><div class="dialog-body"><p id="table-remove-summary"></p></div><footer><button class="button secondary" id="table-remove-cancel" type="button">Behalten</button><button class="button danger" id="table-remove-confirm" type="button">Aus Entwurf entfernen</button></footer></dialog>
+    <dialog class="office-dialog compact" id="table-caption-dialog" aria-labelledby="table-caption-title">
+      <form id="table-caption-form"><header><h2 id="table-caption-title">Tabellenbeschriftung</h2><button class="icon-button" id="table-caption-close" type="button" aria-label="Tabellenbeschriftung schließen">×</button></header>
+        <div class="dialog-body"><label>Beschriftung<input id="table-caption-text" type="text" maxlength="1000" required autocomplete="off" /></label><p class="paragraph-help">Die sichtbare Nummer folgt automatisch der Reihenfolge der Tabellen. Querverweise behalten beim Verschieben das stabile Ziel.</p><p id="table-caption-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="quiet-button" id="table-caption-remove" type="button">Beschriftung entfernen</button><button class="button secondary" id="table-caption-cancel" type="button">Abbrechen</button><button class="button primary" id="table-caption-apply" type="submit">Übernehmen</button></footer>
+      </form>
+    </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">
       <form id="reuse-form"><header><div><p class="eyebrow">Ein neuer Anfang</p><h2 id="reuse-heading">Als neues Dokument verwenden</h2></div><button class="icon-button" id="reuse-close" type="button" aria-label="Übernahme schließen">×</button></header>
         <div class="dialog-body"><p>Verwenden Sie Titel und Inhalt dieser gespeicherten Fassung als unabhängigen Entwurf. Das ursprüngliche Dokument bleibt unverändert. Ungespeicherte Änderungen werden nicht übernommen.</p><p class="reuse-source" id="reuse-source"></p><label>Neuer Dokumenttitel<input id="reuse-title" type="text" maxlength="200" required autocomplete="off" /></label><p class="muted">Freigaben, Kommentare, Vorschläge und Versionsgeschichte werden nicht kopiert. Dauerhaft gespeichert wird erst mit Ihrer anschließenden Speicherbestätigung.</p><p id="reuse-status" role="status" aria-live="polite"></p></div>

@@ -6,6 +6,7 @@ import { officeStyleComparisonDocument, officeStyleDescription } from "./office-
 import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
+import { officeTableAttributes } from "./office-tables.mjs";
 
 const MAX_LCS_CELLS = 262144;
 const markLabels = {
@@ -222,7 +223,11 @@ function blockText(block, nested = false) {
       const marker = block.type === "bulletList" ? "• " : `${(block.attrs?.start ?? 1) + index}. `;
       return blockText(child, true).split("\n").map((line, lineIndex) => `${lineIndex ? " ".repeat(marker.length) : marker}${line}`).join("\n");
     }).join("\n");
-    case "table": return children.map((row, index) => `Zeile ${index + 1}: ${blockText(row, true)}`).join("\n");
+    case "table": {
+      const attrs = officeTableAttributes(block.attrs);
+      const rows = children.map((row, index) => `Zeile ${index + 1}: ${blockText(row, true)}`).join("\n");
+      return attrs.tableId ? `Nummerierte Tabelle · ${attrs.tableId}\n${attrs.caption}\n${rows}` : rows;
+    }
     case "tableRow": return children.map((cell, index) => {
       const label = cell.type === "tableHeader" ? "Kopfzelle" : "Zelle";
       return `${label} ${index + 1}: ${blockText(cell, true)}`;

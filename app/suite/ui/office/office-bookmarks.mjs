@@ -1,4 +1,5 @@
 import { officeFigureFragment, officeFigureInventory } from "./office-figures.mjs";
+import { officeTableFragment, officeTableInventory } from "./office-tables.mjs";
 
 export const OFFICE_BOOKMARK_LIMIT = 100;
 export const OFFICE_BOOKMARK_LABEL_MAX = 64;
@@ -59,12 +60,15 @@ export function officeReferenceInventory(document) {
   const figures = officeFigureInventory(document).map((entry) => ({
     ...entry, fragment: officeFigureFragment(entry.id),
   }));
+  const tables = officeTableInventory(document).map((entry) => ({
+    ...entry, fragment: officeTableFragment(entry.id),
+  }));
   const ids = new Set();
-  for (const entry of [...bookmarks, ...figures]) {
+  for (const entry of [...bookmarks, ...figures, ...tables]) {
     if (ids.has(entry.id)) throw new TypeError("Duplicate Office reference target");
     ids.add(entry.id);
   }
-  return [...bookmarks, ...figures];
+  return [...bookmarks, ...figures, ...tables];
 }
 
 export function officeBookmarkDescription(value) {

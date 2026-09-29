@@ -38,7 +38,7 @@ async function populatedTable(page, title) {
 }
 
 async function expectTableControlsDisabled(page) {
-  for (const id of ["table-row-action", "table-column-action", "table-header-toggle", "table-delete"]) {
+  for (const id of ["table-row-action", "table-column-action", "table-header-toggle", "table-caption", "table-delete"]) {
     await expect(page.locator(`#${id}`)).toBeDisabled();
   }
   await expect(page.locator("#insert-menu")).toBeDisabled();

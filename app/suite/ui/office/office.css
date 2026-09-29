@@ -101,6 +101,8 @@
 .office-image figcaption { font-size: .875rem; color: #475569; overflow-wrap: anywhere; }
 .office-image[data-office-figure] { scroll-margin-top: 12px; }
 .office-image[data-office-figure] figcaption { font-weight: 600; }
+.document-page .tiptap table[data-office-table] { scroll-margin-top: 12px; }
+.document-page .tiptap table[data-office-table] caption, .office-print-content table[data-office-table] caption { caption-side: bottom; padding-top: .5rem; color: #475569; font-size: .875rem; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 .office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
 .office-image-viewport { display: block; position: relative; overflow: hidden; max-width: 100%; }
 .office-image .office-image-viewport img { position: absolute; max-width: none; max-height: none; margin: 0; object-fit: fill; }

@@ -6,6 +6,7 @@ import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
+import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -80,6 +81,14 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     }
     if (value.type === "table") {
       const table = dom.createElement("table");
+      const attrs = officeTableAttributes(value.attrs);
+      if (attrs.tableId != null) {
+        const target = targetsById.get(attrs.tableId);
+        if (!target || target.kind !== "table") throw new Error("Invalid print table target");
+        table.id = officeTableFragment(attrs.tableId); table.dataset.officeTable = attrs.tableId;
+        const caption = dom.createElement("caption"); caption.textContent = officeTableCaption(attrs, target.number);
+        table.append(caption);
+      }
       const head = dom.createElement("thead");
       const body = dom.createElement("tbody");
       let header = true;
