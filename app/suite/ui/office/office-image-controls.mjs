@@ -36,8 +36,8 @@ export function officeImageExtension(context, accessDenied) {
                 next.attrs.manifestHash !== current.attrs.manifestHash) return false;
             current = next; applyOfficeImageLayout(dom, next.attrs);
             // ProseMirror updates node views before Editor.state is observable here.
-            // Render in the next microtask so order-derived numbering reads the committed document.
-            queueMicrotask(render);
+            // Render on the next frame so order-derived numbering reads the committed document.
+            requestAnimationFrame(render);
             return true;
           },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
