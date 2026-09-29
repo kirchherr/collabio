@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { BASE_URL, OFFICE_HEADERS, officeEditor, openOffice, createOfficeDocument, saveOffice } from "./office-support.mjs";
+import { BASE_URL } from "./support.mjs";
+import { OFFICE_HEADERS, officeEditor, openOffice, createOfficeDocument, saveOffice } from "./office-support.mjs";
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const paragraph = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
