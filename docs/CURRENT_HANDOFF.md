@@ -38,14 +38,18 @@ Main backup `collabio-20260929T150312Z.dump` passed verification and isolated re
 `sha256:25a1a4cd10cf6b29de629db801b1afcaf9869761fda45ee6311e882f0a9bd39a` verified 85 migrations/95 tables and
 three objects/two tenants. Business gate passed 3/3 with hash
 `sha256:a6a4ba6b4993c255d43fa93ca0c8219f7da2e6ebe57b19a751d1877af7a9145a`, no business write and no tenant
-activation. API-only rollout with pilot 0 created container `8cf701a7c9c1` on image
-`sha256:26edf5cca7fbcac1a1efac63d44b5f27d59eafbcafaf933c4649e71706da9637`. Health, Work link, served table
+activation. Final API-only rollout with pilot 0 created container `a37447d60742` on image
+`sha256:777cf06419618be7e6e9e506b86f58f07a67be066c395855f760b45a9a8af69b`. Health, Work link, served table
 controls/bundle, CSP/no-store and pilot 0 passed. Exact Work-E2E services were removed and auxiliary test/restore
 services stopped; final Collabio status is running(4), with loopback ports 8000/5433/29000/29001 unchanged.
 
 Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Next:
 Roadmap 280 / PLANS 141, bounded native free document fields. Ordinary pilot, indexing, cloud AI, DOCX and engine
 admission remain closed.
+
+Published closeout commit `2028186` was fast-forwarded to the clean dev001 source. Ruff, formatting and all 24 focused
+dashboard, documentation, table-schema and recovery tests passed. The live roadmap exposes the new evidence and
+guardrails; response SHA-256 is `359c01e7fbfad54c3e804b3ec66a5275d23fbfb47be162ed23c37e4ec5eee212`.
 
 Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
 document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove
