@@ -1787,7 +1787,7 @@ function commitTableCaption(remove = false) {
     if (!remove) {
       const caption = $("table-caption-text").value.trim();
       attrs = officeTableAttributes({ caption,
-        tableId: action.table.attrs.tableId || `table-${reference().replaceAll("-", "").slice(0, 24)}` });
+        tableId: action.table.attrs.tableId || `table-${mutationReference().replaceAll("-", "").slice(0, 24)}` });
     }
     const transaction = action.editor.state.tr.setNodeMarkup(action.position, undefined, attrs);
     validateEditorDocument(transaction.doc);
