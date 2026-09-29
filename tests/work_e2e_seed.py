@@ -111,9 +111,7 @@ def main() -> int:
     bookmark_document_count, bookmark_version_count = seed_synthetic_office_bookmarks(
         environment=os.environ, client=client
     )
-    figure_document_count, figure_version_count = seed_synthetic_office_figures(
-        environment=os.environ, client=client
-    )
+    figure_document_count, figure_version_count = seed_synthetic_office_figures(environment=os.environ, client=client)
 
     print(
         json.dumps(

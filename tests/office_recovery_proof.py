@@ -1166,9 +1166,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             versions=inventory["document_versions"],
             expected_version_count=(
                 6
-                if target_dsn.endswith(
-                    ("_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore")
-                )
+                if target_dsn.endswith(("_274_restore", "_275_restore", "_276_restore", "_277_restore", "_278_restore"))
                 else 4
             ),
         )

@@ -86,9 +86,7 @@ def seed_synthetic_office_figures(
         "mutation_reference": "work-e2e-figure-recovery-1",
         "human_confirmation": True,
     }
-    saved = service.create(
-        user_context=editor(), write_enabled=True, command=OfficeDocumentCreateCommand(**fields)
-    )
+    saved = service.create(user_context=editor(), write_enabled=True, command=OfficeDocumentCreateCommand(**fields))
     user = editor()
     repository = service.repository
     if not isinstance(repository, PgOfficeDocumentRepository):
