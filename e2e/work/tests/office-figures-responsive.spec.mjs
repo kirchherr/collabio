@@ -48,6 +48,8 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   for (const index of [0, 1]) {
     await images.nth(index).click(); await page.locator("#image-options").click();
     await page.locator("#image-numbered").check(); await page.locator("#image-apply").click();
+    await images.nth(index).click(); await page.locator("#image-options").click();
+    await expect(page.locator("#image-numbered")).toBeChecked(); await page.locator("#image-cancel").click();
   }
   const captions = officeEditor(page).locator("figcaption");
   await expect(captions).toHaveText(["Abbildung 1: Overview", "Abbildung 2: Details"]);
