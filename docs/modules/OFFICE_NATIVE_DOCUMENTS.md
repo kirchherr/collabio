@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–277 complete and published; Roadmap 278 figure captions next; ordinary tenant and production admission remain closed
+Status: Roadmap 252–277 complete and published; Roadmap 278 figure-caption development validation in progress; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation; 253 / PLANS 114 version workflow; 254 / PLANS 115 find and replace; 255 / PLANS 116 table editing; 256 / PLANS 117 review discussions; 257 / PLANS 118 saved text suggestions; 258 / PLANS 119 browser printing; 259 / PLANS 120 saved-version reuse; 260 / PLANS 121 title discovery; 261 / PLANS 122 older-version history; 262 / PLANS 123 paragraph formatting; 263 / PLANS 124 character formatting; 264 / PLANS 125 whole-document keyboard replacement; 265 / PLANS 126 format transfer; 266 / PLANS 127 list levels and numbering; 267 / PLANS 128 document-owned format styles; 268 / PLANS 129 document-owned images; 269 / PLANS 130 non-destructive image cropping; 270 / PLANS 131 image text wrapping; 271 / PLANS 132 explicit page breaks; 272 / PLANS 133 document-owned page settings; 273 / PLANS 134 headers/footers and page numbers; 274 / PLANS 135 first-page running-text differences; 275 / PLANS 136 general sections; 276 / PLANS 137 safe hyperlinks; 277 / PLANS 138 bookmarks and internal cross-references; 278 / PLANS 139 figure captions and numbering
 Module: `office_documents` / version 0.1.0
-Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0098-native-office-sections.md`; `ARCHITECTURE_DECISIONS/ADR-0099-native-office-safe-links.md`; `ARCHITECTURE_DECISIONS/ADR-0100-native-office-bookmarks-and-cross-references.md`
+Decisions: `ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md`; `ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md`; `ARCHITECTURE_DECISIONS/ADR-0081-native-office-text-suggestions.md`; `ARCHITECTURE_DECISIONS/ADR-0082-native-office-browser-print.md`; `ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md`; `ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md`; `ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md`; `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0087-native-office-character-formatting.md`; `ARCHITECTURE_DECISIONS/ADR-0088-native-office-format-transfer.md`; `ARCHITECTURE_DECISIONS/ADR-0089-native-office-list-editing.md`; `ARCHITECTURE_DECISIONS/ADR-0090-native-office-named-styles.md`; `ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md`; `ARCHITECTURE_DECISIONS/ADR-0092-native-office-image-cropping.md`; `ARCHITECTURE_DECISIONS/ADR-0093-native-office-image-text-wrapping.md`; `ARCHITECTURE_DECISIONS/ADR-0094-native-office-page-breaks.md`; `ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md`; `ARCHITECTURE_DECISIONS/ADR-0096-native-office-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0097-native-office-first-page-running-text.md`; `ARCHITECTURE_DECISIONS/ADR-0098-native-office-sections.md`; `ARCHITECTURE_DECISIONS/ADR-0099-native-office-safe-links.md`; `ARCHITECTURE_DECISIONS/ADR-0100-native-office-bookmarks-and-cross-references.md`; `ARCHITECTURE_DECISIONS/ADR-0101-native-office-figure-captions.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,30 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Native figure captions, numbering and references (Roadmap 278)
+
+An existing document-owned image can be marked as a numbered figure in the image dialog. Numbered figures require a
+non-empty literal caption and receive a restricted stable `figureId`; unnumbered legacy captions keep their exact
+stored shape. The visible label `Abbildung N: …` is derived from current document order and is not stored. Moving a
+figure therefore preserves its identity while all visible numbers update. Turning numbering off removes only the
+destination identity and preserves the caption.
+
+The existing **Querverweis …** workflow lists bookmarks and figures in one unambiguous target inventory. References
+store the stable destination ID rather than the current number. Deliberate jump selects the target image locally.
+Removing a referenced figure leaves visible inert text and a disabled jump action; it never guesses a replacement or
+opens a URL. Bookmark and figure IDs may not collide.
+
+The server independently validates ID grammar, uniqueness and the required caption. History, comparison, copies,
+search, reviews and suggestions retain the image node and stable identity. Editor and print derive labels from the
+same ordered inventory. Print emits semantic `figure`/`figcaption` markup and a fixed document-local destination;
+resolved references become local PDF links and broken references remain inert.
+
+Focused schema/model tests, the complete desktop workflow and the combined 18-case desktop/mobile figure, image and
+bookmark regression are green. The five-version synthetic recovery fixture now covers legacy, add, reorder, broken
+target and reset with two immutable document-owned image renditions. Full quality, full browser/model regression,
+fresh restore/release evidence and controlled rollout remain the closing validation steps. Table captions, arbitrary
+page fields, cross-document references, backlinks and DOCX interchange remain separate.
 
 ## Native bookmarks and internal cross-references (Roadmap 277)
 
