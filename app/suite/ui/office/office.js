@@ -1174,7 +1174,7 @@ function commitBookmark(remove = false) {
       transaction.delete(current.position, current.position + current.node.nodeSize);
     } else {
       const existingId = current?.node.attrs.id;
-      const id = existingId || `bookmark-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`;
+      const id = existingId || `bookmark-${mutationReference().replaceAll("-", "").slice(0, 24)}`;
       attrs = officeBookmarkAttributes({ id, label: $("bookmark-label").value });
       const inventory = officeBookmarkInventory(editor.getJSON());
       if (inventory.some((entry) => entry.id !== existingId && entry.label.toLowerCase() === attrs.label.toLowerCase())) {
