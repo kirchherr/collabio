@@ -1697,13 +1697,13 @@ function currentTable(editor = state.editor) {
 }
 
 function currentTableNode(editor = state.editor) {
-  if (!editor || !isInTable(editor.state)) return null;
-  const position = editor.state.selection.$from;
-  for (let depth = position.depth; depth > 0; depth -= 1) {
-    const entry = position.node(depth);
-    if (entry.type.name === "table") return { entry, position: position.before(depth) };
-  }
-  return null;
+  const rect = currentTable(editor);
+  if (!editor || !rect) return null;
+  let result = null;
+  editor.state.doc.descendants((entry, position) => {
+    if (result === null && entry === rect.table) result = { entry, position };
+  });
+  return result;
 }
 
 function tableActionSnapshot(kind, command) {
