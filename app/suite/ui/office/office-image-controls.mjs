@@ -5,6 +5,14 @@ import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeI
 import { installImageCropControls } from "./office-image-crop-controls.mjs";
 import { officeFigureInventory } from "./office-figures.mjs";
 
+function renderOfficeFigureNumbers(editor) {
+  const labels = new Map(officeFigureInventory(editor.getJSON()).map(({ id, label }) => [id, label]));
+  for (const figure of editor.view.dom.querySelectorAll("figure[data-office-figure]")) {
+    const label = labels.get(figure.dataset.officeFigure), caption = figure.querySelector("figcaption");
+    if (label && caption) caption.textContent = label;
+  }
+}
+
 export function officeImageExtension(context, accessDenied) {
   return Node.create({
     name: "image", group: "block", atom: true, selectable: true, draggable: false,
@@ -27,7 +35,7 @@ export function officeImageExtension(context, accessDenied) {
         };
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
-          url = value; render();
+          url = value; render(); renderOfficeFigureNumbers(editor);
         }).catch((error) => {
           if (destroyed) return;
           if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
@@ -40,7 +48,7 @@ export function officeImageExtension(context, accessDenied) {
             current = next; applyOfficeImageLayout(dom, next.attrs);
             // ProseMirror updates node views before Editor.state is observable here.
             // Render on the next frame so order-derived numbering reads the committed document.
-            requestAnimationFrame(render);
+            requestAnimationFrame(() => { render(); renderOfficeFigureNumbers(editor); });
             return true;
           },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
