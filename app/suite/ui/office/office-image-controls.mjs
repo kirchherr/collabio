@@ -17,10 +17,14 @@ export function officeImageExtension(context, accessDenied) {
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
+        const render = () => {
+          if (!url || destroyed) return;
+          const target = current.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === current.attrs.figureId);
+          dom.replaceChildren(officeImageFigure(current.attrs, url, document, target?.number ?? null));
+        };
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
-          const target = current.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === current.attrs.figureId);
-          url = value; dom.replaceChildren(officeImageFigure(current.attrs, url, document, target?.number ?? null));
+          url = value; render();
         }).catch((error) => {
           if (destroyed) return;
           if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
@@ -31,10 +35,9 @@ export function officeImageExtension(context, accessDenied) {
             if (next.type !== current.type || next.attrs.assetId !== current.attrs.assetId || next.attrs.versionId !== current.attrs.versionId ||
                 next.attrs.manifestHash !== current.attrs.manifestHash) return false;
             current = next; applyOfficeImageLayout(dom, next.attrs);
-            if (url) {
-              const target = next.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === next.attrs.figureId);
-              dom.replaceChildren(officeImageFigure(next.attrs, url, document, target?.number ?? null));
-            }
+            // ProseMirror updates node views before Editor.state is observable here.
+            // Render in the next microtask so order-derived numbering reads the committed document.
+            queueMicrotask(render);
             return true;
           },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
