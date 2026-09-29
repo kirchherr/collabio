@@ -71,14 +71,15 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const id of ["image-remove", "image-up", "image-down"]) $(id).disabled = !valid() || action?.busy || !action?.selected;
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
-    $("image-caption").required = $("image-numbered").checked;
+    $("image-caption").required = Boolean(action?.numbered);
     $("image-wrap-gap").disabled = $("image-wrap").value === "none";
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
     $("image-lock").checked = attrs.lockAspect;
     $("image-decorative").checked = uploaded ? false : attrs.decorative;
-    $("image-numbered").checked = attrs.figureId != null;
+    action.numbered = attrs.figureId != null;
+    $("image-numbered").checked = action.numbered;
     $("image-wrap").value = attrs.wrap?.side ?? "none";
     $("image-wrap-gap").value = attrs.wrap?.gap ?? 16;
     cropControls.fill(action);
@@ -150,7 +151,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       const tr = editor.state.tr;
       if (operation === "apply") {
         if (!$("image-form").reportValidity()) return;
-        const numbered = $("image-numbered").checked;
+        const numbered = owner.numbered;
         const attrs = officeImageAttributes({ ...owner.attrs,
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
@@ -181,7 +182,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-file").addEventListener("change", update);
   $("image-upload").addEventListener("click", upload);
   $("image-decorative").addEventListener("change", update);
-  $("image-numbered").addEventListener("change", () => { update(); if (valid()) cropControls.preview(action); });
+  $("image-numbered").addEventListener("change", () => {
+    if (!valid()) return;
+    action.numbered = $("image-numbered").checked; update(); cropControls.preview(action);
+  });
   $("image-caption").addEventListener("input", () => { update(); if (valid()) cropControls.preview(action); });
   for (const id of ["image-wrap", "image-wrap-gap", "image-align"]) $(id).addEventListener("input", () => {
     if (!valid()) return;
