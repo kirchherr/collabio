@@ -78,9 +78,9 @@ def test_office_cross_references_require_exact_target_and_exclude_links_and_code
             validate_office_document(value)
     for other in ("link", "code"):
         value = document(bookmarks=[("bookmark-one", "One")], target="bookmark-one")
-        mark: dict[str, object] = {"type": other}
+        other_mark: dict[str, object] = {"type": other}
         if other == "link":
-            mark["attrs"] = {"href": "https://example.org/"}
-        value["content"][0]["content"][-1]["marks"].append(mark)  # type: ignore[index]
+            other_mark["attrs"] = {"href": "https://example.org/"}
+        value["content"][0]["content"][-1]["marks"].append(other_mark)  # type: ignore[index]
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document(value)
