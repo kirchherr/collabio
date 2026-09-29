@@ -1137,13 +1137,18 @@ function updateBookmarkControls() {
   if (state.bookmarkAction && !bookmarkActionCurrent(state.bookmarkAction)) closeBookmarkDialog();
   if (state.crossReferenceAction && !bookmarkActionCurrent(state.crossReferenceAction)) closeCrossReferenceDialog();
   const bookmark = selectedBookmark();
-  let inventory = [];
-  try { if (state.editor) inventory = officeBookmarkInventory(state.editor.getJSON()); } catch { /* Invalid drafts remain disabled. */ }
-  $("bookmark-options").disabled = !paragraphAllowed() || (!bookmark && (!bookmarkCaretAllowed() || inventory.length >= OFFICE_BOOKMARK_LIMIT));
+  let bookmarks = [], references = [];
+  try {
+    if (state.editor) {
+      const document = state.editor.getJSON();
+      bookmarks = officeBookmarkInventory(document); references = officeReferenceInventory(document);
+    }
+  } catch { /* Invalid drafts remain disabled. */ }
+  $("bookmark-options").disabled = !paragraphAllowed() || (!bookmark && (!bookmarkCaretAllowed() || bookmarks.length >= OFFICE_BOOKMARK_LIMIT));
   $("bookmark-options").setAttribute("aria-pressed", String(Boolean(bookmark)));
   const entries = linkCharacters();
   const hasReference = entries.some(({ marks }) => marks.some((mark) => mark.type.name === "crossReference"));
-  $("cross-reference-options").disabled = !paragraphAllowed() || !entries.length || (!inventory.length && !hasReference);
+  $("cross-reference-options").disabled = !paragraphAllowed() || !entries.length || (!references.length && !hasReference);
   $("cross-reference-options").setAttribute("aria-pressed", String(hasReference));
 }
 
