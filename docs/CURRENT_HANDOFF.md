@@ -2,6 +2,55 @@
 
 Updated: 2026-09-29
 
+Roadmap 278 / PLANS 139 is complete and published under ADR-0101. Native Office now lets a document-owned image carry
+an optional semantic figure identity. Visible `Abbildung N` labels are derived from current document order while the
+restricted stable ID survives moves, immutable versions, comparison and independent copies. Existing explicit
+cross-references can target bookmarks or figures without ambiguity; removed figures leave inert broken references.
+Editor and print share the same numbering inventory, and print emits semantic figure/caption markup plus a fixed local
+destination. Table captions, arbitrary page fields, cross-document references, backlinks and DOCX remain separate.
+
+## Roadmap 278 source and validation evidence
+
+Implementation commits `1559bb5` through `42a6f67eb99cafe46ad6616d07c234fc71cccdb4` are published on
+`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 799 files, Mypy
+over 596 sources and complete Pytest; only the known Starlette/AnyIO warning remains. A complete regression run passed
+394/394 in 31.2 minutes. The isolated environment was then rebuilt from empty tmpfs and the same 394/394 matrix passed
+again in 29.0 minutes on the exact source state later dumped for recovery. Final report SHA-256:
+`e0256d5e0534e312216729162ccf81235b0a1984985a8750ecbca25df6883c0e`.
+
+Independent inspection passed the desktop/mobile print dialogs and both actual one-page A4 PDFs. They contain the
+reordered `Abbildung 1: Details` and `Abbildung 2: Overview` labels, are tagged, and each contains exactly one local
+destination link with no external action, JavaScript or form. Desktop/mobile screenshot SHA-256 values are
+`41efce5ed54c8a2af966e727ae6e15b698aa95f9cd7ecc7716c39b29edcc3922` and
+`9ba9e37e379a653557083a82927bb47f69694160ba012a9623ca4b6da14bd426`; PDF SHA-256 values are
+`3e99ec1de16ce8cdcda50b1fe04bec6c13ff11364a8db3892232e4f427f07c76` and
+`4013c6a5633dcc6e4f2fd8935dd27d06eae849a16aa5abfd810c77e1b2757dea`.
+
+Fresh recovery into `collabio_work_e2e_278_restore` verified 503 documents, 1,002 exact Office versions, 157
+multi-version documents, 1,107 source objects, 50 image assets/77 saved references, 10 review threads/18 events and 11
+suggestions/seven decisions. The five legacy/add/reorder/broken/reset figure versions, canonical legacy hash, exact
+ACLs, foreign-tenant denial and every prior fixture passed. Dump SHA-256:
+`373ebdc98b8fd2bd0b94d9eb9d858e3f4e2de8143db6168b1b8fbae31ed783fb`; recovery report file SHA-256:
+`e5f8a3400b6ef22605ab3bebcb7a7c30c627a01d0fad1b971a491cee2ed53359`; embedded report hash:
+`sha256:ace93c6a6fe790d4604d480b36224572117f32034027053299c219faefb4e072`; PostgreSQL restore hash:
+`sha256:a91aa31269595aebcbdb7861a0504482c58168eee878d892ab0ad5c497ed4c89`; exact S3 restore hash:
+`sha256:7b7db092068c9e919391f865a74745400fb78f77346f1b4209c398b17157c9ea`.
+
+Main backup `collabio-20260929T132807Z.dump` passed verification and isolated restore; backup SHA-256 is
+`1165a61401ea322220a2bccae9ef4cfd07b7721a03c7e74fa7f4c1f85984541f`. Foundation gate
+`sha256:fe71e2eced4a401a74ead5d94c538cd28cba0db5a5bb5824bc15975f479f1e33` verified 85 migrations/95 tables and
+three objects/two tenants. Business gate passed 3/3 with hash
+`sha256:39dcd98334d306dbbc83f45a959bdb74f3ef19e41ba28101d676430c13931177`, no business write and no tenant
+activation. API-only rollout with pilot 0 created container `e1d81cdeb1ba` on image
+`sha256:16ce91b2ad8feea1e0292830a5a1658a1fb2f490001af4b21b7b4d786c815e63`. Health, Work-to-Office link,
+served figure bundle/CSS, CSP/no-store and pilot 0 passed. Exact Work-E2E services were removed and auxiliary
+test/restore services stopped; final Collabio status is running(4), with loopback ports 8000/5433/29000/29001
+unchanged. Ordinary Office, pilot, indexing, cloud AI, DOCX and engine admission remain closed.
+
+Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Next:
+Roadmap 279 / PLANS 140, native table captions with a separate deterministic numbering sequence and stable table
+references.
+
 Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
 document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove
 and deliberate jump are responsive and isolated in undo/redo. Removing a destination leaves a visible inert broken

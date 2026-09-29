@@ -1752,14 +1752,23 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen. Implementierung als Commitserie `6c4c6e0`
      bis `7e61f72` veroeffentlicht.
 
-278. [ ] Native Abbildungsbeschriftungen und stabile Abbildungsnummern umsetzen: Dokumenteigene Bilder erhalten eine
+278. [x] Native Abbildungsbeschriftungen und stabile Abbildungsnummern umgesetzt: Dokumenteigene Bilder erhalten eine
      optionale semantische Beschriftung; Nummern werden deterministisch aus der Dokumentreihenfolge abgeleitet und
      bleiben in Editor, Historie, Vergleich, Kopien und Druck konsistent. Einfuegen, Bearbeiten, Entfernen und Undo
      bleiben responsiv. Querverweise auf Abbildungen verwenden stabile Ziel-IDs und zeigen gebrochene Ziele sicher an.
      Tabellenbeschriftungen, freie Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat.
+     Volle Python-Qualitaet, zwei komplette Laeufe mit jeweils 394/394 Browser-/Modellfaellen, responsive Sichtpruefung,
+     zwei echte getaggte PDFs, frischer Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout
+     und Live-Pruefung sind gruen. Implementierung als Commitserie `1559bb5` bis `42a6f67` veroeffentlicht.
 
-Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 277 / PLANS 138 ist abgeschlossen; als Naechstes folgt
-Roadmap 278 / PLANS 139 mit nativen Abbildungsbeschriftungen und stabilen Abbildungsnummern.
+279. [ ] Native Tabellenbeschriftungen und stabile Tabellennummern umsetzen: Tabellen erhalten eine optionale
+     semantische Beschriftung und dokumentlokale stabile Ziel-ID; sichtbare Nummern werden aus der Dokumentreihenfolge
+     abgeleitet. Bearbeiten, Entfernen, Undo, Historie, Vergleich, Kopien, Druck und Querverweise behalten exakte
+     Identitaet und sichere gebrochene Ziele. Abbildungen und Tabellen fuehren getrennte Nummernfolgen. Freie
+     Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat.
+
+Native Office bleibt vor CRM. Fortsetzungsstand: Roadmap 278 / PLANS 139 ist abgeschlossen; als Naechstes folgt
+Roadmap 279 / PLANS 140 mit nativen Tabellenbeschriftungen und stabilen Tabellennummern.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

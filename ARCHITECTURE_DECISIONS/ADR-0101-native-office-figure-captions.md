@@ -1,7 +1,7 @@
 # ADR-0101: Native Office figure captions, numbering and references
 
 Date: 2026-09-29
-Status: accepted; development validation in progress; ordinary tenant and production admission remain closed
+Status: accepted; development validation complete and published; ordinary tenant and production admission remain closed
 
 Native Office keeps the existing bounded literal image caption for backward compatibility. A caption becomes a
 numbered semantic figure only when the image also owns a stable `figureId`. The identifier is generated locally,
