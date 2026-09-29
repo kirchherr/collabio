@@ -53,6 +53,9 @@ test/restore services stopped. Cleanup metadata SHA-256:
 is ok and loopback ports 8000/5433/29000/29001 are unchanged. The regular decoder, main stores, Webcut and provider
 nodes are unchanged. Ordinary Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed.
 Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used.
+Published closeout commit `75acbb853a34f806918e088c49b29619948e1692` was fast-forwarded to the same clean dev001
+source. The exact dependency-free bookmark/schema, recovery, module-contract and roadmap-dashboard scope passed
+29/29; only the known Starlette/AnyIO warning remains. Health stayed ok and Collabio stayed running(4).
 
 Roadmap 276 / PLANS 137 is complete and published under ADR-0099. Native Office now supports explicit safe links on
 exact selected text. Only bounded absolute HTTPS and simple `mailto:` targets are accepted. Add, edit, remove and
