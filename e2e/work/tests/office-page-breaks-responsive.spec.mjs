@@ -50,6 +50,18 @@ test("Office page breaks split formatted text preserve isolated undo history and
   await page.keyboard.press("Control+z"); await expect(markers(page)).toHaveCount(0);
   await expect(editor.locator("h2")).toHaveText("BeforeAfter");
   await page.keyboard.press("Control+Shift+z"); await expect(markers(page)).toHaveCount(1);
+  const sheetGap = await markers(page).evaluate((element) => {
+    const markerBox = element.getBoundingClientRect();
+    const pageBox = document.querySelector("#document-page").getBoundingClientRect();
+    const style = getComputedStyle(element), label = getComputedStyle(element, "::before").content;
+    return { markerLeft: markerBox.left, markerRight: markerBox.right, pageLeft: pageBox.left, pageRight: pageBox.right,
+      background: style.backgroundColor, marginTop: parseFloat(style.marginTop), label };
+  });
+  expect(sheetGap.markerLeft).toBeLessThanOrEqual(sheetGap.pageLeft + 2);
+  expect(sheetGap.markerRight).toBeGreaterThanOrEqual(sheetGap.pageRight - 2);
+  expect(sheetGap.background).not.toBe("rgba(0, 0, 0, 0)");
+  expect(sheetGap.marginTop).toBeGreaterThanOrEqual(30);
+  expect(sheetGap.label).toContain("Seitenwechsel");
   const broken = await saveOffice(page, { objectId });
   expect(broken.content.content.map((node) => node.type)).toEqual(["heading", "pageBreak", "heading"]);
   expect(broken.content.content[0].attrs).toEqual(baseline.content.content[0].attrs);

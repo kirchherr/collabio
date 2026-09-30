@@ -361,7 +361,9 @@ completed below as Roadmap 271 / PLANS 132.
 
 ## Explicit native page breaks (Roadmap 271)
 
-**Einfügen → Seitenumbruch** and **Ctrl/Mod+Enter** insert a visible, selectable boundary.
+**Einfügen → Seitenumbruch** and **Ctrl/Mod+Enter** insert a visible, selectable boundary. The editor renders that
+boundary as a full-sheet canvas gap with both paper edges and a **Seitenwechsel · neue Seite** label, so desktop and
+compact layouts visibly separate the preceding and following sheets without claiming automatic print pagination.
 At a caret in a top-level paragraph or heading, insertion splits the text and preserves
 both fragments' paragraph attributes and inline marks. A selected root image, rule or
 table remains intact; insertion occurs after it. Text ranges and insertion inside lists,
