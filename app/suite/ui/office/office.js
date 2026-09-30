@@ -1518,7 +1518,10 @@ async function openDocumentReferenceDialog() {
   $("document-reference-status").textContent = "Freigegebene Dokumente werden geladen …";
   $("document-reference-dialog").showModal();
   try {
-    const payload = await api("/v1/office/documents?query=&page_size=200", {}, action.context);
+    const [payload, resolutions] = await Promise.all([
+      api("/v1/office/documents?query=&page_size=200", {}, action.context),
+      existing ? refreshDocumentReferences(action.session) : Promise.resolve(state.documentReferenceResolutions),
+    ]);
     if (!documentReferenceActionCurrent(action) || payload?.tenant_id !== action.context.tenantId || !Array.isArray(payload.documents)) return;
     const documents = payload.documents.filter((entry) => entry.object_id !== action.session.objectId &&
       typeof entry.title === "string" && /^office-doc-[a-f0-9]{32}$/.test(entry.object_id) && /^office-version-[a-f0-9]{32}$/.test(entry.current_version_id));
@@ -1527,12 +1530,16 @@ async function openDocumentReferenceDialog() {
       option.dataset.objectId = entry.object_id; option.dataset.versionId = entry.current_version_id; select.append(option);
     }
     if (existing && !documents.some((entry) => entry.object_id === existing.targetObjectId && entry.current_version_id === existing.targetVersionId)) {
-      const option = new Option("Dokumentziel nicht verfügbar", officeDocumentReferenceKey(existing));
-      option.dataset.objectId = existing.targetObjectId; option.dataset.versionId = existing.targetVersionId; option.dataset.unavailable = "true"; select.prepend(option);
+      const resolution = resolutions.get(officeDocumentReferenceKey(existing));
+      const available = resolution?.status === "resolved";
+      const option = new Option(available ? `${resolution.title} · gespeicherte Version` : "Dokumentziel nicht verfügbar", officeDocumentReferenceKey(existing));
+      option.dataset.objectId = existing.targetObjectId; option.dataset.versionId = existing.targetVersionId;
+      if (!available) option.dataset.unavailable = "true";
+      select.prepend(option);
     }
     select.value = existing ? officeDocumentReferenceKey(existing) : select.options[0]?.value || "";
     $("document-reference-apply").disabled = !select.value || select.selectedOptions[0]?.dataset.unavailable === "true";
-    const resolved = existing && state.documentReferenceResolutions.get(officeDocumentReferenceKey(existing));
+    const resolved = existing && resolutions.get(officeDocumentReferenceKey(existing));
     $("document-reference-open").disabled = !existing || resolved?.status !== "resolved" || isDirty();
     $("document-reference-status").textContent = select.value ?
       (existing ? officeDocumentReferenceDescription(existing, state.documentReferenceResolutions) : "Die aktuell freigegebene Zielversion wird fest gespeichert.") :
