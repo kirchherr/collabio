@@ -49,6 +49,11 @@ Collabio status is running(4), with healthy API and loopback ports 8000/5433/290
 `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Persistent backlink
 indexing, transitive graphs, content-wide discovery and DOCX relationships remain deliberately separate.
 
+Published closeout commit `8a3bfb19693e4bd94f1e6850b951d1257919937c` was fast-forwarded to dev001. The
+dependency-free roadmap dashboard, exact backlink and recovery contract suite passed 8/8 on that SHA, with only the
+known Starlette/AnyIO warning. The disposable runner was removed automatically; API health and the running(4) service
+boundary remained unchanged.
+
 Roadmap 287 / PLANS 148 is complete under ADR-0104. Native Office now stores bounded outbound document-reference
 marks containing only an exact target object ID and immutable target version ID. The resolver re-reads the exact
 source version and freshly validates target tenant, current authoritative ACL and exact historical version on load,
