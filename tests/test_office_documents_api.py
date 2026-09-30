@@ -208,10 +208,12 @@ def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracl
     target_version_id = target["version"]["version_id"]
     payload = create_payload("office-api-reference-source")
     payload["title"] = "Reference source"
-    payload["document"]["content"][0]["content"][0]["marks"] = [{
-        "type": "documentReference",
-        "attrs": {"targetObjectId": target_id, "targetVersionId": target_version_id},
-    }]
+    payload["document"]["content"][0]["content"][0]["marks"] = [
+        {
+            "type": "documentReference",
+            "attrs": {"targetObjectId": target_id, "targetVersionId": target_version_id},
+        }
+    ]
     source_response = office_api.client.post(BASE, headers=office_api.headers, json=payload)
     assert source_response.status_code == 200, source_response.text
     source_id = source_response.json()["document"]["object_id"]
@@ -220,13 +222,15 @@ def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracl
     resolved = office_api.client.get(f"{BASE}/{source_id}/outbound-references", headers=office_api.headers)
     assert resolved.status_code == 200
     assert resolved.headers["Cache-Control"] == "no-store"
-    assert resolved.json()["references"] == [{
-        "target_object_id": target_id,
-        "target_version_id": target_version_id,
-        "status": "resolved",
-        "title": "Synthetic private title",
-        "is_current_version": True,
-    }]
+    assert resolved.json()["references"] == [
+        {
+            "target_object_id": target_id,
+            "target_version_id": target_version_id,
+            "status": "resolved",
+            "title": "Synthetic private title",
+            "is_current_version": True,
+        }
+    ]
 
     del office_api.repository.grants[("tenant-demo", target_id, "office-api-editor")]
     office_api.headers["X-Readable-Object-Ids"] = source_id
