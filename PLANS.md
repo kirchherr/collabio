@@ -292,12 +292,19 @@ formulas and DOCX interchange separate.
 
 147. [x] Add a native local reference navigator derived from fields, notes, citations and formulas, including visible broken targets without cross-document lookup.
 
+148. [x] Add bounded native outbound document references under ADR-0104. Store only exact target object/version IDs on
+selected text. Re-read the exact source and revalidate target tenant, current authoritative ACL and exact version for
+loading, deliberate open and every print action. Collapse missing, deleted and unauthorized targets into one inert
+title-free state; print no cross-document action. Preserve exact marks through undo, confirmed CAS save, immutable
+history, comparison, copies and recovery. Keep global backlinks, graph discovery, URL previews and DOCX relationships
+separate.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete and published through Roadmap 286 / PLANS 147. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue next with document-local outbound cross-document reference records and fresh target ACL/version validation before adding global backlinks. Formula evaluation, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 287 / PLANS 148. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue next with a separate bounded global-backlink design that cannot reveal inaccessible source documents. Formula evaluation, URL previews, floating objects, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

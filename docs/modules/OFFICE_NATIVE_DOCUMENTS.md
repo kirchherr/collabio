@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–286 implemented, validated and published; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 286 / PLANS 147 native semantic fields, generated navigation, notes, citations, formulas and reference overview
+Status: Roadmap 252–287 implemented, validated and published; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 287 / PLANS 148 exact ACL-safe outbound document references
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0103; current semantic structures: `ARCHITECTURE_DECISIONS/ADR-0103-native-office-semantic-structures.md`
+Decisions: ADR-0079 through ADR-0104; current document references: `ARCHITECTURE_DECISIONS/ADR-0104-native-office-document-references.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,24 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Exact outbound document references (Roadmap 287)
+
+**Dokumentverweis …** applies an exact target object and immutable target version to selected text. The saved mark
+contains no title or authorization snapshot. The target chooser lists only documents readable at that moment. An
+existing reference may open its pinned historical version only after a fresh server resolution; an unsaved reference
+must first pass the normal confirmed CAS save.
+
+The resolver re-reads the exact source version and uses the ordinary repository tenant, current ACL and exact-version
+checks for every distinct target. Missing objects, missing versions and denied targets all become
+**Dokumentziel nicht verfügbar**, without a target title. The editor refreshes this state on load. Print repeats the
+same resolution for every preview and final browser print and emits only an inert semantic span, with no cross-document
+link action. Copies keep exact IDs and safely become unavailable under a different reader.
+
+Server and browser independently enforce exact ID shapes, mark compatibility and a 100-mark limit. Audit records hold
+only source identity and resolution counts. No backlink table, global discovery query, remote fetch or DOCX relationship
+is introduced. A two-document/four-version recovery fixture proves a source pinned to target version one while target
+version two is current.
 
 ## Native semantic document structures (Roadmap 280–286)
 

@@ -1782,7 +1782,7 @@ aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt prior
      Nummerierung muessen in Editor, Versionen, Vergleich, Kopien und semantischem Druck exakt bleiben.
 
 283. [x] Native Endnoten umgesetzt: Eine von Fussnoten getrennte Nummernfolge und ein eigener Druckabschnitt halten
-     dieselben Inertheits-, Undo-, Versions- und Recovery-Grenzen einhalten.
+     dieselben Inertheits-, Undo-, Versions- und Recovery-Grenzen ein.
 
 284. [x] Native Quellenverweise und Literaturverzeichnis umgesetzt: Ein begrenzter dokumenteigener Quellenkatalog,
      explizite Verweise, sichere fehlende Quellen und ein abgeleitetes Verzeichnis duerfen keine externe Aufloesung
@@ -1800,6 +1800,20 @@ responsive Sichtpruefung, ein unabhaengig geprueftes getaggtes A4-PDF, ein frisc
 Hauptsicherung, Restore- und Release-Gates, API-only-Rollout mit Pilot 0 und Live-Pruefung sind gruen. Der Restore
 verifizierte 586 Dokumente, 1.161 exakte Office-Versionen, 204 Dokumente mit Historie und 1.299 SourceObjects.
 Dokumentuebergreifende Verweise, globale Rueckverweise, Formel-Auswertung und DOCX bleiben separat.
+
+287. [x] Begrenzte native Dokumentverweise umgesetzt: Explizit ausgewaehlter Text speichert nur die stabile
+     Zielobjekt-ID und eine exakte unveraenderliche Zielversion. Eine getrennte Read-API liest die Quellversion erneut
+     und prueft jedes Ziel frisch gegen Tenant, aktuelle autoritative ACL und exakte Version. Nicht vorhandene,
+     geloeschte und nicht autorisierte Ziele liefern denselben inerten Zustand ohne Titel. Bewusstes Oeffnen navigiert
+     erst nach erneuter Pruefung; Laden und Drucken loesen ebenfalls frisch auf. Der Druck erzeugt keine
+     dokumentuebergreifende Aktion. Globale Rueckverweise, Referenzsuche und DOCX-Beziehungen bleiben separat.
+
+Native Office bleibt vor CRM. Roadmap 287 / PLANS 148 ist unter ADR-0104 implementiert. Der Vertrag besitzt
+serverseitige Schema-, ACL-, API- und Recovery-Pruefungen sowie Browsermodell-, Editor-, Historien-, Entzugs- und
+Druckpruefungen. Der Vier-Versionen-Restore bindet Quell- und Zielhistorie samt exakter historischer Aufloesung. Volle
+Python-Qualitaet, kombinierte 406-Fall-Browserabdeckung, frische Wiederherstellung, beide Release-Gates, API-only-
+Rollout mit Pilot 0 und Live-Pruefung sind abgeschlossen. Der naechste Office-Schritt ist ein separater Entwurf fuer
+globale Rueckverweise ohne Metadatenleck ueber nicht lesbare Quelldokumente.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

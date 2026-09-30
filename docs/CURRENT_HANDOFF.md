@@ -1,6 +1,55 @@
 # Current Project Handoff
 
-Updated: 2026-09-29
+Updated: 2026-09-30
+
+Roadmap 287 / PLANS 148 is complete under ADR-0104. Native Office now stores bounded outbound document-reference
+marks containing only an exact target object ID and immutable target version ID. The resolver re-reads the exact
+source version and freshly validates target tenant, current authoritative ACL and exact historical version on load,
+deliberate open and print. Missing, deleted and denied targets collapse to the same inert title-free state. Print
+contains no cross-document action. Undo, confirmed CAS save, history, comparison, copies and recovery preserve exact
+marks. Global backlinks, reference discovery, URL previews and DOCX relationships remain separate.
+
+## Roadmap 287 source and validation evidence
+
+Implementation commits `f2208d0` through `b6800ee3` are published on `kirchherr/kb-write-unit-of-work`. Full Python
+quality passed Ruff, formatting for 809 files, Mypy over 604 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains. Focused backend/API tests passed 22/22, browser model/UI checks 3/3 and the coupled
+reference/print suite 9/9. The final fresh full browser/model matrix passed 405/406 in 30.4 minutes; its log SHA-256 is
+`2fb886cb701785b3ce2f79d97f4296c04ba2c85f57e398e1f6b383bb386111c8`. Its sole failure was the pre-existing mobile
+figure PDF callback exceeding the generic eight-second polling window after all functional assertions passed. The
+callback now uses the established explicit 20-second PDF-byte wait and the exact case passed three consecutive runs
+in 41.5 seconds; focused log SHA-256 is
+`4f5fc804737a35ef250527dcc0cc80f767ddd74e47b77d35a2373cb3b93d4c6d`. This is combined acceptance evidence rather
+than a claimed single 406/406 report. The new reference case passed in the full matrix and restores its deliberately
+revoked fixture ACL in `finally`; recovery exposed and caused correction of the earlier missing cleanup.
+
+Fresh recovery into `collabio_work_e2e_287_restore` verified 515 documents, 1,041 exact Office versions, 168
+multi-version documents and 1,152 source objects. Its two documents/four versions prove exact historical target
+resolution against the current target ACL. Dump SHA-256 is
+`ff5cee4240a73fe22c354f1546f2583d5dd7b90f1fe626edc39e1ac0c0a47bb9`; recovery report file SHA-256 is
+`563ee48f5a6990be55d7511ba8aea99d03c36716d28dc3d59bf0942469895f58`; embedded report hash is
+`sha256:0d74aca0c0981c9b3c21c783597354191e9637e0618231298df889fbd530fde6`; PostgreSQL restore hash is
+`sha256:1f4f3d70b1e2ddc385758be32dc2eec6eb9de3a1ddac1ecb0d0daae110645ef5`; exact version/S3 report hash is
+`sha256:4614959b69694c534753a751016be64db70feac3b2677dd22cc76f7b23efa6ac`.
+
+Main backup `collabio-20260930T094054Z.dump` passed verification and isolated restore; SHA-256 is
+`c569964ecb1e0397590f3390e15edffff4b3be151697d3c08cfd64be8fadeb62`, restore-drill hash is
+`sha256:2d7cc206c47a23d985c0c52216e3254bf34873291fc63c99cb8fdd59df394c8b`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:cb76e74e15a03dee68bfa04bf72da5f6d2ca091a76ef95c3b4ab25a22c4bf1c8`. The business gate passed 3/3 without
+business writes or activation; hash is `sha256:7d80cab80a9d9be3b4b008f8d8ab5d617ad2e59677fea89674524b0ce491d521`.
+Pilot preflight found the ready candidate `tenant-demo` but stayed deliberately closed with `pilot_start_allowed=false`
+and no state change; hash is `sha256:992ce17a38fbfa956f356d403205562f1b2cf809c5cfe809ce530fdc57c862be`.
+
+API-only rollout with pilot 0 created container `3af10813ebb1` on image
+`sha256:b1852edd6445b7567b0e6e9ba92c1f26ef29bc43e350bcd446a9dbe83c80f0ba`. Live verification passed health, Office
+reference controls/dialog, two bundled resolver-route calls, OpenAPI, strict CSP, `no-store`, fail-closed synthetic
+tenant access and pilot 0; evidence SHA-256 is
+`1d97251b2a09d4a3c0c2d4ff7c4d187e27f2f58be59219e6079a5fdbf61805b0`. Exact Work-E2E services were removed and
+postgres-test, postgres-restore and minio-restore stopped. Final Collabio status is running(4), with healthy API and
+loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` and `review.md` remain unread, untracked
+and unpublished. No subagents were used. Next Office work should design bounded global backlinks with source-side
+current ACL checks and no inaccessible-source metadata oracle before adding any persistent backlink index.
 
 Roadmap 280–286 / PLANS 141–147 are complete and published under ADR-0103. Native Office now provides one bounded
 semantic structure workflow for document-owned free fields, a heading-derived table of contents, independently

@@ -403,6 +403,14 @@ current ACLs and every earlier fixture. Its separate dump is retained under
 `e2e/work/artifacts/office-279-recovery-backup`; browser, PDF, recovery and live metadata are retained under
 `e2e/work/artifacts/roadmap-279`. Never replace an earlier numbered target, dump or receipt.
 
+Roadmap 287 adds two documents and four exact versions: both historical and current target versions plus a legacy
+source and a source pinned to the historical target. The proof re-resolves the pinned historical title while the
+newer target version is current, using the current authoritative target ACL. Its checked dump is retained as
+`e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-287.dump`, its isolated target is
+`collabio_work_e2e_287_restore`, and browser, recovery and live metadata are retained under
+`e2e/work/artifacts/roadmap-287`. Never run it while browser writes are active or replace an earlier numbered target,
+dump or report.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:
