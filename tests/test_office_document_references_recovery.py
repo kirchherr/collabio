@@ -112,3 +112,19 @@ def test_recovery_rejects_missing_backlink_derivation() -> None:
             readers=readers,
             versions=versions,
         )
+
+
+def test_recovery_follows_bounded_backlink_pages() -> None:
+    documents, readers, versions = recovery_fixture()
+    expected = documents.backlinks.return_value.backlinks
+    documents.backlinks.side_effect = [
+        SimpleNamespace(backlinks=[], has_more=True, next_cursor="signed-next", content_included=False),
+        SimpleNamespace(backlinks=expected, has_more=False, next_cursor=None, content_included=False),
+    ]
+    report = verify_restored_document_reference_versions(
+        documents=documents,
+        readers=readers,
+        versions=versions,
+    )
+    assert report["exact_backlink_and_current_source_acl_verified"]
+    assert documents.backlinks.call_count == 2

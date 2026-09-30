@@ -1100,19 +1100,30 @@ def verify_restored_document_reference_versions(
         or resolved.references[0].is_current_version
     ):
         raise ValueError("Office recovery exact document reference resolution is invalid")
-    backlinks = documents.backlinks(
-        user_context=readers[target1["object_id"]],
-        object_id=target1["object_id"],
-        version_id=target1["version_id"],
-    )
+    backlink_rows = []
+    backlink_cursor = None
+    seen_backlink_cursors: set[str] = set()
+    while True:
+        backlink_page = documents.backlinks(
+            user_context=readers[target1["object_id"]],
+            object_id=target1["object_id"],
+            version_id=target1["version_id"],
+            cursor=backlink_cursor,
+        )
+        backlink_rows.extend(backlink_page.backlinks)
+        if not backlink_page.has_more:
+            break
+        if not backlink_page.next_cursor or backlink_page.next_cursor in seen_backlink_cursors:
+            raise ValueError("Office recovery backlink pagination is invalid")
+        seen_backlink_cursors.add(backlink_page.next_cursor)
+        backlink_cursor = backlink_page.next_cursor
     if (
-        len(backlinks.backlinks) != 1
-        or backlinks.backlinks[0].source_object_id != source2["object_id"]
-        or backlinks.backlinks[0].source_version_id != source2["version_id"]
-        or backlinks.backlinks[0].title != REFERENCE_SOURCE_TITLE
-        or backlinks.backlinks[0].reference_count != 1
-        or backlinks.has_more
-        or backlinks.content_included
+        len(backlink_rows) != 1
+        or backlink_rows[0].source_object_id != source2["object_id"]
+        or backlink_rows[0].source_version_id != source2["version_id"]
+        or backlink_rows[0].title != REFERENCE_SOURCE_TITLE
+        or backlink_rows[0].reference_count != 1
+        or backlink_page.content_included
     ):
         raise ValueError("Office recovery exact authorized backlink derivation is invalid")
     return {
