@@ -100,6 +100,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_267_restore",
         "collabio_work_e2e_268_restore",
         "collabio_work_e2e_287_restore",
+        "collabio_work_e2e_288_restore",
         "collabio_work_e2e_269_restore",
         "collabio_work_e2e_270_restore",
         "collabio_work_e2e_271_restore",
@@ -1099,10 +1100,26 @@ def verify_restored_document_reference_versions(
         or resolved.references[0].is_current_version
     ):
         raise ValueError("Office recovery exact document reference resolution is invalid")
+    backlinks = documents.backlinks(
+        user_context=readers[target1["object_id"]],
+        object_id=target1["object_id"],
+        version_id=target1["version_id"],
+    )
+    if (
+        len(backlinks.backlinks) != 1
+        or backlinks.backlinks[0].source_object_id != source2["object_id"]
+        or backlinks.backlinks[0].source_version_id != source2["version_id"]
+        or backlinks.backlinks[0].title != REFERENCE_SOURCE_TITLE
+        or backlinks.backlinks[0].reference_count != 1
+        or backlinks.has_more
+        or backlinks.content_included
+    ):
+        raise ValueError("Office recovery exact authorized backlink derivation is invalid")
     return {
         "document_reference_evidence_hash": stable_hash(canonical_json(evidence)),
         "verified_document_reference_fixture_version_count": len(evidence),
         "exact_historical_document_reference_and_current_acl_verified": True,
+        "exact_backlink_and_current_source_acl_verified": True,
     }
 
 
@@ -1263,6 +1280,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             "_279_restore",
             "_286_restore",
             "_287_restore",
+            "_288_restore",
         )
     ):
         image_evidence.update(verify_restored_crop_reset(image_bindings))
@@ -1280,6 +1298,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             "_279_restore",
             "_286_restore",
             "_287_restore",
+            "_288_restore",
         )
     ):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
@@ -1315,6 +1334,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                 "_279_restore",
                 "_286_restore",
                 "_287_restore",
+                "_288_restore",
             )
         )
         else {}
@@ -1335,6 +1355,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                 "_279_restore",
                 "_286_restore",
                 "_287_restore",
+                "_288_restore",
             )
         )
         else {}
@@ -1356,6 +1377,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                         "_279_restore",
                         "_286_restore",
                         "_287_restore",
+                        "_288_restore",
                     )
                 )
                 else 4
@@ -1372,6 +1394,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                 "_279_restore",
                 "_286_restore",
                 "_287_restore",
+                "_288_restore",
             )
         )
         else {}
@@ -1391,6 +1414,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                 "_279_restore",
                 "_286_restore",
                 "_287_restore",
+                "_288_restore",
             )
         )
         else {}
@@ -1402,7 +1426,15 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             versions=inventory["document_versions"],
         )
         if target_dsn.endswith(
-            ("_276_restore", "_277_restore", "_278_restore", "_279_restore", "_286_restore", "_287_restore")
+            (
+                "_276_restore",
+                "_277_restore",
+                "_278_restore",
+                "_279_restore",
+                "_286_restore",
+                "_287_restore",
+                "_288_restore",
+            )
         )
         else {}
     )
@@ -1412,7 +1444,9 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             readers=readers,
             versions=inventory["document_versions"],
         )
-        if target_dsn.endswith(("_277_restore", "_278_restore", "_279_restore", "_286_restore", "_287_restore"))
+        if target_dsn.endswith(
+            ("_277_restore", "_278_restore", "_279_restore", "_286_restore", "_287_restore", "_288_restore")
+        )
         else {}
     )
     figure_evidence = (
@@ -1421,7 +1455,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             readers=readers,
             versions=inventory["document_versions"],
         )
-        if target_dsn.endswith(("_278_restore", "_279_restore", "_286_restore", "_287_restore"))
+        if target_dsn.endswith(("_278_restore", "_279_restore", "_286_restore", "_287_restore", "_288_restore"))
         else {}
     )
     table_caption_evidence = (
@@ -1430,19 +1464,19 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
             readers=readers,
             versions=inventory["document_versions"],
         )
-        if target_dsn.endswith(("_279_restore", "_286_restore", "_287_restore"))
+        if target_dsn.endswith(("_279_restore", "_286_restore", "_287_restore", "_288_restore"))
         else {}
     )
     semantic_evidence = (
         verify_restored_semantic_versions(documents=restored, readers=readers, versions=inventory["document_versions"])
-        if target_dsn.endswith(("_286_restore", "_287_restore"))
+        if target_dsn.endswith(("_286_restore", "_287_restore", "_288_restore"))
         else {}
     )
     document_reference_evidence = (
         verify_restored_document_reference_versions(
             documents=restored, readers=readers, versions=inventory["document_versions"]
         )
-        if target_dsn.endswith("_287_restore")
+        if target_dsn.endswith(("_287_restore", "_288_restore"))
         else {}
     )
     review_evidence = verify_restored_reviews(

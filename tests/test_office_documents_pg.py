@@ -9,7 +9,7 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json
 from suite.ai_control_plane.models import UserContext
 from suite.persistence.migrator import apply_migrations
 from suite.platform.office_document_repository import PgOfficeDocumentRepository
@@ -189,6 +189,85 @@ def test_pg_explicit_read_acl_never_grants_write_and_revocation_blocks_history(d
         service.history(user_context=reader, object_id=object_id)
     assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 1
     assert counts(database, user) == (1, 1, 1, 1, 2)
+
+
+def test_pg_backlinks_recheck_current_source_acl_and_exact_target_version(database: Database) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    user = editor()
+    target = service.create(
+        user_context=user,
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title="Native backlink target",
+            mutation_reference="pg-backlink-target",
+            human_confirmation=True,
+            document=command(text="Target content").document,
+        ),
+    )
+    user.readable_object_ids.add(target.document.object_id)
+    reference_mark = {
+        "type": "documentReference",
+        "attrs": {
+            "targetObjectId": target.document.object_id,
+            "targetVersionId": target.version.version_id,
+        },
+    }
+    source_content = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {"type": "text", "text": "First reference", "marks": [reference_mark]},
+                    {"type": "text", "text": " and second", "marks": [reference_mark]},
+                ],
+            }
+        ],
+    }
+    source = service.create(
+        user_context=user,
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title="Native backlink source",
+            mutation_reference="pg-backlink-source",
+            human_confirmation=True,
+            document=source_content,
+        ),
+    )
+    user.readable_object_ids.add(source.document.object_id)
+
+    response = service.backlinks(
+        user_context=user,
+        object_id=target.document.object_id,
+        version_id=target.version.version_id,
+    )
+    assert [item.model_dump() for item in response.backlinks] == [
+        {
+            "source_object_id": source.document.object_id,
+            "source_version_id": source.version.version_id,
+            "title": "Native backlink source",
+            "reference_count": 2,
+        }
+    ]
+    assert response.content_included is False
+
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "UPDATE collabio.object_acl_entries SET status = 'revoked', revoked_at_utc = now() "
+            "WHERE tenant_id = %s AND object_id = %s AND acl_subject_id = %s",
+            (user.tenant_id, source.document.object_id, user.user_id),
+        )
+    hidden = service.backlinks(
+        user_context=user,
+        object_id=target.document.object_id,
+        version_id=target.version.version_id,
+    )
+    assert hidden.backlinks == []
+    assert "Native backlink source" not in canonical_json(
+        [event.model_dump(mode="json") for event in service.audit.events]
+    )
 
 
 def test_pg_concurrent_stale_save_loser_has_no_receipt_source_or_orphan(database: Database) -> None:
