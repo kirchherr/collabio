@@ -51,6 +51,10 @@ loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` a
 and unpublished. No subagents were used. Next Office work should design bounded global backlinks with source-side
 current ACL checks and no inaccessible-source metadata oracle before adding any persistent backlink index.
 
+Published evidence commit `9d1afb18` was fast-forwarded to the clean dev001 source. The dependency-free module-
+contract, exact document-reference, Office-document and semantic-recovery suite passed 45/45 on that published SHA.
+API health remained ok and Collabio remained running(4).
+
 Roadmap 280–286 / PLANS 141–147 are complete and published under ADR-0103. Native Office now provides one bounded
 semantic structure workflow for document-owned free fields, a heading-derived table of contents, independently
 numbered footnotes and endnotes, a local citation catalog with generated bibliography, inert literal formulas with
