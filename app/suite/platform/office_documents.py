@@ -601,7 +601,9 @@ class OfficeDocumentService:
             count = next(
                 (
                     reference_count
-                    for target_object_id, target_version_id, reference_count in office_document_reference_counts(content)
+                    for target_object_id, target_version_id, reference_count in office_document_reference_counts(
+                        content
+                    )
                     if target_object_id == object_id and target_version_id == target_version.version_id
                 ),
                 0,

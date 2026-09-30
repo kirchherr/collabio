@@ -22,8 +22,8 @@ from suite.platform.office_document_schema import OfficeDocumentInvalidContentEr
 from suite.platform.office_documents import (
     OFFICE_DOCUMENTS_MODULE_ID,
     OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
-    OfficeDocumentConflictError,
     OfficeDocumentBacklinksResponse,
+    OfficeDocumentConflictError,
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryRequestError,
