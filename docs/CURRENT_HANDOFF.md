@@ -2,6 +2,13 @@
 
 Updated: 2026-09-30
 
+Post-acceptance Office UI review identified that the explicit page-break marker still read as a separator inside one
+continuous sheet. Commit `dc6722dc` now renders each explicit break as a full-width canvas gap with both paper edges
+and a **Seitenwechsel · neue Seite** label across desktop and compact layouts. This improves sheet recognition without
+claiming automatic print pagination. The focused page-break workflow, persistence, copy, undo, responsive and A4/Letter
+PDF suite passed 10/10 on dev001. The isolated review UI exposes the correction with a synthetic unsaved draft only;
+the regular API and tenant data were unchanged.
+
 Roadmap 288 / PLANS 149 is complete under ADR-0105. Native Office now exposes bounded, paginated **Rueckverweise**
 for an exact saved target version. Every request reauthorizes the target, scans at most 50 currently readable source
 documents, reloads each current immutable source version and returns only exact incoming references. Results contain

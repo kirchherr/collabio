@@ -363,7 +363,8 @@ completed below as Roadmap 271 / PLANS 132.
 
 **Einfügen → Seitenumbruch** and **Ctrl/Mod+Enter** insert a visible, selectable boundary. The editor renders that
 boundary as a full-sheet canvas gap with both paper edges and a **Seitenwechsel · neue Seite** label, so desktop and
-compact layouts visibly separate the preceding and following sheets without claiming automatic print pagination.
+compact layouts visibly separate the preceding and following sheets without claiming automatic print pagination. The
+post-review responsive page-break and A4/Letter PDF suite passed 10/10 on commit `dc6722dc`.
 At a caret in a top-level paragraph or heading, insertion splits the text and preserves
 both fragments' paragraph attributes and inline marks. A selected root image, rule or
 table remains intact; insertion occurs after it. Text ranges and insertion inside lists,
