@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import NotRequired, TypedDict
 from unittest.mock import Mock
 
 import pytest
@@ -13,11 +14,19 @@ from work_e2e_document_references import (
 )
 
 
-def recovery_fixture() -> tuple[Mock, dict[str, Mock], list[dict[str, str]]]:
+class RecoveryVersionRow(TypedDict):
+    object_id: str
+    version_id: str
+    previous_version_id: str | None
+    mutation_reference: str
+    content_hash: NotRequired[str]
+
+
+def recovery_fixture() -> tuple[Mock, dict[str, Mock], list[RecoveryVersionRow]]:
     target_id, source_id = "office-doc-target", "office-doc-source"
     target_v1, target_v2 = "office-version-target-1", "office-version-target-2"
     source_v1, source_v2 = "office-version-source-1", "office-version-source-2"
-    rows = [
+    rows: list[RecoveryVersionRow] = [
         {
             "object_id": target_id,
             "version_id": target_v1,
