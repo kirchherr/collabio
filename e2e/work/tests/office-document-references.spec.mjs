@@ -55,15 +55,19 @@ test("Office pins an exact cross-document version and hides it after fresh targe
   await expect(officeEditor(page)).toHaveText("Target body v1");
 
   await setOfficeAcl(page, target.document.object_id, { status: "revoked", creator: true });
-  await openOfficeDocument(page, source.document.object_id);
-  await expect(officeEditor(page).locator("[data-office-document-reference]")).toHaveAttribute("title", "Dokumentziel nicht verfügbar");
-  await selectText(page, 5, 11); await page.locator("#document-reference-options").click();
-  await expect(page.locator("#document-reference-status")).toHaveText("Dokumentziel nicht verfügbar");
-  await expect(page.locator("#document-reference-open")).toBeDisabled();
-  await expect(page.locator("#document-reference-dialog")).not.toContainText("Reference target v1");
-  await page.locator("#document-reference-cancel").click();
-  await page.locator("#document-print").click();
-  await expect(page.locator("#print-preview .office-print-document-reference")).toHaveAttribute("data-office-reference-status", "unavailable");
-  await expect(page.locator("#print-preview a[href]")).toHaveCount(0);
-  await expect(page.locator("#print-preview")).not.toContainText("Reference target v1");
+  try {
+    await openOfficeDocument(page, source.document.object_id);
+    await expect(officeEditor(page).locator("[data-office-document-reference]")).toHaveAttribute("title", "Dokumentziel nicht verfügbar");
+    await selectText(page, 5, 11); await page.locator("#document-reference-options").click();
+    await expect(page.locator("#document-reference-status")).toHaveText("Dokumentziel nicht verfügbar");
+    await expect(page.locator("#document-reference-open")).toBeDisabled();
+    await expect(page.locator("#document-reference-dialog")).not.toContainText("Reference target v1");
+    await page.locator("#document-reference-cancel").click();
+    await page.locator("#document-print").click();
+    await expect(page.locator("#print-preview .office-print-document-reference")).toHaveAttribute("data-office-reference-status", "unavailable");
+    await expect(page.locator("#print-preview a[href]")).toHaveCount(0);
+    await expect(page.locator("#print-preview")).not.toContainText("Reference target v1");
+  } finally {
+    await setOfficeAcl(page, target.document.object_id, { status: "active", creator: true });
+  }
 });
