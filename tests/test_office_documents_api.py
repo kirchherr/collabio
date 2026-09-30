@@ -197,6 +197,7 @@ def test_office_create_version_read_history_and_exact_retry_are_bound_and_noncac
     assert replay.json()["is_current_version"] is False
     assert len(office_api.repository.saved_versions) == 2
     assert SECRET not in json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+    assert SECRET not in caplog.text
 
 
 def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracle(
@@ -238,7 +239,6 @@ def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracl
         "title": None,
         "is_current_version": None,
     }
-    assert SECRET not in caplog.text
 
 
 @pytest.mark.parametrize("block", ["module", "read-feature", "write-feature", "authentication"])
