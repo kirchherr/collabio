@@ -197,6 +197,47 @@ def test_office_create_version_read_history_and_exact_retry_are_bound_and_noncac
     assert replay.json()["is_current_version"] is False
     assert len(office_api.repository.saved_versions) == 2
     assert SECRET not in json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+
+
+def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracle(
+    office_api: OfficeApiHarness,
+) -> None:
+    target = create_document(office_api)
+    target_id = target["document"]["object_id"]
+    target_version_id = target["version"]["version_id"]
+    payload = create_payload("office-api-reference-source")
+    payload["title"] = "Reference source"
+    payload["document"]["content"][0]["content"][0]["marks"] = [{
+        "type": "documentReference",
+        "attrs": {"targetObjectId": target_id, "targetVersionId": target_version_id},
+    }]
+    source_response = office_api.client.post(BASE, headers=office_api.headers, json=payload)
+    assert source_response.status_code == 200, source_response.text
+    source_id = source_response.json()["document"]["object_id"]
+    office_api.headers["X-Readable-Object-Ids"] = f"{target_id},{source_id}"
+
+    resolved = office_api.client.get(f"{BASE}/{source_id}/outbound-references", headers=office_api.headers)
+    assert resolved.status_code == 200
+    assert resolved.headers["Cache-Control"] == "no-store"
+    assert resolved.json()["references"] == [{
+        "target_object_id": target_id,
+        "target_version_id": target_version_id,
+        "status": "resolved",
+        "title": "Synthetic private title",
+        "is_current_version": True,
+    }]
+
+    del office_api.repository.grants[("tenant-demo", target_id, "office-api-editor")]
+    office_api.headers["X-Readable-Object-Ids"] = source_id
+    unavailable = office_api.client.get(f"{BASE}/{source_id}/outbound-references", headers=office_api.headers)
+    assert unavailable.status_code == 200
+    assert unavailable.json()["references"][0] == {
+        "target_object_id": target_id,
+        "target_version_id": target_version_id,
+        "status": "unavailable",
+        "title": None,
+        "is_current_version": None,
+    }
     assert SECRET not in caplog.text
 
 

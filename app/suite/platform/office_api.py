@@ -29,6 +29,7 @@ from suite.platform.office_documents import (
     OfficeDocumentHistoryResponse,
     OfficeDocumentListRequestError,
     OfficeDocumentListResponse,
+    OfficeDocumentOutboundReferencesResponse,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -355,6 +356,19 @@ def register_office_routes(
             object_id=object_id,
             page_size=page_size,
             cursor=cursor,
+        )
+
+    @router.get("/{object_id}/outbound-references", response_model=OfficeDocumentOutboundReferencesResponse)
+    def document_outbound_references(
+        object_id: str,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        version_id: str | None = Query(default=None, min_length=1, max_length=128),
+    ) -> Any:
+        return request.app.state.office_document_service.outbound_references(
+            user_context=context.user_context,
+            object_id=object_id,
+            version_id=version_id,
         )
 
     @router.post(

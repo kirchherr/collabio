@@ -35,7 +35,17 @@ BLOCKS = {
     "equation",
     "referenceIndex",
 }
-MARKS = {"bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference"}
+MARKS = {
+    "bold",
+    "italic",
+    "strike",
+    "code",
+    "underline",
+    "textStyle",
+    "link",
+    "crossReference",
+    "documentReference",
+}
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
@@ -104,6 +114,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     citation_sources: set[str] = set()
     note_ids: set[str] = set()
     equations = 0
+    document_references = 0
     equation_ids: set[str] = set()
     generated_blocks: set[str] = set()
 
@@ -309,6 +320,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
 
     def visit(node: Any, depth: int) -> None:
         nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks, numbered_tables, equations
+        nonlocal document_references
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
             reject()
@@ -563,10 +575,25 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", mark["attrs"]["targetId"]) is None
                 ):
                     reject()
+            elif name == "documentReference":
+                document_references += 1
+                if (
+                    document_references > 100
+                    or set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"targetObjectId", "targetVersionId"}
+                    or not isinstance(mark["attrs"]["targetObjectId"], str)
+                    or re.fullmatch(r"office-doc-[a-f0-9]{32}", mark["attrs"]["targetObjectId"]) is None
+                    or not isinstance(mark["attrs"]["targetVersionId"], str)
+                    or re.fullmatch(r"office-version-[a-f0-9]{32}", mark["attrs"]["targetVersionId"]) is None
+                ):
+                    reject()
             elif set(mark) != {"type"}:
                 reject()
             seen.add(name)
         if "code" in seen and len(seen) > 1:
+            reject()
+        if "documentReference" in seen and seen & {"link", "crossReference"}:
             reject()
         if "link" in seen and "crossReference" in seen:
             reject()
@@ -624,3 +651,25 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     if len(canonical_json(document).encode("utf-8")) > MAX_DOCUMENT_BYTES:
         reject()
     return document
+
+
+def office_document_references(document: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Return unique outbound targets from an already bounded native document."""
+    validate_office_document(document)
+    references: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def walk(node: dict[str, Any]) -> None:
+        for mark in node.get("marks", []):
+            if mark.get("type") != "documentReference":
+                continue
+            attrs = mark["attrs"]
+            target = (attrs["targetObjectId"], attrs["targetVersionId"])
+            if target not in seen:
+                seen.add(target)
+                references.append(target)
+        for child in node.get("content", []):
+            walk(child)
+
+    walk(document)
+    return tuple(references)

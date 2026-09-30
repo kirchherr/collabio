@@ -25,6 +25,7 @@ import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
+import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -32,7 +33,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -42,7 +43,7 @@ const allowedNodes = new Set([
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak", "bookmark",
   "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
 ]);
-const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference"]);
+const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
 const commandNames = {
   bold: "toggleBold", italic: "toggleItalic", underline: "toggleUnderline", strike: "toggleStrike",
   code: "toggleCode", bulletList: "toggleBulletList", orderedList: "toggleOrderedList",
@@ -159,7 +160,7 @@ const OfficeBookmark = Node.create({
   },
 });
 const OfficeCrossReference = Mark.create({
-  name: "crossReference", inclusive: false, excludes: "code link",
+  name: "crossReference", inclusive: false, excludes: "code link documentReference",
   addAttributes() { return { targetId: { default: null, rendered: false } }; },
   parseHTML() {
     return [{ tag: "span[data-office-cross-reference]", getAttrs: (element) => {
@@ -170,6 +171,22 @@ const OfficeCrossReference = Mark.create({
   renderHTML({ mark }) {
     const attrs = officeCrossReferenceAttributes(mark.attrs);
     return ["span", { "data-office-cross-reference": attrs.targetId }, 0];
+  },
+});
+const OfficeDocumentReference = Mark.create({
+  name: "documentReference", inclusive: false, excludes: "code link crossReference",
+  addAttributes() { return { targetObjectId: { default: null, rendered: false }, targetVersionId: { default: null, rendered: false } }; },
+  parseHTML() {
+    return [{ tag: "span[data-office-document-reference][data-office-document-version]", getAttrs: (element) => {
+      try { return officeDocumentReferenceAttributes({ targetObjectId: element.getAttribute("data-office-document-reference"),
+        targetVersionId: element.getAttribute("data-office-document-version") }); } catch { return false; }
+    } }];
+  },
+  renderHTML({ mark }) {
+    const attrs = officeDocumentReferenceAttributes(mark.attrs);
+    return ["span", { "data-office-document-reference": attrs.targetObjectId,
+      "data-office-document-version": attrs.targetVersionId, "data-office-reference-status": "unavailable",
+      title: "Dokumentziel nicht verfügbar" }, 0];
   },
 });
 const semanticAtom = (name, group, inline, attributes, label) => Node.create({
@@ -355,6 +372,7 @@ function normalizedDocument(document) {
   let characters = 0;
   let pageBreaks = 0;
   let sectionBreaks = 0;
+  let documentReferences = 0;
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
@@ -414,10 +432,15 @@ function normalizedDocument(document) {
       const types = value.marks.map((mark) => mark.type);
       if (value.type !== "text" || types.some((type) => !allowedMarks.has(type)) ||
           new Set(types).size !== types.length || (types.includes("code") && types.length > 1) ||
-          (types.includes("link") && types.includes("crossReference"))) throw new Error("document-marks");
+          (types.includes("link") && types.includes("crossReference")) ||
+          (types.includes("documentReference") && types.some((type) => ["link", "crossReference"].includes(type)))) throw new Error("document-marks");
       result.marks = value.marks.flatMap((mark) => {
         if (mark.type === "link") return [{ type: "link", attrs: { href: officeLinkHref(mark.attrs?.href) } }];
         if (mark.type === "crossReference") return [{ type: "crossReference", attrs: officeCrossReferenceAttributes(mark.attrs) }];
+        if (mark.type === "documentReference") {
+          if (++documentReferences > OFFICE_DOCUMENT_REFERENCE_LIMIT) throw new Error("document-reference-limit");
+          return [{ type: "documentReference", attrs: officeDocumentReferenceAttributes(mark.attrs) }];
+        }
         if (mark.type !== "textStyle") return [{ type: mark.type }];
         const attrs = officeCharacterAttributes(mark.attrs);
         return Object.keys(attrs).length ? [{ type: mark.type, attrs }] : [];
@@ -527,6 +550,8 @@ function updateEditorState() {
   updateCharacterControls();
   updateLinkControls();
   updateBookmarkControls();
+  updateDocumentReferenceControls();
+  paintDocumentReferences();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -1420,6 +1445,147 @@ function jumpToCrossReference() {
   focusEditor(action.editor); updateEditorState(); notice("Zum Verweisziel gesprungen.");
 }
 
+function commonDocumentReference(entries) {
+  const values = new Map();
+  for (const { marks } of entries) {
+    const mark = marks.find((entry) => entry.type.name === "documentReference");
+    const attrs = mark ? officeDocumentReferenceAttributes(mark.attrs) : null;
+    values.set(attrs ? officeDocumentReferenceKey(attrs) : "", attrs);
+  }
+  return values.size === 1 ? [...values.values()][0] : null;
+}
+
+function documentReferenceActionCurrent(action = state.documentReferenceAction) {
+  return bookmarkActionCurrent(action) && action.context === state.context;
+}
+
+function closeDocumentReferenceDialog(restoreFocus = false) {
+  const action = state.documentReferenceAction;
+  state.documentReferenceAction = null;
+  $("document-reference-dialog").close(); $("document-reference-form").reset();
+  $("document-reference-target").replaceChildren(); $("document-reference-status").textContent = "";
+  if (restoreFocus && action?.editor === state.editor) focusEditor(action.editor);
+}
+
+function updateDocumentReferenceControls() {
+  if (state.documentReferenceAction && !documentReferenceActionCurrent()) closeDocumentReferenceDialog();
+  const entries = linkCharacters();
+  const active = entries.some(({ marks }) => marks.some((mark) => mark.type.name === "documentReference"));
+  $("document-reference-options").disabled = !paragraphAllowed() || !entries.length || !state.session?.objectId;
+  $("document-reference-options").setAttribute("aria-pressed", String(active));
+}
+
+function paintDocumentReferences() {
+  state.editor?.view.dom.querySelectorAll("[data-office-document-reference]").forEach((element) => {
+    try {
+      const attrs = officeDocumentReferenceAttributes({ targetObjectId: element.dataset.officeDocumentReference,
+        targetVersionId: element.dataset.officeDocumentVersion });
+      const resolved = state.documentReferenceResolutions.get(officeDocumentReferenceKey(attrs));
+      const status = resolved?.status === "resolved" ? "resolved" : "unavailable";
+      element.dataset.officeReferenceStatus = status;
+      element.title = officeDocumentReferenceDescription(attrs, state.documentReferenceResolutions);
+    } catch { element.dataset.officeReferenceStatus = "unavailable"; element.title = "Dokumentziel nicht verfügbar"; }
+  });
+}
+
+async function refreshDocumentReferences(session = state.session) {
+  if (!sessionCurrent(session) || !session.objectId || !session.version?.version_id) return new Map();
+  const objectId = session.objectId, versionId = session.version.version_id, context = state.context;
+  try {
+    const payload = await api(`/v1/office/documents/${encodeURIComponent(objectId)}/outbound-references?version_id=${encodeURIComponent(versionId)}`, {}, context);
+    if (!sessionCurrent(session) || session.version?.version_id !== versionId || state.context !== context) return new Map();
+    state.documentReferenceResolutions = officeDocumentReferenceResolutions(payload, objectId, versionId);
+  } catch {
+    if (!sessionCurrent(session) || session.version?.version_id !== versionId) return new Map();
+    state.documentReferenceResolutions = new Map();
+  }
+  paintDocumentReferences();
+  return state.documentReferenceResolutions;
+}
+
+async function openDocumentReferenceDialog() {
+  const editor = state.editor, characters = linkCharacters(editor);
+  if (!characters.length || !state.session?.objectId) return;
+  closeDocumentReferenceDialog();
+  const action = { session: state.session, editor, context: state.context, revision: state.session.revision,
+    document: editor.state.doc, selection: editor.state.selection, characters };
+  state.documentReferenceAction = action;
+  const existing = commonDocumentReference(characters), select = $("document-reference-target");
+  $("document-reference-selection").textContent = editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, " ").slice(0, 160);
+  $("document-reference-remove").disabled = !existing;
+  $("document-reference-open").disabled = true;
+  $("document-reference-apply").disabled = true;
+  $("document-reference-status").textContent = "Freigegebene Dokumente werden geladen …";
+  $("document-reference-dialog").showModal();
+  try {
+    const payload = await api("/v1/office/documents?query=&page_size=200", {}, action.context);
+    if (!documentReferenceActionCurrent(action) || payload?.tenant_id !== action.context.tenantId || !Array.isArray(payload.documents)) return;
+    const documents = payload.documents.filter((entry) => entry.object_id !== action.session.objectId &&
+      typeof entry.title === "string" && /^office-doc-[a-f0-9]{32}$/.test(entry.object_id) && /^office-version-[a-f0-9]{32}$/.test(entry.current_version_id));
+    for (const entry of documents) {
+      const option = new Option(entry.title, officeDocumentReferenceKey({ targetObjectId: entry.object_id, targetVersionId: entry.current_version_id }));
+      option.dataset.objectId = entry.object_id; option.dataset.versionId = entry.current_version_id; select.append(option);
+    }
+    if (existing && !documents.some((entry) => entry.object_id === existing.targetObjectId && entry.current_version_id === existing.targetVersionId)) {
+      const option = new Option("Dokumentziel nicht verfügbar", officeDocumentReferenceKey(existing));
+      option.dataset.objectId = existing.targetObjectId; option.dataset.versionId = existing.targetVersionId; option.dataset.unavailable = "true"; select.prepend(option);
+    }
+    select.value = existing ? officeDocumentReferenceKey(existing) : select.options[0]?.value || "";
+    $("document-reference-apply").disabled = !select.value || select.selectedOptions[0]?.dataset.unavailable === "true";
+    const resolved = existing && state.documentReferenceResolutions.get(officeDocumentReferenceKey(existing));
+    $("document-reference-open").disabled = !existing || resolved?.status !== "resolved" || isDirty();
+    $("document-reference-status").textContent = select.value ?
+      (existing ? officeDocumentReferenceDescription(existing, state.documentReferenceResolutions) : "Die aktuell freigegebene Zielversion wird fest gespeichert.") :
+      "Kein anderes freigegebenes Dokument verfügbar.";
+    select.focus();
+  } catch {
+    if (documentReferenceActionCurrent(action)) $("document-reference-status").textContent = "Dokumentziele sind gerade nicht verfügbar.";
+  }
+}
+
+function commitDocumentReference(remove = false) {
+  const action = state.documentReferenceAction;
+  if (!documentReferenceActionCurrent(action)) { closeDocumentReferenceDialog(); return; }
+  const option = $("document-reference-target").selectedOptions[0];
+  let attrs = null, transaction = action.editor.state.tr, changed = false;
+  try {
+    if (!remove) {
+      if (!option || option.dataset.unavailable === "true") throw new Error("unavailable");
+      attrs = officeDocumentReferenceAttributes({ targetObjectId: option.dataset.objectId, targetVersionId: option.dataset.versionId });
+      if (action.characters.some(({ marks }) => marks.some((mark) => ["link", "crossReference", "code"].includes(mark.type.name)))) throw new Error("incompatible");
+    }
+    const type = action.editor.schema.marks.documentReference;
+    for (const { from, to, marks } of action.characters) {
+      const priorMark = marks.find((mark) => mark.type === type);
+      const prior = priorMark ? officeDocumentReferenceKey(priorMark.attrs) : null;
+      const next = attrs ? officeDocumentReferenceKey(attrs) : null;
+      if (prior === next) continue;
+      changed = true; transaction.removeMark(from, to, type);
+      if (attrs) transaction.addMark(from, to, type.create(attrs));
+    }
+    if (!changed) { $("document-reference-status").textContent = "Keine Änderung: Die Auswahl verwendet bereits dieses Ziel."; return; }
+    validateEditorDocument(transaction.doc);
+  } catch (error) {
+    $("document-reference-status").textContent = error.message === "incompatible" ?
+      "Entfernen Sie zuerst Link-, Querverweis- oder Codeformatierung aus der Auswahl." : "Wählen Sie ein aktuell freigegebenes Dokumentziel.";
+    $("document-reference-status").classList.add("error"); return;
+  }
+  closeDocumentReferenceDialog(); action.editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+  action.editor.view.dispatch(closeHistory(action.editor.state.tr)); focusEditor(action.editor); updateEditorState();
+  notice(remove ? "Dokumentverweis entfernt. Der Text bleibt erhalten." : "Dokumentverweis angewendet. Nach dem Speichern wird das Ziel erneut geprüft.");
+}
+
+async function openSelectedDocumentReference() {
+  const action = state.documentReferenceAction, attrs = action && commonDocumentReference(action.characters);
+  if (!documentReferenceActionCurrent(action) || !attrs || isDirty()) return;
+  $("document-reference-open").disabled = true; $("document-reference-status").textContent = "Zugriff auf die gespeicherte Zielversion wird erneut geprüft …";
+  const resolutions = await refreshDocumentReferences(action.session);
+  if (!documentReferenceActionCurrent(action)) return;
+  const resolved = resolutions.get(officeDocumentReferenceKey(attrs));
+  if (resolved?.status !== "resolved") { $("document-reference-status").textContent = "Dokumentziel nicht verfügbar"; return; }
+  closeDocumentReferenceDialog(); await openDocument(attrs.targetObjectId, attrs.targetVersionId);
+}
+
 function semanticActionCurrent(action = state.semanticAction) {
   return Boolean(action && action.editor === state.editor && action.session === state.session &&
     action.context === state.context && sessionCurrent(action.session) && action.revision === action.session.revision);
@@ -2285,7 +2451,7 @@ function prepareEditor(content, session) {
     editable: false, enablePasteRules: false,
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
-      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference,
+      TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference, OfficeDocumentReference,
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
@@ -2370,6 +2536,8 @@ function clearWorkspace() {
   closeTableDialogs();
   closeParagraphDialog();
   closeCharacterDialog();
+  closeDocumentReferenceDialog();
+  state.documentReferenceResolutions = new Map();
   $("table-tools").hidden = true;
   closeListDialog();
   $("table-info").textContent = "";
@@ -2659,6 +2827,8 @@ function acceptContent(result, session) {
   $("document-version").textContent = `${session.historical ? "Frühere Version" : "Aktuelle Version"} · ${result.version.version_id}`;
   $("document-version").title = result.version.version_id;
   refreshDocumentTools();
+  state.documentReferenceResolutions = new Map();
+  void refreshDocumentReferences(session);
 }
 
 async function openDocument(objectId, versionId = null) {
@@ -3277,10 +3447,14 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       { signal: print.controller.signal }, print.context);
     if (!current()) return;
     const content = validatePrintContent(result, print);
+    const referencePayload = await api(`/v1/office/documents/${encodeURIComponent(print.objectId)}/outbound-references?version_id=${encodeURIComponent(print.versionId)}`,
+      { signal: print.controller.signal }, print.context);
+    const documentReferences = officeDocumentReferenceResolutions(referencePayload, print.objectId, print.versionId);
+    if (!current()) return;
     const images = await loadOfficePrintImages(content, print.context, print.controller.signal);
     if (!current()) { for (const url of images.values()) URL.revokeObjectURL(url); return; }
     print.images = images;
-    const preview = renderOfficePrintDocument(content, result.version.title, document, images);
+    const preview = renderOfficePrintDocument(content, result.version.title, document, images, documentReferences);
     if (!current()) return;
     print.content = content;
     const savedPage = officePageSettings(content.attrs?.page);
@@ -3297,7 +3471,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       // editor, the preview DOM, or an older cached authorization result.
       const root = $("office-print-root");
       state.preparedPrint = print;
-      root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images));
+      root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images, documentReferences));
       await Promise.all([...root.querySelectorAll("img")].map((image) => image.decode()));
       if (!current()) return;
       root.className = printFormat();
@@ -4830,6 +5004,20 @@ $("cross-reference-target").addEventListener("change", () => {
 for (const id of ["cross-reference-close", "cross-reference-cancel"]) $(id).addEventListener("click", () => closeCrossReferenceDialog(true));
 $("cross-reference-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeCrossReferenceDialog(true); });
 $("cross-reference-dialog").addEventListener("close", () => { if (!$("cross-reference-dialog").open && state.crossReferenceAction) closeCrossReferenceDialog(); });
+$("document-reference-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("document-reference-options").addEventListener("click", () => void openDocumentReferenceDialog());
+$("document-reference-form").addEventListener("submit", (event) => { event.preventDefault(); commitDocumentReference(); });
+$("document-reference-remove").addEventListener("click", () => commitDocumentReference(true));
+$("document-reference-open").addEventListener("click", () => void openSelectedDocumentReference());
+$("document-reference-target").addEventListener("change", () => {
+  const option = $("document-reference-target").selectedOptions[0];
+  $("document-reference-apply").disabled = !option || option.dataset.unavailable === "true";
+  $("document-reference-status").textContent = option?.dataset.unavailable === "true" ? "Dokumentziel nicht verfügbar" : "Die aktuell freigegebene Zielversion wird fest gespeichert.";
+  $("document-reference-status").classList.remove("error");
+});
+for (const id of ["document-reference-close", "document-reference-cancel"]) $(id).addEventListener("click", () => closeDocumentReferenceDialog(true));
+$("document-reference-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeDocumentReferenceDialog(true); });
+$("document-reference-dialog").addEventListener("close", () => { if (!$("document-reference-dialog").open && state.documentReferenceAction) closeDocumentReferenceDialog(); });
 $("semantic-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("semantic-options").addEventListener("click", openSemanticDialog);
 $("semantic-kind").addEventListener("change", updateSemanticFields);

@@ -7,7 +7,7 @@ import re
 import secrets
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -18,6 +18,7 @@ from suite.platform.office_document_schema import (
     OFFICE_DOCUMENT_MIME_TYPE,
     OFFICE_DOCUMENT_SCHEMA_VERSION,
     OfficeDocumentInvalidContentError,
+    office_document_references,
     validate_office_document,
 )
 from suite.storage.source_object_storage import SourceObjectStorageError
@@ -181,6 +182,27 @@ class OfficeDocumentContentResponse(BaseModel):
     schema_version: str = OFFICE_DOCUMENT_SCHEMA_VERSION
     rag_indexing_allowed: bool = False
     search_indexing_allowed: bool = False
+
+
+class OfficeDocumentOutboundReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_object_id: str
+    target_version_id: str
+    status: Literal["resolved", "unavailable"]
+    title: str | None = None
+    is_current_version: bool | None = None
+
+
+class OfficeDocumentOutboundReferencesResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    source_object_id: str
+    source_version_id: str
+    references: list[OfficeDocumentOutboundReference]
+    audit_event_id: str
+    content_included: bool = False
 
 
 class OfficeDocumentHistoryResponse(BaseModel):
@@ -395,6 +417,61 @@ class OfficeDocumentService:
             content_hash=version.content_hash,
         )
         return self._content_response(document, version, content, can_write, event_id)
+
+    def outbound_references(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        version_id: str | None = None,
+    ) -> OfficeDocumentOutboundReferencesResponse:
+        source = self.repository.get_document(user_context=user_context, object_id=object_id)
+        source_version = self.repository.get_version(
+            user_context=user_context, object_id=object_id, version_id=version_id or source.current_version_id
+        )
+        content = self._read_content(source, source_version)
+        references: list[OfficeDocumentOutboundReference] = []
+        for target_object_id, target_version_id in office_document_references(content):
+            try:
+                target = self.repository.get_document(user_context=user_context, object_id=target_object_id)
+                target_version = self.repository.get_version(
+                    user_context=user_context,
+                    object_id=target_object_id,
+                    version_id=target_version_id,
+                )
+            except (OfficeDocumentNotFoundError, OfficeDocumentPermissionError):
+                references.append(
+                    OfficeDocumentOutboundReference(
+                        target_object_id=target_object_id,
+                        target_version_id=target_version_id,
+                        status="unavailable",
+                    )
+                )
+            else:
+                references.append(
+                    OfficeDocumentOutboundReference(
+                        target_object_id=target_object_id,
+                        target_version_id=target_version_id,
+                        status="resolved",
+                        title=target_version.title,
+                        is_current_version=target.current_version_id == target_version.version_id,
+                    )
+                )
+        event_id = self._audit(
+            user_context,
+            "office.documents.outbound_references",
+            object_id=object_id,
+            version_id=source_version.version_id,
+            reference_count=len(references),
+            resolved_count=sum(reference.status == "resolved" for reference in references),
+        )
+        return OfficeDocumentOutboundReferencesResponse(
+            tenant_id=user_context.tenant_id,
+            source_object_id=object_id,
+            source_version_id=source_version.version_id,
+            references=references,
+            audit_event_id=event_id,
+        )
 
     def _history_binding(self, user: UserContext, object_id: str, page_size: int) -> str:
         payload = canonical_json(

@@ -4474,6 +4474,12 @@ services:
         bind:
           create_host_path: false
       - type: bind
+        source: ./app/suite/ui/office/office-document-references.mjs
+        target: /work-e2e/office-document-references.mjs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: ./app/suite/ui/office/office-images.mjs
         target: /work-e2e/office-images.mjs
         read_only: true

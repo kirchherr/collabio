@@ -8,6 +8,7 @@ import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
 import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
+import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -15,7 +16,7 @@ const blockTags = {
 };
 const markTags = { bold: "strong", italic: "em", underline: "u", strike: "s", code: "code" };
 
-export function renderOfficePrintDocument(content, title, dom = document, images = new Map()) {
+export function renderOfficePrintDocument(content, title, dom = document, images = new Map(), documentReferences = new Map()) {
   if (content?.type !== "doc" || !Array.isArray(content.content) || typeof title !== "string") {
     throw new Error("Invalid print document");
   }
@@ -115,6 +116,17 @@ export function renderOfficePrintDocument(content, title, dom = document, images
           wrapper.setAttribute("data-office-cross-reference", attrs.targetId);
           if (target) wrapper.setAttribute("href", `#${target.fragment}`);
           else wrapper.setAttribute("data-office-cross-reference-broken", "true");
+          wrapper.append(text); text = wrapper;
+          continue;
+        }
+        if (mark.type === "documentReference") {
+          const attrs = officeDocumentReferenceAttributes(mark.attrs), wrapper = dom.createElement("span");
+          const resolution = documentReferences.get(officeDocumentReferenceKey(attrs));
+          wrapper.className = "office-print-document-reference";
+          wrapper.dataset.officeDocumentReference = attrs.targetObjectId;
+          wrapper.dataset.officeDocumentVersion = attrs.targetVersionId;
+          wrapper.dataset.officeReferenceStatus = resolution?.status === "resolved" ? "resolved" : "unavailable";
+          wrapper.setAttribute("aria-label", officeDocumentReferenceDescription(attrs, documentReferences));
           wrapper.append(text); text = wrapper;
           continue;
         }

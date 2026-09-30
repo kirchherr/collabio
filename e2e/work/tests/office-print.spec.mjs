@@ -88,7 +88,7 @@ test("Office ordinary readers print an exact historical version with its histori
   expect(calls[0].snapshot.text).toContain("Historical printable wording");
   expect(calls[0].snapshot.text).not.toContain("Current protected text");
   expect(calls[0].snapshot.text).not.toContain(second.version.title);
-  expect(requests).toHaveLength(2);
+  expect(requests).toHaveLength(4);
   expect(requests.every((request) => request.method === "GET" && new URL(request.url).searchParams.get("version_id") === first.version.version_id)).toBe(true);
   await expectPrintCleared(page);
   expect(await officeVersions(page, objectId)).toHaveLength(2);
