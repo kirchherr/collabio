@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createOfficeDocument, officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl, showDocumentList } from "./office-support.mjs";
+import { officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl, showDocumentList } from "./office-support.mjs";
 
 async function selectText(page, start, end) {
   await officeEditor(page).evaluate((root, [from, to]) => {
@@ -18,14 +18,22 @@ async function selectText(page, start, end) {
   }, [start, end]);
 }
 
+async function createDocumentFromList(page, title, text) {
+  await showDocumentList(page);
+  await page.locator("#document-new").click();
+  await page.locator('#new-document-form input[name="title"]').fill(title);
+  await page.locator('#new-document-form input[value="blank"]').check();
+  await page.locator('#new-document-form button[type="submit"]').click();
+  await officeEditor(page).fill(text);
+  return saveOffice(page);
+}
+
 test("Office backlinks show only freshly readable current sources and deliberately open the exact version", async ({ page }, testInfo) => {
   const suffix = `${testInfo.project.name}-${Date.now()}`;
   const targetTitle = `Backlink target ${suffix}`, sourceTitle = `Backlink source ${suffix}`;
   await openOffice(page);
-  await showDocumentList(page);
-  const target = await createOfficeDocument(page, targetTitle, "Target body");
-  await showDocumentList(page);
-  const source = await createOfficeDocument(page, sourceTitle, "Read target version");
+  const target = await createDocumentFromList(page, targetTitle, "Target body");
+  const source = await createDocumentFromList(page, sourceTitle, "Read target version");
   await selectText(page, 5, 11);
   await page.locator("#document-reference-options").click();
   await page.locator("#document-reference-target").selectOption({ label: targetTitle });
