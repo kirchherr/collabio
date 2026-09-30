@@ -14,6 +14,7 @@ from work_e2e_character import seed_synthetic_office_characters
 from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
+from work_e2e_document_references import seed_synthetic_office_document_references
 from work_e2e_figures import seed_synthetic_office_figures
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
 from work_e2e_links import seed_synthetic_office_links
@@ -118,6 +119,9 @@ def main() -> int:
     semantic_document_count, semantic_version_count = seed_synthetic_office_semantics(
         environment=os.environ, client=client
     )
+    reference_document_count, reference_version_count = seed_synthetic_office_document_references(
+        environment=os.environ, client=client
+    )
 
     print(
         json.dumps(
@@ -139,7 +143,8 @@ def main() -> int:
                 + bookmark_document_count
                 + figure_document_count
                 + table_document_count
-                + semantic_document_count,
+                + semantic_document_count
+                + reference_document_count,
                 "synthetic_office_history_version_count": history_version_count,
                 "synthetic_office_paragraph_version_count": paragraph_version_count,
                 "synthetic_office_character_version_count": character_version_count,
@@ -153,6 +158,7 @@ def main() -> int:
                 "synthetic_office_figure_version_count": figure_version_count,
                 "synthetic_office_table_caption_version_count": table_version_count,
                 "synthetic_office_semantic_version_count": semantic_version_count,
+                "synthetic_office_document_reference_version_count": reference_version_count,
                 "tenant_content_included": False,
             },
             sort_keys=True,
