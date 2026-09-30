@@ -219,11 +219,14 @@ def test_backlinks_are_exact_current_source_version_acl_safe_and_title_free_in_a
 
     del repository.grants[(user.tenant_id, source_v1.document.object_id, user.user_id)]
     user.readable_object_ids.discard(source_v1.document.object_id)
-    assert service.backlinks(
-        user_context=user,
-        object_id=target_id,
-        version_id=target.version.version_id,
-    ).backlinks == []
+    assert (
+        service.backlinks(
+            user_context=user,
+            object_id=target_id,
+            version_id=target.version.version_id,
+        ).backlinks
+        == []
+    )
 
     del repository.grants[(user.tenant_id, target_id, user.user_id)]
     user.readable_object_ids.discard(target_id)

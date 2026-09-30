@@ -547,9 +547,7 @@ class OfficeDocumentService:
             raise OfficeDocumentListRequestError("Invalid document list request") from exc
 
     def _write_backlink_cursor(self, after: tuple[str, str], binding: str) -> str:
-        payload = canonical_json(
-            {"binding": binding, "created_at": after[0], "object_id": after[1]}
-        ).encode("utf-8")
+        payload = canonical_json({"binding": binding, "created_at": after[0], "object_id": after[1]}).encode("utf-8")
         encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
         signature = hmac.new(self._list_cursor_key, b"office-backlinks.v1:cursor\0" + payload, sha256).hexdigest()
         return f"{encoded}.{signature}"
