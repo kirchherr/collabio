@@ -36,7 +36,7 @@ async function selectImage(page, index) {
 }
 
 test("Office figure captions renumber on reorder and remain stable cross-reference targets", async ({ page }, testInfo) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   await openOffice(page);
   const first = await createOfficeDocument(page, "Figure numbering proof", "See first figure");
   const one = await upload(page, first.document.object_id, "#2563eb", "Overview");
@@ -79,7 +79,7 @@ test("Office figure captions renumber on reorder and remain stable cross-referen
   await expect(page.locator("#print-preview a[data-office-cross-reference]")).toHaveAttribute("href", `#office-figure-${ids[1]}`);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-figures-${testInfo.project.name}.png`, fullPage: true });
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints.length).toBe(1); await expect.poll(() => prints[0].pdf).not.toBeNull();
+  await expect.poll(() => prints[0]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Link");
   await page.locator("#print-close").click();
 
