@@ -2,6 +2,53 @@
 
 Updated: 2026-09-30
 
+Roadmap 288 / PLANS 149 is complete under ADR-0105. Native Office now exposes bounded, paginated **Rueckverweise**
+for an exact saved target version. Every request reauthorizes the target, scans at most 50 currently readable source
+documents, reloads each current immutable source version and returns only exact incoming references. Results contain
+the source object/version identity, current title and reference count, but no source content. Signed cursors bind
+tenant, actor, roles, exact target and page size. Revoked or deleted sources disappear immediately without a
+persistent backlink index or metadata oracle. Opening a result uses the ordinary freshly authorized exact-version
+read path; print remains inert and excludes backlink actions.
+
+## Roadmap 288 source and validation evidence
+
+Implementation commits `28481e37` through `a5ce9184` are published on `kirchherr/kb-write-unit-of-work`. Full Python
+quality passed Ruff, formatting for 813 files, Mypy over 605 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains. The final full browser/model matrix passed 409/409 in 35.0 minutes. Its report
+SHA-256 is `997f0f4516c1eee2afec521334765d26dee499a3765f3885975966c74ddd5cda`. Focused desktop/mobile backlink
+model and responsive checks passed 3/3. An earlier full run passed 408/409; its sole failure was the established
+asynchronous print callback exceeding eight seconds. The callback now uses the existing explicit 20-second byte
+wait, passed 3/3 separately, and the fresh complete 409/409 run includes that correction.
+
+Fresh recovery into `collabio_work_e2e_288_restore` verified 929 documents, 1,801 exact Office versions, 387
+multi-version documents, 2,052 source objects, 122 image assets/182 saved references, 21 review threads/37 events and
+23 suggestions/14 decisions. It explicitly proves exact backlink/version matching, current source ACL enforcement,
+foreign-tenant denial and content exclusion across every signed page. Dump SHA-256 is
+`681df817fe09fe8db1ed6b909756c49b2557a30d56caf62bd07b52582efb3522`; recovery report file SHA-256 is
+`c37c43901abf60794a785d15da46404db5318caedc2c1c712fa27e9ba4fce15e`; embedded report hash is
+`sha256:3526c1f18cdd24f8e8604772ca6015a421bcb28a3f027f4ce406e5c452368724`; PostgreSQL restore hash is
+`sha256:5d884c89873cb4b8d0897f58aef38ae21bf54bfa519b3cdcd0df59448aeea7ff`; exact-version/S3 report hash is
+`sha256:7cf2e66a3cfa0d8bfb976ac60ec4f5d763ef751e54929c84ea64e6ce4ab397b0`.
+
+Main backup `collabio-20260930T131301Z.dump` passed verification and isolated restore; SHA-256 is
+`c8c2a9b26bab12e763b8d6adbdecd17bd9f703dda564ab33e48e9c2fff47b540`, restore-drill hash is
+`sha256:f317b5c91a2194b993cf19e724fea0b6c4d24f9037ffd21bea887637f7491075`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:db7c78c8393032f74fc3b96090c8d6c4fb7ee34fddcca4d761a72ca08946f648`. The business gate passed 3/3 without
+business writes or activation; hash is `sha256:ddc1c4f82f8f42d395f6d137529530a2b7e3554846674d780af0c7c72379a22b`.
+Pilot preflight found ready candidate `tenant-demo` but remained closed with `pilot_start_allowed=false`, no state
+change and hash `sha256:7c34cea7627a5a9a2cb1ead873daae6173572d75ae8d0db40d9ac84fc1bd1259`.
+
+API-only rollout with pilot 0 created container
+`b3ff3fd6ebf9dd3d770a4f34792b4d5e3a68a614caffe35a0005ea4a6f860a26` on image
+`sha256:96da87fa102c8286c53a4db66d41aa5720d53e00424196e0385fa85324eb9f2f`. Live checks passed health, roadmap
+metadata, OpenAPI, Office control and bundle route, strict CSP, `no-store`, synthetic unconfigured-tenant 403 and
+pilot 0. Live/cleanup evidence SHA-256 is `38a32d48b4ff58c8853c45ffca28454078fd8c2a63a285bc65fa4a9c2f4de81a`.
+All exact Work-E2E containers were removed and `postgres-test`, `postgres-restore` and `minio-restore` stopped. Final
+Collabio status is running(4), with healthy API and loopback ports 8000/5433/29000/29001 unchanged. Protected local
+`erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Persistent backlink
+indexing, transitive graphs, content-wide discovery and DOCX relationships remain deliberately separate.
+
 Roadmap 287 / PLANS 148 is complete under ADR-0104. Native Office now stores bounded outbound document-reference
 marks containing only an exact target object ID and immutable target version ID. The resolver re-reads the exact
 source version and freshly validates target tenant, current authoritative ACL and exact historical version on load,

@@ -39,6 +39,13 @@ denormalized cleanup, and neither their count nor title is exposed. Audit stores
 only. Backlinks are not included in print. Transitive graphs, content-wide reference search, persistent indexing and
 DOCX relationships remain separate.
 
+Validation completed on Roadmap 288 with full Python quality and a green 409/409 desktop/mobile browser and model
+matrix. Fresh recovery verified 929 documents, 1,801 exact versions and exact backlink behavior across signed pages,
+including current source ACL revocation and foreign-tenant denial. The final API-only rollout keeps pilot runtime at
+zero; live checks cover the roadmap metadata, OpenAPI route, Office control and bundle, CSP, `no-store` and a
+fail-closed synthetic tenant. Detailed hashes and host operations are recorded in `docs/CURRENT_HANDOFF.md` and
+`docs/operations/DEV001_OPERATIONS_LOG.md`.
+
 ## Exact outbound document references (Roadmap 287)
 
 **Dokumentverweis …** applies an exact target object and immutable target version to selected text. The saved mark
