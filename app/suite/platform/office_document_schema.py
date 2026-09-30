@@ -653,11 +653,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def office_document_references(document: dict[str, Any]) -> tuple[tuple[str, str], ...]:
-    """Return unique outbound targets from an already bounded native document."""
+def office_document_reference_counts(document: dict[str, Any]) -> tuple[tuple[str, str, int], ...]:
+    """Return ordered outbound targets and occurrence counts from a bounded document."""
     validate_office_document(document)
-    references: list[tuple[str, str]] = []
-    seen: set[tuple[str, str]] = set()
+    references: dict[tuple[str, str], int] = {}
 
     def walk(node: dict[str, Any]) -> None:
         for mark in node.get("marks", []):
@@ -665,11 +664,14 @@ def office_document_references(document: dict[str, Any]) -> tuple[tuple[str, str
                 continue
             attrs = mark["attrs"]
             target = (attrs["targetObjectId"], attrs["targetVersionId"])
-            if target not in seen:
-                seen.add(target)
-                references.append(target)
+            references[target] = references.get(target, 0) + 1
         for child in node.get("content", []):
             walk(child)
 
     walk(document)
-    return tuple(references)
+    return tuple((object_id, version_id, count) for (object_id, version_id), count in references.items())
+
+
+def office_document_references(document: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Return unique outbound targets from an already bounded native document."""
+    return tuple((object_id, version_id) for object_id, version_id, _ in office_document_reference_counts(document))

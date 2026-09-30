@@ -23,6 +23,7 @@ from suite.platform.office_documents import (
     OFFICE_DOCUMENTS_MODULE_ID,
     OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
     OfficeDocumentConflictError,
+    OfficeDocumentBacklinksResponse,
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryRequestError,
@@ -369,6 +370,23 @@ def register_office_routes(
             user_context=context.user_context,
             object_id=object_id,
             version_id=version_id,
+        )
+
+    @router.get("/{object_id}/backlinks", response_model=OfficeDocumentBacklinksResponse)
+    def document_backlinks(
+        object_id: str,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+        version_id: str | None = Query(default=None, min_length=1, max_length=128),
+        page_size: int = Query(default=50, ge=1, le=50),
+        cursor: str | None = Query(default=None, min_length=1, max_length=1024),
+    ) -> Any:
+        return request.app.state.office_document_service.backlinks(
+            user_context=context.user_context,
+            object_id=object_id,
+            version_id=version_id,
+            page_size=page_size,
+            cursor=cursor,
         )
 
     @router.post(

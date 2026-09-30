@@ -245,6 +245,60 @@ def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracl
     }
 
 
+def test_backlinks_endpoint_hides_revoked_sources_and_rechecks_target(office_api: OfficeApiHarness) -> None:
+    target = create_document(office_api)
+    target_id = target["document"]["object_id"]
+    target_version_id = target["version"]["version_id"]
+    payload = create_payload("office-api-backlink-source")
+    payload["title"] = "Authorized source title"
+    payload["document"]["content"][0]["content"][0]["marks"] = [
+        {
+            "type": "documentReference",
+            "attrs": {"targetObjectId": target_id, "targetVersionId": target_version_id},
+        }
+    ]
+    source = office_api.client.post(BASE, headers=office_api.headers, json=payload).json()
+    source_id = source["document"]["object_id"]
+    office_api.headers["X-Readable-Object-Ids"] = f"{target_id},{source_id}"
+
+    response = office_api.client.get(
+        f"{BASE}/{target_id}/backlinks",
+        params={"version_id": target_version_id, "page_size": 1},
+        headers=office_api.headers,
+    )
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    assert response.json()["backlinks"] == [
+        {
+            "source_object_id": source_id,
+            "source_version_id": source["version"]["version_id"],
+            "title": "Authorized source title",
+            "reference_count": 1,
+        }
+    ]
+    assert response.json()["content_included"] is False
+
+    del office_api.repository.grants[("tenant-demo", source_id, "office-api-editor")]
+    office_api.headers["X-Readable-Object-Ids"] = target_id
+    hidden = office_api.client.get(
+        f"{BASE}/{target_id}/backlinks",
+        params={"version_id": target_version_id},
+        headers=office_api.headers,
+    )
+    assert hidden.status_code == 200 and hidden.json()["backlinks"] == []
+    assert "Authorized source title" not in hidden.text
+
+    del office_api.repository.grants[("tenant-demo", target_id, "office-api-editor")]
+    office_api.headers["X-Readable-Object-Ids"] = ""
+    denied = office_api.client.get(
+        f"{BASE}/{target_id}/backlinks",
+        params={"version_id": target_version_id},
+        headers=office_api.headers,
+    )
+    assert denied.status_code == 404
+    assert "Authorized source title" not in denied.text
+
+
 @pytest.mark.parametrize("block", ["module", "read-feature", "write-feature", "authentication"])
 def test_office_each_current_module_feature_and_authentication_gate_precedes_write(
     office_api: OfficeApiHarness, monkeypatch: pytest.MonkeyPatch, block: str

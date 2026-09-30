@@ -18,6 +18,7 @@ from suite.platform.office_document_schema import (
     OFFICE_DOCUMENT_MIME_TYPE,
     OFFICE_DOCUMENT_SCHEMA_VERSION,
     OfficeDocumentInvalidContentError,
+    office_document_reference_counts,
     office_document_references,
     validate_office_document,
 )
@@ -39,6 +40,8 @@ OFFICE_DOCUMENTS_READ_FEATURE_ID = "office_documents.documents.read"
 OFFICE_DOCUMENTS_WRITE_FEATURE_ID = "office_documents.documents.write"
 OFFICE_DOCUMENT_OBJECT_TYPE = "office.document"
 OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
+OFFICE_BACKLINK_PAGE_MAX = 50
+OFFICE_BACKLINK_SCAN_LIMIT = 200
 
 
 class OfficeDocumentNotFoundError(KeyError):
@@ -202,6 +205,29 @@ class OfficeDocumentOutboundReferencesResponse(BaseModel):
     source_version_id: str
     references: list[OfficeDocumentOutboundReference]
     audit_event_id: str
+    content_included: bool = False
+
+
+class OfficeDocumentBacklink(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_object_id: str
+    source_version_id: str
+    title: str
+    reference_count: int = Field(ge=1, le=100)
+
+
+class OfficeDocumentBacklinksResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    target_object_id: str
+    target_version_id: str
+    backlinks: list[OfficeDocumentBacklink]
+    audit_event_id: str
+    next_cursor: str | None = None
+    has_more: bool = False
+    page_size: int = OFFICE_BACKLINK_PAGE_MAX
     content_included: bool = False
 
 
@@ -471,6 +497,157 @@ class OfficeDocumentService:
             source_version_id=source_version.version_id,
             references=references,
             audit_event_id=event_id,
+        )
+
+    def _backlink_binding(
+        self,
+        user: UserContext,
+        target_object_id: str,
+        target_version_id: str,
+        page_size: int,
+    ) -> str:
+        payload = canonical_json(
+            {
+                "tenant": user.tenant_id,
+                "actor": user.user_id,
+                "roles": sorted(user.role_ids),
+                "target_object_id": target_object_id,
+                "target_version_id": target_version_id,
+                "page_size": page_size,
+            }
+        ).encode("utf-8")
+        return hmac.new(self._list_cursor_key, b"office-backlinks.v1:binding\0" + payload, sha256).hexdigest()
+
+    def _read_backlink_cursor(self, cursor: str, binding: str) -> tuple[str, str]:
+        try:
+            if not isinstance(cursor, str) or not 1 <= len(cursor) <= 1024:
+                raise ValueError
+            encoded, signature = cursor.split(".")
+            payload = base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+            if base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=") != encoded:
+                raise ValueError
+            expected = hmac.new(self._list_cursor_key, b"office-backlinks.v1:cursor\0" + payload, sha256).hexdigest()
+            if not hmac.compare_digest(signature, expected):
+                raise ValueError
+            value = json.loads(payload)
+            if not isinstance(value, dict) or set(value) != {"binding", "created_at", "object_id"}:
+                raise ValueError
+            if not isinstance(value["binding"], str) or not hmac.compare_digest(value["binding"], binding):
+                raise ValueError
+            created_at, object_id = value["created_at"], value["object_id"]
+            if not isinstance(created_at, str) or len(created_at) > 32 or not isinstance(object_id, str):
+                raise ValueError
+            if re.fullmatch(r"office-doc-[a-f0-9]{32}", object_id) is None:
+                raise ValueError
+            timestamp = datetime.fromisoformat(created_at)
+            if timestamp.tzinfo is None or timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z") != created_at:
+                raise ValueError
+            return created_at, object_id
+        except (ValueError, TypeError, UnicodeError, RecursionError) as exc:
+            raise OfficeDocumentListRequestError("Invalid document list request") from exc
+
+    def _write_backlink_cursor(self, after: tuple[str, str], binding: str) -> str:
+        payload = canonical_json(
+            {"binding": binding, "created_at": after[0], "object_id": after[1]}
+        ).encode("utf-8")
+        encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+        signature = hmac.new(self._list_cursor_key, b"office-backlinks.v1:cursor\0" + payload, sha256).hexdigest()
+        return f"{encoded}.{signature}"
+
+    def backlinks(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        version_id: str | None = None,
+        page_size: int = OFFICE_BACKLINK_PAGE_MAX,
+        cursor: str | None = None,
+    ) -> OfficeDocumentBacklinksResponse:
+        if type(page_size) is not int or not 1 <= page_size <= OFFICE_BACKLINK_PAGE_MAX:
+            raise OfficeDocumentListRequestError("Invalid document list request")
+        target = self.repository.get_document(user_context=user_context, object_id=object_id)
+        target_version = self.repository.get_version(
+            user_context=user_context,
+            object_id=object_id,
+            version_id=version_id or target.current_version_id,
+        )
+        binding = self._backlink_binding(user_context, object_id, target_version.version_id, page_size)
+        after = self._read_backlink_cursor(cursor, binding) if cursor is not None else None
+        candidates = self.repository.list_documents(
+            user_context=user_context,
+            query="",
+            after=after,
+            limit=OFFICE_BACKLINK_SCAN_LIMIT + 1,
+        )
+        scanned = candidates[:OFFICE_BACKLINK_SCAN_LIMIT]
+        backlinks: list[OfficeDocumentBacklink] = []
+        result_boundaries: list[tuple[str, str]] = []
+        for candidate in scanned:
+            if candidate.object_id == object_id:
+                continue
+            try:
+                source = self.repository.get_document(
+                    user_context=user_context,
+                    object_id=candidate.object_id,
+                )
+                source_version = self.repository.get_version(
+                    user_context=user_context,
+                    object_id=source.object_id,
+                    version_id=source.current_version_id,
+                )
+                content = self._read_content(source, source_version)
+            except (OfficeDocumentNotFoundError, OfficeDocumentPermissionError):
+                continue
+            count = next(
+                (
+                    reference_count
+                    for target_object_id, target_version_id, reference_count in office_document_reference_counts(content)
+                    if target_object_id == object_id and target_version_id == target_version.version_id
+                ),
+                0,
+            )
+            if not count:
+                continue
+            backlinks.append(
+                OfficeDocumentBacklink(
+                    source_object_id=source.object_id,
+                    source_version_id=source_version.version_id,
+                    title=source_version.title,
+                    reference_count=count,
+                )
+            )
+            result_boundaries.append((candidate.created_at_utc, candidate.object_id))
+            if len(backlinks) > page_size:
+                break
+
+        has_more = len(backlinks) > page_size or (
+            len(scanned) == OFFICE_BACKLINK_SCAN_LIMIT and len(candidates) > OFFICE_BACKLINK_SCAN_LIMIT
+        )
+        if len(backlinks) > page_size:
+            next_after = result_boundaries[page_size - 1]
+        elif has_more and scanned:
+            next_after = (scanned[-1].created_at_utc, scanned[-1].object_id)
+        else:
+            next_after = None
+        backlinks = backlinks[:page_size]
+        event_id = self._audit(
+            user_context,
+            "office.documents.backlinks",
+            object_id=object_id,
+            version_id=target_version.version_id,
+            scanned_count=len(scanned),
+            result_count=len(backlinks),
+            has_more=has_more,
+        )
+        return OfficeDocumentBacklinksResponse(
+            tenant_id=user_context.tenant_id,
+            target_object_id=object_id,
+            target_version_id=target_version.version_id,
+            backlinks=backlinks,
+            audit_event_id=event_id,
+            next_cursor=self._write_backlink_cursor(next_after, binding) if next_after is not None else None,
+            has_more=has_more,
+            page_size=page_size,
         )
 
     def _history_binding(self, user: UserContext, object_id: str, page_size: int) -> str:
