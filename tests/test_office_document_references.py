@@ -1,4 +1,5 @@
 from copy import deepcopy
+from typing import Any
 
 import pytest
 
@@ -71,7 +72,7 @@ def test_document_reference_schema_is_bounded_exact_and_deduplicated() -> None:
         validate_office_document(excessive)
 
 
-def test_outbound_reference_resolution_uses_fresh_target_acl_and_exact_version(office) -> None:
+def test_outbound_reference_resolution_uses_fresh_target_acl_and_exact_version(office: Any) -> None:
     service, repository, user = office
     target = service.create(
         user_context=user,
