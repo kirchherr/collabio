@@ -41,7 +41,7 @@ OFFICE_DOCUMENTS_WRITE_FEATURE_ID = "office_documents.documents.write"
 OFFICE_DOCUMENT_OBJECT_TYPE = "office.document"
 OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
 OFFICE_BACKLINK_PAGE_MAX = 50
-OFFICE_BACKLINK_SCAN_LIMIT = 200
+OFFICE_BACKLINK_SCAN_LIMIT = 50
 
 
 class OfficeDocumentNotFoundError(KeyError):
