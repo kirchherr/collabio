@@ -26,6 +26,7 @@ import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescript
 import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
+import { OFFICE_BACKLINK_PAGE_MAX, officeBacklinkPage } from "./office-backlinks.mjs";
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
@@ -33,7 +34,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -491,6 +492,7 @@ function isDirty() {
 function updateEditorState() {
   if (state.print && !printCurrent(state.print)) closePrint();
   updateReuseControls();
+  updateBacklinkControls();
   const session = state.session;
   const editor = state.editor;
   if (editor) {
@@ -1591,6 +1593,86 @@ async function openSelectedDocumentReference() {
   const resolved = resolutions.get(officeDocumentReferenceKey(attrs));
   if (resolved?.status !== "resolved") { $("document-reference-status").textContent = "Dokumentziel nicht verfügbar"; return; }
   closeDocumentReferenceDialog(); await openDocument(attrs.targetObjectId, attrs.targetVersionId);
+}
+
+function backlinkActionCurrent(action = state.backlinksAction) {
+  return Boolean(action && action.session === state.session && action.context === state.context &&
+    sessionCurrent(action.session) && action.objectId === state.session?.objectId &&
+    action.versionId === state.session?.version?.version_id);
+}
+
+function closeBacklinksDialog() {
+  state.backlinksAction = null;
+  $("backlinks-dialog").close();
+  $("backlinks-list").replaceChildren();
+  $("backlinks-status").textContent = "";
+  $("backlinks-more").hidden = true;
+}
+
+function updateBacklinkControls() {
+  if (state.backlinksAction && !backlinkActionCurrent()) closeBacklinksDialog();
+  $("document-backlinks").disabled = Boolean(!state.session?.objectId || !state.session?.version?.version_id ||
+    state.session.loading || state.session.saving || state.session.restoring);
+}
+
+function appendBacklink(action, backlink) {
+  const key = `${backlink.sourceObjectId}:${backlink.sourceVersionId}`;
+  if (action.seenSources.has(key)) return;
+  action.seenSources.add(key);
+  const button = document.createElement("button");
+  button.type = "button"; button.className = "backlink-item";
+  button.dataset.sourceObjectId = backlink.sourceObjectId;
+  button.dataset.sourceVersionId = backlink.sourceVersionId;
+  const copy = document.createElement("span"), title = document.createElement("strong"), detail = document.createElement("small");
+  title.textContent = backlink.title;
+  detail.textContent = `${backlink.referenceCount} ${backlink.referenceCount === 1 ? "Verweis" : "Verweise"} · aktuelle Quellversion`;
+  copy.append(title, detail); button.append(copy);
+  button.addEventListener("click", () => {
+    if (!backlinkActionCurrent(action)) return;
+    closeBacklinksDialog();
+    void openDocument(backlink.sourceObjectId, backlink.sourceVersionId);
+  });
+  $("backlinks-list").append(button);
+}
+
+async function loadBacklinks(action, cursor = null) {
+  if (!backlinkActionCurrent(action) || action.loading) return;
+  action.loading = true; $("backlinks-more").disabled = true;
+  $("backlinks-status").textContent = cursor ? "Weitere aktuell lesbare Quellen werden geprüft …" :
+    "Aktuell lesbare Quellen werden geprüft …";
+  try {
+    const query = new URLSearchParams({ version_id: action.versionId, page_size: String(OFFICE_BACKLINK_PAGE_MAX) });
+    if (cursor) query.set("cursor", cursor);
+    const payload = await api(`/v1/office/documents/${encodeURIComponent(action.objectId)}/backlinks?${query}`, {}, action.context);
+    if (!backlinkActionCurrent(action)) return;
+    const page = officeBacklinkPage(payload, action.objectId, action.versionId);
+    if (cursor && action.seenCursors.has(cursor)) throw new Error("repeated-backlink-cursor");
+    if (cursor) action.seenCursors.add(cursor);
+    page.backlinks.forEach((backlink) => appendBacklink(action, backlink));
+    action.cursor = page.nextCursor;
+    $("backlinks-more").hidden = !page.hasMore;
+    $("backlinks-status").textContent = action.seenSources.size ?
+      `${action.seenSources.size} aktuell lesbare ${action.seenSources.size === 1 ? "Quelle" : "Quellen"} geladen.` :
+      (page.hasMore ? "In diesem Abschnitt wurden keine lesbaren Rückverweise gefunden." : "Keine aktuell lesbaren Rückverweise auf diese Version.");
+  } catch {
+    if (backlinkActionCurrent(action)) {
+      $("backlinks-status").textContent = "Rückverweise sind gerade nicht verfügbar.";
+      $("backlinks-more").hidden = true;
+    }
+  } finally {
+    if (backlinkActionCurrent(action)) { action.loading = false; $("backlinks-more").disabled = false; }
+  }
+}
+
+function openBacklinksDialog() {
+  const session = state.session;
+  if (!session?.objectId || !session.version?.version_id || session.loading) return;
+  closeBacklinksDialog();
+  const action = { session, context: state.context, objectId: session.objectId,
+    versionId: session.version.version_id, cursor: null, loading: false, seenCursors: new Set(), seenSources: new Set() };
+  state.backlinksAction = action;
+  $("backlinks-dialog").showModal();
+  void loadBacklinks(action);
 }
 
 function semanticActionCurrent(action = state.semanticAction) {
@@ -5025,6 +5107,14 @@ $("document-reference-target").addEventListener("change", () => {
 for (const id of ["document-reference-close", "document-reference-cancel"]) $(id).addEventListener("click", () => closeDocumentReferenceDialog(true));
 $("document-reference-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeDocumentReferenceDialog(true); });
 $("document-reference-dialog").addEventListener("close", () => { if (!$("document-reference-dialog").open && state.documentReferenceAction) closeDocumentReferenceDialog(); });
+$("document-backlinks").addEventListener("click", openBacklinksDialog);
+$("backlinks-more").addEventListener("click", () => {
+  const action = state.backlinksAction;
+  if (backlinkActionCurrent(action) && action.cursor) void loadBacklinks(action, action.cursor);
+});
+for (const id of ["backlinks-close", "backlinks-done"]) $(id).addEventListener("click", closeBacklinksDialog);
+$("backlinks-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeBacklinksDialog(); });
+$("backlinks-dialog").addEventListener("close", () => { if (!$("backlinks-dialog").open && state.backlinksAction) closeBacklinksDialog(); });
 $("semantic-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("semantic-options").addEventListener("click", openSemanticDialog);
 $("semantic-kind").addEventListener("change", updateSemanticFields);
