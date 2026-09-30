@@ -17,12 +17,20 @@ REFERENCE_TARGET_TITLE_V2 = "Synthetic document reference target v2"
 REFERENCE_SOURCE_TITLE = "Synthetic document reference source"
 
 
-def reference_text(text: str, *, target_object_id: str | None = None, target_version_id: str | None = None) -> dict[str, Any]:
+def reference_text(
+    text: str, *, target_object_id: str | None = None, target_version_id: str | None = None
+) -> dict[str, Any]:
     node: dict[str, Any] = {"type": "text", "text": text}
     if target_object_id and target_version_id:
-        node["marks"] = [{"type": "documentReference", "attrs": {
-            "targetObjectId": target_object_id, "targetVersionId": target_version_id,
-        }}]
+        node["marks"] = [
+            {
+                "type": "documentReference",
+                "attrs": {
+                    "targetObjectId": target_object_id,
+                    "targetVersionId": target_version_id,
+                },
+            }
+        ]
     return {"type": "doc", "content": [{"type": "paragraph", "content": [node]}]}
 
 
@@ -35,25 +43,62 @@ def seed_synthetic_office_document_references(
     directory = PgPrincipalDirectory(database_dsn=database_dsn)
 
     def editor() -> UserContext:
-        return UserContext(tenant_id=WORK_E2E_TENANT_ID, user_id=WORK_E2E_OFFICE_EDITOR_ID,
-            role_ids={"office-editor"}, readable_object_ids=directory.readable_object_ids(
-                tenant_id=WORK_E2E_TENANT_ID, user_id=WORK_E2E_OFFICE_EDITOR_ID,
-                role_ids={"office-editor"}, group_ids=set()))
+        return UserContext(
+            tenant_id=WORK_E2E_TENANT_ID,
+            user_id=WORK_E2E_OFFICE_EDITOR_ID,
+            role_ids={"office-editor"},
+            readable_object_ids=directory.readable_object_ids(
+                tenant_id=WORK_E2E_TENANT_ID,
+                user_id=WORK_E2E_OFFICE_EDITOR_ID,
+                role_ids={"office-editor"},
+                group_ids=set(),
+            ),
+        )
 
-    target = service.create(user_context=editor(), write_enabled=True, command=OfficeDocumentCreateCommand(
-        title=REFERENCE_TARGET_TITLE_V1, document=reference_text("Target version one"),
-        mutation_reference="work-e2e-document-reference-target-1", human_confirmation=True))
-    source = service.create(user_context=editor(), write_enabled=True, command=OfficeDocumentCreateCommand(
-        title=REFERENCE_SOURCE_TITLE, document=reference_text("Legacy source"),
-        mutation_reference="work-e2e-document-reference-source-1", human_confirmation=True))
-    source = service.save(user_context=editor(), object_id=source.document.object_id, write_enabled=True,
-        command=OfficeDocumentSaveCommand(title=REFERENCE_SOURCE_TITLE,
-            document=reference_text("Pinned target", target_object_id=target.document.object_id,
-                target_version_id=target.version.version_id),
-            mutation_reference="work-e2e-document-reference-source-2", human_confirmation=True,
-            expected_current_version_id=source.version.version_id))
-    service.save(user_context=editor(), object_id=target.document.object_id, write_enabled=True,
-        command=OfficeDocumentSaveCommand(title=REFERENCE_TARGET_TITLE_V2, document=reference_text("Target version two"),
-            mutation_reference="work-e2e-document-reference-target-2", human_confirmation=True,
-            expected_current_version_id=target.version.version_id))
+    target = service.create(
+        user_context=editor(),
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title=REFERENCE_TARGET_TITLE_V1,
+            document=reference_text("Target version one"),
+            mutation_reference="work-e2e-document-reference-target-1",
+            human_confirmation=True,
+        ),
+    )
+    source = service.create(
+        user_context=editor(),
+        write_enabled=True,
+        command=OfficeDocumentCreateCommand(
+            title=REFERENCE_SOURCE_TITLE,
+            document=reference_text("Legacy source"),
+            mutation_reference="work-e2e-document-reference-source-1",
+            human_confirmation=True,
+        ),
+    )
+    source = service.save(
+        user_context=editor(),
+        object_id=source.document.object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            title=REFERENCE_SOURCE_TITLE,
+            document=reference_text(
+                "Pinned target", target_object_id=target.document.object_id, target_version_id=target.version.version_id
+            ),
+            mutation_reference="work-e2e-document-reference-source-2",
+            human_confirmation=True,
+            expected_current_version_id=source.version.version_id,
+        ),
+    )
+    service.save(
+        user_context=editor(),
+        object_id=target.document.object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            title=REFERENCE_TARGET_TITLE_V2,
+            document=reference_text("Target version two"),
+            mutation_reference="work-e2e-document-reference-target-2",
+            human_confirmation=True,
+            expected_current_version_id=target.version.version_id,
+        ),
+    )
     return 2, 4

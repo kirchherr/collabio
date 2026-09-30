@@ -9,8 +9,8 @@ from suite.platform.office_document_schema import (
     validate_office_document,
 )
 from suite.platform.office_documents import OfficeDocumentCreateCommand
-from test_office_documents import document_text, office as office
-
+from test_office_documents import document_text
+from test_office_documents import office as office
 
 TARGET_OBJECT = "office-doc-" + "a" * 32
 TARGET_VERSION = "office-version-" + "b" * 32
@@ -19,17 +19,26 @@ TARGET_VERSION = "office-version-" + "b" * 32
 def referenced_document(object_id: str = TARGET_OBJECT, version_id: str = TARGET_VERSION) -> dict:
     return {
         "type": "doc",
-        "content": [{
-            "type": "paragraph",
-            "content": [{
-                "type": "text",
-                "text": "Pinned source",
-                "marks": [{"type": "documentReference", "attrs": {
-                    "targetObjectId": object_id,
-                    "targetVersionId": version_id,
-                }}],
-            }],
-        }],
+        "content": [
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Pinned source",
+                        "marks": [
+                            {
+                                "type": "documentReference",
+                                "attrs": {
+                                    "targetObjectId": object_id,
+                                    "targetVersionId": version_id,
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
     }
 
 
