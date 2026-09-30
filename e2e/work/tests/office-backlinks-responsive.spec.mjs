@@ -31,6 +31,13 @@ test("Office backlinks show only freshly readable current sources and deliberate
   await openOfficeDocument(page, target.document.object_id);
   await page.locator("#document-backlinks").click();
   await expect(page.locator("#backlinks-dialog")).toBeVisible();
+  const dialogBox = await page.locator("#backlinks-dialog").boundingBox();
+  const viewport = page.viewportSize();
+  expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+  expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+  expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(viewport.height);
+  await expect(page.locator("#backlinks-close")).toBeInViewport();
   const backlink = page.locator("#backlinks-list .backlink-item");
   await expect(backlink).toHaveCount(1);
   await expect(backlink).toContainText("Backlink source");
