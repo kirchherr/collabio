@@ -818,6 +818,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "seitenweise, ohne geoeffnete Entwuerfe durch einen Listenfilter zu verlieren. "
                         "Aeltere gespeicherte Fassungen lassen sich seitenweise in Historie und Vergleich laden; "
                         "aktuelle Rechte, Auswahl und Entwuerfe bleiben dabei erhalten. "
+                        "Exakte Dokumentverweise werden bei jeder Aufloesung frisch autorisiert; eine begrenzte "
+                        "Rueckverweisansicht zeigt nur aktuelle Versionen derzeit lesbarer Quelldokumente und "
+                        "enthaelt weder Quellinhalt noch Metadaten unlesbarer Quellen. "
                         "Ein Absatzdialog bearbeitet Ausrichtung, Zeilenabstand und Abstaende davor/danach; "
                         "gespeicherte Fassungen, Vergleich und Druck erhalten diese Absatzformatierung. "
                         "Zeichenformatierung waehlt Schriftgroessen und benannte Textfarben "
@@ -885,6 +888,15 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-semantics.spec.mjs",
                         "e2e/work/tests/office-semantics-responsive.spec.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0103-native-office-semantic-structures.md",
+                        "app/suite/ui/office/office-document-references.mjs",
+                        "app/suite/ui/office/office-backlinks.mjs",
+                        "tests/test_office_document_references.py",
+                        "tests/test_office_document_references_recovery.py",
+                        "e2e/work/tests/office-document-references.spec.mjs",
+                        "e2e/work/tests/office-backlinks-model.spec.mjs",
+                        "e2e/work/tests/office-backlinks-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0104-native-office-document-references.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0105-native-office-backlinks.md",
                         "docs/modules/OFFICE_NATIVE_DOCUMENTS.md",
                         "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md",
                         "ARCHITECTURE_DECISIONS/ADR-0080-native-office-version-bound-reviews.md",
@@ -898,6 +910,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/versions",
+                        "/v1/office/documents/{object_id}/outbound-references",
+                        "/v1/office/documents/{object_id}/backlinks",
                         "/v1/office/documents/{object_id}/review-threads",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}/events",
@@ -935,6 +949,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "generated_navigation_and_numbering_are_order_derived_not_persisted",
                         "formulas_are_literal_inert_and_never_executed",
                         "missing_field_and_citation_targets_remain_visible_without_external_resolution",
+                        "document_references_store_only_exact_target_object_and_version_ids",
+                        "document_reference_resolution_rechecks_current_target_acl_without_title_oracle",
+                        "backlinks_reauthorize_exact_target_and_current_source_acl",
+                        "backlink_pages_are_signed_bounded_and_exclude_inaccessible_source_metadata",
+                        "backlinks_are_derived_without_persistent_index_or_print_output",
                         "review_anchors_bound_to_exact_saved_version_without_automatic_reanchoring",
                         "review_mutations_require_confirmation_current_parent_write_acl_and_thread_cas",
                         "review_events_append_only_with_exact_comment_sources_and_receipts",
