@@ -411,6 +411,14 @@ newer target version is current, using the current authoritative target ACL. Its
 `e2e/work/artifacts/roadmap-287`. Never run it while browser writes are active or replace an earlier numbered target,
 dump or report.
 
+Roadmap 288 reuses the exact Roadmap 287 source/target lineage and additionally derives the single authorized current
+source backlink to the historical target version. The proof requires the exact source version and count, current
+source ACL enforcement, target-version authorization and all earlier fixtures. Its checked dump is retained as
+`e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-288.dump`, its isolated target is
+`collabio_work_e2e_288_restore`, and browser, recovery and live metadata are retained under
+`e2e/work/artifacts/roadmap-288`. Never run it while browser writes are active or replace an earlier numbered target,
+dump or report.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

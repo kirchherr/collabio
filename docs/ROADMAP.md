@@ -1815,6 +1815,18 @@ Python-Qualitaet, kombinierte 406-Fall-Browserabdeckung, frische Wiederherstellu
 Rollout mit Pilot 0 und Live-Pruefung sind abgeschlossen. Der naechste Office-Schritt ist ein separater Entwurf fuer
 globale Rueckverweise ohne Metadatenleck ueber nicht lesbare Quelldokumente.
 
+288. [x] Begrenzte native Rueckverweise umgesetzt: Die exakte Zielversion wird zuerst frisch autorisiert. Danach
+     werden ausschliesslich aktuelle Versionen derzeit lesbarer Quelldokumente in Abschnitten von hoechstens 50
+     Kandidaten ausgewertet. Ergebnisse enthalten nur aktuelle Quell-ID, exakte Quellversion, sicheren Titel und
+     begrenzte Trefferzahl; Quellinhalt sowie Anzahl oder Titel unlesbarer Quellen bleiben verborgen. Signierte Cursor
+     sind an Tenant, Akteur, Rollen, Zielobjekt, Zielversion und Seitengroesse gebunden. Bewusstes Oeffnen prueft den
+     Zugriff erneut. Es gibt keinen persistenten Rueckverweisindex, keine Druckausgabe und keinen Loesch-Backlog.
+
+Native Office bleibt vor CRM. Roadmap 288 / PLANS 149 ist unter ADR-0105 implementiert. Server-, API-, PostgreSQL-,
+Recovery-, Browsermodell- sowie responsive Desktop-/Mobile-Pruefungen decken exakte Versionen, aktuellen Quellzugriff,
+Entzug, Tenant-Bindung, sichere Metadaten und begrenzte Pagination ab. Transitive Graphen, inhaltsweite Referenzsuche,
+persistente Indexierung und DOCX-Beziehungen bleiben separat.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

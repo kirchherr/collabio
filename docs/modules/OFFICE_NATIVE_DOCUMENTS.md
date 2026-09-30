@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–287 implemented, validated and published; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 287 / PLANS 148 exact ACL-safe outbound document references
+Status: Roadmap 252–288 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 288 / PLANS 149 bounded ACL-safe backlinks
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0104; current document references: `ARCHITECTURE_DECISIONS/ADR-0104-native-office-document-references.md`
+Decisions: ADR-0079 through ADR-0105; current backlinks: `ARCHITECTURE_DECISIONS/ADR-0105-native-office-backlinks.md`
 
 ## User workflow and scope
 
@@ -19,6 +19,25 @@ available. Formatting returns focus to the editor before immediate typing.
 This slice stores native structured documents. Roadmap 256 adds review discussions with verified browser and recovery
 evidence below. DOCX interchange, tracked changes, live collaboration, spreadsheets,
 presentations and mail remain separate product work. Existing DOCX engine fidelity and admission gates are unchanged.
+
+## Bounded ACL-safe backlinks (Roadmap 288)
+
+**Rueckverweise** on a saved document version derives exact incoming references from current versions of documents
+the reader may access now. The server first authorizes the target and exact target version. It then rechecks every
+candidate source through the normal tenant and authoritative ACL path, reads the current immutable source version and
+returns a row only when it contains the exact target object/version pair. Each row carries the current source title,
+exact source version and reference count, but no content.
+
+One request scans at most 50 authorized candidates and returns at most 50 matches. Its signed cursor is bound to the
+tenant, actor, roles, exact target and page size. Empty intermediate pages can therefore offer a deliberate next scan
+without claiming that no later match exists. The browser rejects mismatched tenant/target/version responses and stale
+session results. Opening a row deliberately loads the exact source version through the ordinary freshly authorized
+read path.
+
+There is no backlink table or content index. Revoked and deleted sources disappear on the next request without
+denormalized cleanup, and neither their count nor title is exposed. Audit stores target identity and aggregate counts
+only. Backlinks are not included in print. Transitive graphs, content-wide reference search, persistent indexing and
+DOCX relationships remain separate.
 
 ## Exact outbound document references (Roadmap 287)
 
