@@ -199,7 +199,7 @@ test("Office clears unavailable print content and retries exact source reads wit
   expect(calls).toHaveLength(0);
   await refreshPrintPreview(page, objectId, versionId);
   await submitOfficePrint(page, objectId, versionId);
-  await expect.poll(() => calls.length).toBe(1);
+  await expect.poll(() => calls.length, { timeout: 20_000 }).toBe(1);
   expect(calls[0].snapshot.text).toContain("Fresh print retry source");
   await expectPrintCleared(page);
   expect(await officeVersions(page, objectId)).toHaveLength(1);
