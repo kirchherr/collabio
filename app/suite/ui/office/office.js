@@ -1645,7 +1645,7 @@ async function loadBacklinks(action, cursor = null) {
     if (cursor) query.set("cursor", cursor);
     const payload = await api(`/v1/office/documents/${encodeURIComponent(action.objectId)}/backlinks?${query}`, {}, action.context);
     if (!backlinkActionCurrent(action)) return;
-    const page = officeBacklinkPage(payload, action.objectId, action.versionId);
+    const page = officeBacklinkPage(payload, action.context.tenantId, action.objectId, action.versionId);
     if (cursor && action.seenCursors.has(cursor)) throw new Error("repeated-backlink-cursor");
     if (cursor) action.seenCursors.add(cursor);
     page.backlinks.forEach((backlink) => appendBacklink(action, backlink));

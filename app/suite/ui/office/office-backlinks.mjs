@@ -4,18 +4,20 @@ const objectPattern = /^office-doc-[a-f0-9]{32}$/;
 const versionPattern = /^office-version-[a-f0-9]{32}$/;
 
 function safeTitle(value) {
-  return typeof value === "string" && value.length >= 1 && value.length <= 200 &&
+  return typeof value === "string" && value.trim().length >= 1 && value.length <= 200 &&
     ![...value].some((character) => character.codePointAt(0) < 32 ||
       (character.codePointAt(0) >= 0x7f && character.codePointAt(0) <= 0x9f));
 }
 
-export function officeBacklinkPage(payload, targetObjectId, targetVersionId) {
-  if (!objectPattern.test(targetObjectId) || !versionPattern.test(targetVersionId) || !payload ||
+export function officeBacklinkPage(payload, tenantId, targetObjectId, targetVersionId) {
+  if (typeof tenantId !== "string" || !tenantId.length || !objectPattern.test(targetObjectId) ||
+      !versionPattern.test(targetVersionId) || !payload || payload.tenant_id !== tenantId ||
       payload.target_object_id !== targetObjectId || payload.target_version_id !== targetVersionId ||
       payload.content_included !== false || !Array.isArray(payload.backlinks) ||
       payload.backlinks.length > OFFICE_BACKLINK_PAGE_MAX || typeof payload.has_more !== "boolean" ||
       !Number.isInteger(payload.page_size) || payload.page_size < 1 || payload.page_size > OFFICE_BACKLINK_PAGE_MAX ||
-      (payload.has_more ? typeof payload.next_cursor !== "string" || !payload.next_cursor.length : payload.next_cursor !== null)) {
+      (payload.has_more ? typeof payload.next_cursor !== "string" || !payload.next_cursor.length ||
+        payload.next_cursor.length > 1024 : payload.next_cursor !== null)) {
     throw new Error("invalid-backlink-page");
   }
   const seen = new Set();
