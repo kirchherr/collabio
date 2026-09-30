@@ -63,7 +63,9 @@ test("Office backlinks show only freshly readable current sources and deliberate
     await openOfficeDocument(page, target.document.object_id);
     await page.locator("#document-backlinks").click();
     await expect(page.locator("#backlinks-list .backlink-item")).toHaveCount(0);
-    await expect(page.locator("#backlinks-status")).toHaveText("Keine aktuell lesbaren Rückverweise auf diese Version.");
+    await expect(page.locator("#backlinks-status")).toHaveText(
+      "In diesem Abschnitt wurden keine lesbaren Rückverweise gefunden.",
+    );
     await expect(page.locator("#backlinks-dialog")).not.toContainText(sourceTitle);
   } finally {
     await setOfficeAcl(page, source.document.object_id, { status: "active", creator: true });
