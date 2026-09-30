@@ -18,14 +18,30 @@ def recovery_fixture() -> tuple[Mock, dict[str, Mock], list[dict[str, str]]]:
     target_v1, target_v2 = "office-version-target-1", "office-version-target-2"
     source_v1, source_v2 = "office-version-source-1", "office-version-source-2"
     rows = [
-        {"object_id": target_id, "version_id": target_v1, "previous_version_id": None,
-         "mutation_reference": "work-e2e-document-reference-target-1"},
-        {"object_id": target_id, "version_id": target_v2, "previous_version_id": target_v1,
-         "mutation_reference": "work-e2e-document-reference-target-2"},
-        {"object_id": source_id, "version_id": source_v1, "previous_version_id": None,
-         "mutation_reference": "work-e2e-document-reference-source-1"},
-        {"object_id": source_id, "version_id": source_v2, "previous_version_id": source_v1,
-         "mutation_reference": "work-e2e-document-reference-source-2"},
+        {
+            "object_id": target_id,
+            "version_id": target_v1,
+            "previous_version_id": None,
+            "mutation_reference": "work-e2e-document-reference-target-1",
+        },
+        {
+            "object_id": target_id,
+            "version_id": target_v2,
+            "previous_version_id": target_v1,
+            "mutation_reference": "work-e2e-document-reference-target-2",
+        },
+        {
+            "object_id": source_id,
+            "version_id": source_v1,
+            "previous_version_id": None,
+            "mutation_reference": "work-e2e-document-reference-source-1",
+        },
+        {
+            "object_id": source_id,
+            "version_id": source_v2,
+            "previous_version_id": source_v1,
+            "mutation_reference": "work-e2e-document-reference-source-2",
+        },
     ]
     contents = {
         target_v1: (REFERENCE_TARGET_TITLE_V1, reference_text("Target version one")),
