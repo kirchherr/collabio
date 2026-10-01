@@ -352,8 +352,9 @@ and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `colla
 `collabio_work_e2e_267_restore`, `collabio_work_e2e_268_restore`, `collabio_work_e2e_269_restore`,
 `collabio_work_e2e_270_restore`, `collabio_work_e2e_271_restore`, `collabio_work_e2e_272_restore`,
 `collabio_work_e2e_273_restore`, `collabio_work_e2e_274_restore`, `collabio_work_e2e_275_restore` or
-`collabio_work_e2e_276_restore`, `collabio_work_e2e_277_restore`, `collabio_work_e2e_278_restore` or
-`collabio_work_e2e_279_restore` target,
+`collabio_work_e2e_276_restore`, `collabio_work_e2e_277_restore`, `collabio_work_e2e_278_restore`,
+`collabio_work_e2e_279_restore`, `collabio_work_e2e_286_restore`, `collabio_work_e2e_287_restore`,
+`collabio_work_e2e_288_restore` or `collabio_work_e2e_289_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the

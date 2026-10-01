@@ -1,6 +1,37 @@
 # Current Project Handoff
 
-Updated: 2026-09-30
+Updated: 2026-10-01
+
+Roadmap 289 / PLANS 150 is complete under ADR-0106. Native Office images can remain in flow or use a bounded logical
+anchor in front of or behind text. The durable value contains only layer, normalized horizontal position and bounded
+vertical offset; wrapping and free placement are mutually exclusive. Users can drag the always-accessible anchor,
+nudge it with arrow keys, use larger Shift steps or enter exact numbers. Every completed move is one undo transaction.
+Comparison, immutable history, independent copies, printing and recovery preserve exact coordinates, while resetting
+to flow omits the optional property and preserves legacy canonical bytes. The layer rule keeps the image surface behind
+text while its control remains clickable; ordinary wrapped images retain their existing click behavior.
+
+## Roadmap 289 source and validation evidence
+
+Product commits `2df3b272`, `6deffbf5`, `40cbb650` and `3c022fff`, followed by acceptance commits through
+`53ffa472`, are published on `kirchherr/kb-write-unit-of-work`. Focused backend schema/recovery tests passed 69/69.
+The image model plus free-position desktop/mobile suite passed 13/13, and the complete crop, wrap, placement, upload,
+ACL, decoder, copy and PDF image matrix passed 39/39 in 5.1 minutes. Full Python quality passed Ruff, formatting for
+814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
+
+Fresh recovery into `collabio_work_e2e_289_restore` verified 662 documents, 1,353 exact Office versions, 264
+multi-version documents, 1,613 source objects and 206 image assets/340 saved references. It explicitly proves one
+owned rendition's consecutive front/behind/flow-reset lineage, unchanged source/crop, absent wrapping, exact receipts,
+current authoritative ACLs and foreign-tenant denial. Dump SHA-256 is
+`34057a6a510b312b9fb20c6d58ec38e59e8ae9f559724e231d59202f645c1e67`; recovery report file SHA-256 is
+`04bf45d8603dd91ac492170e8fd5dc9e1cbbc02144d0f01759d281326551b480`; embedded report hash is
+`sha256:1fe9a0978d3131d8260fa73cc25c679f07291a1069de692d251ae9692e88b725`; PostgreSQL restore hash is
+`sha256:797ea4b5d4226c7991064141b1e5d1c35a63904c8fc42b0d90e98a4eacd9a523`; exact-version/S3 report hash is
+`sha256:08be0ea1e63b68836624966076fdf4f794ad61c9170117994b93dcd7a3b42d79`.
+
+The isolated review UI remains available at `http://192.168.0.108:42880/office?review=free-position-40cbb650` with
+synthetic Work-E2E data. Layer controls now appear directly below size/alignment in the dialog. No ordinary tenant,
+pilot, indexing, cloud AI, DOCX engine or production API was activated. Absolute physical-page anchors, wrap contours,
+rotation, grouping and continuous editor pagination remain separate work.
 
 Post-acceptance Office UI review identified that the explicit page-break marker still read as a separator inside one
 continuous sheet. Commit `dc6722dc` now renders each explicit break as a full-width canvas gap with both paper edges
@@ -2418,30 +2449,19 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Item 273 is complete and published as implementation commit `9892e41`.
-Preserve all 367 distinct browser/model cases (303 browser/64 model), final 42-case recheck, full quality,
-twelve PDFs/36 pages and exact document/image/crop/wrap/page-break/page-settings/running-text recovery.
-Continue with Roadmap 274 / PLANS 135 first-page header/footer differences and explicit first-page number
-suppression. Retain bounded literals, accessible preview/reset/isolated undo, exact history/copies,
-current authorization and confirmed CAS saves. Prove actual multi-page placement and fresh recovery.
-General sections, arbitrary fields, continuous editor pagination and DOCX remain separate. Preserve
-legacy bytes, independent reset intents, named print-page rules and asymmetric margins.
-See ADR-0091/0092/0093/0094/0095/0096 and docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md.
-Images retain current parent ACLs; independent copies own freshly authorized assets. Keep the isolated
-network-none decoder, source pixels, responsive block fallback and historical manifests intact.
-Document-owned format styles preserve direct overrides, isolated undo and exact immutable catalog versions.
-Continue native Office before CRM. List indentation/outdent and nearest-list start values preserve content and undo,
-with validated keyboard actions and table Tab priority. Automatic numbering continuation/styles remain separate work.
-Format transfer supports direct character/paragraph values in one editable document,
-with exact selection, default clearing, isolated undo and memory-only ownership. Mobile review drawers remain usable.
-Whole-document keyboard replacement across rich tables is fixed and directly tested;
-the history case owns a rich starting head and verifies local draft preservation after confirmed replacement.
-Character sizes/colors, paragraph formatting, history, comparison, printing, reuse, discussions and explicit suggestions
-remain intact. Preserve table-removal confirmation, schema/size guards, undo and other marks/drafts.
-Continuous tracked changes, live collaboration and broader Office authoring/layout capabilities remain open.
+Roadmap 289 / PLANS 150 is complete and published through `53ffa472`. Preserve the bounded inert position schema,
+always-operable anchor, mutual exclusion with wrapping, isolated undo, exact immutable history/copies/print and the
+front/behind/flow-reset recovery lineage. Keep the complete 39-case image matrix and full Python quality green.
+
+Continue native Office before CRM with the next coherent authoring loop. Absolute physical-page anchors, wrap
+contours, rotation, grouping, continuous editor pagination and DOCX anchor interchange require separate decisions;
+do not extend the logical anchor into simulated page coordinates. Transitive references, content-wide reference
+search, persistent backlink indexing, formula evaluation, continuous tracked changes and live collaboration also
+remain separate.
+
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
-memory-only draft semantics. No subsequent roadmap item is declared implemented.
-Continue DOCX interchange separately through the existing Quick Edit spike, synthetic corpus and source-blind/CDR validation.
+memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic
+corpus and source-blind/CDR validation.
 Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
 authorization and executable-image admission must precede an engine proof. Productive saves and WOPI remain separate
 later release steps. The prohibition on Word/account/firewall interventions on the original workstation still applies.
