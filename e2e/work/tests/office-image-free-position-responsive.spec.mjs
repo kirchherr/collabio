@@ -51,7 +51,7 @@ test("Office images support foreground background and bounded free anchored plac
   const layout = await editor.evaluate((root) => [...root.querySelectorAll(":scope > .office-image-node")].map((node) => {
     const figure = node.querySelector("figure"), rootRect = root.getBoundingClientRect(), rect = figure.getBoundingClientRect();
     return { layer: node.dataset.imagePosition, left: rect.left - rootRect.left, right: rect.right - rootRect.left,
-      rootWidth: rootRect.width, z: getComputedStyle(node).zIndex, pointer: getComputedStyle(figure).pointerEvents };
+      rootWidth: rootRect.width, z: getComputedStyle(figure).zIndex, pointer: getComputedStyle(figure).pointerEvents };
   }));
   expect(layout[0].left).toBeGreaterThanOrEqual(-1); expect(layout[0].right).toBeLessThanOrEqual(layout[0].rootWidth + 1);
   expect(layout[1].left).toBeGreaterThanOrEqual(-1); expect(layout[1].right).toBeLessThanOrEqual(layout[1].rootWidth + 1);
