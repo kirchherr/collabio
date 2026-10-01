@@ -338,16 +338,29 @@ def image_group_document(*, count: int = 2, layout: str = "row", gap: int = 16) 
         attrs["versionId"] = "office-image-version-" + f"{index + 1:032x}"
         attrs["alt"] = f"Grouped image {index + 1}"
         images.append({"type": "image", "attrs": attrs})
-    return {"type": "doc", "content": [{"type": "imageGroup", "attrs": {
-        "id": "image-group-" + "a" * 24, "layout": layout, "gap": gap,
-    }, "content": images}]}
+    return {
+        "type": "doc",
+        "content": [
+            {
+                "type": "imageGroup",
+                "attrs": {
+                    "id": "image-group-" + "a" * 24,
+                    "layout": layout,
+                    "gap": gap,
+                },
+                "content": images,
+            }
+        ],
+    }
 
 
 def test_image_groups_preserve_owned_references_and_member_presentation() -> None:
     document = image_group_document(count=8, layout="stack", gap=48)
     document["content"][0]["content"][0]["attrs"]["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
     document["content"][0]["content"][1]["attrs"]["transform"] = {
-        "rotation": 90, "flipX": True, "flipY": False,
+        "rotation": 90,
+        "flipX": True,
+        "flipY": False,
     }
     assert validate_office_document(document) == document
     references = image_references(document)

@@ -1243,16 +1243,12 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                     "object_id": document.object_id,
                     "document_version_id": version.version_id,
                     "previous_document_version_id": version.previous_version_id,
-                    "images": [
-                        (attrs["assetId"], attrs["versionId"])
-                        for attrs in image_references(read.content)
-                    ],
+                    "images": [(attrs["assetId"], attrs["versionId"]) for attrs in image_references(read.content)],
                     "groups": [
                         {
                             **node["attrs"],
                             "images": [
-                                (child["attrs"]["assetId"], child["attrs"]["versionId"])
-                                for child in node["content"]
+                                (child["attrs"]["assetId"], child["attrs"]["versionId"]) for child in node["content"]
                             ],
                         }
                         for node in read.content.get("content", [])

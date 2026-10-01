@@ -183,8 +183,12 @@ def test_group_recovery_requires_consecutive_row_stack_reset_with_same_members()
         "images": [("a", "1"), ("b", "2"), ("c", "3")],
         "groups": [{"id": "group", "layout": "row", "gap": 12, "images": [("a", "1"), ("b", "2"), ("c", "3")]}],
     }
-    stack = {**row, "document_version_id": "stack", "previous_document_version_id": "row",
-        "groups": [{**row["groups"][0], "layout": "stack", "gap": 24}]}
+    stack = {
+        **row,
+        "document_version_id": "stack",
+        "previous_document_version_id": "row",
+        "groups": [{**row["groups"][0], "layout": "stack", "gap": 24}],
+    }
     reset = {**stack, "document_version_id": "reset", "previous_document_version_id": "stack", "groups": []}
     assert verify_restored_group_reset([row, stack, reset]) == {
         "verified_grouped_document_version_count": 2,
