@@ -237,3 +237,44 @@ def test_image_wrap_preserves_source_crop_and_legacy_bytes(side: str, gap: int) 
     del attrs["wrap"]
     del attrs["crop"]
     assert canonical_json(validate_office_document(document)) == before
+
+
+@pytest.mark.parametrize("layer,x,y", [("front", 0, -1200), ("behind", 1000, 1200)])
+def test_image_free_position_is_bounded_inert_and_preserves_source(layer: str, x: int, y: int) -> None:
+    document = image_document()
+    attrs = document["content"][0]["attrs"]
+    attrs["position"] = {"layer": layer, "x": x, "y": y}
+    assert validate_office_document(document) == document
+    assert image_references(document)[0] == attrs
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        {},
+        [],
+        "front",
+        {"layer": "middle", "x": 0, "y": 0},
+        {"layer": "front", "x": -1, "y": 0},
+        {"layer": "behind", "x": 1001, "y": 0},
+        {"layer": "front", "x": True, "y": 0},
+        {"layer": "front", "x": 0.5, "y": 0},
+        {"layer": "front", "x": 0, "y": -1201},
+        {"layer": "behind", "x": 0, "y": 1201},
+        {"layer": "front", "x": 0, "y": 0, "style": "position:fixed"},
+    ],
+)
+def test_image_free_position_rejects_active_ambiguous_or_unbounded_values(position: Any) -> None:
+    document = image_document()
+    document["content"][0]["attrs"]["position"] = position
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_image_free_position_and_text_wrap_are_mutually_exclusive() -> None:
+    document = image_document()
+    attrs = document["content"][0]["attrs"]
+    attrs["position"] = {"layer": "front", "x": 500, "y": 0}
+    attrs["wrap"] = {"side": "left", "gap": 16}
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)

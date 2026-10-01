@@ -23,7 +23,7 @@ export function officeImageExtension(context, accessDenied) {
     parseHTML: () => [],
     renderHTML: () => ["figure", { class: "office-image" }, "Bild"],
     addNodeView() {
-      return ({ node, editor }) => {
+      return ({ node, editor, getPos }) => {
         const dom = document.createElement("div"); dom.className = "office-image-node";
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
         applyOfficeImageLayout(dom, node.attrs);
@@ -31,7 +31,17 @@ export function officeImageExtension(context, accessDenied) {
         const render = () => {
           if (!url || destroyed) return;
           const target = current.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === current.attrs.figureId);
-          dom.replaceChildren(officeImageFigure(current.attrs, url, document, target?.number ?? null));
+          const figure = officeImageFigure(current.attrs, url, document, target?.number ?? null);
+          if (current.attrs.position != null) {
+            const anchor = document.createElement("button"); anchor.type = "button"; anchor.className = "office-image-anchor";
+            anchor.textContent = current.attrs.position.layer === "front" ? "Bildanker · vor Text" : "Bildanker · hinter Text";
+            anchor.setAttribute("aria-label", `${anchor.textContent}; Bild bearbeiten`);
+            anchor.addEventListener("click", () => {
+              const position = typeof getPos === "function" ? getPos() : null;
+              if (Number.isInteger(position)) editor.commands.setNodeSelection(position);
+            });
+            dom.replaceChildren(figure, anchor);
+          } else dom.replaceChildren(figure);
         };
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }
@@ -83,7 +93,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
     $("image-caption").required = Boolean(action?.numbered);
-    $("image-wrap-gap").disabled = $("image-wrap").value === "none";
+    const positioned = $("image-position-layer").value !== "flow";
+    $("image-wrap").disabled = positioned;
+    $("image-wrap-gap").disabled = positioned || $("image-wrap").value === "none";
+    for (const name of ["x", "y"]) $(`image-position-${name}`).disabled = !positioned;
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
@@ -93,6 +106,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-numbered").checked = action.numbered;
     $("image-wrap").value = attrs.wrap?.side ?? "none";
     $("image-wrap-gap").value = attrs.wrap?.gap ?? 16;
+    $("image-position-layer").value = attrs.position?.layer ?? "flow";
+    $("image-position-x").value = attrs.position?.x ?? 0;
+    $("image-position-y").value = attrs.position?.y ?? 0;
     cropControls.fill(action);
     update();
   };
@@ -171,6 +187,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
           caption: $("image-caption").value, lockAspect: $("image-lock").checked, crop: cropControls.value(),
           wrap: $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
+          position: $("image-position-layer").value === "flow" ? null : { layer: $("image-position-layer").value,
+            x: $("image-position-x").valueAsNumber, y: $("image-position-y").valueAsNumber },
           figureId: numbered ? owner.attrs.figureId || `figure-${reference().replaceAll("-", "").slice(0, 24)}` : null,
         });
         if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
@@ -202,6 +220,15 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   });
   $("image-caption").addEventListener("input", () => { update(); if (valid()) cropControls.preview(action); });
   for (const id of ["image-wrap", "image-wrap-gap", "image-align"]) $(id).addEventListener("input", () => {
+    if (!valid()) return;
+    update(); cropControls.preview(action);
+  });
+  $("image-position-layer").addEventListener("input", () => {
+    if (!valid()) return;
+    if ($("image-position-layer").value !== "flow") $("image-wrap").value = "none";
+    update(); cropControls.preview(action);
+  });
+  for (const name of ["x", "y"]) $(`image-position-${name}`).addEventListener("input", () => {
     if (!valid()) return;
     update(); cropControls.preview(action);
   });

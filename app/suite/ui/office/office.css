@@ -104,6 +104,19 @@
 .document-page .tiptap table[data-office-table] { scroll-margin-top: 12px; }
 .document-page .tiptap table[data-office-table] caption, .office-print-content table[data-office-table] caption { caption-side: bottom; padding-top: .5rem; color: #475569; font-size: .875rem; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 .office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
+.document-page .tiptap, .office-print-content, .image-layout-preview { position: relative; isolation: isolate; }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > :not([data-image-position]) { position: relative; z-index: 1; }
+:is(.office-image-node,.office-image)[data-image-position] { position: relative; height: 1px; min-height: 1px; margin: 0; clear: none; overflow: visible; z-index: 2; }
+:is(.office-image-node,.office-image)[data-image-position="behind"] { z-index: 0; }
+.office-image-node[data-image-position] > .office-image, .office-print-content > .office-image[data-image-position], .image-layout-preview > .office-image[data-image-position] {
+  position: absolute; left: var(--image-position-x); top: var(--image-position-y); width: min(100%,var(--image-position-width));
+  transform: translateX(var(--image-position-shift)); margin: 0; max-width: 100%;
+}
+:is(.office-image-node,.office-image)[data-image-position="behind"] > .office-image,
+.office-print-content > .office-image[data-image-position="behind"], .image-layout-preview > .office-image[data-image-position="behind"] { pointer-events: none; }
+.office-image-anchor { position: absolute; z-index: 4; left: var(--image-position-x); top: var(--image-position-y); transform: translate(var(--image-position-shift),-100%); border: 1px solid #087e78; border-radius: 999px; padding: 3px 8px; background: #fff; color: #086560; font: 600 10px/1.2 Inter,"Segoe UI",Arial,sans-serif; white-space: nowrap; }
+.office-image-node.ProseMirror-selectednode[data-image-position] { outline: none; }
+.office-image-node.ProseMirror-selectednode[data-image-position] > .office-image { outline: 2px solid #2563eb; outline-offset: 3px; }
 .office-image-viewport { display: block; position: relative; overflow: hidden; max-width: 100%; }
 .office-image .office-image-viewport img { position: absolute; max-width: none; max-height: none; margin: 0; object-fit: fill; }
 .office-image[data-image-align="center"] .office-image-viewport { margin-inline: auto; }
@@ -127,10 +140,11 @@
 :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap="right"] { float: right; margin-left: var(--image-wrap-gap); }
 .office-image-node[data-image-wrap] { margin: 1rem 0; }
 .office-image-node[data-image-wrap] > .office-image { margin: 0; }
-.image-layout-preview { padding: 12px; }
+.image-layout-preview { min-height: 200px; padding: 12px; }
 .image-layout-sample { font: 14px/1.65 "Segoe UI",Arial,sans-serif; color: #475569; margin: 0; }
 #image-preview .image-layout-preview > [data-image-wrap] img { max-height: none; object-fit: fill; }
 #image-wrap-help { font-size: 12px; line-height: 1.6; color: #475569; }
+#image-position-help { font-size: 12px; line-height: 1.6; color: #475569; }
 @container office-image-flow (max-width: 480px) {
   :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { float: none; width: auto; margin: 1rem 0; }
 }

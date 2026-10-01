@@ -2,13 +2,20 @@ import { officeFigureCaption, officeFigureFragment, officeFigureId } from "./off
 
 const keys = ["documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
   "width", "height", "align", "alt", "caption", "decorative", "lockAspect"];
-export const officeImageKeys = [...keys, "crop", "wrap", "figureId"];
+export const officeImageKeys = [...keys, "crop", "wrap", "position", "figureId"];
 export function officeImageWrap(wrap) {
   if (!wrap || Object.keys(wrap).length !== 2 || !["left", "right"].includes(wrap.side) ||
       !Number.isInteger(wrap.gap) || wrap.gap < 0 || wrap.gap > 48) throw new Error("image-wrap");
   return { side: wrap.side, gap: wrap.gap };
 }
+export function officeImagePosition(position) {
+  if (!position || Object.keys(position).length !== 3 || !["front", "behind"].includes(position.layer) ||
+      !Number.isInteger(position.x) || position.x < 0 || position.x > 1000 ||
+      !Number.isInteger(position.y) || position.y < -1200 || position.y > 1200) throw new Error("image-position");
+  return { layer: position.layer, x: position.x, y: position.y };
+}
 export function applyOfficeImageLayout(element, attrs) {
+  if (attrs.wrap != null && attrs.position != null) throw new Error("image-layout-conflict");
   if (attrs.wrap != null) {
     const wrap = officeImageWrap(attrs.wrap);
     element.setAttribute("data-image-wrap", wrap.side);
@@ -17,6 +24,17 @@ export function applyOfficeImageLayout(element, attrs) {
   } else {
     element.removeAttribute("data-image-wrap");
     element.style.removeProperty("--image-wrap-gap"); element.style.removeProperty("--image-wrap-width");
+  }
+  if (attrs.position != null) {
+    const position = officeImagePosition(attrs.position);
+    element.setAttribute("data-image-position", position.layer);
+    element.style.setProperty("--image-position-x", `${position.x / 10}%`);
+    element.style.setProperty("--image-position-shift", `${-position.x / 10}%`);
+    element.style.setProperty("--image-position-y", `${position.y}px`);
+    element.style.setProperty("--image-position-width", `${attrs.width}px`);
+  } else {
+    element.removeAttribute("data-image-position");
+    for (const name of ["--image-position-x", "--image-position-shift", "--image-position-y", "--image-position-width"]) element.style.removeProperty(name);
   }
 }
 export function officeImageCrop(attrs) {
@@ -48,6 +66,8 @@ export function officeImageAttributes(attrs) {
   const result = Object.fromEntries(keys.map((key) => [key, attrs[key]]));
   if (attrs.crop != null) result.crop = officeImageCrop(attrs);
   if (attrs.wrap != null) result.wrap = officeImageWrap(attrs.wrap);
+  if (attrs.position != null) result.position = officeImagePosition(attrs.position);
+  if (result.wrap != null && result.position != null) throw new Error("image-layout-conflict");
   if (attrs.figureId != null) {
     result.figureId = officeFigureId(attrs.figureId);
     if (!attrs.caption.trim()) throw new Error("image-figure-caption");

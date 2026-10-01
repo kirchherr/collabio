@@ -71,3 +71,17 @@ test("Office wrapping rejects CSS coordinates invalid sides and noninteger gaps"
     expect(() => officeImageAttributes({ ...attrs, wrap })).toThrow();
   }
 });
+
+test("Office free image positions are inert bounded and mutually exclusive with wrapping", () => {
+  for (const position of [{ layer: "front", x: 0, y: -1200 }, { layer: "behind", x: 1000, y: 1200 }]) {
+    expect(officeImageAttributes({ ...attrs, position })).toEqual({ ...attrs, position });
+  }
+  const position = { layer: "front", x: 500, y: 24 };
+  expect(describeOfficeBlock({ ...image, attrs: { ...attrs, position } }).text).toContain("Freie Position: vor Text · X 500 · Y 24 px");
+  for (const invalid of [{}, [], "front", { layer: "middle", x: 0, y: 0 }, { layer: "front", x: -1, y: 0 },
+    { layer: "behind", x: 1001, y: 0 }, { layer: "front", x: true, y: 0 }, { layer: "front", x: 0.5, y: 0 },
+    { layer: "front", x: 0, y: -1201 }, { layer: "behind", x: 0, y: 1201 }, { layer: "front", x: 0, y: 0, style: "fixed" }]) {
+    expect(() => officeImageAttributes({ ...attrs, position: invalid })).toThrow();
+  }
+  expect(() => officeImageAttributes({ ...attrs, position, wrap: { side: "left", gap: 16 } })).toThrow();
+});
