@@ -3,7 +3,8 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
 import { OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes,
-  selectedOfficeImageContext } from "./office-image-groups.mjs";
+} from "./office-image-groups.mjs";
+import { selectedOfficeImageContext } from "./office-image-group-extension.mjs";
 import { installImageCropControls } from "./office-image-crop-controls.mjs";
 import { officeFigureInventory } from "./office-figures.mjs";
 
