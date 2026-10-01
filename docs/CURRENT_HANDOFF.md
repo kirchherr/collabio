@@ -12,11 +12,13 @@ text while its control remains clickable; ordinary wrapped images retain their e
 
 ## Roadmap 289 source and validation evidence
 
-Product commits `2df3b272`, `6deffbf5`, `40cbb650` and `3c022fff`, followed by acceptance commits through
-`53ffa472`, are published on `kirchherr/kb-write-unit-of-work`. Focused backend schema/recovery tests passed 69/69.
+Product commits `2df3b272`, `6deffbf5`, `40cbb650` and `3c022fff`, followed by acceptance and compact-dialog commits
+through `f6a794a5`, are published on `kirchherr/kb-write-unit-of-work`. Focused backend schema/recovery tests passed 69/69.
 The image model plus free-position desktop/mobile suite passed 13/13, and the complete crop, wrap, placement, upload,
 ACL, decoder, copy and PDF image matrix passed 39/39 in 5.1 minutes. Full Python quality passed Ruff, formatting for
-814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
+814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains. The final
+compact-dialog desktop/mobile position and image-control recheck passed 18/18, and visible review confirmed that layer,
+X and Y remain grouped directly below alignment on the narrow viewport.
 
 Fresh recovery into `collabio_work_e2e_289_restore` verified 662 documents, 1,353 exact Office versions, 264
 multi-version documents, 1,613 source objects and 206 image assets/340 saved references. It explicitly proves one
@@ -2449,7 +2451,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 289 / PLANS 150 is complete and published through `53ffa472`. Preserve the bounded inert position schema,
+Roadmap 289 / PLANS 150 is complete and published through `f6a794a5`. Preserve the bounded inert position schema,
 always-operable anchor, mutual exclusion with wrapping, isolated undo, exact immutable history/copies/print and the
 front/behind/flow-reset recovery lineage. Keep the complete 39-case image matrix and full Python quality green.
 
