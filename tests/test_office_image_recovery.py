@@ -156,7 +156,15 @@ def test_transform_recovery_requires_consecutive_rotation_mirroring_reset_and_sa
         "transformed_and_reset_versions_verified": True,
     }
     for index in (1, 2):
-        for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id", "crop", "wrap", "position"):
+        for key in (
+            "object_id",
+            "asset_id",
+            "asset_version_id",
+            "previous_document_version_id",
+            "crop",
+            "wrap",
+            "position",
+        ):
             broken = [rotated, mirrored, reset]
             broken[index] = {**broken[index], key: "different"}
             with pytest.raises(ValueError):
