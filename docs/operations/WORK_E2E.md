@@ -419,6 +419,13 @@ source ACL enforcement, target-version authorization and all earlier fixtures. I
 `e2e/work/artifacts/roadmap-288`. Never run it while browser writes are active or replace an earlier numbered target,
 dump or report.
 
+Roadmap 289 adds consecutive front-layer, behind-layer and normal-flow-reset versions for one independently owned
+image rendition while a second independently owned rendition remains behind text. The proof requires the exact
+predecessor chain, unchanged crop/source identity, absent wrapping and exact reset. Its checked dump is retained as
+`e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-289.dump`, its isolated target is
+`collabio_work_e2e_289_restore`, and recovery metadata is retained under `e2e/work/artifacts/roadmap-289`. Never run
+it while browser writes are active or replace an earlier numbered target, dump or report.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

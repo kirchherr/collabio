@@ -106,6 +106,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_268_restore",
         "collabio_work_e2e_287_restore",
         "collabio_work_e2e_288_restore",
+        "collabio_work_e2e_289_restore",
         "collabio_work_e2e_269_restore",
         "collabio_work_e2e_270_restore",
         "collabio_work_e2e_271_restore",
