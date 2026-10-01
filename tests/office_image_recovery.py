@@ -105,6 +105,45 @@ def verify_restored_position_reset(bindings: list[dict[str, Any]]) -> dict[str, 
     }
 
 
+def verify_restored_transform_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    def identity(binding: dict[str, Any], previous: bool = False) -> tuple[str, ...]:
+        return tuple(
+            binding[key]
+            for key in (
+                "object_id",
+                "asset_id",
+                "asset_version_id",
+                "previous_document_version_id" if previous else "document_version_id",
+            )
+        )
+
+    rotated = {
+        identity(row): row
+        for row in bindings
+        if row.get("transform") == {"rotation": 90, "flipX": True, "flipY": False}
+    }
+    mirrored: dict[tuple[str, ...], dict[str, Any]] = {}
+    for row in bindings:
+        predecessor = rotated.get(identity(row, True))
+        if (
+            row.get("transform") == {"rotation": 270, "flipX": True, "flipY": True}
+            and predecessor
+            and all(row.get(key) == predecessor.get(key) for key in ("crop", "wrap", "position"))
+        ):
+            mirrored[identity(row)] = row
+    if not any(
+        row.get("transform") is None
+        and identity(row, True) in mirrored
+        and all(row.get(key) == mirrored[identity(row, True)].get(key) for key in ("crop", "wrap", "position"))
+        for row in bindings
+    ):
+        raise ValueError("Transform recovery requires consecutive rotate/mirror/reset versions of the same image")
+    return {
+        "verified_transformed_image_reference_count": sum(row.get("transform") is not None for row in bindings),
+        "transformed_and_reset_versions_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

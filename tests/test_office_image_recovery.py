@@ -7,6 +7,7 @@ from office_image_recovery import (
     verify_restored_crop_reset,
     verify_restored_images,
     verify_restored_position_reset,
+    verify_restored_transform_reset,
     verify_restored_wrap_reset,
 )
 from office_recovery_proof import require_office_recovery_environment
@@ -129,3 +130,37 @@ def test_position_recovery_requires_consecutive_layers_reset_and_same_owned_rend
     for rows in ([], [front], [behind, reset], [front, reset]):
         with pytest.raises(ValueError):
             verify_restored_position_reset(rows)
+
+
+def test_transform_recovery_requires_consecutive_rotation_mirroring_reset_and_same_rendition() -> None:
+    rotated: dict[str, Any] = {
+        "object_id": "doc",
+        "asset_id": "asset",
+        "asset_version_id": "pixels",
+        "document_version_id": "rotated",
+        "previous_document_version_id": "initial",
+        "crop": None,
+        "wrap": None,
+        "position": None,
+        "transform": {"rotation": 90, "flipX": True, "flipY": False},
+    }
+    mirrored = {
+        **rotated,
+        "document_version_id": "mirrored",
+        "previous_document_version_id": "rotated",
+        "transform": {"rotation": 270, "flipX": True, "flipY": True},
+    }
+    reset = {**mirrored, "document_version_id": "reset", "previous_document_version_id": "mirrored", "transform": None}
+    assert verify_restored_transform_reset([rotated, mirrored, reset]) == {
+        "verified_transformed_image_reference_count": 2,
+        "transformed_and_reset_versions_verified": True,
+    }
+    for index in (1, 2):
+        for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id", "crop", "wrap", "position"):
+            broken = [rotated, mirrored, reset]
+            broken[index] = {**broken[index], key: "different"}
+            with pytest.raises(ValueError):
+                verify_restored_transform_reset(broken)
+    for rows in ([], [rotated], [mirrored, reset], [rotated, reset]):
+        with pytest.raises(ValueError):
+            verify_restored_transform_reset(rows)
