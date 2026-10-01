@@ -256,7 +256,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
+  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px` : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);
