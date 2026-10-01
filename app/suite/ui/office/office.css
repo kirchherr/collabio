@@ -105,7 +105,7 @@
 .document-page .tiptap table[data-office-table] caption, .office-print-content table[data-office-table] caption { caption-side: bottom; padding-top: .5rem; color: #475569; font-size: .875rem; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 .office-image-node.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
 .document-page .tiptap, .office-print-content, .image-layout-preview { position: relative; isolation: isolate; }
-:is(.document-page .tiptap, .office-print-content, .image-layout-preview) > :not([data-image-position]) { position: relative; z-index: 1; }
+:is(.document-page .tiptap, .office-print-content, .image-layout-preview):has(> [data-image-position]) > :not([data-image-position]) { position: relative; z-index: 1; }
 :is(.office-image-node,.office-image)[data-image-position] { position: relative; height: 1px; min-height: 1px; margin: 0; clear: none; overflow: visible; z-index: 2; }
 :is(.office-image-node,.office-image)[data-image-position="behind"] { z-index: 0; }
 .office-image-node[data-image-position] > .office-image, .office-print-content > .office-image[data-image-position], .image-layout-preview > .office-image[data-image-position] {
