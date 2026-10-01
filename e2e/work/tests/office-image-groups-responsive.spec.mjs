@@ -36,7 +36,9 @@ async function fixture(page) {
 }
 
 async function openImage(page, index = 0) {
-  await officeEditor(page).locator("img").nth(index).click();
+  const groupControl = officeEditor(page).locator(".office-image-group-control");
+  if (index === 0 && await groupControl.count()) await groupControl.click();
+  else await officeEditor(page).locator("img").nth(index).click();
   await page.locator("#image-options").click();
   await expect(page.locator("#image-dialog")).toBeVisible();
 }
