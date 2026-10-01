@@ -25,19 +25,23 @@ export function officeImageGroupExtension() {
           control.setAttribute("aria-label", `Bildgruppe mit ${current.childCount} Bildern bearbeiten`);
         };
         paint(node);
-        control.addEventListener("mousedown", (event) => event.preventDefault());
-        control.addEventListener("click", (event) => {
-          event.preventDefault(); event.stopPropagation();
+        const selectFirstImage = () => {
           const position = typeof getPos === "function" ? getPos() : null;
           if (Number.isInteger(position)) {
             const selection = NodeSelection.create(editor.state.doc, position + 1);
             editor.view.dispatch(editor.state.tr.setSelection(selection));
+            editor.view.focus();
           }
+        };
+        control.addEventListener("mousedown", (event) => {
+          event.preventDefault(); event.stopPropagation(); selectFirstImage();
         });
+        control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
         return { dom, contentDOM,
           update(next) { if (next.type !== node.type) return false; paint(next); node = next; return true; },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
+          stopEvent(event) { return event.target === control || control.contains(event.target); },
           ignoreMutation(mutation) { return mutation.target === control || control.contains(mutation.target); },
         };
       };
