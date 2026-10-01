@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–288 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 289 / PLANS 150 bounded anchored image layers
+Status: Roadmap 252–290 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 290 / PLANS 151 bounded image transforms
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0106; current image placement: `ARCHITECTURE_DECISIONS/ADR-0106-native-office-image-layers.md`
+Decisions: ADR-0079 through ADR-0107; current image transform: `ARCHITECTURE_DECISIONS/ADR-0107-native-office-image-transforms.md`
 
 ## User workflow and scope
 
@@ -375,6 +375,22 @@ document anchor does not claim absolute physical-page placement or continuous ed
 
 Decision: [ADR-0106](../../ARCHITECTURE_DECISIONS/ADR-0106-native-office-image-layers.md). Acceptance evidence is
 recorded in CURRENT_HANDOFF.md; ordinary tenant, pilot, indexing, cloud-AI and DOCX/engine admission remain closed.
+
+## Bounded image transforms (Roadmap 290)
+
+Images optionally store exactly one quarter-turn rotation and explicit horizontal/vertical mirror booleans. Invalid
+angles, matrices, CSS, unknown keys and explicit identity defaults fail before persistence. A 90/270-degree responsive
+frame exchanges the reserved width and height while the normalized rendition and non-destructive crop remain intact.
+Captions and alternative text stay outside the transformed visual.
+
+The image dialog provides rotation and both mirror axes with immediate preview. Apply is one undoable draft change;
+reset omits the optional property. Comparison, immutable history, independently owned copies, print and isolated
+recovery retain exact orientation. The complete 42-case image matrix covers desktop/mobile geometry and all earlier
+upload, crop, wrap, layer, ACL, copy and PDF behavior.
+
+Decision: [ADR-0107](../../ARCHITECTURE_DECISIONS/ADR-0107-native-office-image-transforms.md). Acceptance evidence is
+recorded in CURRENT_HANDOFF.md; arbitrary angles, wrap contours, grouping, physical page anchors and DOCX interchange
+remain separate.
 
 ## Explicit native page breaks (Roadmap 271)
 

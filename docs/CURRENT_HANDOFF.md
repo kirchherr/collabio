@@ -2,6 +2,37 @@
 
 Updated: 2026-10-01
 
+Roadmap 290 / PLANS 151 is complete under ADR-0107. Native Office images now support bounded quarter-turn rotation
+and independent horizontal/vertical mirroring without modifying normalized source pixels or crop geometry. The durable
+optional value contains only `rotation` in `0/90/180/270` and exact booleans; arbitrary angles, matrices, CSS, unknown
+keys and explicit identity defaults fail closed. A responsive frame exchanges the reserved bounds for 90/270 degrees,
+so editor flow, compact views and print keep correct geometry. Caption and alternative text remain untransformed.
+
+Implementation commits `7cc7221f` through `88d49bd7` are published on `kirchherr/kb-write-unit-of-work`. Focused image
+and recovery tests passed 84/84. Transform model plus desktop/mobile interaction passed 12/12. The complete image
+matrix passed 42/42 in 5.5 minutes, covering upload, normalization, ACL denial, exact assets, crop, wrap, foreground/
+background placement, responsive controls, independent copy and actual PDF output. Full quality passed Ruff, formatting
+for 814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains. One
+earlier matrix run passed 41/42 after all functional assertions; its mobile Chromium PDF callback exceeded the generic
+eight-second poll. Commit `88d49bd7` applies the established bounded 20-second callback wait, then the affected mobile
+file passed 7/7 and the fresh complete matrix passed 42/42.
+
+Fresh recovery into `collabio_work_e2e_290_restore` verified 799 documents, 1,629 exact Office versions, 339
+multi-version documents, 2,033 source objects and 350 image assets/552 saved references. It explicitly proves 14
+transformed references including consecutive 90-degree/horizontal-mirror, 270-degree/both-mirrors and identity-reset
+versions of the same owned rendition, with unchanged crop/wrap/position, exact receipts, current authoritative ACLs
+and foreign-tenant denial. Dump SHA-256 is
+`444195a31b6c21a64e54fb0b77bc34e1a3c07e34167ec211fd22309750be4043`; recovery report file SHA-256 is
+`6b58802a706138062586fe11268bf6fc5581bba6c0222533babff6f14a3a2ff9`; embedded report hash is
+`sha256:f37904bf7fc854543e5492cfb10d5d7b699ab96607787319c1b28b411b8e6630`; PostgreSQL restore hash is
+`sha256:0798406886d53d1d8c127553006b51221457e9c4b8e181e26ee198e7edac810b`; exact-version/S3 report hash is
+`sha256:5c2fb5610a115d8be1417077218f41fc6ddcc7062b0ca958047e584f497c83cc`.
+
+The isolated review UI remains available at
+`http://192.168.0.108:42880/office?review=image-transform-7cc7221f` with synthetic Work-E2E data. No ordinary tenant,
+pilot, indexing, cloud AI, DOCX engine or production API was activated. Arbitrary-angle rotation, wrap contours,
+grouping, absolute physical-page anchors and continuous editor pagination remain separate work.
+
 Roadmap 289 / PLANS 150 is complete under ADR-0106. Native Office images can remain in flow or use a bounded logical
 anchor in front of or behind text. The durable value contains only layer, normalized horizontal position and bounded
 vertical offset; wrapping and free placement are mutually exclusive. Users can drag the always-accessible anchor,

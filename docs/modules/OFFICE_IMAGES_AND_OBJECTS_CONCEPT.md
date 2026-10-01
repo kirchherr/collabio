@@ -5,6 +5,7 @@ Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded 
 Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is recorded in CURRENT_HANDOFF.md.
 Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is tracked in CURRENT_HANDOFF.md.
 Roadmap 289 implements bounded anchored foreground/background placement under ADR-0106.
+Roadmap 290 implements bounded quarter-turn rotation and mirroring under ADR-0107.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -68,6 +69,19 @@ Text wrap is disabled while free placement is active. Resetting to **Im Textflus
 canonical bytes. Cancel and invalid bounds are no-ops; undo, comparison, immutable history, independently owned copies,
 print and recovery retain the exact geometry. Print uses the same anchored layer without adding a remote resource or
 executable object. This is not an absolute DOCX page anchor and does not claim continuous editor pagination.
+
+## Bounded rotation and mirroring
+
+ADR-0107 adds an optional inert `transform` with exactly one quarter-turn value and two mirror booleans. The dialog
+offers 90-degree right/left and 180-degree rotation plus independent horizontal and vertical mirroring. Arbitrary
+angles, CSS transforms and matrices are rejected. The identity is omitted, preserving legacy canonical bytes.
+
+The normalized rendition and crop rectangle remain unchanged. A responsive frame exchanges reserved width and height
+for sideways orientations and scales the visual inside those bounds, keeping flow, narrow layouts and print aligned.
+Captions and alternative text are not transformed. Preview, undo/redo, comparison, immutable history, independently
+owned copies and printing use the same validated values. Fresh recovery proves consecutive rotate/mirror/reset versions
+on one unchanged owned rendition. Arbitrary-angle transforms, wrap contours, grouping and physical-page anchors remain
+separate.
 
 ## Later slice: inert linked or embedded objects
 

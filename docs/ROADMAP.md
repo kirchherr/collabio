@@ -1839,6 +1839,18 @@ responsive Desktop-/Mobile-Pruefungen decken Grenzen, Vorder-/Hintergrund, direk
 Druck und Regressionen fuer Zuschnitt/Textumfluss ab. Es gibt keine neue Datenbankmigration, Abhaengigkeit oder
 Tenant-Aktivierung.
 
+290. [x] Native Bilddrehung und Spiegelung umgesetzt: Bildversionen speichern optional nur Vierteldrehungen sowie
+     horizontale und vertikale Spiegelachsen. Beliebige Winkel, Matrizen, CSS und ein expliziter Identitaetswert werden
+     abgewiesen. Der responsive Rahmen reserviert auch bei 90/270 Grad die gedrehten Abmessungen; Quelldatei, Zuschnitt,
+     Beschriftung und Alternativtext bleiben unveraendert. Vorschau, Rueckgaengig/Wiederholen, Vergleich, Historie,
+     unabhaengige Kopie, Druck und ein frischer Rotate/Mirror/Reset-Restore bewahren die exakte Darstellung.
+
+Native Office bleibt vor CRM. Roadmap 290 / PLANS 151 ist unter ADR-0107 implementiert. Die vollstaendige
+Python-Qualitaet ist gruen; 84 Bild-/Recovery-Pruefungen und die komplette 42-teilige Desktop-/Mobile-Bildmatrix
+decken sichere Grenzen, responsive Geometrie, Druck, ACLs und alle bisherigen Bildfunktionen ab. Der frische
+nummerierte Restore bestaetigt 799 Dokumente, 1.629 Versionen, 2.033 Quellobjekte und die exakte Transformationslinie.
+Es gibt keine neue Datenbankmigration, Abhaengigkeit, Tenant-Aktivierung oder Aenderung der Originalpixel.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
