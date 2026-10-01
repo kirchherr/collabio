@@ -43,23 +43,13 @@ export function officeImageGroupExtension() {
 
 export function selectedOfficeImageContext(editor, selection = editor.state.selection) {
   if (selection.node?.type.name !== "image") return null;
-  const root = editor.state.doc;
-  let result = null;
-  root.forEach((node, position, rootIndex) => {
-    if (result) return;
-    if (node.type.name === "image" && position === selection.from) {
-      result = { grouped: false, image: node, imagePos: position, imageIndex: rootIndex,
-        root, rootIndex, group: null, groupPos: null };
-      return;
-    }
-    if (node.type.name !== "imageGroup") return;
-    node.forEach((image, offset, imageIndex) => {
-      const imagePos = position + 1 + offset;
-      if (!result && imagePos === selection.from) {
-        result = { grouped: true, image, imagePos, imageIndex, root, rootIndex,
-          group: node, groupPos: position };
-      }
-    });
-  });
-  return result;
+  const parent = selection.$from.parent;
+  if (parent.type.name !== "imageGroup") {
+    return { grouped: false, image: selection.node, imagePos: selection.from, imageIndex: selection.$from.index(),
+      root: parent, rootIndex: selection.$from.index(), group: null, groupPos: null };
+  }
+  const depth = selection.$from.depth;
+  return { grouped: true, image: selection.node, imagePos: selection.from, imageIndex: selection.$from.index(),
+    root: selection.$from.node(depth - 1), rootIndex: selection.$from.index(depth - 1),
+    group: parent, groupPos: selection.$from.before(depth) };
 }
