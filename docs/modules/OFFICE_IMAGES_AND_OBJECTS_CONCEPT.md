@@ -6,6 +6,7 @@ Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is re
 Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is tracked in CURRENT_HANDOFF.md.
 Roadmap 289 implements bounded anchored foreground/background placement under ADR-0106.
 Roadmap 290 implements bounded quarter-turn rotation and mirroring under ADR-0107.
+Roadmap 291 implements bounded native image groups under ADR-0108.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -80,8 +81,19 @@ The normalized rendition and crop rectangle remain unchanged. A responsive frame
 for sideways orientations and scales the visual inside those bounds, keeping flow, narrow layouts and print aligned.
 Captions and alternative text are not transformed. Preview, undo/redo, comparison, immutable history, independently
 owned copies and printing use the same validated values. Fresh recovery proves consecutive rotate/mirror/reset versions
-on one unchanged owned rendition. Arbitrary-angle transforms, wrap contours, grouping and physical-page anchors remain
-separate.
+on one unchanged owned rendition. Arbitrary-angle transforms, wrap contours and physical-page anchors remain separate.
+
+## Bounded native image groups
+
+ADR-0108 adds an inert block containing two through eight exact native image nodes. A document contains at most 20
+groups. Each group stores only a unique opaque identifier, ordered members, `row` or `stack` and an integer 0–48 pixel
+gap. Nested groups, active attributes and grouped members with wrapping or free positioning are rejected.
+
+Users can group with an adjacent image, extend a group, change layout/gap, move it as one block, remove members and
+dissolve it. Compact row groups collapse vertically without rewriting stored metadata. Undo/redo, comparison,
+immutable history, independently owned copies, printing and recovery retain exact order and image identities. Fresh
+recovery proves row/gap-12, stack/gap-24 and dissolved versions of the same three images. Freeform canvases, shapes,
+connectors, nested groups, wrap contours and physical-page anchors remain separate.
 
 ## Later slice: inert linked or embedded objects
 

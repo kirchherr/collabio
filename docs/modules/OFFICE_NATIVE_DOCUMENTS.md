@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–290 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 290 / PLANS 151 bounded image transforms
+Status: Roadmap 252–291 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 291 / PLANS 152 bounded native image groups
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0107; current image transform: `ARCHITECTURE_DECISIONS/ADR-0107-native-office-image-transforms.md`
+Decisions: ADR-0079 through ADR-0108; current image groups: `ARCHITECTURE_DECISIONS/ADR-0108-native-office-image-groups.md`
 
 ## User workflow and scope
 
@@ -389,8 +389,28 @@ recovery retain exact orientation. The complete 42-case image matrix covers desk
 upload, crop, wrap, layer, ACL, copy and PDF behavior.
 
 Decision: [ADR-0107](../../ARCHITECTURE_DECISIONS/ADR-0107-native-office-image-transforms.md). Acceptance evidence is
-recorded in CURRENT_HANDOFF.md; arbitrary angles, wrap contours, grouping, physical page anchors and DOCX interchange
+recorded in CURRENT_HANDOFF.md; arbitrary angles, wrap contours, physical page anchors and DOCX interchange
 remain separate.
+
+## Bounded native image groups (Roadmap 291)
+
+Two through eight existing native images can form one `imageGroup` block. A document admits at most 20 groups. Each
+group has a unique opaque identifier, exact member order, `row` or `stack` layout and an integer gap from 0 through
+48 pixels. Nested groups, active attributes, unknown keys, duplicate identifiers and grouped images with wrapping or
+free positioning fail before persistence. Existing image asset, crop and transform contracts remain unchanged.
+
+The image dialog groups with an adjacent image, extends an existing group, changes layout/gap and dissolves the group.
+Removing a member from a two-image group unwraps the survivor; moving a member moves the complete group. The labelled
+group control selects the group node itself and derives the first member for editing, which stays stable across
+Undo/Redo. Every command is one undo unit and only confirmed CAS Save persists it. Comparison, immutable history,
+print and independent copies preserve the exact group and member order; copies still own separate image assets.
+
+Wide row groups use equal columns and compact row groups collapse vertically. The complete 45-case image matrix keeps
+all prior upload, crop, wrap, layer, transform, ACL, copy and real-PDF behavior green. Fresh recovery proves exact
+row/gap-12, stack/gap-24 and dissolved versions of the same three assets, including receipts and current ACLs.
+
+Decision: [ADR-0108](../../ARCHITECTURE_DECISIONS/ADR-0108-native-office-image-groups.md). Freeform canvases, nested
+groups, shapes, connectors, wrap contours, physical page anchors and DOCX drawing-group interchange remain separate.
 
 ## Explicit native page breaks (Roadmap 271)
 

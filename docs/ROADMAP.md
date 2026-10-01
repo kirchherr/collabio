@@ -1851,6 +1851,18 @@ decken sichere Grenzen, responsive Geometrie, Druck, ACLs und alle bisherigen Bi
 nummerierte Restore bestaetigt 799 Dokumente, 1.629 Versionen, 2.033 Quellobjekte und die exakte Transformationslinie.
 Es gibt keine neue Datenbankmigration, Abhaengigkeit, Tenant-Aktivierung oder Aenderung der Originalpixel.
 
+291. [x] Native Bildgruppen umgesetzt: Zwei bis acht vorhandene Bilder lassen sich als begrenzte, inerte Gruppe
+     anordnen, mit einem Zeilen- oder Stapellayout und einem Abstand von 0 bis 48 Pixeln. Gruppen koennen erweitert,
+     gemeinsam verschoben, als Einheit gedruckt und wieder aufgeloest werden; Entfernen, Rueckgaengig/Wiederholen,
+     Vergleich, Historie und unabhaengige Dokumentkopien bewahren Reihenfolge und exakte Bildversionen. Breite
+     Zeilengruppen verwenden gleichmaessige Spalten, kompakte Ansichten wechseln sicher in eine vertikale Folge.
+
+Native Office bleibt vor CRM. Roadmap 291 / PLANS 152 ist unter ADR-0108 implementiert. Vollstaendige Python-Qualitaet
+und die 45-teilige Desktop-/Mobile-Bildmatrix sind gruen. Der frische nummerierte Restore bestaetigt 912 Dokumente,
+1.887 Versionen, 2.482 Quellobjekte, 533 Bildassets, 871 gespeicherte Referenzen und die exakte Folge
+Zeile/12 Pixel -> Stapel/24 Pixel -> aufgeloest. Es gibt keine Datenbankmigration, neue Abhaengigkeit,
+Tenant-Aktivierung, freie CSS-Gruppe oder Aenderung der Originalpixel.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

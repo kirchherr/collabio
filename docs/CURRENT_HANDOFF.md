@@ -2,6 +2,36 @@
 
 Updated: 2026-10-01
 
+Roadmap 291 / PLANS 152 is complete under ADR-0108. Native Office now groups two through eight existing images into a
+bounded inert block with exact member order, row/stack layout and a 0–48 pixel gap. Users can create and extend groups,
+edit layout and gap, move the unit, remove members, undo/redo and dissolve it. Wide row groups use equal columns;
+compact layouts collapse safely into a vertical sequence. Comparison, immutable history, independently owned copies,
+print and recovery preserve the exact group without changing source pixels. Grouped members cannot carry text wrapping
+or free positioning, and nested/active/freeform containers fail closed.
+
+Implementation commits through `82ee406f` are published on `kirchherr/kb-write-unit-of-work`. Focused group checks pass
+on desktop and mobile. The complete image matrix passed 45/45 in 6.4 minutes; report SHA-256 is
+`646924aa9aa852d34b97382a4bc0ec8757504b644e159b826a9be60225efc755`. Desktop and mobile group screenshots passed
+visual review with SHA-256 `de9f84a4a00f0a321907ce5139264aa02b30fd908d28a9a3e4ed61fc83af9ee8` and
+`51e16981aaa7273be0dbae0d2a2a0874f480e5183c2f349eb1826c6850276320`. Full quality passed Ruff, formatting for
+817 files, Mypy over 605 sources and complete Pytest; quality-log SHA-256 is
+`93a4f315b33e66972c163545acd88ec0de225e16ec228d3aa327e60fe451f2f7`.
+
+Fresh recovery into `collabio_work_e2e_291_restore` verified 912 documents, 1,887 exact Office versions, 412
+multi-version documents, 2,482 source objects and 533 image assets/871 saved references. It explicitly proves 24
+grouped versions and a consecutive row/gap-12, stack/gap-24 and dissolved reset of the same three ordered image
+versions, with exact receipts, current authoritative ACLs and foreign-tenant denial. Dump SHA-256 is
+`a9085990da51cc5f22dff35478c8159c54f5423f7691731a16b6bceb8b58ddb1`; recovery report file SHA-256 is
+`2dd244a631157858aea5203e5fadf9b24a14d08ede8e38aa590d8b71f7eedc63`; embedded report hash is
+`sha256:61e9494183a0b0fe46b3ba2701eb7a40c2a6a6b987c727fb4115f7528d7a78dc`; PostgreSQL restore hash is
+`sha256:c05343659a1658460f75392242992d51a6c20216faba5387232d74c1d1e8d76d`; exact-version/S3 report hash is
+`sha256:7fd6e6026c1a7d923b87b6ec82bd7324b7281b37da7fad30312eb2dc20f53798`.
+
+The isolated review UI remains available at `http://192.168.0.108:42880/office?review=image-group-82ee406f` with
+synthetic Work-E2E data. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production API was activated.
+Freeform overlapping canvases, nested groups, shapes/connectors, wrap contours and absolute physical-page anchors
+remain separate work.
+
 Roadmap 290 / PLANS 151 is complete under ADR-0107. Native Office images now support bounded quarter-turn rotation
 and independent horizontal/vertical mirroring without modifying normalized source pixels or crop geometry. The durable
 optional value contains only `rotation` in `0/90/180/270` and exact booleans; arbitrary angles, matrices, CSS, unknown
@@ -31,7 +61,7 @@ and foreign-tenant denial. Dump SHA-256 is
 The isolated review UI remains available at
 `http://192.168.0.108:42880/office?review=image-transform-7cc7221f` with synthetic Work-E2E data. No ordinary tenant,
 pilot, indexing, cloud AI, DOCX engine or production API was activated. Arbitrary-angle rotation, wrap contours,
-grouping, absolute physical-page anchors and continuous editor pagination remain separate work.
+absolute physical-page anchors and continuous editor pagination remain separate work.
 
 Roadmap 289 / PLANS 150 is complete under ADR-0106. Native Office images can remain in flow or use a bounded logical
 anchor in front of or behind text. The durable value contains only layer, normalized horizontal position and bounded
