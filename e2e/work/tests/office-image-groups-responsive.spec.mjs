@@ -71,7 +71,6 @@ test("Office image groups combine edit move delete undo save print ungroup and o
   await openImage(page, 0); await page.locator("#image-group-next").click();
   await expect(group.locator("img")).toHaveCount(3);
   await openImage(page, 0);
-  expect(await page.locator("#image-group-section").getAttribute("data-context-debug")).toBe("image:imageGroup:grouped");
   await expect(page.locator("#image-wrap")).toBeDisabled();
   await expect(page.locator("#image-position-layer")).toBeDisabled();
   await page.locator("#image-remove").click(); await expect(group.locator("img")).toHaveCount(2);

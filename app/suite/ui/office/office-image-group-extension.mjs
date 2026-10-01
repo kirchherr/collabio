@@ -1,4 +1,5 @@
 import { Node } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import { OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes } from "./office-image-groups.mjs";
 
 export function officeImageGroupExtension() {
@@ -28,7 +29,10 @@ export function officeImageGroupExtension() {
         control.addEventListener("click", (event) => {
           event.preventDefault(); event.stopPropagation();
           const position = typeof getPos === "function" ? getPos() : null;
-          if (Number.isInteger(position)) editor.commands.setNodeSelection(position + 1);
+          if (Number.isInteger(position)) {
+            const selection = NodeSelection.create(editor.state.doc, position + 1);
+            editor.view.dispatch(editor.state.tr.setSelection(selection));
+          }
         });
         return { dom, contentDOM,
           update(next) { if (next.type !== node.type) return false; paint(next); node = next; return true; },

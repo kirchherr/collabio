@@ -202,7 +202,6 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       selected, attrs: selected ? officeImageAttributes(editor.state.selection.node.attrs) : null,
       controller: new AbortController(), busy: false, url: null };
     action.imageContext = selected ? selectedOfficeImageContext(editor, action.selection) : null;
-    $("image-group-section").dataset.contextDebug = `${editor.state.selection.node?.type.name ?? "none"}:${editor.state.selection.$from.parent.type.name}:${editor.state.selection.from}:${action.imageContext?.grouped ? "grouped" : action.imageContext ? "single" : "missing"}`;
     const figures = officeFigureInventory(editor.getJSON());
     action.figureNumber = selected ? figures.find(({ id }) => id === action.attrs.figureId)?.number ?? figures.length + 1 : figures.length + 1;
     $("image-title").textContent = selected ? "Bild bearbeiten" : "Bild einfügen";
