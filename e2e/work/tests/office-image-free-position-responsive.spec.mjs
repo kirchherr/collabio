@@ -18,12 +18,17 @@ async function fixture(page) {
     data: bytes, headers: { ...OFFICE_HEADERS, "Content-Type": "image/png", "X-Office-Upload-Confirmed": "true" },
   });
   expect(upload.status()).toBe(200);
+  const backgroundUpload = await page.request.post(`${BASE_URL}/v1/office/documents/${first.document.object_id}/images`, {
+    data: bytes, headers: { ...OFFICE_HEADERS, "Content-Type": "image/png", "X-Office-Upload-Confirmed": "true" },
+  });
+  expect(backgroundUpload.status()).toBe(200);
   const attrs = { ...(await upload.json()).image, width: 180, height: 90, alt: "Layered sample image", decorative: false, caption: "Layer sample" };
+  const backgroundAttrs = { ...(await backgroundUpload.json()).image, width: 180, height: 90, alt: "Background layer sample image", decorative: false, caption: "Background layer sample" };
   const content = { type: "doc", content: [
     paragraph("Text above the anchored images."),
     { type: "image", attrs: { ...attrs, position: { layer: "front", x: 120, y: 34 } } },
     paragraph("FRONT-TEXT remains in document order and may be covered by the foreground image."),
-    { type: "image", attrs: { ...attrs, position: { layer: "behind", x: 880, y: -24 } } },
+    { type: "image", attrs: { ...backgroundAttrs, position: { layer: "behind", x: 880, y: -24 } } },
     paragraph("BEHIND-TEXT remains selectable above the background image."),
   ] };
   const saved = await page.request.post(`${BASE_URL}/v1/office/documents/${first.document.object_id}/versions`, {
@@ -79,6 +84,11 @@ test("Office images support foreground background and bounded free anchored plac
   await expect(page.locator("#print-preview [data-image-position=behind]")).toHaveCount(2);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html).toContain('data-image-position="behind"');
+
+  await nodes.nth(0).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
+  await page.locator("#image-position-layer").selectOption("flow"); await page.locator("#image-apply").click();
+  const reset = await saveOffice(page, { objectId: saved.document.object_id });
+  expect(reset.content.content[1].attrs).toEqual(attrs);
 });
 
 test("Office free positioning validates limits and resets to normal flow without a phantom edit", async ({ page }) => {

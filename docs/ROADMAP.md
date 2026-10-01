@@ -1827,6 +1827,18 @@ Recovery-, Browsermodell- sowie responsive Desktop-/Mobile-Pruefungen decken exa
 Entzug, Tenant-Bindung, sichere Metadaten und begrenzte Pagination ab. Transitive Graphen, inhaltsweite Referenzsuche,
 persistente Indexierung und DOCX-Beziehungen bleiben separat.
 
+289. [x] Native Bild-Ebenen und freie verankerte Positionierung umgesetzt: Bilder koennen im Textfluss sowie vor oder
+     hinter Text liegen. Ein strikt begrenzter Anker speichert horizontale Relativposition und vertikalen Versatz,
+     bleibt per Maus, Touch und Tastatur bedienbar und verhindert aktive CSS-Werte. Textumfluss und freie Platzierung
+     sind gegenseitig ausgeschlossen. Rueckgaengig, Vergleich, Historie, unabhaengige Kopie, Druck und Recovery
+     bewahren die exakte Position; der Reset laesst Legacy-Bytes unveraendert. Absolute DOCX-Seitenanker und eine
+     fortlaufend paginierte Editor-Geometrie bleiben separat.
+
+Native Office bleibt vor CRM. Roadmap 289 / PLANS 150 ist unter ADR-0106 implementiert. Schema-, Browsermodell- und
+responsive Desktop-/Mobile-Pruefungen decken Grenzen, Vorder-/Hintergrund, direkte Ankerbedienung, Undo, Historie,
+Druck und Regressionen fuer Zuschnitt/Textumfluss ab. Es gibt keine neue Datenbankmigration, Abhaengigkeit oder
+Tenant-Aktivierung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

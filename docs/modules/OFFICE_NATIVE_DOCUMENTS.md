@@ -1,9 +1,9 @@
 # Native Office Documents
 
 Status: Roadmap 252–288 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 288 / PLANS 149 bounded ACL-safe backlinks
+Roadmap: 252 / PLANS 113 foundation through 289 / PLANS 150 bounded anchored image layers
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0105; current backlinks: `ARCHITECTURE_DECISIONS/ADR-0105-native-office-backlinks.md`
+Decisions: ADR-0079 through ADR-0106; current image placement: `ARCHITECTURE_DECISIONS/ADR-0106-native-office-image-layers.md`
 
 ## User workflow and scope
 
@@ -358,6 +358,23 @@ gates, API-only rollout and live/cleanup checks passed. Recovery verified 426 do
 has three A4 pages with intact left/right images, complete text and no text/image overlap. Detailed evidence is in
 CURRENT_HANDOFF.md; ordinary tenant/pilot/indexing/engine admission remains closed. Explicit native page breaks are
 completed below as Roadmap 271 / PLANS 132.
+
+## Anchored image layers (Roadmap 289)
+
+Images can remain in normal flow or use a bounded anchor in front of or behind text. The optional native `position`
+contains exactly `layer` (`front` or `behind`), normalized horizontal `x` (0–1000) and vertical offset `y`
+(-1200–1200 CSS pixels). It is mutually exclusive with text wrapping; unknown keys, active CSS, booleans, fractions
+and out-of-range values fail before persistence. Omitting the property restores normal flow and preserves legacy
+canonical bytes.
+
+The anchor stays visible and accessible above either layer. Pointer/touch dragging and arrow keys change one bounded
+undo transaction; Shift uses a larger keyboard step and numeric fields provide exact coordinates. Horizontal
+normalization keeps the complete figure inside the current text column across paper and viewport sizes. Comparison,
+immutable history, independently owned copies, printing and isolated recovery retain the exact position. This logical
+document anchor does not claim absolute physical-page placement or continuous editor pagination.
+
+Decision: [ADR-0106](../../ARCHITECTURE_DECISIONS/ADR-0106-native-office-image-layers.md). Acceptance evidence is
+recorded in CURRENT_HANDOFF.md; ordinary tenant, pilot, indexing, cloud-AI and DOCX/engine admission remain closed.
 
 ## Explicit native page breaks (Roadmap 271)
 

@@ -16,7 +16,12 @@ from urllib.parse import urlparse
 
 import psycopg
 
-from office_image_recovery import verify_restored_crop_reset, verify_restored_images, verify_restored_wrap_reset
+from office_image_recovery import (
+    verify_restored_crop_reset,
+    verify_restored_images,
+    verify_restored_position_reset,
+    verify_restored_wrap_reset,
+)
 from office_suggestion_recovery import verify_restored_suggestions
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import UserContext
@@ -1239,6 +1244,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                         "manifest_hash": attrs["manifestHash"],
                         "crop": attrs.get("crop"),
                         "wrap": attrs.get("wrap"),
+                        "position": attrs.get("position"),
                     }
                 )
             receipt = receipt_store.get(tenant_id=TENANT_ID, receipt_hash=version.source_write_receipt_hash)
@@ -1313,6 +1319,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         )
     ):
         image_evidence.update(verify_restored_wrap_reset(image_bindings))
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_289_restore"):
+        image_evidence.update(verify_restored_position_reset(image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(

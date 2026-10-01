@@ -1,9 +1,10 @@
 # Native Office images and objects: product design
 
-Updated: 2026-09-23
+Updated: 2026-10-01
 Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded in CURRENT_HANDOFF.md.
 Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is recorded in CURRENT_HANDOFF.md.
 Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is tracked in CURRENT_HANDOFF.md.
+Roadmap 289 implements bounded anchored foreground/background placement under ADR-0106.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -51,6 +52,22 @@ has an integer 0-48px gap, a 45% column-width limit and a 480px displayed-image-
 images use block fallback without rewriting stored metadata. Structural blocks clear prior floats. Image/caption
 request page-break avoidance in actual PDF; over-page content remains browser-fragmented. Editor, history and owned
 reuse retain the exact layout choice and crop. Arbitrary page-positioned objects and DOCX anchors remain separate.
+
+## Anchored foreground and background placement
+
+ADR-0106 adds a mutually exclusive free-placement mode to the ordered image node. The image remains anchored at its
+document position while a normalized horizontal coordinate from 0 through 1000 and a vertical offset from -1200
+through 1200 CSS pixels move its presentation. The layer is exactly `front` or `behind`; arbitrary CSS, z-index,
+transforms, URLs and page coordinates are never stored. The horizontal coordinate keeps the complete image inside the
+current text column across paper settings and narrow views. A draggable, keyboard-operable anchor remains above the
+editor surface even when the image is behind text, so the object never becomes unreachable.
+
+The dialog places layer and coordinates directly below size and alignment. Dragging the anchor or pressing arrow keys
+changes one bounded draft transaction; Shift increases the keyboard step. Numeric fields provide an exact alternative.
+Text wrap is disabled while free placement is active. Resetting to **Im Textfluss** omits `position`, preserving legacy
+canonical bytes. Cancel and invalid bounds are no-ops; undo, comparison, immutable history, independently owned copies,
+print and recovery retain the exact geometry. Print uses the same anchored layer without adding a remote resource or
+executable object. This is not an absolute DOCX page anchor and does not claim continuous editor pagination.
 
 ## Later slice: inert linked or embedded objects
 

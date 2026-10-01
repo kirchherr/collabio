@@ -3,7 +3,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from office_image_recovery import verify_restored_crop_reset, verify_restored_images, verify_restored_wrap_reset
+from office_image_recovery import (
+    verify_restored_crop_reset,
+    verify_restored_images,
+    verify_restored_position_reset,
+    verify_restored_wrap_reset,
+)
 from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
@@ -91,3 +96,32 @@ def test_wrap_recovery_requires_consecutive_layouts_with_same_owner_source_and_c
     for rows in ([], [left], [right, reset], [left, reset]):
         with pytest.raises(ValueError):
             verify_restored_wrap_reset(rows)
+
+
+def test_position_recovery_requires_consecutive_layers_reset_and_same_owned_rendition() -> None:
+    front: dict[str, Any] = {
+        "object_id": "doc",
+        "asset_id": "asset",
+        "asset_version_id": "pixels",
+        "document_version_id": "front",
+        "previous_document_version_id": "initial",
+        "crop": {"x": 1, "y": 0, "width": 1, "height": 1},
+        "wrap": None,
+        "position": {"layer": "front", "x": 120, "y": 34},
+    }
+    behind = {**front, "document_version_id": "behind", "previous_document_version_id": "front",
+              "position": {"layer": "behind", "x": 880, "y": -24}}
+    reset = {**behind, "document_version_id": "reset", "previous_document_version_id": "behind", "position": None}
+    assert verify_restored_position_reset([front, behind, reset]) == {
+        "verified_positioned_image_reference_count": 2,
+        "positioned_and_reset_versions_verified": True,
+    }
+    for index in (1, 2):
+        for key in ("object_id", "asset_id", "asset_version_id", "previous_document_version_id", "crop", "wrap"):
+            broken = [front, behind, reset]
+            broken[index] = {**broken[index], key: "different"}
+            with pytest.raises(ValueError):
+                verify_restored_position_reset(broken)
+    for rows in ([], [front], [behind, reset], [front, reset]):
+        with pytest.raises(ValueError):
+            verify_restored_position_reset(rows)

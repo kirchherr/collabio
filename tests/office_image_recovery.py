@@ -67,6 +67,44 @@ def verify_restored_wrap_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]
     }
 
 
+def verify_restored_position_reset(bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    def identity(binding: dict[str, Any], previous: bool = False) -> tuple[str, ...]:
+        return tuple(
+            binding[key]
+            for key in (
+                "object_id",
+                "asset_id",
+                "asset_version_id",
+                "previous_document_version_id" if previous else "document_version_id",
+            )
+        )
+
+    front = {identity(row): row for row in bindings if (row.get("position") or {}).get("layer") == "front"}
+    behind: dict[tuple[str, ...], dict[str, Any]] = {}
+    for row in bindings:
+        predecessor = front.get(identity(row, True))
+        if (
+            (row.get("position") or {}).get("layer") == "behind"
+            and predecessor
+            and row["crop"] == predecessor["crop"]
+            and row.get("wrap") is None
+            and predecessor.get("wrap") is None
+        ):
+            behind[identity(row)] = row
+    if not any(
+        row.get("position") is None
+        and identity(row, True) in behind
+        and row["crop"] == behind[identity(row, True)]["crop"]
+        and row.get("wrap") is None
+        for row in bindings
+    ):
+        raise ValueError("Position recovery requires consecutive front/behind/reset versions of the same image")
+    return {
+        "verified_positioned_image_reference_count": sum(row.get("position") is not None for row in bindings),
+        "positioned_and_reset_versions_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,
