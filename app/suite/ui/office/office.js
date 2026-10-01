@@ -2598,7 +2598,10 @@ function prepareEditor(content, session) {
         tr.setDocAttribute("documentFields", safeContent.attrs?.documentFields || []);
         tr.setDocAttribute("citationSources", safeContent.attrs?.citationSources || []); return true;
       }).run();
-  } catch (error) { editor.destroy(); throw error; }
+  } catch (error) {
+    document.documentElement.dataset.officeEditorError = error instanceof Error ? error.message : "unknown";
+    editor.destroy(); throw error;
+  }
   return { editor, editorHost };
 }
 

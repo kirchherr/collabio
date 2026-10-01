@@ -32,6 +32,7 @@ async function fixture(page) {
   });
   expect(saved.status()).toBe(200);
   await page.locator("#document-reload").click();
+  expect(await page.locator("html").getAttribute("data-office-editor-error")).toBeNull();
   await expect(officeEditor(page).locator(".office-image-anchor")).toHaveCount(2);
   return { saved: await saved.json(), attrs };
 }
