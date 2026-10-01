@@ -24,7 +24,9 @@ export function officeImageGroupExtension() {
           control.setAttribute("aria-label", `Bildgruppe mit ${current.childCount} Bildern bearbeiten`);
         };
         paint(node);
-        control.addEventListener("click", () => {
+        control.addEventListener("mousedown", (event) => event.preventDefault());
+        control.addEventListener("click", (event) => {
+          event.preventDefault(); event.stopPropagation();
           const position = typeof getPos === "function" ? getPos() : null;
           if (Number.isInteger(position)) editor.commands.setNodeSelection(position + 1);
         });
