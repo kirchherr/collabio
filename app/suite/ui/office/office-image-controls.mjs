@@ -158,6 +158,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-position-layer").value = attrs.position?.layer ?? "flow";
     $("image-position-x").value = attrs.position?.x ?? 0;
     $("image-position-y").value = attrs.position?.y ?? 0;
+    $("image-rotation").value = String(attrs.transform?.rotation ?? 0);
+    $("image-flip-x").checked = attrs.transform?.flipX ?? false;
+    $("image-flip-y").checked = attrs.transform?.flipY ?? false;
     cropControls.fill(action);
     update();
   };
@@ -238,6 +241,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
           wrap: $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
           position: $("image-position-layer").value === "flow" ? null : { layer: $("image-position-layer").value,
             x: $("image-position-x").valueAsNumber, y: $("image-position-y").valueAsNumber },
+          transform: Number($("image-rotation").value) || $("image-flip-x").checked || $("image-flip-y").checked ?
+            { rotation: Number($("image-rotation").value), flipX: $("image-flip-x").checked, flipY: $("image-flip-y").checked } : null,
           figureId: numbered ? owner.attrs.figureId || `figure-${reference().replaceAll("-", "").slice(0, 24)}` : null,
         });
         if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
@@ -271,6 +276,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   for (const id of ["image-wrap", "image-wrap-gap", "image-align"]) $(id).addEventListener("input", () => {
     if (!valid()) return;
     update(); cropControls.preview(action);
+  });
+  for (const id of ["image-rotation", "image-flip-x", "image-flip-y"]) $(id).addEventListener("input", () => {
+    if (valid()) cropControls.preview(action);
   });
   $("image-position-layer").addEventListener("input", () => {
     if (!valid()) return;

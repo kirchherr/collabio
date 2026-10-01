@@ -2,7 +2,7 @@ import { officeFigureCaption, officeFigureFragment, officeFigureId } from "./off
 
 const keys = ["documentId", "assetId", "versionId", "contentHash", "manifestHash", "pixelWidth", "pixelHeight",
   "width", "height", "align", "alt", "caption", "decorative", "lockAspect"];
-export const officeImageKeys = [...keys, "crop", "wrap", "position", "figureId"];
+export const officeImageKeys = [...keys, "crop", "wrap", "position", "transform", "figureId"];
 export function officeImageWrap(wrap) {
   if (!wrap || Object.keys(wrap).length !== 2 || !["left", "right"].includes(wrap.side) ||
       !Number.isInteger(wrap.gap) || wrap.gap < 0 || wrap.gap > 48) throw new Error("image-wrap");
@@ -13,6 +13,12 @@ export function officeImagePosition(position) {
       !Number.isInteger(position.x) || position.x < 0 || position.x > 1000 ||
       !Number.isInteger(position.y) || position.y < -1200 || position.y > 1200) throw new Error("image-position");
   return { layer: position.layer, x: position.x, y: position.y };
+}
+export function officeImageTransform(transform) {
+  if (!transform || Object.keys(transform).length !== 3 || ![0, 90, 180, 270].includes(transform.rotation) ||
+      typeof transform.flipX !== "boolean" || typeof transform.flipY !== "boolean" ||
+      (transform.rotation === 0 && !transform.flipX && !transform.flipY)) throw new Error("image-transform");
+  return { rotation: transform.rotation, flipX: transform.flipX, flipY: transform.flipY };
 }
 export function applyOfficeImageLayout(element, attrs) {
   if (attrs.wrap != null && attrs.position != null) throw new Error("image-layout-conflict");
@@ -67,6 +73,7 @@ export function officeImageAttributes(attrs) {
   if (attrs.crop != null) result.crop = officeImageCrop(attrs);
   if (attrs.wrap != null) result.wrap = officeImageWrap(attrs.wrap);
   if (attrs.position != null) result.position = officeImagePosition(attrs.position);
+  if (attrs.transform != null) result.transform = officeImageTransform(attrs.transform);
   if (result.wrap != null && result.position != null) throw new Error("image-layout-conflict");
   if (attrs.figureId != null) {
     result.figureId = officeFigureId(attrs.figureId);
@@ -96,6 +103,7 @@ export function officeImageFigure(attrs, url, dom = document, figureNumber = nul
   image.width = attrs.width; image.height = attrs.height;
   image.style.width = `${attrs.width}px`; image.style.aspectRatio = `${attrs.width} / ${attrs.height}`;
   image.draggable = false;
+  let visual = image;
   if (attrs.crop) {
     const crop = officeImageCrop(attrs);
     const viewport = dom.createElement("span"); viewport.className = "office-image-viewport";
@@ -103,8 +111,22 @@ export function officeImageFigure(attrs, url, dom = document, figureNumber = nul
     image.style.width = `${100 * attrs.pixelWidth / crop.width}%`;
     image.style.height = `${100 * attrs.pixelHeight / crop.height}%`;
     image.style.left = `${-100 * crop.x / crop.width}%`; image.style.top = `${-100 * crop.y / crop.height}%`;
-    viewport.append(image); figure.append(viewport);
-  } else figure.append(image);
+    viewport.append(image); visual = viewport;
+  }
+  if (attrs.transform) {
+    const transform = officeImageTransform(attrs.transform);
+    const sideways = transform.rotation % 180 !== 0;
+    const frameWidth = sideways ? attrs.height : attrs.width, frameHeight = sideways ? attrs.width : attrs.height;
+    const frame = dom.createElement("span"); frame.className = "office-image-transform";
+    frame.style.width = `${frameWidth}px`; frame.style.aspectRatio = `${frameWidth} / ${frameHeight}`;
+    frame.dataset.imageRotation = String(transform.rotation);
+    frame.dataset.imageFlipX = String(transform.flipX); frame.dataset.imageFlipY = String(transform.flipY);
+    const stage = dom.createElement("span"); stage.className = "office-image-transform-stage";
+    stage.style.width = `${100 * attrs.width / frameWidth}%`; stage.style.height = `${100 * attrs.height / frameHeight}%`;
+    stage.style.transform = `translate(-50%, -50%) rotate(${transform.rotation}deg) scale(${transform.flipX ? -1 : 1}, ${transform.flipY ? -1 : 1})`;
+    visual.style.width = "100%"; visual.style.height = "100%"; visual.style.aspectRatio = `${attrs.width} / ${attrs.height}`;
+    stage.append(visual); frame.append(stage); figure.append(frame);
+  } else figure.append(visual);
   if (attrs.caption) {
     const caption = dom.createElement("figcaption"); caption.textContent = officeFigureCaption(attrs, figureNumber); figure.append(caption);
   }

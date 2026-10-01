@@ -13,9 +13,11 @@ export function installImageCropControls(getAction, isCurrent) {
     const wrap = $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber };
     const position = $("image-position-layer").value === "flow" ? null : { layer: $("image-position-layer").value,
       x: $("image-position-x").valueAsNumber, y: $("image-position-y").valueAsNumber };
+    const transform = { rotation: Number($("image-rotation").value), flipX: $("image-flip-x").checked, flipY: $("image-flip-y").checked };
     try {
       const numbered = owner.numbered;
-      const figure = officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height, wrap, position, align: $("image-align").value,
+      const figure = officeImageFigure({ ...owner.attrs, crop: owner.crop, width, height, wrap, position,
+        transform: transform.rotation || transform.flipX || transform.flipY ? transform : null, align: $("image-align").value,
         caption: $("image-caption").value, figureId: numbered ? owner.attrs.figureId || "figure-000000000000000000000000" : null },
       owner.url, document, numbered ? owner.figureNumber : null);
       const layout = document.createElement("div"); layout.className = "image-layout-preview"; layout.append(figure);

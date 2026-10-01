@@ -99,6 +99,11 @@
 .office-image[data-image-align="right"] { text-align: right; }
 .office-image[data-image-align="center"] img { margin-inline: auto; }
 .office-image[data-image-align="right"] img { margin-left: auto; }
+.office-image-transform { display: block; position: relative; max-width: 100%; overflow: visible; }
+.office-image-transform-stage { display: block; position: absolute; left: 50%; top: 50%; transform-origin: center; }
+.office-image-transform-stage > img, .office-image-transform-stage > .office-image-viewport { display: block; max-width: none; margin: 0; }
+.office-image[data-image-align="center"] .office-image-transform { margin-inline: auto; }
+.office-image[data-image-align="right"] .office-image-transform { margin-left: auto; }
 .office-image figcaption { font-size: .875rem; color: #475569; overflow-wrap: anywhere; }
 .office-image[data-office-figure] { scroll-margin-top: 12px; }
 .office-image[data-office-figure] figcaption { font-weight: 600; }
@@ -150,6 +155,11 @@
 #image-preview .image-layout-preview > [data-image-wrap] img { max-height: none; object-fit: fill; }
 #image-wrap-help { font-size: 12px; line-height: 1.6; color: #475569; }
 #image-position-help { font-size: 12px; line-height: 1.6; color: #475569; }
+.image-transform-fields { display: flex; flex-wrap: wrap; align-items: end; gap: .8rem; margin-block: 12px; padding: 10px; border: 1px solid #c8d5d7; border-radius: 8px; }
+.image-transform-fields legend { padding-inline: 4px; font-weight: 600; }
+.image-transform-fields > label:first-of-type { display: grid; flex: 1 1 180px; gap: 6px; font-weight: 600; }
+.image-transform-fields select { min-height: 40px; padding: 8px 10px; border: 1px solid #c8d5d7; border-radius: 5px; background: white; font: inherit; color: inherit; }
+#image-transform-help { margin-top: -4px; font-size: 12px; line-height: 1.6; color: #475569; }
 @container office-image-flow (max-width: 480px) {
   :is(.document-page .tiptap, .office-print-content, .image-layout-preview) > [data-image-wrap] { float: none; width: auto; margin: 1rem 0; }
 }

@@ -24,7 +24,7 @@ IMAGE_ATTRIBUTES = {
 
 
 def validate_image_attributes(attrs: dict[str, Any]) -> None:
-    if set(attrs) - {"crop", "wrap", "position", "figureId"} != IMAGE_ATTRIBUTES:
+    if set(attrs) - {"crop", "wrap", "position", "transform", "figureId"} != IMAGE_ATTRIBUTES:
         raise ValueError("Invalid image attributes")
     for key, prefix in (
         ("documentId", "office-doc-"),
@@ -78,6 +78,18 @@ def validate_image_attributes(attrs: dict[str, Any]) -> None:
             or "wrap" in attrs
         ):
             raise ValueError("Invalid image position")
+    if "transform" in attrs:
+        transform = attrs["transform"]
+        if (
+            not isinstance(transform, dict)
+            or set(transform) != {"rotation", "flipX", "flipY"}
+            or type(transform["rotation"]) is not int
+            or transform["rotation"] not in {0, 90, 180, 270}
+            or type(transform["flipX"]) is not bool
+            or type(transform["flipY"]) is not bool
+            or transform == {"rotation": 0, "flipX": False, "flipY": False}
+        ):
+            raise ValueError("Invalid image transform")
     if type(attrs["decorative"]) is not bool or type(attrs["lockAspect"]) is not bool:
         raise ValueError("Invalid image options")
     for key, maximum in (("alt", 500), ("caption", 1000)):

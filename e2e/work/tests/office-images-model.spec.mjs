@@ -85,3 +85,18 @@ test("Office free image positions are inert bounded and mutually exclusive with 
   }
   expect(() => officeImageAttributes({ ...attrs, position, wrap: { side: "left", gap: 16 } })).toThrow();
 });
+
+test("Office image transforms are inert bounded canonical and visible in comparisons", () => {
+  expect(officeImageAttributes({ ...attrs, transform: null })).toEqual(attrs);
+  for (const transform of [{ rotation: 90, flipX: false, flipY: false }, { rotation: 270, flipX: true, flipY: true },
+    { rotation: 0, flipX: false, flipY: true }]) {
+    expect(officeImageAttributes({ ...attrs, transform })).toEqual({ ...attrs, transform });
+  }
+  const transform = { rotation: 90, flipX: true, flipY: false };
+  expect(describeOfficeBlock({ ...image, attrs: { ...attrs, transform } }).text).toContain("Darstellung: 90° · horizontal gespiegelt");
+  for (const invalid of [{}, [], "rotate(90deg)", { rotation: 45, flipX: false, flipY: false },
+    { rotation: true, flipX: false, flipY: false }, { rotation: 0, flipX: false, flipY: false },
+    { rotation: 90, flipX: 1, flipY: false }, { rotation: 90, flipX: false, flipY: false, style: "fixed" }]) {
+    expect(() => officeImageAttributes({ ...attrs, transform: invalid })).toThrow();
+  }
+});

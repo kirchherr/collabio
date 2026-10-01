@@ -278,3 +278,53 @@ def test_image_free_position_and_text_wrap_are_mutually_exclusive() -> None:
     attrs["wrap"] = {"side": "left", "gap": 16}
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(document)
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        {"rotation": 90, "flipX": False, "flipY": False},
+        {"rotation": 180, "flipX": True, "flipY": False},
+        {"rotation": 270, "flipX": True, "flipY": True},
+        {"rotation": 0, "flipX": False, "flipY": True},
+    ],
+)
+def test_image_transform_is_bounded_inert_and_preserves_source(transform: dict[str, Any]) -> None:
+    document = image_document()
+    attrs = document["content"][0]["attrs"]
+    attrs["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
+    attrs["transform"] = transform
+    assert validate_office_document(document) == document
+    assert image_references(document)[0] == attrs
+
+
+@pytest.mark.parametrize(
+    "transform",
+    [
+        None,
+        {},
+        [],
+        "rotate(90deg)",
+        {"rotation": 45, "flipX": False, "flipY": False},
+        {"rotation": True, "flipX": False, "flipY": False},
+        {"rotation": 0, "flipX": False, "flipY": False},
+        {"rotation": 90, "flipX": 1, "flipY": False},
+        {"rotation": 90, "flipX": False, "flipY": False, "style": "url(external)"},
+    ],
+)
+def test_image_transform_rejects_active_ambiguous_or_noncanonical_values(transform: Any) -> None:
+    document = image_document()
+    document["content"][0]["attrs"]["transform"] = transform
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_image_transform_reset_restores_legacy_canonical_bytes() -> None:
+    from suite.ai_control_plane.audit import canonical_json
+
+    document = image_document()
+    before = canonical_json(document)
+    document["content"][0]["attrs"]["transform"] = {"rotation": 90, "flipX": True, "flipY": False}
+    assert validate_office_document(document) == document
+    del document["content"][0]["attrs"]["transform"]
+    assert canonical_json(validate_office_document(document)) == before
