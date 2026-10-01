@@ -99,6 +99,17 @@
 .office-image[data-image-align="right"] { text-align: right; }
 .office-image[data-image-align="center"] img { margin-inline: auto; }
 .office-image[data-image-align="right"] img { margin-left: auto; }
+.office-image-group { position: relative; margin: 1rem 0; padding: 28px 10px 10px; border: 1px dashed #77a89c; border-radius: 8px; break-inside: avoid; }
+.office-image-group-content,.office-print-image-group { display: grid; grid-template-columns: repeat(var(--image-group-columns),minmax(0,1fr)); gap: var(--image-group-gap); align-items: start; }
+.office-image-group-content > .office-image-node,.office-print-image-group > .office-image { min-width: 0; margin: 0; }
+.office-image-group .office-image { margin: 0; }
+.office-image-group-control { position: absolute; top: 5px; left: 8px; z-index: 5; border: 0; padding: 2px 6px; background: #eaf5f1; color: #086560; font: 600 10px/1.4 Inter,"Segoe UI",Arial,sans-serif; cursor: pointer; }
+.image-group-fields { margin: .9rem 0; padding: .8rem; border: 1px solid #a8d5c8; border-radius: 8px; background: #f4fbf8; }
+.image-group-fields legend { padding: 0 .35rem; color: #086560; font-weight: 700; }
+.office-image-group.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
+.office-print-image-group { padding: 0; border: 0; }
+.office-print-image-group .office-image-group-control { display: none; }
+@media(max-width:600px){.office-image-group[data-image-group-layout="row"] .office-image-group-content,.office-print-image-group[data-image-group-layout="row"]{grid-template-columns:minmax(0,1fr)}}
 .office-image-transform { display: block; position: relative; max-width: 100%; overflow: visible; }
 .office-image-transform-stage { display: block; position: absolute; left: 50%; top: 50%; transform-origin: center; }
 .office-image-transform-stage > img, .office-image-transform-stage > .office-image-viewport { display: block; max-width: none; margin: 0; }

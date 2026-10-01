@@ -18,6 +18,7 @@ import { installOfficePageControls } from "./office-page-controls.mjs";
 import { OFFICE_SECTION_LIMIT, clearOfficeSectionPrint, configureOfficeSectionPrint, officeSectionDescription, officeSectionProfile } from "./office-sections.mjs";
 import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
+import { officeImageGroupAttributes, officeImageGroupExtension } from "./office-image-groups.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
@@ -41,7 +42,7 @@ const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" }
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "pageBreak", "sectionBreak", "bookmark",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "pageBreak", "sectionBreak", "bookmark",
   "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
@@ -374,6 +375,7 @@ function normalizedDocument(document) {
   let pageBreaks = 0;
   let sectionBreaks = 0;
   let documentReferences = 0;
+  const imageGroupIds = new Set();
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
@@ -383,6 +385,15 @@ function normalizedDocument(document) {
       result.attrs = officeSectionProfile(value.attrs);
     }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
+    if (value.type === "imageGroup") {
+      if (depth !== 1 || !Array.isArray(value.content) || value.content.length < 2 || value.content.length > 8 ||
+          value.content.some((child) => child.type !== "image" || child.attrs?.wrap != null || child.attrs?.position != null)) {
+        throw new Error("document-image-group");
+      }
+      result.attrs = officeImageGroupAttributes(value.attrs);
+      if (imageGroupIds.has(result.attrs.id) || imageGroupIds.size >= 20) throw new Error("document-image-group");
+      imageGroupIds.add(result.attrs.id);
+    }
     if (value.type === "bookmark") result.attrs = officeBookmarkAttributes(value.attrs);
     if (value.type === "documentField") result.attrs = { key: officeFieldAttributes(value.attrs, new Map()).key };
     if (value.type === "noteReference") result.attrs = officeNoteAttributes(value.attrs);
@@ -2543,6 +2554,7 @@ function prepareEditor(content, session) {
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference, OfficeDocumentReference,
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
+      officeImageGroupExtension(),
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {

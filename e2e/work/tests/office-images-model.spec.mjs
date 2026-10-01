@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { officeImageAttributes, officeImageReferences } from "../office-images.mjs";
 import { findDocumentMatches } from "../office-search.mjs";
 import { describeOfficeBlock, compareOfficeDocuments } from "../office-comparison.mjs";
+import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "../office-image-groups.mjs";
 
 const attrs = { documentId: "office-doc-" + "a".repeat(32), assetId: "office-image-" + "b".repeat(32),
   versionId: "office-image-version-" + "c".repeat(32), contentHash: "sha256:" + "d".repeat(64), manifestHash: "sha256:" + "e".repeat(64),
@@ -98,5 +99,18 @@ test("Office image transforms are inert bounded canonical and visible in compari
     { rotation: true, flipX: false, flipY: false }, { rotation: 0, flipX: false, flipY: false },
     { rotation: 90, flipX: 1, flipY: false }, { rotation: 90, flipX: false, flipY: false, style: "fixed" }]) {
     expect(() => officeImageAttributes({ ...attrs, transform: invalid })).toThrow();
+  }
+});
+
+test("Office image groups are bounded inert containers visible in comparisons", () => {
+  const groupAttrs = { id: "image-group-" + "a".repeat(24), layout: "row", gap: 16 };
+  expect(officeImageGroupAttributes(groupAttrs)).toEqual(groupAttrs);
+  expect(OFFICE_IMAGE_GROUP_LIMIT).toBe(20); expect(OFFICE_IMAGE_GROUP_MEMBER_LIMIT).toBe(8);
+  const group = { type: "imageGroup", attrs: groupAttrs, content: [image, { ...image, attrs: { ...attrs, alt: "Second" } }] };
+  expect(describeOfficeBlock(group)).toMatchObject({ label: "Bildgruppe · 2 Bilder · nebeneinander · Abstand 16 px" });
+  expect(officeImageReferences({ type: "doc", content: [group] })).toHaveLength(2);
+  for (const invalid of [{ ...groupAttrs, id: "group-short" }, { ...groupAttrs, layout: "grid" },
+    { ...groupAttrs, gap: -1 }, { ...groupAttrs, gap: 49 }, { ...groupAttrs, gap: true }, { ...groupAttrs, style: "active" }]) {
+    expect(() => officeImageGroupAttributes(invalid)).toThrow();
   }
 });

@@ -3,6 +3,7 @@
 import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
+import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -44,6 +45,19 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     if (value.type === "image") {
       const target = value.attrs?.figureId == null ? null : targetsById.get(value.attrs.figureId);
       return officeImageFigure(value.attrs, images.get(officeImagePath(value.attrs)), dom, target?.number ?? null);
+    }
+    if (value.type === "imageGroup") {
+      const attrs = officeImageGroupAttributes(value.attrs), children = value.content || [];
+      if (depth !== 1 || children.length < 2 || children.length > OFFICE_IMAGE_GROUP_MEMBER_LIMIT ||
+          children.some((child) => child.type !== "image" || child.attrs?.wrap != null || child.attrs?.position != null)) {
+        throw new Error("Invalid image group");
+      }
+      const group = dom.createElement("section"); group.className = "office-image-group office-print-image-group";
+      group.dataset.imageGroup = attrs.id; group.dataset.imageGroupLayout = attrs.layout;
+      group.style.setProperty("--image-group-gap", `${attrs.gap}px`);
+      group.style.setProperty("--image-group-columns", attrs.layout === "row" ? String(children.length) : "1");
+      for (const child of children) group.append(render(child, depth + 1));
+      return group;
     }
     if (value.type === "bookmark") {
       const attrs = officeBookmarkAttributes(value.attrs), marker = dom.createElement("span");

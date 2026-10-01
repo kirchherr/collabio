@@ -328,3 +328,80 @@ def test_image_transform_reset_restores_legacy_canonical_bytes() -> None:
     assert validate_office_document(document) == document
     del document["content"][0]["attrs"]["transform"]
     assert canonical_json(validate_office_document(document)) == before
+
+
+def image_group_document(*, count: int = 2, layout: str = "row", gap: int = 16) -> dict[str, Any]:
+    images = []
+    for index in range(count):
+        attrs = image_attrs()
+        attrs["assetId"] = "office-image-" + f"{index + 1:032x}"
+        attrs["versionId"] = "office-image-version-" + f"{index + 1:032x}"
+        attrs["alt"] = f"Grouped image {index + 1}"
+        images.append({"type": "image", "attrs": attrs})
+    return {"type": "doc", "content": [{"type": "imageGroup", "attrs": {
+        "id": "image-group-" + "a" * 24, "layout": layout, "gap": gap,
+    }, "content": images}]}
+
+
+def test_image_groups_preserve_owned_references_and_member_presentation() -> None:
+    document = image_group_document(count=8, layout="stack", gap=48)
+    document["content"][0]["content"][0]["attrs"]["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
+    document["content"][0]["content"][1]["attrs"]["transform"] = {
+        "rotation": 90, "flipX": True, "flipY": False,
+    }
+    assert validate_office_document(document) == document
+    references = image_references(document)
+    assert len(references) == 8
+    assert references[0]["crop"] == {"x": 1, "y": 0, "width": 1, "height": 1}
+    assert references[1]["transform"] == {"rotation": 90, "flipX": True, "flipY": False}
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"id": "group-short", "layout": "row", "gap": 16},
+        {"id": "image-group-" + "a" * 24, "layout": "grid", "gap": 16},
+        {"id": "image-group-" + "a" * 24, "layout": "row", "gap": -1},
+        {"id": "image-group-" + "a" * 24, "layout": "row", "gap": 49},
+        {"id": "image-group-" + "a" * 24, "layout": "row", "gap": True},
+        {"id": "image-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
+    ],
+)
+def test_image_groups_reject_active_ambiguous_or_unbounded_attributes(change: dict[str, Any]) -> None:
+    document = image_group_document()
+    document["content"][0]["attrs"] = change
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
+
+
+def test_image_groups_require_two_to_eight_flow_images_at_document_root() -> None:
+    for count in (1, 9):
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(image_group_document(count=count))
+    for key, value in (("wrap", {"side": "left", "gap": 16}), ("position", {"layer": "front", "x": 0, "y": 0})):
+        document = image_group_document()
+        document["content"][0]["content"][0]["attrs"][key] = value
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(document)
+    nested = {"type": "doc", "content": [{"type": "blockquote", "content": image_group_document()["content"]}]}
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(nested)
+
+
+def test_image_groups_have_unique_bounded_identities() -> None:
+    duplicate = image_group_document()
+    duplicate["content"].append(deepcopy(duplicate["content"][0]))
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(duplicate)
+    excessive = image_group_document()
+    group = excessive["content"][0]
+    excessive["content"] = []
+    for index in range(21):
+        entry = deepcopy(group)
+        entry["attrs"]["id"] = "image-group-" + f"{index + 1:024x}"
+        for member, image in enumerate(entry["content"]):
+            image["attrs"]["assetId"] = "office-image-" + f"{index * 2 + member + 1:032x}"
+            image["attrs"]["versionId"] = "office-image-version-" + f"{index * 2 + member + 1:032x}"
+        excessive["content"].append(entry)
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(excessive)

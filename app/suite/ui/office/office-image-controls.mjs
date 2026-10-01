@@ -2,6 +2,8 @@ import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
+import { OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes,
+  selectedOfficeImageContext } from "./office-image-groups.mjs";
 import { installImageCropControls } from "./office-image-crop-controls.mjs";
 import { officeFigureInventory } from "./office-figures.mjs";
 
@@ -125,6 +127,19 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   let action = null;
   const valid = () => action && current(action);
   const cropControls = installImageCropControls(() => action, valid);
+  const groupCount = (doc) => { let count = 0; doc.forEach((node) => { if (node.type.name === "imageGroup") count += 1; }); return count; };
+  const groupCandidate = (owner, direction) => {
+    const context = owner?.imageContext;
+    if (!context || owner.attrs.wrap != null || owner.attrs.position != null) return null;
+    const delta = direction === "previous" ? -1 : 1;
+    const other = context.root.maybeChild(context.rootIndex + delta);
+    if (!other) return null;
+    if (context.grouped) return other.type.name === "image" && other.attrs.wrap == null && other.attrs.position == null &&
+      context.group.childCount < OFFICE_IMAGE_GROUP_MEMBER_LIMIT ? other : null;
+    if (other.type.name === "image") return other.attrs.wrap == null && other.attrs.position == null &&
+      groupCount(owner.document) < OFFICE_IMAGE_GROUP_LIMIT ? other : null;
+    return other.type.name === "imageGroup" && other.childCount < OFFICE_IMAGE_GROUP_MEMBER_LIMIT ? other : null;
+  };
   const close = (restore = false) => {
     const previous = action; action = null; previous?.controller?.abort();
     if (previous?.url) URL.revokeObjectURL(previous.url);
@@ -142,10 +157,14 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
     $("image-caption").required = Boolean(action?.numbered);
-    const positioned = $("image-position-layer").value !== "flow";
-    $("image-wrap").disabled = positioned;
-    $("image-wrap-gap").disabled = positioned || $("image-wrap").value === "none";
-    for (const name of ["x", "y"]) $(`image-position-${name}`).disabled = !positioned;
+    const grouped = Boolean(action?.imageContext?.grouped), positioned = $("image-position-layer").value !== "flow";
+    $("image-position-layer").disabled = grouped;
+    $("image-wrap").disabled = grouped || positioned;
+    $("image-wrap-gap").disabled = grouped || positioned || $("image-wrap").value === "none";
+    for (const name of ["x", "y"]) $(`image-position-${name}`).disabled = grouped || !positioned;
+    $("image-group-previous").disabled = !valid() || action?.busy || !groupCandidate(action, "previous");
+    $("image-group-next").disabled = !valid() || action?.busy || !groupCandidate(action, "next");
+    $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
@@ -161,6 +180,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-rotation").value = String(attrs.transform?.rotation ?? 0);
     $("image-flip-x").checked = attrs.transform?.flipX ?? false;
     $("image-flip-y").checked = attrs.transform?.flipY ?? false;
+    const group = action.imageContext?.group;
+    $("image-group-layout").value = group?.attrs.layout ?? "row";
+    $("image-group-gap").value = group?.attrs.gap ?? 16;
     cropControls.fill(action);
     update();
   };
@@ -178,11 +200,13 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks,
       selected, attrs: selected ? officeImageAttributes(editor.state.selection.node.attrs) : null,
       controller: new AbortController(), busy: false, url: null };
+    action.imageContext = selected ? selectedOfficeImageContext(editor, action.selection) : null;
     const figures = officeFigureInventory(editor.getJSON());
     action.figureNumber = selected ? figures.find(({ id }) => id === action.attrs.figureId)?.number ?? figures.length + 1 : figures.length + 1;
     $("image-title").textContent = selected ? "Bild bearbeiten" : "Bild einfügen";
     $("image-upload-section").hidden = selected;
     $("image-edit-actions").hidden = !selected;
+    $("image-group-section").hidden = !selected;
     $("image-status").textContent = !state.session.objectId ? "Speichern Sie das neue Dokument zuerst. Danach können Sie ein Bild hochladen." :
       "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Das Bild wird diesem Dokument zugeordnet; Einfügen ändert zunächst Ihren Entwurf.";
     if (selected) { const owner = action; fill(owner.attrs); preview(owner).catch((error) => {
@@ -225,7 +249,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   };
   const change = (operation) => {
     if (!valid() || action.busy || !action.attrs) return;
-    const owner = action, editor = owner.editor, selection = owner.selection;
+    const owner = action, editor = owner.editor, selection = owner.selection, context = owner.imageContext;
     try {
       const tr = editor.state.tr;
       if (operation === "apply") {
@@ -238,30 +262,93 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
           width: Number($("image-width").value), height: Number($("image-height").value), align: $("image-align").value,
           decorative: $("image-decorative").checked, alt: $("image-decorative").checked ? "" : $("image-alt").value,
           caption: $("image-caption").value, lockAspect: $("image-lock").checked, crop: cropControls.value(),
-          wrap: $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
-          position: $("image-position-layer").value === "flow" ? null : { layer: $("image-position-layer").value,
+          wrap: context?.grouped || $("image-wrap").value === "none" ? null : { side: $("image-wrap").value, gap: $("image-wrap-gap").valueAsNumber },
+          position: context?.grouped || $("image-position-layer").value === "flow" ? null : { layer: $("image-position-layer").value,
             x: $("image-position-x").valueAsNumber, y: $("image-position-y").valueAsNumber },
           transform: Number($("image-rotation").value) || $("image-flip-x").checked || $("image-flip-y").checked ?
             { rotation: Number($("image-rotation").value), flipX: $("image-flip-x").checked, flipY: $("image-flip-y").checked } : null,
           figureId: numbered ? owner.attrs.figureId || `figure-${reference().replaceAll("-", "").slice(0, 24)}` : null,
         });
-        if (owner.selected) tr.setNodeMarkup(selection.from, undefined, attrs);
+        if (owner.selected) {
+          tr.setNodeMarkup(selection.from, undefined, attrs);
+          if (context.grouped) tr.setNodeMarkup(context.groupPos, undefined, officeImageGroupAttributes({
+            id: context.group.attrs.id, layout: $("image-group-layout").value, gap: $("image-group-gap").valueAsNumber,
+          }));
+        }
         else tr.replaceSelectionWith(editor.schema.nodes.image.create(attrs));
+      } else if (operation === "remove" && context?.grouped) {
+        const members = context.group.content.content;
+        if (members.length === 2) {
+          const remaining = members[context.imageIndex === 0 ? 1 : 0];
+          tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, remaining);
+          tr.setSelection(NodeSelection.create(tr.doc, context.groupPos));
+        } else {
+          tr.delete(context.imagePos, context.imagePos + context.image.nodeSize);
+          tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + 1));
+        }
       } else if (operation === "remove") tr.deleteSelection();
+      else if (operation === "ungroup" && context?.grouped) {
+        const members = context.group.content.content;
+        const selectedOffset = members.slice(0, context.imageIndex).reduce((total, node) => total + node.nodeSize, 0);
+        tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, members);
+        tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + selectedOffset));
+      }
       else {
-        const index = selection.$from.index(), parent = selection.$from.parent;
+        const entity = context?.grouped ? context.group : selection.node;
+        const entityPos = context?.grouped ? context.groupPos : selection.from;
+        const index = context?.grouped ? context.rootIndex : selection.$from.index(), parent = context?.root ?? selection.$from.parent;
         const other = parent.maybeChild(index + (operation === "up" ? -1 : 1));
         if (!other) return;
-        const start = operation === "up" ? selection.from - other.nodeSize : selection.from;
-        const end = operation === "up" ? selection.to : selection.to + other.nodeSize;
-        tr.replaceWith(start, end, operation === "up" ? [selection.node, other] : [other, selection.node]);
-        tr.setSelection(NodeSelection.create(tr.doc, operation === "up" ? start : start + other.nodeSize));
+        const start = operation === "up" ? entityPos - other.nodeSize : entityPos;
+        const end = operation === "up" ? entityPos + entity.nodeSize : entityPos + entity.nodeSize + other.nodeSize;
+        tr.replaceWith(start, end, operation === "up" ? [entity, other] : [other, entity]);
+        const entityStart = operation === "up" ? start : start + other.nodeSize;
+        const memberOffset = context?.grouped ? 1 + context.group.content.content.slice(0, context.imageIndex)
+          .reduce((total, node) => total + node.nodeSize, 0) : 0;
+        tr.setSelection(NodeSelection.create(tr.doc, entityStart + memberOffset));
       }
       validate(tr.doc);
       if (tr.doc.eq(editor.state.doc)) { close(true); return; }
       close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       focus(); notice("Bildänderung im Entwurf. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
     } catch { $("image-status").textContent = "Diese Bildänderung ist ungültig oder überschreitet die Dokumentgrenzen."; }
+  };
+  const group = (direction) => {
+    if (!valid() || action.busy || !action.attrs || !groupCandidate(action, direction)) return;
+    const owner = action, editor = owner.editor, context = owner.imageContext, delta = direction === "previous" ? -1 : 1;
+    const other = context.root.child(context.rootIndex + delta);
+    try {
+      const tr = editor.state.tr;
+      if (context.grouped) {
+        const otherPos = direction === "previous" ? context.groupPos - other.nodeSize : context.groupPos + context.group.nodeSize;
+        const members = direction === "previous" ? [other, ...context.group.content.content] : [...context.group.content.content, other];
+        const start = Math.min(context.groupPos, otherPos), end = Math.max(context.groupPos + context.group.nodeSize, otherPos + other.nodeSize);
+        tr.replaceWith(start, end, editor.schema.nodes.imageGroup.create(context.group.attrs, members));
+        const selectedIndex = context.imageIndex + (direction === "previous" ? 1 : 0);
+        const offset = 1 + members.slice(0, selectedIndex).reduce((total, node) => total + node.nodeSize, 0);
+        tr.setSelection(NodeSelection.create(tr.doc, start + offset));
+      } else {
+        const otherPos = direction === "previous" ? context.imagePos - other.nodeSize : context.imagePos + context.image.nodeSize;
+        const start = Math.min(context.imagePos, otherPos), end = Math.max(context.imagePos + context.image.nodeSize, otherPos + other.nodeSize);
+        let attrs, members, selectedIndex;
+        if (other.type.name === "imageGroup") {
+          attrs = other.attrs;
+          members = direction === "previous" ? [...other.content.content, context.image] : [context.image, ...other.content.content];
+          selectedIndex = direction === "previous" ? members.length - 1 : 0;
+        } else {
+          attrs = { id: `image-group-${reference().replaceAll("-", "").slice(0, 24)}`, layout: $("image-group-layout").value,
+            gap: $("image-group-gap").valueAsNumber };
+          members = direction === "previous" ? [other, context.image] : [context.image, other];
+          selectedIndex = direction === "previous" ? 1 : 0;
+        }
+        const groupNode = editor.schema.nodes.imageGroup.create(officeImageGroupAttributes(attrs), members);
+        tr.replaceWith(start, end, groupNode);
+        const offset = 1 + members.slice(0, selectedIndex).reduce((total, node) => total + node.nodeSize, 0);
+        tr.setSelection(NodeSelection.create(tr.doc, start + offset));
+      }
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice("Bildgruppe im Entwurf geändert. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("image-status").textContent = "Diese Bildgruppe ist ungültig oder überschreitet die Dokumentgrenzen."; }
   };
   $("image-options").addEventListener("mousedown", (event) => event.preventDefault());
   $("image-options").addEventListener("click", open);
@@ -299,6 +386,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   });
   $("image-form").addEventListener("submit", (event) => { event.preventDefault(); change("apply"); });
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
+  for (const direction of ["previous", "next"]) $(`image-group-${direction}`).addEventListener("click", () => group(direction));
+  $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
   for (const id of ["image-close", "image-cancel"]) $(id).addEventListener("click", () => close(true));
   $("image-dialog").addEventListener("cancel", (event) => { event.preventDefault(); close(true); });
   return { update, close };

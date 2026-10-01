@@ -28,6 +28,7 @@ BLOCKS = {
     "horizontalRule",
     "table",
     "image",
+    "imageGroup",
     "pageBreak",
     "sectionBreak",
     "tableOfContents",
@@ -117,6 +118,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     document_references = 0
     equation_ids: set[str] = set()
     generated_blocks: set[str] = set()
+    image_group_ids: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -386,6 +388,21 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 if figure_id in figure_ids or figure_id in bookmark_ids or figure_id in table_ids:
                     reject()
                 figure_ids.add(figure_id)
+        elif kind == "imageGroup":
+            identifier = attrs.get("id")
+            if (
+                depth != 1
+                or set(attrs) != {"id", "layout", "gap"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"image-group-[a-f0-9]{24}", identifier) is None
+                or identifier in image_group_ids
+                or attrs.get("layout") not in {"row", "stack"}
+                or type(attrs.get("gap")) is not int
+                or not 0 <= attrs["gap"] <= 48
+                or len(image_group_ids) >= 20
+            ):
+                reject()
+            image_group_ids.add(identifier)
         elif kind == "bookmark":
             bookmarks += 1
             identifier, label = attrs.get("id"), attrs.get("label")
@@ -616,6 +633,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             reject()
         if kind in {"doc", "blockquote", "tableCell", "tableHeader"}:
             if not children or any(child not in BLOCKS for child in child_types):
+                reject()
+        elif kind == "imageGroup":
+            if (
+                not 2 <= len(children) <= 8
+                or any(child != "image" for child in child_types)
+                or any(child.get("attrs", {}).get("wrap") is not None for child in children)
+                or any(child.get("attrs", {}).get("position") is not None for child in children)
+            ):
                 reject()
         elif kind in {"paragraph", "heading"}:
             if any(
