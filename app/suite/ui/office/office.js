@@ -2598,10 +2598,7 @@ function prepareEditor(content, session) {
         tr.setDocAttribute("documentFields", safeContent.attrs?.documentFields || []);
         tr.setDocAttribute("citationSources", safeContent.attrs?.citationSources || []); return true;
       }).run();
-  } catch (error) {
-    document.documentElement.dataset.officeEditorError = error instanceof Error ? error.message : "unknown";
-    editor.destroy(); throw error;
-  }
+  } catch (error) { editor.destroy(); throw error; }
   return { editor, editorHost };
 }
 
@@ -2946,7 +2943,6 @@ async function openDocument(objectId, versionId = null) {
     if (suggestionPanelOpen()) loadSuggestions();
   } catch (error) {
     if (!sessionCurrent(session)) return;
-    document.documentElement.dataset.officeOpenError = error instanceof Error ? error.message : "unknown";
     state.editor?.destroy(); state.editor = null; $("office-editor").replaceChildren();
     session.loading = false; session.canWrite = false;
     $("document-title").value = "";
