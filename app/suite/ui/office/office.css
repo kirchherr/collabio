@@ -108,6 +108,9 @@
 :is(.document-page .tiptap, .office-print-content, .image-layout-preview):has(> [data-image-position]) > :not([data-image-position]) { position: relative; z-index: 1; }
 :is(.office-image-node,.office-image)[data-image-position] { position: relative; height: 1px; min-height: 1px; margin: 0; clear: none; overflow: visible; z-index: 2; }
 :is(.office-image-node,.office-image)[data-image-position="behind"] { z-index: 0; }
+.office-image-node[data-image-position] { z-index: auto; }
+.office-image-node[data-image-position] > .office-image { z-index: 2; }
+.office-image-node[data-image-position="behind"] > .office-image { z-index: 0; }
 .office-image-node[data-image-position] > .office-image, .office-print-content > .office-image[data-image-position], .image-layout-preview > .office-image[data-image-position] {
   position: absolute; left: var(--image-position-x); top: var(--image-position-y); width: min(100%,var(--image-position-width));
   transform: translateX(var(--image-position-shift)); margin: 0; max-width: 100%;
