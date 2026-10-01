@@ -84,6 +84,7 @@ test("Office images support foreground background and bounded free anchored plac
   await expect(page.locator("#print-preview [data-image-position=behind]")).toHaveCount(2);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html).toContain('data-image-position="behind"');
+  await page.locator("#print-close").click();
 
   await nodes.nth(0).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
   await page.locator("#image-position-layer").selectOption("flow"); await page.locator("#image-apply").click();
