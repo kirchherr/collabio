@@ -45,7 +45,7 @@ test("Office images rotate mirror undo print and reset with responsive geometry"
   expect((await officeContent(page, saved.document.object_id, { versionId: saved.version.version_id })).content).toEqual(saved.content);
 
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
-  await expect(page.locator("#print-preview .office-image-transform[data-image-rotation='90']")).toHaveCount(2);
+  await expect(page.locator("#print-preview .office-image-transform[data-image-rotation='90']")).toHaveCount(1);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html).toContain('data-image-flip-x="true"'); await page.locator("#print-close").click();
 
