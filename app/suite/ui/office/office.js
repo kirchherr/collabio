@@ -5289,7 +5289,7 @@ window.addEventListener("beforeunload", (event) => {
 const pageControls = installOfficePageControls({ state, allowed: paragraphAllowed, actionCurrent: characterActionCurrent,
   sessionCurrent, validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
 const imageControls = installOfficeImageControls({ state,
-  allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || state.editor.state.selection.node?.type.name === "image"),
+  allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || ["image", "imageGroup"].includes(state.editor.state.selection.node?.type.name)),
   current: characterActionCurrent,
   validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
 restoreContext();

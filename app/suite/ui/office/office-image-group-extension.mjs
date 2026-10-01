@@ -25,16 +25,16 @@ export function officeImageGroupExtension() {
           control.setAttribute("aria-label", `Bildgruppe mit ${current.childCount} Bildern bearbeiten`);
         };
         paint(node);
-        const selectFirstImage = () => {
+        const selectGroup = () => {
           const position = typeof getPos === "function" ? getPos() : null;
           if (Number.isInteger(position)) {
-            const selection = NodeSelection.create(editor.state.doc, position + 1);
+            const selection = NodeSelection.create(editor.state.doc, position);
             editor.view.dispatch(editor.state.tr.setSelection(selection));
             editor.view.focus();
           }
         };
         control.addEventListener("mousedown", (event) => {
-          event.preventDefault(); event.stopPropagation(); selectFirstImage();
+          event.preventDefault(); event.stopPropagation(); selectGroup();
         });
         control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
         return { dom, contentDOM,

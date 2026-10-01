@@ -151,7 +151,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   const update = () => {
     if (action && !valid()) close();
     $("image-options").disabled = !allowed();
-    $("image-options").textContent = state.editor?.state.selection.node?.type.name === "image" ? "Bild bearbeiten …" : "Bild einfügen …";
+    $("image-options").textContent = ["image", "imageGroup"].includes(state.editor?.state.selection.node?.type.name) ? "Bild bearbeiten …" : "Bild einfügen …";
     $("image-upload").disabled = !valid() || action?.busy || !state.session?.objectId || !$("image-file").files.length;
     $("image-apply").disabled = !valid() || action?.busy || !action?.attrs;
     for (const id of ["image-remove", "image-up", "image-down"]) $(id).disabled = !valid() || action?.busy || !action?.selected;
@@ -196,12 +196,15 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   const open = () => {
     if (!allowed()) return;
     close();
-    const editor = state.editor, selected = editor.state.selection.node?.type.name === "image";
+    const editor = state.editor, selection = editor.state.selection;
+    const groupSelected = selection.node?.type.name === "imageGroup";
+    const imageSelection = groupSelected ? NodeSelection.create(editor.state.doc, selection.from + 1) : selection;
+    const selected = imageSelection.node?.type.name === "image";
     action = { session: state.session, editor, context: state.context, revision: state.session.revision,
-      document: editor.state.doc, selection: editor.state.selection, storedMarks: editor.state.storedMarks,
-      selected, attrs: selected ? officeImageAttributes(editor.state.selection.node.attrs) : null,
+      document: editor.state.doc, selection, imageSelection, storedMarks: editor.state.storedMarks,
+      selected, attrs: selected ? officeImageAttributes(imageSelection.node.attrs) : null,
       controller: new AbortController(), busy: false, url: null };
-    action.imageContext = selected ? selectedOfficeImageContext(editor, action.selection) : null;
+    action.imageContext = selected ? selectedOfficeImageContext(editor, action.imageSelection) : null;
     const figures = officeFigureInventory(editor.getJSON());
     action.figureNumber = selected ? figures.find(({ id }) => id === action.attrs.figureId)?.number ?? figures.length + 1 : figures.length + 1;
     $("image-title").textContent = selected ? "Bild bearbeiten" : "Bild einfügen";
@@ -250,7 +253,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   };
   const change = (operation) => {
     if (!valid() || action.busy || !action.attrs) return;
-    const owner = action, editor = owner.editor, selection = owner.selection, context = owner.imageContext;
+    const owner = action, editor = owner.editor, selection = owner.imageSelection, context = owner.imageContext;
     try {
       const tr = editor.state.tr;
       if (operation === "apply") {
