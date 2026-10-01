@@ -109,8 +109,12 @@ def test_position_recovery_requires_consecutive_layers_reset_and_same_owned_rend
         "wrap": None,
         "position": {"layer": "front", "x": 120, "y": 34},
     }
-    behind = {**front, "document_version_id": "behind", "previous_document_version_id": "front",
-              "position": {"layer": "behind", "x": 880, "y": -24}}
+    behind = {
+        **front,
+        "document_version_id": "behind",
+        "previous_document_version_id": "front",
+        "position": {"layer": "behind", "x": 880, "y": -24},
+    }
     reset = {**behind, "document_version_id": "reset", "previous_document_version_id": "behind", "position": None}
     assert verify_restored_position_reset([front, behind, reset]) == {
         "verified_positioned_image_reference_count": 2,
