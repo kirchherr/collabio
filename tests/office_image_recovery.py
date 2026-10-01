@@ -144,6 +144,43 @@ def verify_restored_transform_reset(bindings: list[dict[str, Any]]) -> dict[str,
     }
 
 
+def verify_restored_group_reset(versions: list[dict[str, Any]]) -> dict[str, Any]:
+    def identity(row: dict[str, Any], previous: bool = False) -> tuple[str, str | None]:
+        return row["object_id"], row["previous_document_version_id" if previous else "document_version_id"]
+
+    rows = {
+        identity(row): row
+        for row in versions
+        if len(row["groups"]) == 1
+        and row["groups"][0]["layout"] == "row"
+        and row["groups"][0]["gap"] == 12
+        and len(row["groups"][0]["images"]) == 3
+    }
+    stacks: dict[tuple[str, str | None], dict[str, Any]] = {}
+    for row in versions:
+        predecessor = rows.get(identity(row, True))
+        if (
+            len(row["groups"]) == 1
+            and row["groups"][0]["layout"] == "stack"
+            and row["groups"][0]["gap"] == 24
+            and predecessor
+            and row["groups"][0]["id"] == predecessor["groups"][0]["id"]
+            and row["groups"][0]["images"] == predecessor["groups"][0]["images"]
+        ):
+            stacks[identity(row)] = row
+    if not any(
+        not row["groups"]
+        and identity(row, True) in stacks
+        and row["images"] == stacks[identity(row, True)]["groups"][0]["images"]
+        for row in versions
+    ):
+        raise ValueError("Image group recovery requires consecutive row/stack/reset versions of the same images")
+    return {
+        "verified_grouped_document_version_count": sum(bool(row["groups"]) for row in versions),
+        "grouped_arranged_and_reset_versions_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

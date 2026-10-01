@@ -6,6 +6,7 @@ import pytest
 from office_image_recovery import (
     verify_restored_crop_reset,
     verify_restored_images,
+    verify_restored_group_reset,
     verify_restored_position_reset,
     verify_restored_transform_reset,
     verify_restored_wrap_reset,
@@ -14,7 +15,7 @@ from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
 
-@pytest.mark.parametrize("number", [268, 269, 270])
+@pytest.mark.parametrize("number", [268, 269, 270, 291])
 def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
@@ -172,3 +173,31 @@ def test_transform_recovery_requires_consecutive_rotation_mirroring_reset_and_sa
     for rows in ([], [rotated], [mirrored, reset], [rotated, reset]):
         with pytest.raises(ValueError):
             verify_restored_transform_reset(rows)
+
+
+def test_group_recovery_requires_consecutive_row_stack_reset_with_same_members() -> None:
+    row: dict[str, Any] = {
+        "object_id": "doc",
+        "document_version_id": "row",
+        "previous_document_version_id": "initial",
+        "images": [("a", "1"), ("b", "2"), ("c", "3")],
+        "groups": [{"id": "group", "layout": "row", "gap": 12, "images": [("a", "1"), ("b", "2"), ("c", "3")]}],
+    }
+    stack = {**row, "document_version_id": "stack", "previous_document_version_id": "row",
+        "groups": [{**row["groups"][0], "layout": "stack", "gap": 24}]}
+    reset = {**stack, "document_version_id": "reset", "previous_document_version_id": "stack", "groups": []}
+    assert verify_restored_group_reset([row, stack, reset]) == {
+        "verified_grouped_document_version_count": 2,
+        "grouped_arranged_and_reset_versions_verified": True,
+    }
+    for broken in (
+        {**stack, "previous_document_version_id": "other"},
+        {**stack, "groups": [{**stack["groups"][0], "id": "other"}]},
+        {**stack, "groups": [{**stack["groups"][0], "images": [("x", "1")]}]},
+        {**reset, "images": [("x", "1")]},
+    ):
+        with pytest.raises(ValueError):
+            verify_restored_group_reset([row, broken, reset])
+    for rows in ([], [row], [stack, reset], [row, reset]):
+        with pytest.raises(ValueError):
+            verify_restored_group_reset(rows)

@@ -19,6 +19,7 @@ import psycopg
 from office_image_recovery import (
     verify_restored_crop_reset,
     verify_restored_images,
+    verify_restored_group_reset,
     verify_restored_position_reset,
     verify_restored_transform_reset,
     verify_restored_wrap_reset,
@@ -109,6 +110,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_288_restore",
         "collabio_work_e2e_289_restore",
         "collabio_work_e2e_290_restore",
+        "collabio_work_e2e_291_restore",
         "collabio_work_e2e_269_restore",
         "collabio_work_e2e_270_restore",
         "collabio_work_e2e_271_restore",
@@ -1228,6 +1230,7 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
     )
     evidence: list[dict[str, Any]] = []
     image_bindings: list[dict[str, Any]] = []
+    image_group_versions: list[dict[str, Any]] = []
     multi_version_documents = 0
     for document in documents:
         user = readers[document.object_id]
@@ -1235,6 +1238,28 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         multi_version_documents += int(len(versions) >= 2)
         for version in versions:
             read = restored.read_content(user_context=user, object_id=document.object_id, version_id=version.version_id)
+            image_group_versions.append(
+                {
+                    "object_id": document.object_id,
+                    "document_version_id": version.version_id,
+                    "previous_document_version_id": version.previous_version_id,
+                    "images": [
+                        (attrs["assetId"], attrs["versionId"])
+                        for attrs in image_references(read.content)
+                    ],
+                    "groups": [
+                        {
+                            **node["attrs"],
+                            "images": [
+                                (child["attrs"]["assetId"], child["attrs"]["versionId"])
+                                for child in node["content"]
+                            ],
+                        }
+                        for node in read.content.get("content", [])
+                        if node.get("type") == "imageGroup"
+                    ],
+                }
+            )
             for attrs in image_references(read.content):
                 image_bindings.append(
                     {
@@ -1327,6 +1352,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         image_evidence.update(verify_restored_position_reset(image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_290_restore"):
         image_evidence.update(verify_restored_transform_reset(image_bindings))
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_291_restore"):
+        image_evidence.update(verify_restored_group_reset(image_group_versions))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(

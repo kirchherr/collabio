@@ -78,14 +78,17 @@ test("Office image groups combine edit move delete undo save print ungroup and o
   await openImage(page, 0); await page.locator("#image-up").click();
   await expect(editor.locator(":scope > :first-child")).toHaveClass(/office-image-group/);
   await editor.press("Control+z"); await expect(editor.locator(":scope > :first-child")).toHaveText("Group introduction");
+  const grouped = await saveOffice(page, { objectId });
+  expect(grouped.content.content[1]).toMatchObject({ type: "imageGroup", attrs: { layout: "row", gap: 12 } });
   await openImage(page, 0); await page.locator("#image-group-layout").selectOption("stack");
   await page.locator("#image-group-gap").fill("24"); await page.locator("#image-apply").click();
   await expect(group).toHaveAttribute("data-image-group-layout", "stack");
   await editor.press("Control+z"); await expect(group).toHaveAttribute("data-image-group-layout", "row");
   await editor.press("Control+Shift+z"); await expect(group).toHaveAttribute("data-image-group-layout", "stack");
-  const grouped = await saveOffice(page, { objectId });
-  expect(grouped.content.content[1]).toMatchObject({ type: "imageGroup", attrs: { layout: "stack", gap: 24 } });
-  expect(grouped.content.content[1].content.map((entry) => entry.attrs)).toEqual(images.map((entry) => entry.attrs));
+  const arranged = await saveOffice(page, { objectId });
+  expect(arranged.content.content[1]).toMatchObject({ type: "imageGroup", attrs: { layout: "stack", gap: 24 } });
+  expect(arranged.content.content[1].content.map((entry) => entry.attrs)).toEqual(images.map((entry) => entry.attrs));
+  expect(arranged.version.previous_version_id).toBe(grouped.version.version_id);
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
 
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
@@ -101,13 +104,13 @@ test("Office image groups combine edit move delete undo save print ungroup and o
   await openImage(page, 0); await page.locator("#image-group-ungroup").click();
   await expect(group).toHaveCount(0); await expect(editor.locator(":scope > .office-image-node")).toHaveCount(3);
   const reset = await saveOffice(page, { objectId });
-  expect(reset.content).toEqual(baseline.content); expect(reset.version.previous_version_id).toBe(grouped.version.version_id);
+  expect(reset.content).toEqual(baseline.content); expect(reset.version.previous_version_id).toBe(arranged.version.version_id);
 
-  await openReuseHistory(page, grouped); await openReuse(page, grouped, "Independent grouped copy");
-  await submitReuse(page, grouped); await expectReuseDraft(page, "Independent grouped copy");
+  await openReuseHistory(page, arranged); await openReuse(page, arranged, "Independent grouped copy");
+  await submitReuse(page, arranged); await expectReuseDraft(page, "Independent grouped copy");
   await expect(editor.locator(".office-image-group img")).toHaveCount(3);
   const copy = await saveOffice(page), copied = copy.content.content.find((entry) => entry.type === "imageGroup");
-  expect(copied.attrs).toEqual(grouped.content.content[1].attrs);
+  expect(copied.attrs).toEqual(arranged.content.content[1].attrs);
   expect(copied.content.map((entry) => entry.attrs.assetId)).not.toEqual(images.map((entry) => entry.attrs.assetId));
   expect(copied.content.map((entry) => entry.attrs.contentHash)).toEqual(images.map((entry) => entry.attrs.contentHash));
 });
