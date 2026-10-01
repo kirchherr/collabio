@@ -18,8 +18,8 @@ import psycopg
 
 from office_image_recovery import (
     verify_restored_crop_reset,
-    verify_restored_images,
     verify_restored_group_reset,
+    verify_restored_images,
     verify_restored_position_reset,
     verify_restored_transform_reset,
     verify_restored_wrap_reset,
