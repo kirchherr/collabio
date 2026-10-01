@@ -42,12 +42,20 @@ export function officeImageGroupExtension() {
 export function selectedOfficeImageContext(editor, selection = editor.state.selection) {
   if (selection.node?.type.name !== "image") return null;
   const parent = selection.$from.parent;
+  const childIndexAt = (node, offset) => {
+    let found = -1;
+    node.forEach((_child, childOffset, index) => { if (childOffset === offset) found = index; });
+    return found;
+  };
   if (parent.type.name !== "imageGroup") {
-    return { grouped: false, image: selection.node, imagePos: selection.from, imageIndex: selection.$from.index(),
-      root: parent, rootIndex: selection.$from.index(), group: null, groupPos: null };
+    const index = childIndexAt(parent, selection.from);
+    if (index < 0) return null;
+    return { grouped: false, image: selection.node, imagePos: selection.from, imageIndex: index,
+      root: parent, rootIndex: index, group: null, groupPos: null };
   }
-  const depth = selection.$from.depth;
-  return { grouped: true, image: selection.node, imagePos: selection.from, imageIndex: selection.$from.index(),
-    root: selection.$from.node(depth - 1), rootIndex: selection.$from.index(depth - 1),
-    group: parent, groupPos: selection.$from.before(depth) };
+  const depth = selection.$from.depth, groupPos = selection.$from.before(depth), root = selection.$from.node(depth - 1);
+  const imageIndex = childIndexAt(parent, selection.from - groupPos - 1), rootIndex = childIndexAt(root, groupPos);
+  if (imageIndex < 0 || rootIndex < 0) return null;
+  return { grouped: true, image: selection.node, imagePos: selection.from, imageIndex,
+    root, rootIndex, group: parent, groupPos };
 }
