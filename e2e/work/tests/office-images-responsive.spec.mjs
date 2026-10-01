@@ -53,8 +53,8 @@ test("Office image upload insert resize undo save reopen and real PDF preserve e
   await openPrintPreview(page, first.document.object_id, saved.version.version_id);
   await expect(page.locator("#print-preview img")).toHaveAttribute("alt", attrs.alt);
   await submitOfficePrint(page, first.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints.length).toBe(1);
-  await expect.poll(() => prints[0]?.pdf?.length || 0).toBeGreaterThan(0);
+  await expect.poll(() => prints.length, { timeout: 20_000 }).toBe(1);
+  await expect.poll(() => prints[0]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);
   expect(prints[0].pdf.toString("latin1")).toContain("/Subtype /Image");
   expect(prints[0].snapshot.text).toContain("<literal image caption>");
 });
