@@ -28,6 +28,55 @@ export function officeImageExtension(context, accessDenied) {
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
+        const commitPosition = (position) => {
+          if (destroyed || current.attrs.position == null || typeof getPos !== "function") return;
+          const at = getPos();
+          if (!Number.isInteger(at)) return;
+          const attrs = officeImageAttributes({ ...current.attrs, position });
+          const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
+          editor.view.dispatch(closeHistory(transaction).scrollIntoView());
+          editor.view.dispatch(closeHistory(editor.state.tr));
+        };
+        const positionAnchor = (anchor, figure) => {
+          let drag = null;
+          const paint = (position) => {
+            const attrs = { ...current.attrs, position };
+            applyOfficeImageLayout(dom, attrs); applyOfficeImageLayout(figure, attrs);
+            anchor.setAttribute("aria-label", `${position.layer === "front" ? "Bildanker vor Text" : "Bildanker hinter Text"}; X ${position.x}; Y ${position.y} Pixel; ziehen oder mit Pfeiltasten verschieben`);
+          };
+          const finish = (event, cancel = false) => {
+            if (!drag || (event.pointerId != null && drag.id !== event.pointerId)) return;
+            if (anchor.hasPointerCapture(drag.id)) anchor.releasePointerCapture(drag.id);
+            const next = drag.next, start = drag.start; drag = null;
+            if (cancel) { paint(start); return; }
+            if (next.x !== start.x || next.y !== start.y) commitPosition(next);
+          };
+          anchor.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 || current.attrs.position == null) return;
+            const bounds = editor.view.dom.getBoundingClientRect();
+            drag = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY,
+              width: Math.max(1, bounds.width), start: { ...current.attrs.position }, next: { ...current.attrs.position } };
+            anchor.setPointerCapture(event.pointerId); event.preventDefault();
+          });
+          anchor.addEventListener("pointermove", (event) => {
+            if (!drag || drag.id !== event.pointerId) return;
+            drag.next = { ...drag.start,
+              x: Math.max(0, Math.min(1000, Math.round(drag.start.x + (event.clientX - drag.clientX) / drag.width * 1000))),
+              y: Math.max(-1200, Math.min(1200, Math.round(drag.start.y + event.clientY - drag.clientY))) };
+            paint(drag.next);
+          });
+          anchor.addEventListener("pointerup", (event) => finish(event));
+          anchor.addEventListener("pointercancel", (event) => finish(event, true));
+          anchor.addEventListener("keydown", (event) => {
+            const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+            if (!direction || event.ctrlKey || event.metaKey || event.altKey || current.attrs.position == null) return;
+            event.preventDefault(); const step = event.shiftKey ? 10 : 1;
+            commitPosition({ ...current.attrs.position,
+              x: Math.max(0, Math.min(1000, current.attrs.position.x + direction[0] * step)),
+              y: Math.max(-1200, Math.min(1200, current.attrs.position.y + direction[1] * step)) });
+          });
+          paint(current.attrs.position);
+        };
         const render = () => {
           if (!url || destroyed) return;
           const target = current.attrs.figureId == null ? null : officeFigureInventory(editor.getJSON()).find(({ id }) => id === current.attrs.figureId);
@@ -35,11 +84,11 @@ export function officeImageExtension(context, accessDenied) {
           if (current.attrs.position != null) {
             const anchor = document.createElement("button"); anchor.type = "button"; anchor.className = "office-image-anchor";
             anchor.textContent = current.attrs.position.layer === "front" ? "Bildanker · vor Text" : "Bildanker · hinter Text";
-            anchor.setAttribute("aria-label", `${anchor.textContent}; Bild bearbeiten`);
             anchor.addEventListener("click", () => {
               const position = typeof getPos === "function" ? getPos() : null;
               if (Number.isInteger(position)) editor.commands.setNodeSelection(position);
             });
+            positionAnchor(anchor, figure);
             dom.replaceChildren(figure, anchor);
           } else dom.replaceChildren(figure);
         };

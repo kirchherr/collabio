@@ -114,7 +114,8 @@
 }
 :is(.office-image-node,.office-image)[data-image-position="behind"] > .office-image,
 .office-print-content > .office-image[data-image-position="behind"], .image-layout-preview > .office-image[data-image-position="behind"] { pointer-events: none; }
-.office-image-anchor { position: absolute; z-index: 4; left: var(--image-position-x); top: var(--image-position-y); transform: translate(var(--image-position-shift),-100%); border: 1px solid #087e78; border-radius: 999px; padding: 3px 8px; background: #fff; color: #086560; font: 600 10px/1.2 Inter,"Segoe UI",Arial,sans-serif; white-space: nowrap; }
+.office-image-anchor { position: absolute; z-index: 4; left: var(--image-position-x); top: var(--image-position-y); transform: translate(var(--image-position-shift),-100%); border: 1px solid #087e78; border-radius: 999px; padding: 3px 8px; background: #fff; color: #086560; font: 600 10px/1.2 Inter,"Segoe UI",Arial,sans-serif; white-space: nowrap; cursor: grab; touch-action: none; }
+.office-image-anchor:active { cursor: grabbing; }
 .office-image-node.ProseMirror-selectednode[data-image-position] { outline: none; }
 .office-image-node.ProseMirror-selectednode[data-image-position] > .office-image { outline: 2px solid #2563eb; outline-offset: 3px; }
 .office-image-viewport { display: block; position: relative; overflow: hidden; max-width: 100%; }

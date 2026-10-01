@@ -52,7 +52,12 @@ test("Office images support foreground background and bounded free anchored plac
   expect(layout[1].left).toBeGreaterThanOrEqual(-1); expect(layout[1].right).toBeLessThanOrEqual(layout[1].rootWidth + 1);
   expect(Number(layout[0].z)).toBeGreaterThan(Number(layout[1].z)); expect(layout[1].pointer).toBe("none");
 
-  await nodes.nth(0).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
+  const firstAnchor = nodes.nth(0).locator(".office-image-anchor");
+  await firstAnchor.focus(); await firstAnchor.press("ArrowRight");
+  await expect(nodes.nth(0)).toHaveCSS("--image-position-x", "12.1%");
+  await editor.press("Control+z"); await expect(nodes.nth(0)).toHaveCSS("--image-position-x", "12%");
+
+  await firstAnchor.click(); await page.locator("#image-options").click();
   await expect(page.locator("#image-position-layer")).toHaveValue("front");
   await expect(page.locator("#image-wrap")).toBeDisabled();
   await page.locator("#image-position-layer").selectOption("behind");
