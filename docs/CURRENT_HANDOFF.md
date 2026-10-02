@@ -16,7 +16,7 @@ Desktop/mobile screenshot SHA-256 values are `7d9003a4ce47328dd95f68be8dad70b7aa
 and `6154b78027a9783a5f95ee64b815dde45f8027446c519957b6aca866d981a6f3`. Full quality passed Ruff, formatting for
 821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-e4ab3590` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-3237c776` with synthetic
 Work-E2E data. Regular and review APIs return health `ok`. No database migration, ordinary tenant, pilot, indexing,
 cloud AI, DOCX engine or production admission was activated. Roadmap 291's fresh recovery remains the latest isolated
 restore; Roadmap 292 adds no table or object-store schema and does not claim a new disaster-recovery run.
@@ -2531,7 +2531,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 292 / PLANS 153 is complete and published through `e4ab3590`. Preserve the exact inert shape schema, top-level
+Roadmap 292 / PLANS 153 is complete and published through `3237c776`. Preserve the exact inert shape schema, top-level
 and uniqueness limits, fixed color vocabulary, isolated undo, literal text, responsive width, immutable history,
 independent copies and print. Keep the focused shape matrix and full Python quality green.
 
