@@ -1918,6 +1918,17 @@ Undo/Redo, historische Versionen, Druck und unabhaengige Kopien bewahren Seite u
 Konturumfluss, gleichzeitige freie Position, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
 keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+297. [x] Begrenzte native Formgruppen umgesetzt: Zwei bis acht vorhandene Formen lassen sich in exakter Reihenfolge
+     neben- oder untereinander mit 0 bis 48 Pixel Abstand gruppieren. Gruppen koennen erweitert, bearbeitet,
+     aufgeloest und als einzelner Rueckgaengig-Schritt behandelt werden; schmale Ansichten wechseln sicher in eine
+     Spalte. Freie Position und Textumfluss sind innerhalb einer Gruppe ausgeschlossen.
+
+Native Office bleibt vor CRM. Roadmap 297 / PLANS 158 ist unter ADR-0114 implementiert. 32 Schematests, die 9-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Vergleich, immutable Versionen,
+historische Wiederverwendung, Druck und unabhaengige Kopien bewahren Gruppen-ID, Reihenfolge, Layout, Abstand und alle
+Formattribute exakt. Verschachtelte oder gemischte Gruppen, beliebige Gruppentransformationen, Verbinder und DrawingML
+bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

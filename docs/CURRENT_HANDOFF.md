@@ -2,6 +2,27 @@
 
 Updated: 2026-10-02
 
+Roadmap 297 / PLANS 158 is complete under ADR-0114. Native Office now groups two through eight adjacent flow shapes
+into an exact ordered row or stack with an integer 0–48 pixel gap. Authors can create and extend groups, edit layout
+and gap, edit or remove members, undo/redo and dissolve the group. Compact views collapse rows to one column. Grouped
+members retain kind, literal text, colors, geometry, stroke, alignment and quarter-turn rotation; wrapping and free
+positioning fail closed.
+
+Implementation commits `b773dad5` through `5874b04f` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 32/32. The final model plus desktop/mobile workflows passed 9/9, covering bounded attributes, group/create,
+layout, gap, ordered members, undo/redo, exact history, print, dissolution and independently owned copies. Earlier UI
+runs first exposed a static hidden-state issue and then a stale review bundle; both were corrected before the final
+green run. Desktop/mobile screenshot SHA-256 values are
+`3c8626a9e006facbcca8b9c029aec2a5dc779228d04b2ae9773c95ee1b636c09` and
+`6270d6990cc014ee5fae9bb1e0647e1b12a4c86b4c5ff58ff56e80e419ef2d1e`; both passed visual review. Full quality passed
+Ruff, formatting for 824 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-5874b04f` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+the new optional JSON structure changes no table or object-store schema.
+
 Roadmap 296 / PLANS 157 is complete under ADR-0113. Native shapes can now wrap following paragraph text on the left
 or right with an exact integer gap from 0 through 48 pixels. Wrapping and free positioning are mutually exclusive in
 the dialog, browser validator and server validator. Wrapped shapes use at most 45 percent of available text width and
@@ -2649,6 +2670,10 @@ Verify health, ports and other projects, then append the complete operation to t
 - Complete Word/GenOffice fidelity rows, calibration and human review; then separately gated Quick Edit/WOPI/mail work.
 
 ## New chat bootstrap
+
+Roadmap 297 / PLANS 158 is complete and published through `5874b04f`. Preserve bounded shape groups, member order,
+flow-only membership, responsive fallback and the existing Office authorization/version/recovery contracts. Continue
+with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
 Continue the same branch from its verified current HEAD, preserve the user's untracked files and the closed pilot,
