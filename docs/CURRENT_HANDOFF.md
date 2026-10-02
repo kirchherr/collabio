@@ -2,6 +2,25 @@
 
 Updated: 2026-10-02
 
+Roadmap 295 / PLANS 156 is complete under ADR-0112. Native shapes now support an optional exact quarter-turn of 90,
+180 or 270 degrees; zero degrees remains the canonical absence. Authors can choose the angle in the dialog or advance
+the selected shape through a separate focusable **90° drehen** control. Each direct rotation is an isolated undo step.
+The complete inert shape, including literal text, rotates; normal-flow sideways shapes reserve responsive transposed
+bounds while positioned shapes retain their logical anchor and dimensions.
+
+Implementation commit `6668c7a9` is published on `kirchherr/kb-write-unit-of-work`. Shape schema tests passed 31/31;
+the model plus desktop/mobile workflow passed 5/5, covering invalid angles, dialog rotation, direct rotation,
+undo/redo, resizing, front/behind/flow, immutable versions, print and independently owned copies. Desktop/mobile
+screenshot SHA-256 values are `74ebdf1ac246a32554e308839a1ef05bb6105b43efacc519a8a9ba1515e96539` and
+`3cb403661a8fab68c51959485c5d0687124a5c1d51b9baa14efac8d8713e74ac`; both passed visual review. Full quality passed
+Ruff, formatting for 821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-rotate-6668c7a9` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because the optional JSON angle changes no table or object-store schema.
+
 Roadmap 294 / PLANS 155 is complete under ADR-0111. A selected native shape now exposes a visible focusable resize
 control in normal flow and on front or behind layers. Pointer/touch movement previews bounded width and height and
 commits one isolated undo step on release; cancellation restores the prior display. Arrow keys change one dimension
@@ -2569,9 +2588,9 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 294 / PLANS 155 is complete and published through `46f32b6e`. Preserve the bounded direct resize control,
-pointer/touch preview with single commit, keyboard increments, canonical size limits, the bounded logical anchor,
-isolated undo, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
+Roadmap 295 / PLANS 156 is complete and published through `6668c7a9`. Preserve bounded quarter-turn rotation,
+canonical zero omission, responsive transposed flow bounds, direct rotation with isolated undo, bounded resizing and
+logical anchors, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
 full Python quality green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary

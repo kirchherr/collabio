@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–294 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 294 / PLANS 155 bounded direct native shape resizing
+Status: Roadmap 252–295 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 295 / PLANS 156 bounded native shape rotation
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0111; current shape resizing: `ARCHITECTURE_DECISIONS/ADR-0111-native-office-shape-resizing.md`
+Decisions: ADR-0079 through ADR-0112; current shape rotation: `ARCHITECTURE_DECISIONS/ADR-0112-native-office-shape-rotation.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 295 adds optional 90-, 180- or 270-degree rotation; zero degrees remains the canonical absence. The dialog and
+the selected shape's direct **90° drehen** control use isolated undo transactions. Rotation applies to the inert form
+and its literal text. Normal-flow sideways shapes reserve responsive transposed bounds, while positioned shapes retain
+their exact logical anchor and dimensions. Comparison, history, copies and print preserve the exact angle. Arbitrary
+angles, matrices and executable transform strings fail closed.
 
 Roadmap 294 adds a visible direct resize control to the selected shape in normal flow or on either logical layer.
 Pointer/touch movement previews both dimensions and commits the final bounded size as one isolated undo step; pointer

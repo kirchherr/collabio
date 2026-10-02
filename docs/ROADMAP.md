@@ -1896,6 +1896,17 @@ vor/hinter Text, Undo/Redo, Versionen, Druck und unabhaengige Kopien bewahren di
 Schemaerweiterung, Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung. Seitenverhaeltnis-
 Sperren, Rotation, Formgruppen, Verbinder, Konturumfluss und DrawingML bleiben getrennte Entscheidungen.
 
+295. [x] Begrenzte Vierteldrehung fuer native Formen umgesetzt: Eine Form speichert optional nur 90, 180 oder 270
+     Grad; 0 Grad bleibt die kanonische Abwesenheit. Dialog und direkter fokussierbarer 90-Grad-Schalter verwenden
+     denselben Vertrag und getrennte Rueckgaengig-Schritte. Seitwaerts gedrehte Formen reservieren im normalen
+     Textfluss responsive vertauschte Aussenmasse; Formtext dreht sich mit.
+
+Native Office bleibt vor CRM. Roadmap 295 / PLANS 156 ist unter ADR-0112 implementiert. 31 Schematests, die 5-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Ebenen, Groessenaenderung,
+Undo/Redo, Versionen, Vergleich, Druck und unabhaengige Kopien bewahren den exakten Winkel. Beliebige Winkel,
+Transformationsmatrizen, getrennte Textdrehung, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
