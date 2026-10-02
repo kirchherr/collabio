@@ -15,7 +15,7 @@ copies. Desktop/mobile screenshot SHA-256 values are `281d48db4bf1a9f7bd9c10c348
 and `a19c572829aa14fe332f47257ada4f51182ae5b37d6cafbae6a124e38d7294fd`. Full quality passed Ruff, formatting for
 819 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-layer-95fce0a8` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-layer-523e6be9` with synthetic
 Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
 tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
 fresh isolated recovery; this optional JSON attribute adds no table or object-store schema and does not claim a new
@@ -2550,7 +2550,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 293 / PLANS 154 is complete and published through `95fce0a8`. Preserve the bounded logical anchor, normalized
+Roadmap 293 / PLANS 154 is complete and published through `523e6be9`. Preserve the bounded logical anchor, normalized
 horizontal coordinate, vertical limits, always-operable anchor, isolated undo, exact flow reset, immutable history,
 independent copies and print. Keep the focused shape matrix and full Python quality green.
 
