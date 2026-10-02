@@ -87,3 +87,51 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
   expect(copy.content.content.find((entry) => entry.type === "shape").attrs).toEqual(wrapped.content.content.find((entry) => entry.type === "shape").attrs);
 });
+
+test("Office shape groups preserve ordered members history print and independent copies", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native shape group proof", "Text before shapes");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Alpha"); await page.locator("#shape-apply").click();
+  await expect(editor.locator(".office-shape")).toHaveCount(1);
+  await editor.locator(".office-shape").click(); await editor.press("ArrowRight");
+  await expect(page.locator("#shape-options")).toHaveText("Form einfügen …");
+  await page.locator("#shape-options").click(); await page.locator("#shape-kind").selectOption("ellipse");
+  await page.locator("#shape-text").fill("Beta"); await page.locator("#shape-rotation").selectOption("90");
+  await page.locator("#shape-apply").click(); await expect(editor.locator(".office-shape")).toHaveCount(2);
+
+  await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-previous")).toBeEnabled();
+  await page.locator("#shape-group-layout").selectOption("row"); await page.locator("#shape-group-gap").fill("16");
+  await page.locator("#shape-group-previous").click();
+  await expect(editor.locator(".office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(1);
+
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-position-layer")).toBeDisabled(); await expect(page.locator("#shape-wrap")).toBeDisabled();
+  await page.locator("#shape-group-layout").selectOption("stack"); await page.locator("#shape-group-gap").fill("24");
+  await page.locator("#shape-apply").click();
+  await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
+  const grouped = await saveOffice(page, { objectId });
+  const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
+  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24 }, content: [
+    { type: "shape", attrs: { text: "Alpha" } }, { type: "shape", attrs: { text: "Beta", rotation: 90 } },
+  ] });
+  const prints = await installPrintProbe(page); await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
+  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(2);
+  await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });
+
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-ungroup").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
+  const ungrouped = await saveOffice(page, { objectId }); expect(ungrouped.version.previous_version_id).toBe(grouped.version.version_id);
+  await openReuseHistory(page, grouped); await openReuse(page, grouped, "Independent shape group copy"); await submitReuse(page, grouped);
+  await expectReuseDraft(page, "Independent shape group copy"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
+  const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
+  expect(copy.content.content.find((entry) => entry.type === "shapeGroup")).toEqual(group);
+});
