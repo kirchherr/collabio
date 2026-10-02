@@ -184,12 +184,27 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
 
 def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
     def shape(index: int) -> dict[str, Any]:
-        return {"type": "shape", "attrs": {"id": "shape-" + f"{index:024x}", "kind": "rectangle", "width": 240,
-            "height": 120, "fill": "white", "stroke": "slate", "strokeWidth": 2, "text": f"Shape {index}",
-            "textAlign": "center", **({"rotation": 90} if index == 2 else {})}}
+        return {
+            "type": "shape",
+            "attrs": {
+                "id": "shape-" + f"{index:024x}",
+                "kind": "rectangle",
+                "width": 240,
+                "height": 120,
+                "fill": "white",
+                "stroke": "slate",
+                "strokeWidth": 2,
+                "text": f"Shape {index}",
+                "textAlign": "center",
+                **({"rotation": 90} if index == 2 else {}),
+            },
+        }
 
-    group = {"type": "shapeGroup", "attrs": {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16},
-        "content": [shape(1), shape(2)]}
+    group = {
+        "type": "shapeGroup",
+        "attrs": {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16},
+        "content": [shape(1), shape(2)],
+    }
     document = {"type": "doc", "content": [group]}
     assert validate_office_document(document) == document
     for attrs in [
