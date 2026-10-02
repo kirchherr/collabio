@@ -16,7 +16,7 @@ screenshot SHA-256 values are `74ebdf1ac246a32554e308839a1ef05bb6105b43efacc519a
 Ruff, formatting for 821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-rotate-6668c7a9` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-rotate-b1daf0ff` with synthetic
 Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
 tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
 fresh isolated recovery because the optional JSON angle changes no table or object-store schema.
@@ -2588,7 +2588,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 295 / PLANS 156 is complete and published through `6668c7a9`. Preserve bounded quarter-turn rotation,
+Roadmap 295 / PLANS 156 is complete and published through `b1daf0ff`. Preserve bounded quarter-turn rotation,
 canonical zero omission, responsive transposed flow bounds, direct rotation with isolated undo, bounded resizing and
 logical anchors, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
 full Python quality green.
