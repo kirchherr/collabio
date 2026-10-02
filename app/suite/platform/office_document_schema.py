@@ -495,9 +495,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
         elif kind == "shapeGroup":
             identifier = attrs.get("id")
+            connection = attrs.get("connection")
             if (
                 depth != 1
-                or set(attrs) != {"id", "layout", "gap"}
+                or set(attrs) - {"id", "layout", "gap", "connection"}
+                or not {"id", "layout", "gap"}.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-group-[a-f0-9]{24}", identifier) is None
                 or identifier in shape_group_ids
@@ -505,6 +507,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or type(attrs.get("gap")) is not int
                 or not 0 <= attrs["gap"] <= 48
                 or len(shape_group_ids) >= 20
+            ):
+                reject()
+            if connection is not None and (
+                not isinstance(connection, dict)
+                or set(connection) != {"kind", "color", "width"}
+                or connection.get("kind") not in {"line", "arrow", "doubleArrow"}
+                or connection.get("color") not in {"slate", "red", "green", "teal", "blue", "purple", "black"}
+                or type(connection.get("width")) is not int
+                or not 1 <= connection["width"] <= 8
             ):
                 reject()
             shape_group_ids.add(identifier)

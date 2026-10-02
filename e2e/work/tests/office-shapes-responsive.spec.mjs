@@ -114,15 +114,20 @@ test("Office shape groups preserve ordered members history print and independent
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-position-layer")).toBeDisabled(); await expect(page.locator("#shape-wrap")).toBeDisabled();
   await page.locator("#shape-group-layout").selectOption("stack"); await page.locator("#shape-group-gap").fill("24");
+  await page.locator("#shape-group-connection").selectOption("doubleArrow");
+  await page.locator("#shape-group-connection-color").selectOption("purple");
+  await page.locator("#shape-group-connection-width").fill("4");
   await page.locator("#shape-apply").click();
   await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
+  await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
-  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24 }, content: [
+  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connection: { kind: "doubleArrow", color: "purple", width: 4 } }, content: [
     { type: "shape", attrs: { text: "Alpha" } }, { type: "shape", attrs: { text: "Beta", rotation: 90 } },
   ] });
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(2);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });

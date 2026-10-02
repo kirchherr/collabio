@@ -207,6 +207,11 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
     }
     document = {"type": "doc", "content": [group]}
     assert validate_office_document(document) == document
+    connected = {
+        **group,
+        "attrs": {**group["attrs"], "connection": {"kind": "doubleArrow", "color": "purple", "width": 8}},
+    }
+    assert validate_office_document({"type": "doc", "content": [connected]})["content"][0] == connected
     for attrs in [
         {"id": "short", "layout": "row", "gap": 16},
         {"id": "shape-group-" + "a" * 24, "layout": "grid", "gap": 16},
@@ -214,6 +219,11 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 49},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": True},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "curve", "color": "blue", "width": 2}},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "arrow", "color": "url", "width": 2}},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": 0}},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": True}},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": 2, "path": "M0 0"}},
     ]:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "attrs": attrs}]})

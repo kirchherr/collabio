@@ -179,9 +179,17 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
     $("shape-group-layout").value = action?.shapeContext?.group?.attrs.layout ?? "row";
     $("shape-group-gap").value = String(action?.shapeContext?.group?.attrs.gap ?? 16);
+    $("shape-group-connection").value = action?.shapeContext?.group?.attrs.connection?.kind ?? "none";
+    $("shape-group-connection-color").value = action?.shapeContext?.group?.attrs.connection?.color ?? "slate";
+    $("shape-group-connection-width").value = String(action?.shapeContext?.group?.attrs.connection?.width ?? 2);
   };
   const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
   const shapeGroupId = () => `shape-group-${shapeId().slice(6)}`;
+  const readGroup = (id) => officeShapeGroupAttributes({ id, layout: $("shape-group-layout").value,
+    gap: Number($("shape-group-gap").value), connection: $("shape-group-connection").value === "none" ? null : {
+      kind: $("shape-group-connection").value, color: $("shape-group-connection-color").value,
+      width: Number($("shape-group-connection-width").value),
+    } });
   const read = () => officeShapeAttributes({ id: action?.attrs?.id || action?.id || (action.id = shapeId()),
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
@@ -216,10 +224,13 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-position-x").disabled = grouped || !positioned; $("shape-position-y").disabled = grouped || !positioned;
     $("shape-group-previous").disabled = !groupCandidate(action, "previous");
     $("shape-group-next").disabled = !groupCandidate(action, "next");
-    $("shape-group-ungroup").disabled = !grouped; };
+    $("shape-group-ungroup").disabled = !grouped;
+    const connected = $("shape-group-connection").value !== "none";
+    $("shape-group-connection-color").disabled = !connected; $("shape-group-connection-width").disabled = !connected; };
   $("shape-options").addEventListener("click", open);
   $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
   $("shape-wrap").addEventListener("input", updateLayoutControls);
+  $("shape-group-connection").addEventListener("input", updateLayoutControls);
   $("shape-form").addEventListener("input", preview);
   $("shape-form").addEventListener("submit", (event) => {
     event.preventDefault(); if (!action || !current(action)) { close(); return; }
@@ -229,9 +240,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
         const shapeSelection = action.shapeSelection, context = action.shapeContext;
         const groupedAttrs = context?.grouped ? officeShapeAttributes({ ...attrs, position: null, wrap: null }) : attrs;
         const tr = editor.state.tr.setNodeMarkup(shapeSelection.from, undefined, groupedAttrs);
-        if (context?.grouped) tr.setNodeMarkup(context.groupPos, undefined, officeShapeGroupAttributes({
-          id: context.group.attrs.id, layout: $("shape-group-layout").value, gap: Number($("shape-group-gap").value),
-        }));
+        if (context?.grouped) tr.setNodeMarkup(context.groupPos, undefined, readGroup(context.group.attrs.id));
         validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       } else {
         if (count() >= OFFICE_SHAPE_LIMIT) throw new Error("insert");
@@ -281,7 +290,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
           attrs = other.attrs; members = direction === "previous" ? [...other.content.content, context.shape] : [context.shape, ...other.content.content];
           selectedIndex = direction === "previous" ? members.length - 1 : 0;
         } else {
-          attrs = { id: shapeGroupId(), layout: $("shape-group-layout").value, gap: Number($("shape-group-gap").value) };
+          attrs = readGroup(shapeGroupId());
           members = direction === "previous" ? [other, context.shape] : [context.shape, other]; selectedIndex = direction === "previous" ? 1 : 0;
         }
         tr.replaceWith(start, end, editor.schema.nodes.shapeGroup.create(officeShapeGroupAttributes(attrs), members));

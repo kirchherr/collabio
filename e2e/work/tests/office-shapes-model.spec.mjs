@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
-import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupConnection, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -59,6 +59,21 @@ test("Office shape groups admit only bounded inert layout attributes", () => {
   const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
     { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24), kind: "ellipse" } }] };
   expect(describeOfficeBlock(block).label).toContain("Formgruppe · 2 Formen · nebeneinander · Abstand 16 px");
+});
+
+test("Office shape group connections are bounded inert and visible in comparisons", () => {
+  const connection = { kind: "doubleArrow", color: "purple", width: 8 };
+  expect(officeShapeGroupConnection(connection)).toEqual(connection);
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "stack", gap: 24, connection };
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  for (const invalid of [{ kind: "curve", color: "blue", width: 2 }, { kind: "arrow", color: "url", width: 2 },
+    { kind: "line", color: "black", width: 0 }, { kind: "line", color: "black", width: 9 },
+    { kind: "line", color: "black", width: true }, { kind: "line", color: "black", width: 2, path: "M0 0" }]) {
+    expect(() => officeShapeGroupConnection(invalid)).toThrow();
+  }
+  const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
+    { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24) } }] };
+  expect(describeOfficeBlock(block).label).toContain("Verbindung doubleArrow, purple, 8 px");
 });
 
 test("Office comparison exposes shape presentation and literal text changes", () => {

@@ -7,7 +7,7 @@ export function officeShapeGroupExtension() {
     name: "shapeGroup", group: "block", content: `shape{2,${OFFICE_SHAPE_GROUP_MEMBER_LIMIT}}`,
     isolating: true, selectable: true, draggable: false,
     addAttributes: () => ({ id: { default: null, rendered: false }, layout: { default: null, rendered: false },
-      gap: { default: null, rendered: false } }),
+      gap: { default: null, rendered: false }, connection: { default: null, rendered: false } }),
     parseHTML: () => [], renderHTML: () => ["section", { class: "office-shape-group" }, 0],
     addNodeView() {
       return ({ node, editor, getPos }) => {
@@ -21,7 +21,16 @@ export function officeShapeGroupExtension() {
           dom.dataset.shapeGroup = attrs.id; dom.dataset.shapeGroupLayout = attrs.layout;
           dom.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
           dom.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(current.childCount) : "1");
-          control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten`);
+          if (attrs.connection) {
+            dom.dataset.shapeGroupConnection = attrs.connection.kind;
+            dom.dataset.shapeGroupConnectionColor = attrs.connection.color;
+            dom.style.setProperty("--shape-group-connection-width", `${attrs.connection.width}px`);
+          } else {
+            delete dom.dataset.shapeGroupConnection; delete dom.dataset.shapeGroupConnectionColor;
+            dom.style.removeProperty("--shape-group-connection-width");
+          }
+          const connection = attrs.connection ? `; Verbindung ${attrs.connection.kind}, ${attrs.connection.color}, ${attrs.connection.width} Pixel` : "";
+          control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten${connection}`);
         };
         paint(node);
         const selectGroup = () => {

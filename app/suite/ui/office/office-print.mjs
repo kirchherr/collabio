@@ -75,8 +75,14 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;
       group.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
       group.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(children.length) : "1");
+      if (attrs.connection) {
+        group.dataset.shapeGroupConnection = attrs.connection.kind;
+        group.dataset.shapeGroupConnectionColor = attrs.connection.color;
+        group.style.setProperty("--shape-group-connection-width", `${attrs.connection.width}px`);
+      }
       for (const child of children) {
-        const shape = officeShapeElement(child.attrs, dom); shape.classList.add("office-print-shape"); group.append(shape);
+        const member = dom.createElement("div"); member.className = "office-print-shape-member";
+        const shape = officeShapeElement(child.attrs, dom); shape.classList.add("office-print-shape"); member.append(shape); group.append(member);
       }
       return group;
     }
