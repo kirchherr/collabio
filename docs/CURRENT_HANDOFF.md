@@ -1,6 +1,25 @@
 # Current Project Handoff
 
-Updated: 2026-10-01
+Updated: 2026-10-02
+
+Roadmap 292 / PLANS 153 is complete under ADR-0109. Native Office now supports bounded top-level rectangles, rounded
+rectangles and ellipses with fixed color tokens, integer size/stroke limits, literal text and left/center/right text
+alignment. The responsive insert/edit dialog includes an inert preview; selection and double-click reopen it. Insert,
+edit and remove are separate undo steps. Comparison, immutable versions, independent copies and print preserve the
+exact canonical attributes. SVG, arbitrary paths, CSS, URLs, scripts, OLE, connectors and nested/freeform shapes fail
+closed or remain outside this decision.
+
+Implementation commits `6366fd6d` through `e4ab3590` are published on `kirchherr/kb-write-unit-of-work`. Focused
+schema checks passed 31/31. Shape model plus desktop/mobile workflows passed 4/4, covering insert, live preview, edit,
+isolated undo/redo, save, historical exact-version read, print, responsive width and an independently owned copy.
+Desktop/mobile screenshot SHA-256 values are `7d9003a4ce47328dd95f68be8dad70b7aa375663a04e6342d3ebe24a60f7a750`
+and `6154b78027a9783a5f95ee64b815dde45f8027446c519957b6aca866d981a6f3`. Full quality passed Ruff, formatting for
+821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-e4ab3590` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`. No database migration, ordinary tenant, pilot, indexing,
+cloud AI, DOCX engine or production admission was activated. Roadmap 291's fresh recovery remains the latest isolated
+restore; Roadmap 292 adds no table or object-store schema and does not claim a new disaster-recovery run.
 
 Roadmap 291 / PLANS 152 is complete under ADR-0108. Native Office now groups two through eight existing images into a
 bounded inert block with exact member order, row/stack layout and a 0–48 pixel gap. Users can create and extend groups,
@@ -2512,13 +2531,13 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 289 / PLANS 150 is complete and published through `f6a794a5`. Preserve the bounded inert position schema,
-always-operable anchor, mutual exclusion with wrapping, isolated undo, exact immutable history/copies/print and the
-front/behind/flow-reset recovery lineage. Keep the complete 39-case image matrix and full Python quality green.
+Roadmap 292 / PLANS 153 is complete and published through `e4ab3590`. Preserve the exact inert shape schema, top-level
+and uniqueness limits, fixed color vocabulary, isolated undo, literal text, responsive width, immutable history,
+independent copies and print. Keep the focused shape matrix and full Python quality green.
 
-Continue native Office before CRM with the next coherent authoring loop. Absolute physical-page anchors, wrap
-contours, rotation, grouping, continuous editor pagination and DOCX anchor interchange require separate decisions;
-do not extend the logical anchor into simulated page coordinates. Transitive references, content-wide reference
+Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
+polygons, shape grouping, overlap layers, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
+interchange require separate decisions. Transitive references, content-wide reference
 search, persistent backlink indexing, formula evaluation, continuous tracked changes and live collaboration also
 remain separate.
 

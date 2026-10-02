@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–291 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 291 / PLANS 152 bounded native image groups
+Status: Roadmap 252–292 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 292 / PLANS 153 bounded native shapes
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0108; current image groups: `ARCHITECTURE_DECISIONS/ADR-0108-native-office-image-groups.md`
+Decisions: ADR-0079 through ADR-0109; current shapes: `ARCHITECTURE_DECISIONS/ADR-0109-native-office-shapes.md`
+
+## Bounded native shapes (Roadmap 292)
+
+**Form einfügen …** creates an inert top-level rectangle, rounded rectangle or ellipse. The stored node contains only
+a unique restricted ID, bounded integer width/height/stroke width, fixed fill/stroke color tokens, literal text and a
+fixed text alignment. Selection or double-click reopens the responsive editor. Insert, edit and remove are isolated
+undo steps and become durable only through the existing confirmed CAS save.
+
+Shapes shrink to the available editor or print width without horizontal overflow. Comparison, history and independent
+copies preserve exact attributes and print emits an inert accessible element. Server and browser reject unknown keys,
+duplicate IDs, nesting, excess shapes, control characters and values outside the fixed vocabularies. Arbitrary SVG,
+paths, CSS, remote resources, scripts, OLE, connectors, shape grouping and DrawingML interchange are not admitted.
 
 ## User workflow and scope
 

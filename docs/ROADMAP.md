@@ -1863,6 +1863,17 @@ und die 45-teilige Desktop-/Mobile-Bildmatrix sind gruen. Der frische nummeriert
 Zeile/12 Pixel -> Stapel/24 Pixel -> aufgeloest. Es gibt keine Datenbankmigration, neue Abhaengigkeit,
 Tenant-Aktivierung, freie CSS-Gruppe oder Aenderung der Originalpixel.
 
+292. [x] Begrenzte native Formen umgesetzt: Rechtecke, abgerundete Rechtecke und Ellipsen lassen sich mit festen
+     Farbtokens, Rahmenstaerke, ganzzahligen Abmessungen, Text und Textausrichtung einfuegen und bearbeiten. Einfuegen,
+     Bearbeiten und Entfernen bilden getrennte Rueckgaengig-Schritte. Responsive Darstellung, Vergleich, unveraenderliche
+     Versionen, unabhaengige Dokumentkopien und Druck bewahren die kanonischen Attribute und literalen Texte.
+
+Native Office bleibt vor CRM. Roadmap 292 / PLANS 153 ist unter ADR-0109 implementiert. Vollstaendige Python-Qualitaet
+ist gruen; die fokussierte Modell- und Desktop-/Mobile-Workflowmatrix besteht 4/4. Server und Browser erzwingen
+Top-Level-Platzierung, eindeutige IDs, hoechstens 100 Formen sowie feste Grenzen fuer Masse, Farben, Rahmen und Text.
+SVG, freie Pfade, CSS, URLs, Skripte, OLE, Verbinder, Ueberlagerungsebenen und DOCX-DrawingML bleiben ausgeschlossen.
+Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
