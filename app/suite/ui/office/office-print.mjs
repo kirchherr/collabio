@@ -4,6 +4,7 @@ import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
+import { officeShapeElement } from "./office-shapes.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -58,6 +59,10 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       group.style.setProperty("--image-group-columns", attrs.layout === "row" ? String(children.length) : "1");
       for (const child of children) group.append(render(child, depth + 1));
       return group;
+    }
+    if (value.type === "shape") {
+      if (depth !== 1 || value.content) throw new Error("Invalid shape");
+      const shape = officeShapeElement(value.attrs, dom); shape.classList.add("office-print-shape"); return shape;
     }
     if (value.type === "bookmark") {
       const attrs = officeBookmarkAttributes(value.attrs), marker = dom.createElement("span");

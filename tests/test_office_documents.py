@@ -121,6 +121,35 @@ def test_native_schema_resource_limits_are_independent() -> None:
             validate_office_document(value)
 
 
+def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
+    attrs = {
+        "id": "shape-" + "a" * 24,
+        "kind": "roundedRectangle",
+        "width": 320,
+        "height": 160,
+        "fill": "teal",
+        "stroke": "slate",
+        "strokeWidth": 2,
+        "text": "Literal <script> text 😀",
+        "textAlign": "center",
+    }
+    document = {"type": "doc", "content": [{"type": "shape", "attrs": attrs}]}
+    assert validate_office_document(document) == document
+    invalid = [
+        {**attrs, "id": "shape-short"}, {**attrs, "kind": "svg"}, {**attrs, "width": 79},
+        {**attrs, "height": 801}, {**attrs, "fill": "url(https://example.invalid)"},
+        {**attrs, "strokeWidth": True}, {**attrs, "text": "bad\x00text"},
+        {**attrs, "textAlign": "justify"}, {**attrs, "onclick": "run()"},
+    ]
+    for candidate in invalid:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{"type": "shape", "attrs": candidate}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document({"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "shape", "attrs": attrs}]}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document({"type": "doc", "content": [{"type": "shape", "attrs": attrs}, {"type": "shape", "attrs": attrs}]})
+
+
 @pytest.fixture
 def office() -> tuple[OfficeDocumentService, InMemoryOfficeDocumentRepository, UserContext]:
     sources = InMemorySourceObjectRepository()

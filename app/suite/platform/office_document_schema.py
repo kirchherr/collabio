@@ -29,6 +29,7 @@ BLOCKS = {
     "table",
     "image",
     "imageGroup",
+    "shape",
     "pageBreak",
     "sectionBreak",
     "tableOfContents",
@@ -119,6 +120,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     equation_ids: set[str] = set()
     generated_blocks: set[str] = set()
     image_group_ids: set[str] = set()
+    shape_ids: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -403,6 +405,30 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             ):
                 reject()
             image_group_ids.add(identifier)
+        elif kind == "shape":
+            identifier = attrs.get("id")
+            text = attrs.get("text")
+            colors = {"transparent", "white", "slate", "red", "orange", "yellow", "green", "teal", "blue", "purple", "black"}
+            if (
+                depth != 1
+                or set(attrs) != {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
+                or identifier in shape_ids or len(shape_ids) >= 100
+                or attrs.get("kind") not in {"rectangle", "roundedRectangle", "ellipse"}
+                or type(attrs.get("width")) is not int or not 80 <= attrs["width"] <= 1200
+                or type(attrs.get("height")) is not int or not 40 <= attrs["height"] <= 800
+                or attrs.get("fill") not in colors or attrs.get("stroke") not in colors
+                or type(attrs.get("strokeWidth")) is not int or not 0 <= attrs["strokeWidth"] <= 8
+                or not isinstance(text, str) or len(text) > 1000
+                or any((ord(c) < 32 and c not in "\n\t") or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029" for c in text)
+                or attrs.get("textAlign") not in {"left", "center", "right"}
+            ):
+                reject()
+            shape_ids.add(identifier)
+            characters += len(text)
+            if characters > MAX_DOCUMENT_CHARACTERS:
+                reject()
         elif kind == "bookmark":
             bookmarks += 1
             identifier, label = attrs.get("id"), attrs.get("label")

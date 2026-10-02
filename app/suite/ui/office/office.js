@@ -20,6 +20,8 @@ import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loa
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { officeImageGroupAttributes } from "./office-image-groups.mjs";
 import { officeImageGroupExtension } from "./office-image-group-extension.mjs";
+import { officeShapeAttributes } from "./office-shapes.mjs";
+import { officeShapeExtension, installOfficeShapeControls } from "./office-shape-controls.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
@@ -43,7 +45,7 @@ const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" }
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "pageBreak", "sectionBreak", "bookmark",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "shape", "pageBreak", "sectionBreak", "bookmark",
   "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
@@ -377,6 +379,7 @@ function normalizedDocument(document) {
   let sectionBreaks = 0;
   let documentReferences = 0;
   const imageGroupIds = new Set();
+  const shapeIds = new Set();
   const walk = (value, depth = 0) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
@@ -394,6 +397,13 @@ function normalizedDocument(document) {
       result.attrs = officeImageGroupAttributes(value.attrs);
       if (imageGroupIds.has(result.attrs.id) || imageGroupIds.size >= 20) throw new Error("document-image-group");
       imageGroupIds.add(result.attrs.id);
+    }
+    if (value.type === "shape") {
+      if (depth !== 1) throw new Error("document-shape");
+      result.attrs = officeShapeAttributes(value.attrs);
+      if (shapeIds.has(result.attrs.id) || shapeIds.size >= 100) throw new Error("document-shape");
+      shapeIds.add(result.attrs.id); characters += Array.from(result.attrs.text).length;
+      if (characters > 100000) throw new Error("document-length");
     }
     if (value.type === "bookmark") result.attrs = officeBookmarkAttributes(value.attrs);
     if (value.type === "documentField") result.attrs = { key: officeFieldAttributes(value.attrs, new Map()).key };
@@ -571,6 +581,7 @@ function updateEditorState() {
   updateStyleControls();
   pageControls.update();
   imageControls.update();
+  shapeControls.update();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -2556,6 +2567,7 @@ function prepareEditor(content, session) {
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageGroupExtension(),
+      officeShapeExtension(),
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {
@@ -2628,6 +2640,7 @@ function mountEditor(content, session) {
 function clearWorkspace() {
   pageControls.close();
   imageControls.close();
+  shapeControls.close();
   closeSectionDialog();
   closeStyleDialog();
   state.formatSample = null;
@@ -5292,6 +5305,8 @@ const imageControls = installOfficeImageControls({ state,
   allowed: () => paragraphAllowed() && (state.editor.state.selection.empty || ["image", "imageGroup"].includes(state.editor.state.selection.node?.type.name)),
   current: characterActionCurrent,
   validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
+const shapeControls = installOfficeShapeControls({ state, allowed: () => paragraphAllowed(), current: characterActionCurrent,
+  validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {
