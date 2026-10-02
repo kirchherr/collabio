@@ -18,7 +18,7 @@ green run. Desktop/mobile screenshot SHA-256 values are
 Ruff, formatting for 824 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-5874b04f` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-a3ca4e3e` with synthetic
 Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
 AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
 the new optional JSON structure changes no table or object-store schema.
@@ -2671,7 +2671,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 297 / PLANS 158 is complete and published through `5874b04f`. Preserve bounded shape groups, member order,
+Roadmap 297 / PLANS 158 is complete and published through `a3ca4e3e`. Preserve bounded shape groups, member order,
 flow-only membership, responsive fallback and the existing Office authorization/version/recovery contracts. Continue
 with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
