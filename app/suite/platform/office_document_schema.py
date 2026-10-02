@@ -408,7 +408,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif kind == "shape":
             identifier = attrs.get("id")
             text = attrs.get("text")
-            colors = {"transparent", "white", "slate", "red", "orange", "yellow", "green", "teal", "blue", "purple", "black"}
+            colors = {
+                "transparent", "white", "slate", "red", "orange", "yellow",
+                "green", "teal", "blue", "purple", "black",
+            }
             if (
                 depth != 1
                 or set(attrs) != {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}
@@ -421,7 +424,13 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or attrs.get("fill") not in colors or attrs.get("stroke") not in colors
                 or type(attrs.get("strokeWidth")) is not int or not 0 <= attrs["strokeWidth"] <= 8
                 or not isinstance(text, str) or len(text) > 1000
-                or any((ord(c) < 32 and c not in "\n\t") or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029" for c in text)
+                or any(
+                    (ord(c) < 32 and c not in "\n\t")
+                    or 127 <= ord(c) <= 159
+                    or 0xD800 <= ord(c) <= 0xDFFF
+                    or c in "\u2028\u2029"
+                    for c in text
+                )
                 or attrs.get("textAlign") not in {"left", "center", "right"}
             ):
                 reject()

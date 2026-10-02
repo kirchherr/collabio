@@ -145,9 +145,13 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{"type": "shape", "attrs": candidate}]})
     with pytest.raises(OfficeDocumentInvalidContentError):
-        validate_office_document({"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "shape", "attrs": attrs}]}]})
+        validate_office_document(
+            {"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "shape", "attrs": attrs}]}]}
+        )
     with pytest.raises(OfficeDocumentInvalidContentError):
-        validate_office_document({"type": "doc", "content": [{"type": "shape", "attrs": attrs}, {"type": "shape", "attrs": attrs}]})
+        validate_office_document(
+            {"type": "doc", "content": [{"type": "shape", "attrs": attrs}, {"type": "shape", "attrs": attrs}]}
+        )
 
 
 @pytest.fixture
