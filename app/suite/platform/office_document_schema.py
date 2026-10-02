@@ -421,12 +421,21 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "purple",
                 "black",
             }
+            required_shape_attrs = {
+                "id",
+                "kind",
+                "width",
+                "height",
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "text",
+                "textAlign",
+            }
             if (
                 depth != 1
-                or set(attrs) - {
-                    "id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "position"
-                }
-                or not {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}.issubset(attrs)
+                or set(attrs) - (required_shape_attrs | {"position"})
+                or not required_shape_attrs.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
                 or identifier in shape_ids
