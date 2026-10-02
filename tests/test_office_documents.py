@@ -219,11 +219,36 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 49},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": True},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
-        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "curve", "color": "blue", "width": 2}},
-        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "arrow", "color": "url", "width": 2}},
-        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": 0}},
-        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": True}},
-        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connection": {"kind": "line", "color": "black", "width": 2, "path": "M0 0"}},
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "curve", "color": "blue", "width": 2},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "arrow", "color": "url", "width": 2},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "line", "color": "black", "width": 0},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "line", "color": "black", "width": True},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "line", "color": "black", "width": 2, "path": "M0 0"},
+        },
     ]:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "attrs": attrs}]})
