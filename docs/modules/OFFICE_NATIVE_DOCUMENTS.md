@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–295 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 295 / PLANS 156 bounded native shape rotation
+Status: Roadmap 252–296 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 296 / PLANS 157 bounded native shape text wrapping
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0112; current shape rotation: `ARCHITECTURE_DECISIONS/ADR-0112-native-office-shape-rotation.md`
+Decisions: ADR-0079 through ADR-0113; current shape wrapping: `ARCHITECTURE_DECISIONS/ADR-0113-native-office-shape-text-wrap.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 296 adds optional left/right text wrapping with an exact integer 0–48 pixel gap. Wrapping and free positioning
+are mutually exclusive in the dialog and both validators. Wrapped shapes occupy at most 45 percent of the available
+text width and a visual height equivalent to 480 pixels; below the narrow-container threshold they return to a safe
+block. Rotation and resizing remain available. Undo, comparison, immutable history, historical reuse, independent
+copies and print preserve the exact side and gap.
 
 Roadmap 295 adds optional 90-, 180- or 270-degree rotation; zero degrees remains the canonical absence. The dialog and
 the selected shape's direct **90° drehen** control use isolated undo transactions. Rotation applies to the inert form

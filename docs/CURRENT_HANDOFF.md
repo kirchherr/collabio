@@ -2,6 +2,26 @@
 
 Updated: 2026-10-02
 
+Roadmap 296 / PLANS 157 is complete under ADR-0113. Native shapes can now wrap following paragraph text on the left
+or right with an exact integer gap from 0 through 48 pixels. Wrapping and free positioning are mutually exclusive in
+the dialog, browser validator and server validator. Wrapped shapes use at most 45 percent of available text width and
+a bounded visual height; narrow containers fall back to a full-width block. Rotation and direct resizing remain
+available.
+
+Implementation commits `78ee0019` and `baaca11d` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 31/31. Model plus desktop/mobile workflows passed 6/6, covering wrap bounds, left/right, position conflict,
+rotation, resize, undo/redo, exact historical reads, print and independently owned copies. The first browser run's two
+failures were test-state setup issues; the corrected complete rerun passed. Desktop/mobile screenshot SHA-256 values
+are `24337422919a62b241ceff290af8f3b9ff9cee2c10341346f80c2384459fc1c8` and
+`ef671aeee778ed3ed474e3a62f1a109ed853ca30288ca1fc780a742c37813519`; both passed visual review. Full quality passed
+Ruff, formatting for 822 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-wrap-baaca11d` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because the optional JSON wrap value changes no table or object-store schema.
+
 Roadmap 295 / PLANS 156 is complete under ADR-0112. Native shapes now support an optional exact quarter-turn of 90,
 180 or 270 degrees; zero degrees remains the canonical absence. Authors can choose the angle in the dialog or advance
 the selected shape through a separate focusable **90° drehen** control. Each direct rotation is an isolated undo step.
@@ -2588,10 +2608,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 295 / PLANS 156 is complete and published through `b1daf0ff`. Preserve bounded quarter-turn rotation,
-canonical zero omission, responsive transposed flow bounds, direct rotation with isolated undo, bounded resizing and
-logical anchors, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
-full Python quality green.
+Roadmap 296 / PLANS 157 is complete and published through `baaca11d`. Preserve bounded left/right wrapping, the
+0–48 pixel gap, mutual exclusion with free positioning, narrow-layout fallback, quarter-turn rotation, bounded
+resizing and logical anchors, isolated undo, exact historical reuse, independent copies and print. Keep the focused
+shape matrix and full Python quality green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML

@@ -1907,6 +1907,17 @@ Undo/Redo, Versionen, Vergleich, Druck und unabhaengige Kopien bewahren den exak
 Transformationsmatrizen, getrennte Textdrehung, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
 keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+296. [x] Begrenzten Textumfluss um native Formen umgesetzt: Eine Form kann links oder rechts stehen und speichert
+     einen ganzzahligen Textabstand von 0 bis 48 Pixeln. Umfluss und freie Position schliessen sich in Dialog, Browser
+     und Server aus. Umflossene Formen belegen hoechstens 45 Prozent der Textbreite; schmale Ansichten wechseln
+     automatisch in einen sicheren Vollbreitenblock.
+
+Native Office bleibt vor CRM. Roadmap 296 / PLANS 157 ist unter ADR-0113 implementiert. 31 Schematests, die 6-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Rotation, Groessenaenderung,
+Undo/Redo, historische Versionen, Druck und unabhaengige Kopien bewahren Seite und Abstand exakt. Freie CSS-Floats,
+Konturumfluss, gleichzeitige freie Position, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
