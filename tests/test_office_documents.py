@@ -135,6 +135,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     }
     document = {"type": "doc", "content": [{"type": "shape", "attrs": attrs}]}
     assert validate_office_document(document) == document
+    positioned = {**attrs, "position": {"layer": "front", "x": 500, "y": -1200}}
+    positioned_document = {"type": "doc", "content": [{"type": "shape", "attrs": positioned}]}
+    assert validate_office_document(positioned_document) == positioned_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -145,6 +148,11 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "text": "bad\x00text"},
         {**attrs, "textAlign": "justify"},
         {**attrs, "onclick": "run()"},
+        {**attrs, "position": {"layer": "middle", "x": 0, "y": 0}},
+        {**attrs, "position": {"layer": "behind", "x": 1001, "y": 0}},
+        {**attrs, "position": {"layer": "front", "x": 0, "y": -1201}},
+        {**attrs, "position": {"layer": "front", "x": True, "y": 0}},
+        {**attrs, "position": {"layer": "front", "x": 0, "y": 0, "style": "fixed"}},
     ]
     for candidate in invalid:
         with pytest.raises(OfficeDocumentInvalidContentError):

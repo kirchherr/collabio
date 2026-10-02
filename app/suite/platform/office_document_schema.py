@@ -423,7 +423,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             }
             if (
                 depth != 1
-                or set(attrs) != {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}
+                or set(attrs) - {
+                    "id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "position"
+                }
+                or not {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
                 or identifier in shape_ids
@@ -447,6 +450,17 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     for c in text
                 )
                 or attrs.get("textAlign") not in {"left", "center", "right"}
+            ):
+                reject()
+            position = attrs.get("position")
+            if position is not None and (
+                not isinstance(position, dict)
+                or set(position) != {"layer", "x", "y"}
+                or position.get("layer") not in {"front", "behind"}
+                or type(position.get("x")) is not int
+                or not 0 <= position["x"] <= 1000
+                or type(position.get("y")) is not int
+                or not -1200 <= position["y"] <= 1200
             ):
                 reject()
             shape_ids.add(identifier)

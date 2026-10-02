@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeShapeAttributes, officeShapeDescription, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
+import { officeShapeAttributes, officeShapeDescription, officeShapePosition, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -13,6 +13,19 @@ test("Office shapes preserve only bounded inert attributes", () => {
     { ...attrs, height: 801 }, { ...attrs, fill: "url(external)" }, { ...attrs, strokeWidth: true },
     { ...attrs, text: "bad\u0000text" }, { ...attrs, textAlign: "justify" }, { ...attrs, onclick: "run()" }]) {
     expect(() => officeShapeAttributes(invalid)).toThrow();
+  }
+});
+
+test("Office shape positions are bounded inert and visible in comparisons", () => {
+  for (const position of [{ layer: "front", x: 0, y: -1200 }, { layer: "behind", x: 1000, y: 1200 }]) {
+    expect(officeShapePosition(position)).toEqual(position);
+    expect(officeShapeAttributes({ ...attrs, position })).toEqual({ ...attrs, position });
+  }
+  expect(officeShapeDescription({ ...attrs, position: { layer: "behind", x: 500, y: 24 } })).toContain("hinter Text · X 500 · Y 24 px");
+  for (const position of [{}, [], "front", { layer: "middle", x: 0, y: 0 }, { layer: "front", x: -1, y: 0 },
+    { layer: "behind", x: 1001, y: 0 }, { layer: "front", x: true, y: 0 }, { layer: "front", x: 0, y: -1201 },
+    { layer: "behind", x: 0, y: 1201 }, { layer: "front", x: 0, y: 0, style: "fixed" }]) {
+    expect(() => officeShapeAttributes({ ...attrs, position })).toThrow();
   }
 });
 
