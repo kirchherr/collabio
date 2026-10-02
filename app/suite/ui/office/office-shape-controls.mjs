@@ -1,5 +1,6 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
+import { closeHistory } from "@tiptap/pm/history";
 import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
 
 export function officeShapeExtension() {
@@ -67,10 +68,13 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       if (action.editing) {
         if (!(editor.state.selection instanceof NodeSelection) || editor.state.selection.node.type.name !== "shape") throw new Error("selection");
         const tr = editor.state.tr.setNodeMarkup(editor.state.selection.from, undefined, attrs);
-        validate(tr.doc); editor.view.dispatch(tr.scrollIntoView());
+        validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       } else {
-        if (count() >= OFFICE_SHAPE_LIMIT || !editor.chain().focus().insertContent({ type: "shape", attrs }).run()) throw new Error("insert");
+        if (count() >= OFFICE_SHAPE_LIMIT) throw new Error("insert");
+        editor.view.dispatch(closeHistory(editor.state.tr));
+        if (!editor.chain().focus().insertContent({ type: "shape", attrs }).run()) throw new Error("insert");
         validate(editor.state.doc);
+        editor.view.dispatch(closeHistory(editor.state.tr));
       }
       close(); focus(editor); updateEditor();
     } catch { notice("Die Form konnte nicht übernommen werden. Auswahl und Grenzwerte prüfen.", true); }
@@ -78,7 +82,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   $("shape-remove").addEventListener("click", () => {
     if (!action || !current(action) || !selected()) return;
     const editor = state.editor, tr = editor.state.tr.deleteSelection();
-    try { validate(tr.doc); editor.view.dispatch(tr.scrollIntoView()); close(); focus(editor); updateEditor(); }
+    try { validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr)); close(); focus(editor); updateEditor(); }
     catch { notice("Die Form konnte nicht entfernt werden.", true); }
   });
   for (const id of ["shape-close", "shape-cancel"]) $(id).addEventListener("click", () => close(true));

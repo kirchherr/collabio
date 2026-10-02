@@ -42,6 +42,9 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-${testInfo.project.name}.png`, fullPage: true });
 
+  await shape.click(); await page.locator("#shape-options").click(); await page.locator("#shape-remove").click();
+  await expect(shape).toHaveCount(0); const reset = await saveOffice(page, { objectId });
+  expect(reset.version.previous_version_id).toBe(saved.version.version_id);
   await openReuseHistory(page, saved); await openReuse(page, saved, "Independent shape copy"); await submitReuse(page, saved);
   await expectReuseDraft(page, "Independent shape copy"); await expect(editor.locator(".office-shape")).toHaveText("Edited ellipse");
   const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
