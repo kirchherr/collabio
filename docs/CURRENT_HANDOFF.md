@@ -16,7 +16,7 @@ flow, immutable versions, print and independently owned copies. Desktop/mobile s
 Ruff, formatting for 820 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-resize-c956c182` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-resize-46f32b6e` with synthetic
 Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
 tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
 fresh isolated recovery because direct resizing reuses existing canonical dimensions and changes no durable schema.
@@ -2569,7 +2569,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 294 / PLANS 155 is complete and published through `c956c182`. Preserve the bounded direct resize control,
+Roadmap 294 / PLANS 155 is complete and published through `46f32b6e`. Preserve the bounded direct resize control,
 pointer/touch preview with single commit, keyboard increments, canonical size limits, the bounded logical anchor,
 isolated undo, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
 full Python quality green.
