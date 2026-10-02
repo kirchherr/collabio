@@ -434,7 +434,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             }
             if (
                 depth != 1
-                or set(attrs) - (required_shape_attrs | {"position"})
+                or set(attrs) - (required_shape_attrs | {"position", "rotation"})
                 or not required_shape_attrs.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
@@ -459,6 +459,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     for c in text
                 )
                 or attrs.get("textAlign") not in {"left", "center", "right"}
+                or ("rotation" in attrs and attrs.get("rotation") not in {90, 180, 270})
             ):
                 reject()
             position = attrs.get("position")

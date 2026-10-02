@@ -7,11 +7,15 @@ const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 
 
 test("Office shapes preserve only bounded inert attributes", () => {
   expect(officeShapeAttributes(attrs)).toEqual(attrs);
+  expect(officeShapeAttributes({ ...attrs, rotation: null })).toEqual(attrs);
   expect(officeShapeDescription(attrs)).toContain("Abgerundetes Rechteck · 320 × 160 px");
+  expect(officeShapeAttributes({ ...attrs, rotation: 270 })).toEqual({ ...attrs, rotation: 270 });
+  expect(officeShapeDescription({ ...attrs, rotation: 90 })).toContain("90° gedreht");
   expect(OFFICE_SHAPE_LIMIT).toBe(100);
   for (const invalid of [{ ...attrs, id: "shape-short" }, { ...attrs, kind: "svg" }, { ...attrs, width: 79 },
     { ...attrs, height: 801 }, { ...attrs, fill: "url(external)" }, { ...attrs, strokeWidth: true },
-    { ...attrs, text: "bad\u0000text" }, { ...attrs, textAlign: "justify" }, { ...attrs, onclick: "run()" }]) {
+    { ...attrs, text: "bad\u0000text" }, { ...attrs, textAlign: "justify" }, { ...attrs, rotation: 0 },
+    { ...attrs, rotation: 45 }, { ...attrs, rotation: true }, { ...attrs, onclick: "run()" }]) {
     expect(() => officeShapeAttributes(invalid)).toThrow();
   }
 });

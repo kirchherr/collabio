@@ -138,6 +138,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     positioned = {**attrs, "position": {"layer": "front", "x": 500, "y": -1200}}
     positioned_document = {"type": "doc", "content": [{"type": "shape", "attrs": positioned}]}
     assert validate_office_document(positioned_document) == positioned_document
+    rotated = {**attrs, "rotation": 270}
+    rotated_document = {"type": "doc", "content": [{"type": "shape", "attrs": rotated}]}
+    assert validate_office_document(rotated_document) == rotated_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -147,6 +150,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "strokeWidth": True},
         {**attrs, "text": "bad\x00text"},
         {**attrs, "textAlign": "justify"},
+        {**attrs, "rotation": 0},
+        {**attrs, "rotation": 45},
+        {**attrs, "rotation": True},
         {**attrs, "onclick": "run()"},
         {**attrs, "position": {"layer": "middle", "x": 0, "y": 0}},
         {**attrs, "position": {"layer": "behind", "x": 1001, "y": 0}},

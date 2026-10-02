@@ -6,7 +6,7 @@ import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, officeS
 export function officeShapeExtension() {
   return Node.create({
     name: "shape", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "position"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "rotation", "position"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["div", { class: "office-shape" }, node.attrs.text || ""],
     addNodeView() {
@@ -30,6 +30,9 @@ export function officeShapeExtension() {
         const render = () => {
           const shape = officeShapeElement(current.attrs); dom.replaceChildren(shape);
           dom.toggleAttribute("data-shape-positioned", current.attrs.position != null);
+          dom.toggleAttribute("data-shape-sideways", [90, 270].includes(current.attrs.rotation));
+          dom.style.setProperty("--office-shape-width", String(current.attrs.width));
+          dom.style.setProperty("--office-shape-height", String(current.attrs.height));
           const resize = document.createElement("button"); resize.type = "button"; resize.className = "office-shape-resize";
           const describeSize = (width, height) => resize.setAttribute("aria-label", `Formgröße ${width} mal ${height} Pixel; ziehen oder mit Pfeiltasten ändern`);
           resize.textContent = "Größe ändern"; describeSize(current.attrs.width, current.attrs.height);
@@ -64,6 +67,18 @@ export function officeShapeExtension() {
               Math.max(40, Math.min(800, current.attrs.height + direction[1] * step)));
           });
           dom.append(resize);
+          const rotate = document.createElement("button"); rotate.type = "button"; rotate.className = "office-shape-rotate";
+          rotate.textContent = "90° drehen";
+          rotate.setAttribute("aria-label", `Form um 90 Grad nach rechts drehen; aktuell ${current.attrs.rotation || 0} Grad`);
+          rotate.addEventListener("click", (event) => {
+            event.preventDefault(); if (typeof getPos !== "function") return;
+            const at = getPos(); if (!Number.isInteger(at)) return;
+            const next = ((current.attrs.rotation || 0) + 90) % 360;
+            const attrs = officeShapeAttributes({ ...current.attrs, rotation: next || null });
+            const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
+            editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+          });
+          dom.append(rotate);
           if (current.attrs.position == null) return;
           const position = officeShapePosition(current.attrs.position), anchor = document.createElement("button");
           anchor.type = "button"; anchor.className = "office-shape-anchor";
@@ -76,7 +91,9 @@ export function officeShapeExtension() {
           };
           paintAnchor(position);
           for (const [name, value] of [["--office-shape-position-x", `${position.x / 10}%`],
-            ["--office-shape-position-shift", `${-position.x / 10}%`], ["--office-shape-position-y", `${position.y}px`]]) resize.style.setProperty(name, value);
+            ["--office-shape-position-shift", `${-position.x / 10}%`], ["--office-shape-position-y", `${position.y}px`]]) {
+            resize.style.setProperty(name, value); rotate.style.setProperty(name, value);
+          }
           anchor.addEventListener("click", () => { const at = typeof getPos === "function" ? getPos() : null; if (Number.isInteger(at)) editor.commands.setNodeSelection(at); });
           let drag = null;
           anchor.addEventListener("pointerdown", (event) => {
@@ -134,6 +151,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-kind").value = attrs.kind; $("shape-width").value = String(attrs.width); $("shape-height").value = String(attrs.height);
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
     $("shape-text").value = attrs.text; $("shape-text-align").value = attrs.textAlign;
+    $("shape-rotation").value = String(attrs.rotation || 0);
     $("shape-position-layer").value = attrs.position?.layer ?? "flow";
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
   };
@@ -142,6 +160,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
     text: $("shape-text").value, textAlign: $("shape-text-align").value,
+    rotation: Number($("shape-rotation").value) || null,
     position: $("shape-position-layer").value === "flow" ? null : { layer: $("shape-position-layer").value,
       x: Number($("shape-position-x").value), y: Number($("shape-position-y").value) } });
   const preview = () => {
@@ -157,7 +176,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-title").textContent = editing ? "Form bearbeiten" : "Form einfügen";
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
     $("shape-remove").hidden = !editing;
-    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", position: null });
+    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", rotation: null, position: null });
     updatePositionControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
   };
   const updatePositionControls = () => { const positioned = $("shape-position-layer").value !== "flow"; $("shape-position-x").disabled = !positioned; $("shape-position-y").disabled = !positioned; };

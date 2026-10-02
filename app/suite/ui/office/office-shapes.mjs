@@ -12,9 +12,10 @@ export function officeShapePosition(position) {
 
 export function officeShapeAttributes(attrs) {
   const keys = ["fill", "height", "id", "kind", "stroke", "strokeWidth", "text", "textAlign", "width"];
-  const actualKeys = Object.keys(attrs || {}).filter((key) => key !== "position").sort();
+  const actualKeys = Object.keys(attrs || {}).filter((key) => !["position", "rotation"].includes(key)).sort();
   if (!attrs || actualKeys.join(",") !== keys.join(",") ||
       (Object.hasOwn(attrs, "position") && attrs.position !== null && typeof attrs.position !== "object") ||
+      (Object.hasOwn(attrs, "rotation") && attrs.rotation !== null && ![90, 180, 270].includes(attrs.rotation)) ||
       !/^shape-[a-f0-9]{24}$/.test(attrs.id) || !OFFICE_SHAPE_KINDS.includes(attrs.kind) ||
       !Number.isInteger(attrs.width) || attrs.width < 80 || attrs.width > 1200 ||
       !Number.isInteger(attrs.height) || attrs.height < 40 || attrs.height > 800 ||
@@ -27,6 +28,7 @@ export function officeShapeAttributes(attrs) {
       !OFFICE_SHAPE_TEXT_ALIGNMENTS.includes(attrs.textAlign)) throw new Error("shape-attributes");
   const result = { id: attrs.id, kind: attrs.kind, width: attrs.width, height: attrs.height, fill: attrs.fill,
     stroke: attrs.stroke, strokeWidth: attrs.strokeWidth, text: attrs.text, textAlign: attrs.textAlign };
+  if (attrs.rotation != null) result.rotation = attrs.rotation;
   if (attrs.position != null) result.position = officeShapePosition(attrs.position);
   return result;
 }
@@ -34,8 +36,9 @@ export function officeShapeAttributes(attrs) {
 export function officeShapeDescription(attrs) {
   const shape = officeShapeAttributes(attrs);
   const kind = { rectangle: "Rechteck", roundedRectangle: "Abgerundetes Rechteck", ellipse: "Ellipse" }[shape.kind];
+  const rotation = shape.rotation ? ` · ${shape.rotation}° gedreht` : "";
   const position = shape.position ? ` · ${shape.position.layer === "front" ? "vor" : "hinter"} Text · X ${shape.position.x} · Y ${shape.position.y} px` : "";
-  return `${kind} · ${shape.width} × ${shape.height} px${position}${shape.text ? ` · ${shape.text}` : ""}`;
+  return `${kind} · ${shape.width} × ${shape.height} px${rotation}${position}${shape.text ? ` · ${shape.text}` : ""}`;
 }
 
 export function applyOfficeShapeDOM(element, attrs) {
@@ -46,6 +49,7 @@ export function applyOfficeShapeDOM(element, attrs) {
   element.dataset.shapeFill = shape.fill;
   element.dataset.shapeStroke = shape.stroke;
   element.dataset.shapeTextAlign = shape.textAlign;
+  if (shape.rotation) element.dataset.shapeRotation = String(shape.rotation); else delete element.dataset.shapeRotation;
   if (shape.position) {
     element.dataset.shapePosition = shape.position.layer;
     element.style.setProperty("--office-shape-position-x", `${shape.position.x / 10}%`);
@@ -57,6 +61,7 @@ export function applyOfficeShapeDOM(element, attrs) {
   }
   element.style.setProperty("--office-shape-width", String(shape.width));
   element.style.setProperty("--office-shape-height", String(shape.height));
+  element.style.setProperty("--office-shape-rotation", `${shape.rotation || 0}deg`);
   element.style.setProperty("--office-shape-stroke", `${shape.strokeWidth}px`);
   element.setAttribute("contenteditable", "false");
   element.setAttribute("role", "img");
