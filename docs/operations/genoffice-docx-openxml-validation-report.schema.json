@@ -1,0 +1,135 @@
+{
+  "$defs": {
+    "GenOfficeDocxOpenXmlValidationFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "error_id": {
+          "title": "Error Id",
+          "type": "string"
+        },
+        "error_type": {
+          "enum": [
+            "schema",
+            "semantic",
+            "package",
+            "markup_compatibility"
+          ],
+          "title": "Error Type",
+          "type": "string"
+        },
+        "part_uri": {
+          "title": "Part Uri",
+          "type": "string"
+        },
+        "path_hash": {
+          "title": "Path Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "error_id",
+        "error_type",
+        "part_uri",
+        "path_hash"
+      ],
+      "title": "GenOfficeDocxOpenXmlValidationFinding",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "document_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Document Content Included",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "enum": [
+        "microsoft_word",
+        "libreoffice",
+        "genoffice"
+      ],
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxOpenXmlValidationFinding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "fixture_id": {
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "markup_compatibility_processing_enabled": {
+      "const": true,
+      "default": true,
+      "title": "Markup Compatibility Processing Enabled",
+      "type": "boolean"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_conformant": {
+      "title": "Schema Conformant",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_openxml_validation_report.v1",
+      "default": "genoffice_docx_openxml_validation_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_file_format_version": {
+      "title": "Target File Format Version",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "validation_error_count": {
+      "minimum": 0,
+      "title": "Validation Error Count",
+      "type": "integer"
+    },
+    "validator_name": {
+      "const": "DocumentFormat.OpenXml",
+      "default": "DocumentFormat.OpenXml",
+      "title": "Validator Name",
+      "type": "string"
+    },
+    "validator_version": {
+      "title": "Validator Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "engine_id",
+    "fixture_id",
+    "output_docx_sha256",
+    "validator_version",
+    "target_file_format_version",
+    "findings",
+    "validation_error_count",
+    "schema_conformant",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxOpenXmlValidationReport",
+  "type": "object"
+}

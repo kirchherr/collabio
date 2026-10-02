@@ -1,4 +1,4 @@
-# ADR-0024: S3-Compatible Object Storage And MinIO/AWS Compatibility Target
+# ADR-0024: S3-Compatible Object Storage And Self-Hosted Production Target
 
 Status: accepted
 Date: 2026-06-11
@@ -13,7 +13,9 @@ Raw filesystem storage is not enough for production records. Direct SDK calls fr
 
 Use an S3-compatible object storage adapter boundary as the first object-storage target.
 
-MinIO is the development and self-hosted evaluation provider. AWS S3 Object Lock compatibility is the production reference target. Other enterprise S3-compatible stores may be supported only when they satisfy the same adapter policy.
+MinIO is the development compatibility provider. The production reference is self-hosted Ceph RGW with Object Lock and OpenBao Transit-backed SSE-KMS. Other S3-compatible stores may be supported only when they satisfy the same adapter and live-provider acceptance policies.
+
+The S3 API is a portability protocol, not a cloud-provider selection. Collabio production has no AWS infrastructure, account or IAM dependency. Protocol literals such as `aws:kms` remain only where the S3-compatible wire contract requires them.
 
 The adapter policy is machine-readable in:
 
@@ -47,7 +49,7 @@ Easier:
 
 - Self-hosted and cloud deployments share one storage contract.
 - Versioning, object lock, legal hold, and restore checks become adapter requirements rather than scattered feature behavior.
-- MinIO can be used for local and self-hosted development while keeping AWS S3 Object Lock semantics as the compatibility target.
+- MinIO can be used for local development while Ceph RGW and OpenBao provide the self-hosted production path.
 - E-discovery and backup evidence can rely on manifest and content-hash checks.
 
 Harder:
@@ -59,9 +61,9 @@ Harder:
 
 ## Alternatives Considered
 
-### Provider-specific AWS S3 first
+### Public-cloud object storage first
 
-Rejected for the core adapter because the suite must be self-hostable. AWS S3 remains the production compatibility reference, especially for Object Lock behavior.
+Rejected because the suite must remain self-hostable and must not require a public-cloud account. S3-compatible behavior remains the protocol contract; Ceph RGW plus OpenBao is the production reference.
 
 ### Filesystem storage
 
@@ -89,4 +91,5 @@ Rejected because business-record provenance, GoBD posture, and evidence-chain se
 - `tests/test_storage_adapter_policy.py` validates the machine-readable adapter policy.
 - `tests/test_source_objects.py` validates the write guard before storage acceptance.
 - Backup/failover policy includes source object manifest, content hash, retention, legal hold, and chain-of-custody checks.
-- Future adapter integration tests must create buckets with versioning and Object Lock before enabling record/evidence writes.
+- The real self-hosted acceptance must prove versioning, Object Lock Compliance retention, exact-version delete denial, OpenBao-backed SSE-KMS, signing and isolated restore before record/evidence writes are enabled.
+- `infra/self-hosted/provider-stack-policy.json` and ADR-0078 define the reference topology and fail-closed readiness evidence.

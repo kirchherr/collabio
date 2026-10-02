@@ -1,0 +1,18 @@
+{
+  "name": "@collabio/office",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.31.3",
+    "@tiptap/extension-table": "3.31.3",
+    "@tiptap/pm": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

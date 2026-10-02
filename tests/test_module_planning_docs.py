@@ -26,6 +26,8 @@ def test_platform_module_docs_define_lifecycle_and_compliance_gates() -> None:
     assert "SQL Server" in charter
     assert "GoBD" in charter
     assert "Local LLM Gateway" in charter
+    assert "collabio.module_catalog" in adr
+    assert "collabio.tenant_modules" in adr
     assert "UI hiding is never authorization" in template
 
 

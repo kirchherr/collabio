@@ -1,0 +1,198 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "cdr_manifest_hash": {
+      "title": "Cdr Manifest Hash",
+      "type": "string"
+    },
+    "completed_at_utc": {
+      "format": "date-time",
+      "title": "Completed At Utc",
+      "type": "string"
+    },
+    "document_content_in_payload": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Payload",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": true,
+      "default": true,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "engine_execution_authorized": {
+      "const": true,
+      "default": true,
+      "title": "Engine Execution Authorized",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "enum": [
+        "microsoft_word",
+        "libreoffice",
+        "genoffice"
+      ],
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "engine_identity_hash": {
+      "title": "Engine Identity Hash",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "execution_receipt_hash": {
+      "title": "Execution Receipt Hash",
+      "type": "string"
+    },
+    "executor_environment_hash": {
+      "title": "Executor Environment Hash",
+      "type": "string"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "fixture_id": {
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "font_baseline_hash": {
+      "title": "Font Baseline Hash",
+      "type": "string"
+    },
+    "macro_execution_disabled": {
+      "const": true,
+      "default": true,
+      "title": "Macro Execution Disabled",
+      "type": "boolean"
+    },
+    "network_isolation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Network Isolation Verified",
+      "type": "boolean"
+    },
+    "open_xml_validation_report_hash": {
+      "title": "Open Xml Validation Report Hash",
+      "type": "string"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "output_preflight_report_hash": {
+      "title": "Output Preflight Report Hash",
+      "type": "string"
+    },
+    "output_structural_fingerprint_hash": {
+      "title": "Output Structural Fingerprint Hash",
+      "type": "string"
+    },
+    "page_count": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Page Count",
+      "type": "integer"
+    },
+    "payload_hash": {
+      "title": "Payload Hash",
+      "type": "string"
+    },
+    "persistent_product_version_written": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Product Version Written",
+      "type": "boolean"
+    },
+    "result_id": {
+      "title": "Result Id",
+      "type": "string"
+    },
+    "runner_mode": {
+      "enum": [
+        "interactive_windows_client",
+        "isolated_headless_worker",
+        "authorized_runsc_kvm_worker"
+      ],
+      "title": "Runner Mode",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_engine_result_payload.v1",
+      "default": "genoffice_docx_fidelity_engine_result_payload.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_blind_revalidation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Verified",
+      "type": "boolean"
+    },
+    "source_content_sha256": {
+      "title": "Source Content Sha256",
+      "type": "string"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "tenant_credentials_available": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Credentials Available",
+      "type": "boolean"
+    },
+    "visual_comparison_manifest_hash": {
+      "title": "Visual Comparison Manifest Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "result_id",
+    "completed_at_utc",
+    "study_plan_hash",
+    "fidelity_policy_hash",
+    "assignment_id",
+    "engine_id",
+    "runner_mode",
+    "fixture_id",
+    "source_content_sha256",
+    "engine_version",
+    "engine_identity_hash",
+    "executor_environment_hash",
+    "output_docx_sha256",
+    "output_preflight_report_hash",
+    "output_structural_fingerprint_hash",
+    "open_xml_validation_report_hash",
+    "cdr_manifest_hash",
+    "font_baseline_hash",
+    "page_count",
+    "visual_comparison_manifest_hash",
+    "execution_receipt_hash",
+    "payload_hash"
+  ],
+  "title": "GenOfficeDocxFidelityEngineResultPayload",
+  "type": "object"
+}

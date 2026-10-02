@@ -83,7 +83,7 @@ class PgPrincipalDirectory:
                 FROM collabio.object_acl_entries
                 WHERE tenant_id = %s
                   AND status = 'active'
-                  AND permission IN ('read', 'admin')
+                  AND permission IN ('read', 'write', 'admin')
                   AND (
                     (acl_subject_type = 'user' AND acl_subject_id = %s)
                     OR (acl_subject_type = 'role' AND acl_subject_id = ANY(%s::text[]))

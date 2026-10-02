@@ -1,0 +1,264 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "dedicated_local_account_required": {
+      "const": true,
+      "default": true,
+      "title": "Dedicated Local Account Required",
+      "type": "boolean"
+    },
+    "engine_execution_allowed": {
+      "const": true,
+      "default": true,
+      "title": "Engine Execution Allowed",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "const": "microsoft_word",
+      "default": "microsoft_word",
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "execution_authorization_basis": {
+      "const": "explicit_synthetic_interactive_study_run_request",
+      "default": "explicit_synthetic_interactive_study_run_request",
+      "title": "Execution Authorization Basis",
+      "type": "string"
+    },
+    "expires_at_utc": {
+      "format": "date-time",
+      "title": "Expires At Utc",
+      "type": "string"
+    },
+    "explicit_human_confirmation_required": {
+      "const": true,
+      "default": true,
+      "title": "Explicit Human Confirmation Required",
+      "type": "boolean"
+    },
+    "external_side_effect_allowed": {
+      "const": false,
+      "default": false,
+      "title": "External Side Effect Allowed",
+      "type": "boolean"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "fixture_id": {
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "host_readiness_report_sha256": {
+      "title": "Host Readiness Report Sha256",
+      "type": "string"
+    },
+    "interactive_user_session_required": {
+      "const": true,
+      "default": true,
+      "title": "Interactive User Session Required",
+      "type": "boolean"
+    },
+    "max_docx_bytes": {
+      "const": 16777216,
+      "default": 16777216,
+      "title": "Max Docx Bytes",
+      "type": "integer"
+    },
+    "max_page_count": {
+      "const": 32,
+      "default": 32,
+      "title": "Max Page Count",
+      "type": "integer"
+    },
+    "max_page_dimension_pixels": {
+      "const": 4096,
+      "default": 4096,
+      "title": "Max Page Dimension Pixels",
+      "type": "integer"
+    },
+    "max_pdf_bytes": {
+      "const": 134217728,
+      "default": 134217728,
+      "title": "Max Pdf Bytes",
+      "type": "integer"
+    },
+    "network_isolation_required": {
+      "const": true,
+      "default": true,
+      "title": "Network Isolation Required",
+      "type": "boolean"
+    },
+    "network_isolation_rule_sha256": {
+      "title": "Network Isolation Rule Sha256",
+      "type": "string"
+    },
+    "operator_account_sid_sha256": {
+      "title": "Operator Account Sid Sha256",
+      "type": "string"
+    },
+    "persistent_product_write_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Product Write Allowed",
+      "type": "boolean"
+    },
+    "pipeline_steps": {
+      "default": [
+        "source_preflight",
+        "interactive_windows_session_revalidation",
+        "dedicated_local_account_revalidation",
+        "winword_outbound_firewall_block_revalidation",
+        "office_identity_absence_revalidation",
+        "signing_custody_inaccessibility_revalidation",
+        "visible_word_client_start",
+        "macro_force_disable",
+        "read_only_source_open",
+        "same_engine_source_pdf_export",
+        "explicit_human_confirmation",
+        "word_docx_roundtrip_save_as",
+        "same_engine_candidate_pdf_export",
+        "write_once_public_handoff",
+        "source_blind_output_preflight",
+        "output_structural_fingerprint",
+        "open_xml_sdk_validation_office2021",
+        "pdftoppm_raw_rgb_144_dpi",
+        "integer_visual_measurement",
+        "write_once_evidence_receipt",
+        "external_ed25519_signature_handoff"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Pipeline Steps",
+      "type": "array"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "private_key_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Allowed",
+      "type": "boolean"
+    },
+    "raster_dpi": {
+      "const": 144,
+      "default": 144,
+      "title": "Raster Dpi",
+      "type": "integer"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "requested_at_utc": {
+      "format": "date-time",
+      "title": "Requested At Utc",
+      "type": "string"
+    },
+    "runner_mode": {
+      "const": "interactive_windows_client",
+      "default": "interactive_windows_client",
+      "title": "Runner Mode",
+      "type": "string"
+    },
+    "runner_script_sha256": {
+      "title": "Runner Script Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_word_run_request.v1",
+      "default": "genoffice_docx_word_run_request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signing_custody_access_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Signing Custody Access Allowed",
+      "type": "boolean"
+    },
+    "source_content_sha256": {
+      "title": "Source Content Sha256",
+      "type": "string"
+    },
+    "source_filename": {
+      "title": "Source Filename",
+      "type": "string"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "tenant_credentials_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Credentials Allowed",
+      "type": "boolean"
+    },
+    "unattended_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Unattended Execution Allowed",
+      "type": "boolean"
+    },
+    "visible_word_client_required": {
+      "const": true,
+      "default": true,
+      "title": "Visible Word Client Required",
+      "type": "boolean"
+    },
+    "word_executable_sha256": {
+      "title": "Word Executable Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "assignment_id",
+    "fixture_id",
+    "source_filename",
+    "source_content_sha256",
+    "study_plan_hash",
+    "fidelity_policy_hash",
+    "preflight_policy_hash",
+    "corpus_manifest_hash",
+    "host_readiness_report_sha256",
+    "runner_script_sha256",
+    "operator_account_sid_sha256",
+    "word_executable_sha256",
+    "network_isolation_rule_sha256",
+    "requested_at_utc",
+    "expires_at_utc",
+    "request_hash"
+  ],
+  "title": "GenOfficeDocxWordRunRequest",
+  "type": "object"
+}

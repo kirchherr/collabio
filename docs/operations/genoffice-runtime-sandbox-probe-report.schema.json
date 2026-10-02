@@ -1,0 +1,155 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "capabilities_empty_verified": {
+      "const": true,
+      "default": true,
+      "title": "Capabilities Empty Verified",
+      "type": "boolean"
+    },
+    "container_identity_verified": {
+      "const": true,
+      "default": true,
+      "title": "Container Identity Verified",
+      "type": "boolean"
+    },
+    "content_included": {
+      "const": false,
+      "default": false,
+      "title": "Content Included",
+      "type": "boolean"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "dns_resolution_blocked": {
+      "const": true,
+      "default": true,
+      "title": "Dns Resolution Blocked",
+      "type": "boolean"
+    },
+    "docker_inspect_sha256": {
+      "title": "Docker Inspect Sha256",
+      "type": "string"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "external_network_used": {
+      "const": false,
+      "default": false,
+      "title": "External Network Used",
+      "type": "boolean"
+    },
+    "host_devices_absent_verified": {
+      "const": true,
+      "default": true,
+      "title": "Host Devices Absent Verified",
+      "type": "boolean"
+    },
+    "mount_inventory_exact_verified": {
+      "const": true,
+      "default": true,
+      "title": "Mount Inventory Exact Verified",
+      "type": "boolean"
+    },
+    "network_mode_none_verified": {
+      "const": true,
+      "default": true,
+      "title": "Network Mode None Verified",
+      "type": "boolean"
+    },
+    "no_new_privileges_verified": {
+      "const": true,
+      "default": true,
+      "title": "No New Privileges Verified",
+      "type": "boolean"
+    },
+    "observed_at_utc": {
+      "format": "date-time",
+      "title": "Observed At Utc",
+      "type": "string"
+    },
+    "outbound_socket_blocked": {
+      "const": true,
+      "default": true,
+      "title": "Outbound Socket Blocked",
+      "type": "boolean"
+    },
+    "probe_code_image_bound_verified": {
+      "const": true,
+      "default": true,
+      "title": "Probe Code Image Bound Verified",
+      "type": "boolean"
+    },
+    "read_only_corpus_verified": {
+      "const": true,
+      "default": true,
+      "title": "Read Only Corpus Verified",
+      "type": "boolean"
+    },
+    "read_only_root_verified": {
+      "const": true,
+      "default": true,
+      "title": "Read Only Root Verified",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "resource_limits_verified": {
+      "const": true,
+      "default": true,
+      "title": "Resource Limits Verified",
+      "type": "boolean"
+    },
+    "runtime_authorization_granted": {
+      "const": false,
+      "default": false,
+      "title": "Runtime Authorization Granted",
+      "type": "boolean"
+    },
+    "runtime_class_verified": {
+      "const": true,
+      "default": true,
+      "title": "Runtime Class Verified",
+      "type": "boolean"
+    },
+    "sandbox_profile_hash": {
+      "title": "Sandbox Profile Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_sandbox_probe_report.v1",
+      "default": "genoffice_runtime_sandbox_probe_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scratch_write_cleanup_verified": {
+      "const": true,
+      "default": true,
+      "title": "Scratch Write Cleanup Verified",
+      "type": "boolean"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "observed_at_utc",
+    "sandbox_profile_hash",
+    "corpus_manifest_hash",
+    "docker_inspect_sha256",
+    "report_hash"
+  ],
+  "title": "GenOfficeRuntimeSandboxProbeReport",
+  "type": "object"
+}

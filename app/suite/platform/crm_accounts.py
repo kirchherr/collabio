@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, UserContext
+from suite.platform.persistent_metadata import persistent_metadata_audit_metadata, validate_persistent_object_metadata
 
 CRM_ERP_MODULE_ID = "crm_erp"
 CRM_ACCOUNTS_FEATURE_ID = "crm_erp.crm.accounts"
@@ -132,6 +133,12 @@ class CrmAccountRecord(BaseModel):
 
     @model_validator(mode="after")
     def require_restricted_lifecycle_when_status_is_restricted(self) -> CrmAccountRecord:
+        validate_persistent_object_metadata(
+            self,
+            expected_object_type=CRM_ACCOUNT_OBJECT_TYPE,
+            expected_schema_version=CRM_ACCOUNT_SCHEMA_VERSION,
+            expected_classification=DataClass.PERSONAL,
+        )
         if self.status == CrmAccountStatus.RESTRICTED and self.lifecycle_state != CrmAccountLifecycleState.RESTRICTED:
             raise ValueError("restricted CRM accounts must use restricted lifecycle_state")
         return self
@@ -269,6 +276,7 @@ class CrmAccountService:
                 "candidate_count": len(candidate_records),
                 "result_count": len(views),
                 "result_contract": "metadata_only",
+                **persistent_metadata_audit_metadata(),
             },
         )
         return CrmAccountsResponse(

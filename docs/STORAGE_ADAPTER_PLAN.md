@@ -1,4 +1,4 @@
-# S3/MinIO Storage Adapter Plan
+# S3-Compatible Storage Adapter Plan
 
 The storage adapter is the object-content boundary beneath source objects.
 
@@ -31,8 +31,9 @@ docs/storage_adapter_policy.json
 Decision summary:
 
 - Provider API: S3-compatible.
-- Development and self-hosted evaluation provider: MinIO.
-- Production compatibility target: AWS S3 Object Lock semantics.
+- Development compatibility provider: MinIO.
+- Production reference: self-hosted Ceph RGW Object Lock with OpenBao Transit-backed SSE-KMS.
+- The S3 API is a protocol boundary; no AWS infrastructure, account or IAM dependency is required.
 - Metadata authority: PostgreSQL.
 - Native object bytes, object versions, manifests, parser artifacts, audit snapshots, and export packages: object storage.
 
@@ -91,6 +92,8 @@ The storage adapter must never be an authorization source. Read flows still requ
 ## Hard Requirements
 
 - No direct SDK calls from feature code.
+- S3/MinIO SDKs must stay behind `S3CompatibleObjectStoreClient`; feature code uses `SourceObjectContentStore`.
+- Provider profiles must produce `s3_compatible_provider_profile_evidence.v1` before production Knowledge Base writes are wired.
 - Every object write must pass `SourceObjectWriteGuard`.
 - Every bucket uses versioning.
 - Record/evidence buckets require Object Lock compliance mode.
@@ -104,10 +107,14 @@ The storage adapter must never be an authorization source. Read flows still requ
 ## Future Implementation Steps
 
 1. Add a `StorageObjectAdapter` protocol with write/read/manifest/restore-check methods.
-2. Add a local MinIO Compose profile for integration tests.
-3. Add bucket bootstrap checks for versioning and Object Lock.
+2. [x] Add a local MinIO Compose profile for integration tests.
+3. [x] Add bucket bootstrap checks for versioning and Object Lock.
 4. [x] Persist source object metadata and storage-manifest references in PostgreSQL through `PgSourceObjectRepository`.
-5. Add a production S3/MinIO content-store adapter behind the `SourceObjectContentStore` contract.
+5. [x] Add an S3/MinIO-compatible content-store adapter port behind the `SourceObjectContentStore` contract, with versioning, Object Lock, and legal-hold capability checks.
 6. Write object version IDs and manifest evidence into audit/outbox events.
-7. Add restore verification commands for storage manifests, object manifests, and content hash evidence.
-8. Add provider profile tests before allowing production object writes.
+7. [x] Add an exact-version restore command and metadata-only report for storage manifests, content hashes, target metadata, Object Lock, Legal Hold, and isolated-target evidence.
+8. [x] Add provider profile tests before allowing production object writes.
+9. [x] Bind the concrete S3-compatible SDK client behind `S3CompatibleObjectStoreClient` after provider-profile and restore-drill evidence are available.
+10. [x] Bind the exact-version restore report to a freshly recomputed persistent runtime report in `backend_storage_foundation_gate.v1`; production cross-site replication and provider-specific failover automation remain deployment work.
+11. [x] Add the self-hosted Rook/Ceph/OpenBao production reference, Proof/Production topology policy and metadata-only preflight.
+12. [ ] Run the real non-content provider acceptance and isolated provider restores on a dedicated proof cluster, then bind their hashes into production readiness evidence.

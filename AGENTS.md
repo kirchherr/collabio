@@ -24,6 +24,9 @@
 ## Development rules
 
 - Run the suite through Docker Compose.
+- Treat the operator workstation as a chat and control plane only. Run Docker builds, tests, migrations, and service lifecycle work on `dev001` in `/home/extern/collabio` with the explicit Compose project name `collabio`.
+- Follow `/home/extern/AGENTS.md` before operating on `dev001`. Inspect Compose projects, containers, and ports first; use the coordination locks there, acquiring `build.lock` before `docker.lock` when both are required.
+- Use the dedicated Collabio SSH identity for `extern@dev001`. If remote access or the required locks are unavailable, report the blocker; do not silently fall back to local Docker without explicit operator approval.
 - Keep provider adapters behind the Local LLM Gateway.
 - Add or update tests for every policy, registry, RAG, or voice behavior change.
 - Do not write prompt or output bodies to normal application logs.

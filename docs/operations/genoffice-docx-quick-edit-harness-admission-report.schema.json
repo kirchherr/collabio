@@ -1,0 +1,95 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attested_executable_proof_harness_image_present": {
+      "const": false,
+      "default": false,
+      "title": "Attested Executable Proof Harness Image Present",
+      "type": "boolean"
+    },
+    "blocking_reasons": {
+      "default": [
+        "two_person_runtime_authorization_absent",
+        "attested_executable_proof_harness_image_absent",
+        "worker_entrypoint_status_only"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reasons",
+      "type": "array"
+    },
+    "corpus_contract_verified": {
+      "const": true,
+      "default": true,
+      "title": "Corpus Contract Verified",
+      "type": "boolean"
+    },
+    "corpus_evaluation_report_hash": {
+      "title": "Corpus Evaluation Report Hash",
+      "type": "string"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "harness_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Harness Execution Allowed",
+      "type": "boolean"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_quick_edit_harness_admission_report.v1",
+      "default": "genoffice_docx_quick_edit_harness_admission_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_blind_revalidation_report_hash": {
+      "title": "Source Blind Revalidation Report Hash",
+      "type": "string"
+    },
+    "source_blind_revalidator_verified": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidator Verified",
+      "type": "boolean"
+    },
+    "status_only_worker_entrypoint_verified": {
+      "const": true,
+      "default": true,
+      "title": "Status Only Worker Entrypoint Verified",
+      "type": "boolean"
+    },
+    "tenant_content_mounted": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Mounted",
+      "type": "boolean"
+    },
+    "two_person_runtime_authorization_present": {
+      "const": false,
+      "default": false,
+      "title": "Two Person Runtime Authorization Present",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "preflight_policy_hash",
+    "corpus_evaluation_report_hash",
+    "source_blind_revalidation_report_hash",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxQuickEditHarnessAdmissionReport",
+  "type": "object"
+}
