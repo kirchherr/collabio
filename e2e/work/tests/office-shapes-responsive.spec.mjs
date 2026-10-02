@@ -20,7 +20,6 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await page.locator("#shape-apply").click();
   const shape = editor.locator(".office-shape"); await expect(shape).toHaveCount(1);
   await expect(shape).toContainText("<script>"); await expect(shape).toHaveAttribute("data-shape-fill", "yellow");
-  await editor.press("Control+End"); await editor.press("Enter"); await editor.type("Following text flows safely beside a wrapped shape.");
   const bounds = await shape.evaluate((element) => { const box = element.getBoundingClientRect(); return { width: box.width, viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth }; });
   expect(bounds.width).toBeLessThanOrEqual(bounds.viewport); expect(bounds.overflow).toBeLessThanOrEqual(0);
 
@@ -80,6 +79,9 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   expect(wrapped.content.content.find((entry) => entry.type === "shape").attrs.wrap).toEqual({ side: "right", gap: 24 });
   await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-wrap", "right");
   await page.locator("#print-close").click(); await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-${testInfo.project.name}.png`, fullPage: true });
+  await shape.click(); await page.locator("#shape-options").click(); await page.locator("#shape-wrap").selectOption("none");
+  await page.locator("#shape-apply").click(); const unwrapped = await saveOffice(page, { objectId });
+  expect(unwrapped.content.content.find((entry) => entry.type === "shape").attrs.wrap).toBeUndefined();
   await openReuseHistory(page, wrapped); await openReuse(page, wrapped, "Independent wrapped shape copy"); await submitReuse(page, wrapped);
   await expectReuseDraft(page, "Independent wrapped shape copy"); await expect(editor.locator(".office-shape")).toHaveText("Edited ellipse");
   const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
