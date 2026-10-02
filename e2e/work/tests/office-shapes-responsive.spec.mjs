@@ -35,10 +35,19 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   const anchor = editor.locator(".office-shape-anchor"); await expect(anchor).toContainText("vor Text");
   await anchor.focus(); await anchor.press("Shift+ArrowRight");
   await expect(shape).toHaveCSS("left", /.+/); await editor.press("Control+z"); await editor.press("Control+Shift+z");
+  const resize = editor.locator(".office-shape-resize"); await expect(resize).toBeVisible();
+  await resize.focus(); await resize.press("Shift+ArrowRight");
+  await expect(resize).toHaveAttribute("aria-label", /430 mal 180/);
+  await editor.press("Control+z"); await expect(resize).toHaveAttribute("aria-label", /420 mal 180/);
+  await editor.press("Control+Shift+z"); await expect(resize).toHaveAttribute("aria-label", /430 mal 180/);
+  const handle = await resize.boundingBox(); expect(handle).not.toBeNull();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2); await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2 + 20, handle.y + handle.height / 2 + 10); await page.mouse.up();
+  await expect(resize).toHaveAttribute("aria-label", /450 mal 190/);
 
   const saved = await saveOffice(page, { objectId });
   expect(saved.content.content.find((entry) => entry.type === "shape")).toMatchObject({ attrs: {
-    kind: "ellipse", width: 420, height: 180, fill: "teal", stroke: "blue", strokeWidth: 4, text: "Edited ellipse", textAlign: "center",
+    kind: "ellipse", width: 450, height: 190, fill: "teal", stroke: "blue", strokeWidth: 4, text: "Edited ellipse", textAlign: "center",
     position: { layer: "front", x: 510, y: 24 },
   } });
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);

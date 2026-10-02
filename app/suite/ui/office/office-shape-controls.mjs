@@ -20,9 +20,50 @@ export function officeShapeExtension() {
           const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
           editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
         };
+        const commitSize = (width, height) => {
+          if (typeof getPos !== "function") return;
+          const at = getPos(); if (!Number.isInteger(at)) return;
+          const attrs = officeShapeAttributes({ ...current.attrs, width, height });
+          const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
+          editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+        };
         const render = () => {
           const shape = officeShapeElement(current.attrs); dom.replaceChildren(shape);
           dom.toggleAttribute("data-shape-positioned", current.attrs.position != null);
+          const resize = document.createElement("button"); resize.type = "button"; resize.className = "office-shape-resize";
+          const describeSize = (width, height) => resize.setAttribute("aria-label", `Formgröße ${width} mal ${height} Pixel; ziehen oder mit Pfeiltasten ändern`);
+          resize.textContent = "Größe ändern"; describeSize(current.attrs.width, current.attrs.height);
+          resize.addEventListener("click", () => { const at = typeof getPos === "function" ? getPos() : null; if (Number.isInteger(at)) editor.commands.setNodeSelection(at); });
+          let sizeDrag = null;
+          resize.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) return;
+            sizeDrag = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY,
+              width: current.attrs.width, height: current.attrs.height, nextWidth: current.attrs.width, nextHeight: current.attrs.height };
+            resize.setPointerCapture(event.pointerId); event.preventDefault();
+          });
+          resize.addEventListener("pointermove", (event) => {
+            if (!sizeDrag || sizeDrag.id !== event.pointerId) return;
+            sizeDrag.nextWidth = Math.max(80, Math.min(1200, Math.round(sizeDrag.width + event.clientX - sizeDrag.clientX)));
+            sizeDrag.nextHeight = Math.max(40, Math.min(800, Math.round(sizeDrag.height + event.clientY - sizeDrag.clientY)));
+            describeSize(sizeDrag.nextWidth, sizeDrag.nextHeight);
+            applyOfficeShapeDOM(shape, { ...current.attrs, width: sizeDrag.nextWidth, height: sizeDrag.nextHeight });
+          });
+          const finishSize = (event, cancel = false) => {
+            if (!sizeDrag || (event.pointerId != null && sizeDrag.id !== event.pointerId)) return;
+            if (resize.hasPointerCapture(sizeDrag.id)) resize.releasePointerCapture(sizeDrag.id);
+            const { width, height, nextWidth, nextHeight } = sizeDrag; sizeDrag = null;
+            if (cancel) { render(); return; }
+            if (nextWidth !== width || nextHeight !== height) commitSize(nextWidth, nextHeight);
+          };
+          resize.addEventListener("pointerup", (event) => finishSize(event)); resize.addEventListener("pointercancel", (event) => finishSize(event, true));
+          resize.addEventListener("keydown", (event) => {
+            const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+            if (!direction || event.ctrlKey || event.metaKey || event.altKey) return;
+            event.preventDefault(); const step = event.shiftKey ? 10 : 1;
+            commitSize(Math.max(80, Math.min(1200, current.attrs.width + direction[0] * step)),
+              Math.max(40, Math.min(800, current.attrs.height + direction[1] * step)));
+          });
+          dom.append(resize);
           if (current.attrs.position == null) return;
           const position = officeShapePosition(current.attrs.position), anchor = document.createElement("button");
           anchor.type = "button"; anchor.className = "office-shape-anchor";
@@ -34,6 +75,8 @@ export function officeShapeExtension() {
             anchor.style.setProperty("--office-shape-position-y", `${value.y}px`);
           };
           paintAnchor(position);
+          for (const [name, value] of [["--office-shape-position-x", `${position.x / 10}%`],
+            ["--office-shape-position-shift", `${-position.x / 10}%`], ["--office-shape-position-y", `${position.y}px`]]) resize.style.setProperty(name, value);
           anchor.addEventListener("click", () => { const at = typeof getPos === "function" ? getPos() : null; if (Number.isInteger(at)) editor.commands.setNodeSelection(at); });
           let drag = null;
           anchor.addEventListener("pointerdown", (event) => {
