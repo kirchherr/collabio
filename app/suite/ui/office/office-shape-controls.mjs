@@ -2,6 +2,8 @@ import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
+import { OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
+import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 
 export function officeShapeExtension() {
   return Node.create({
@@ -152,8 +154,20 @@ export function officeShapeExtension() {
 export function installOfficeShapeControls({ state, allowed, current, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id);
   let action = null;
-  const selected = () => state.editor?.state.selection instanceof NodeSelection && state.editor.state.selection.node.type.name === "shape";
+  const selected = () => state.editor?.state.selection instanceof NodeSelection && ["shape", "shapeGroup"].includes(state.editor.state.selection.node.type.name);
   const count = () => { let total = 0; state.editor?.state.doc.descendants((node) => { if (node.type.name === "shape") total += 1; }); return total; };
+  const groupCount = (doc) => { let total = 0; doc.forEach((node) => { if (node.type.name === "shapeGroup") total += 1; }); return total; };
+  const groupCandidate = (owner, direction) => {
+    const context = owner?.shapeContext;
+    if (!context || owner.attrs.wrap != null || owner.attrs.position != null) return null;
+    const other = context.root.maybeChild(context.rootIndex + (direction === "previous" ? -1 : 1));
+    if (!other) return null;
+    if (context.grouped) return other.type.name === "shape" && other.attrs.wrap == null && other.attrs.position == null &&
+      context.group.childCount < OFFICE_SHAPE_GROUP_MEMBER_LIMIT ? other : null;
+    if (other.type.name === "shape") return other.attrs.wrap == null && other.attrs.position == null &&
+      groupCount(owner.document) < OFFICE_SHAPE_GROUP_LIMIT ? other : null;
+    return other.type.name === "shapeGroup" && other.childCount < OFFICE_SHAPE_GROUP_MEMBER_LIMIT ? other : null;
+  };
   const close = (restore = false) => { if ($("shape-dialog").open) $("shape-dialog").close(); if (restore && action && current(action)) focus(state.editor); action = null; };
   const fill = (attrs) => {
     $("shape-kind").value = attrs.kind; $("shape-width").value = String(attrs.width); $("shape-height").value = String(attrs.height);
@@ -163,8 +177,11 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-wrap").value = attrs.wrap?.side ?? "none"; $("shape-wrap-gap").value = String(attrs.wrap?.gap ?? 16);
     $("shape-position-layer").value = attrs.position?.layer ?? "flow";
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
+    $("shape-group-layout").value = action?.shapeContext?.group?.attrs.layout ?? "row";
+    $("shape-group-gap").value = String(action?.shapeContext?.group?.attrs.gap ?? 16);
   };
   const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
+  const shapeGroupId = () => `shape-group-${shapeId().slice(6)}`;
   const read = () => officeShapeAttributes({ id: action?.attrs?.id || action?.id || (action.id = shapeId()),
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
@@ -179,19 +196,27 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   };
   const open = () => {
     if (!allowed() || (!selected() && count() >= OFFICE_SHAPE_LIMIT)) return;
-    const selection = state.editor.state.selection, editing = selected();
+    const selection = state.editor.state.selection, groupSelected = selection.node?.type.name === "shapeGroup";
+    const shapeSelection = groupSelected ? NodeSelection.create(state.editor.state.doc, selection.from + 1) : selection;
+    const editing = shapeSelection.node?.type.name === "shape";
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
       document: state.editor.state.doc, selection, storedMarks: state.editor.state.storedMarks,
-      from: selection.from, editing, attrs: editing ? officeShapeAttributes(selection.node.attrs) : null };
+      from: selection.from, shapeSelection, editing, attrs: editing ? officeShapeAttributes(shapeSelection.node.attrs) : null };
+    action.shapeContext = editing ? selectedOfficeShapeContext(state.editor, shapeSelection) : null;
     $("shape-title").textContent = editing ? "Form bearbeiten" : "Form einfügen";
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
     $("shape-remove").hidden = !editing;
+    $("shape-group-section").hidden = !editing;
     fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", rotation: null, position: null, wrap: null });
     updateLayoutControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
   };
-  const updateLayoutControls = () => { const positioned = $("shape-position-layer").value !== "flow";
-    $("shape-wrap").disabled = positioned; $("shape-wrap-gap").disabled = positioned || $("shape-wrap").value === "none";
-    $("shape-position-x").disabled = !positioned; $("shape-position-y").disabled = !positioned; };
+  const updateLayoutControls = () => { const grouped = Boolean(action?.shapeContext?.grouped), positioned = $("shape-position-layer").value !== "flow";
+    $("shape-position-layer").disabled = grouped;
+    $("shape-wrap").disabled = grouped || positioned; $("shape-wrap-gap").disabled = grouped || positioned || $("shape-wrap").value === "none";
+    $("shape-position-x").disabled = grouped || !positioned; $("shape-position-y").disabled = grouped || !positioned;
+    $("shape-group-previous").disabled = !groupCandidate(action, "previous");
+    $("shape-group-next").disabled = !groupCandidate(action, "next");
+    $("shape-group-ungroup").disabled = !grouped; };
   $("shape-options").addEventListener("click", open);
   $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
   $("shape-wrap").addEventListener("input", updateLayoutControls);
@@ -201,8 +226,12 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     try {
       const attrs = read(), editor = state.editor;
       if (action.editing) {
-        if (!(editor.state.selection instanceof NodeSelection) || editor.state.selection.node.type.name !== "shape") throw new Error("selection");
-        const tr = editor.state.tr.setNodeMarkup(editor.state.selection.from, undefined, attrs);
+        const shapeSelection = action.shapeSelection, context = action.shapeContext;
+        const groupedAttrs = context?.grouped ? officeShapeAttributes({ ...attrs, position: null, wrap: null }) : attrs;
+        const tr = editor.state.tr.setNodeMarkup(shapeSelection.from, undefined, groupedAttrs);
+        if (context?.grouped) tr.setNodeMarkup(context.groupPos, undefined, officeShapeGroupAttributes({
+          id: context.group.attrs.id, layout: $("shape-group-layout").value, gap: Number($("shape-group-gap").value),
+        }));
         validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       } else {
         if (count() >= OFFICE_SHAPE_LIMIT) throw new Error("insert");
@@ -216,9 +245,63 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   });
   $("shape-remove").addEventListener("click", () => {
     if (!action || !current(action) || !selected()) return;
-    const editor = state.editor, tr = editor.state.tr.deleteSelection();
+    const editor = state.editor, context = action.shapeContext, tr = editor.state.tr;
+    if (context?.grouped) {
+      const members = context.group.content.content;
+      if (members.length === 2) {
+        const remaining = members[context.shapeIndex === 0 ? 1 : 0];
+        tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, remaining);
+        tr.setSelection(NodeSelection.create(tr.doc, context.groupPos));
+      } else {
+        tr.delete(context.shapePos, context.shapePos + context.shape.nodeSize);
+        tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + 1));
+      }
+    } else tr.delete(action.shapeSelection.from, action.shapeSelection.to);
     try { validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr)); close(); focus(editor); updateEditor(); }
     catch { notice("Die Form konnte nicht entfernt werden.", true); }
+  });
+  const group = (direction) => {
+    if (!action || !current(action) || !groupCandidate(action, direction)) return;
+    const editor = state.editor, context = action.shapeContext, delta = direction === "previous" ? -1 : 1;
+    const other = context.root.child(context.rootIndex + delta), tr = editor.state.tr;
+    try {
+      if (context.grouped) {
+        const otherPos = direction === "previous" ? context.groupPos - other.nodeSize : context.groupPos + context.group.nodeSize;
+        const members = direction === "previous" ? [other, ...context.group.content.content] : [...context.group.content.content, other];
+        const start = Math.min(context.groupPos, otherPos), end = Math.max(context.groupPos + context.group.nodeSize, otherPos + other.nodeSize);
+        tr.replaceWith(start, end, editor.schema.nodes.shapeGroup.create(context.group.attrs, members));
+        const selectedIndex = context.shapeIndex + (direction === "previous" ? 1 : 0);
+        const offset = 1 + members.slice(0, selectedIndex).reduce((total, node) => total + node.nodeSize, 0);
+        tr.setSelection(NodeSelection.create(tr.doc, start + offset));
+      } else {
+        const otherPos = direction === "previous" ? context.shapePos - other.nodeSize : context.shapePos + context.shape.nodeSize;
+        const start = Math.min(context.shapePos, otherPos), end = Math.max(context.shapePos + context.shape.nodeSize, otherPos + other.nodeSize);
+        let attrs, members, selectedIndex;
+        if (other.type.name === "shapeGroup") {
+          attrs = other.attrs; members = direction === "previous" ? [...other.content.content, context.shape] : [context.shape, ...other.content.content];
+          selectedIndex = direction === "previous" ? members.length - 1 : 0;
+        } else {
+          attrs = { id: shapeGroupId(), layout: $("shape-group-layout").value, gap: Number($("shape-group-gap").value) };
+          members = direction === "previous" ? [other, context.shape] : [context.shape, other]; selectedIndex = direction === "previous" ? 1 : 0;
+        }
+        tr.replaceWith(start, end, editor.schema.nodes.shapeGroup.create(officeShapeGroupAttributes(attrs), members));
+        const offset = 1 + members.slice(0, selectedIndex).reduce((total, node) => total + node.nodeSize, 0);
+        tr.setSelection(NodeSelection.create(tr.doc, start + offset));
+      }
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Formgruppe im Entwurf geändert. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("shape-status").textContent = "Diese Formgruppe ist ungültig oder überschreitet die Dokumentgrenzen."; }
+  };
+  $("shape-group-previous").addEventListener("click", () => group("previous"));
+  $("shape-group-next").addEventListener("click", () => group("next"));
+  $("shape-group-ungroup").addEventListener("click", () => {
+    if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    const editor = state.editor, context = action.shapeContext, members = context.group.content.content;
+    const offset = members.slice(0, context.shapeIndex).reduce((total, node) => total + node.nodeSize, 0);
+    const tr = editor.state.tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, members);
+    tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + offset));
+    try { validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr)); focus(editor); updateEditor(); }
+    catch { $("shape-status").textContent = "Die Formgruppe konnte nicht aufgelöst werden."; }
   });
   for (const id of ["shape-close", "shape-cancel"]) $(id).addEventListener("click", () => close(true));
   $("shape-dialog").addEventListener("cancel", (event) => { event.preventDefault(); close(true); });

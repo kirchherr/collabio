@@ -20,6 +20,7 @@ const nodeLabels = {
   codeBlock: "Codeblock", horizontalRule: "Trennlinie", table: "Tabelle", tableRow: "Tabellenzeile",
   tableCell: "Tabellenzelle", tableHeader: "Tabellenkopf", pageBreak: "Seitenumbruch", sectionBreak: "Abschnittsumbruch",
   shape: "Form",
+  shapeGroup: "Formgruppe",
   bookmark: "Lesezeichen", documentField: "Dokumentfeld", noteReference: "Note", citationReference: "Quellenverweis",
   tableOfContents: "Inhaltsverzeichnis", bibliography: "Literaturverzeichnis", equation: "Formel", referenceIndex: "Referenznavigator",
 };
@@ -219,6 +220,7 @@ function blockText(block, nested = false) {
     case "referenceIndex": return "Automatischer Referenznavigator";
     case "image": return `Bild · ${block.attrs.width} × ${block.attrs.height} · ${block.attrs.align}\n${block.attrs.crop ? `Zuschnitt: ${block.attrs.crop.x}, ${block.attrs.crop.y} · ${block.attrs.crop.width} × ${block.attrs.crop.height}` : "Ganzes Bild"}\n${block.attrs.transform ? `Darstellung: ${block.attrs.transform.rotation}°${block.attrs.transform.flipX ? " · horizontal gespiegelt" : ""}${block.attrs.transform.flipY ? " · vertikal gespiegelt" : ""}` : "Darstellung: unverändert"}\n${block.attrs.position ? `Freie Position: ${block.attrs.position.layer === "front" ? "vor" : "hinter"} Text · X ${block.attrs.position.x} · Y ${block.attrs.position.y} px` : block.attrs.wrap ? `Textumfluss: ${block.attrs.wrap.side === "left" ? "Bild links" : "Bild rechts"} · Abstand ${block.attrs.wrap.gap} px` : "Ohne Textumfluss"}\n${block.attrs.decorative ? "Dekorativ" : block.attrs.alt}\n${block.attrs.figureId ? `Nummerierte Abbildung · ${block.attrs.figureId}\n` : ""}${block.attrs.caption}\n${block.attrs.contentHash}`;
     case "imageGroup": return `Bildgruppe · ${children.length} Bilder · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px\n${children.map((child) => blockText(child, true)).join("\n")}`;
+    case "shapeGroup": return `Formgruppe · ${children.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px\n${children.map((child) => blockText(child, true)).join("\n")}`;
     case "shape": return officeShapeDescription(block.attrs);
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
@@ -259,7 +261,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px` : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
+  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px` : block.type === "shapeGroup" ? `Formgruppe · ${block.content.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px` : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

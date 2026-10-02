@@ -182,6 +182,40 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         )
 
 
+def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
+    def shape(index: int) -> dict[str, Any]:
+        return {"type": "shape", "attrs": {"id": "shape-" + f"{index:024x}", "kind": "rectangle", "width": 240,
+            "height": 120, "fill": "white", "stroke": "slate", "strokeWidth": 2, "text": f"Shape {index}",
+            "textAlign": "center", **({"rotation": 90} if index == 2 else {})}}
+
+    group = {"type": "shapeGroup", "attrs": {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16},
+        "content": [shape(1), shape(2)]}
+    document = {"type": "doc", "content": [group]}
+    assert validate_office_document(document) == document
+    for attrs in [
+        {"id": "short", "layout": "row", "gap": 16},
+        {"id": "shape-group-" + "a" * 24, "layout": "grid", "gap": 16},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": -1},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 49},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": True},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
+    ]:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{**group, "attrs": attrs}]})
+    for members in [[shape(1)], [shape(index) for index in range(1, 10)]]:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{**group, "content": members}]})
+    for key, value in (("wrap", {"side": "left", "gap": 16}), ("position", {"layer": "front", "x": 0, "y": 0})):
+        member = shape(1); member["attrs"][key] = value
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{**group, "content": [member, shape(2)]}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document({"type": "doc", "content": [{"type": "blockquote", "content": [group]}]})
+    duplicate = {"type": "doc", "content": [group, {**group, "content": [shape(3), shape(4)]}]}
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(duplicate)
+
+
 @pytest.fixture
 def office() -> tuple[OfficeDocumentService, InMemoryOfficeDocumentRepository, UserContext]:
     sources = InMemorySourceObjectRepository()

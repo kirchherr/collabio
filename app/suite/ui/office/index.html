@@ -176,6 +176,11 @@
           <p id="shape-position-help" class="paragraph-help">Frei platzierte Formen bleiben an dieser Dokumentstelle verankert. 0 liegt links, 500 mittig und 1000 rechts. Der sichtbare Anker bleibt auch hinter dem Text bedienbar.</p>
           <div class="shape-fields"><label>Textumfluss<select id="shape-wrap" aria-describedby="shape-wrap-help"><option value="none">Eigener Absatz (kein Umfluss)</option><option value="left">Form links, Text rechts</option><option value="right">Form rechts, Text links</option></select></label><label>Abstand zum Text (Pixel)<input id="shape-wrap-gap" type="number" min="0" max="48" step="1" value="16" required disabled /></label></div>
           <p id="shape-wrap-help" class="paragraph-help">Textumfluss und freie Position schließen sich aus. In schmalen Ansichten steht die Form automatisch in einem eigenen Absatz.</p>
+          <fieldset id="shape-group-section" class="shape-group-fields" hidden><legend>Formgruppe</legend>
+            <div class="shape-fields"><label>Anordnung<select id="shape-group-layout"><option value="row">Nebeneinander</option><option value="stack">Untereinander</option></select></label><label>Abstand (Pixel)<input id="shape-group-gap" type="number" min="0" max="48" step="1" value="16" required /></label></div>
+            <div class="shape-fields"><button class="button secondary" id="shape-group-previous" type="button">Mit vorheriger Form gruppieren</button><button class="button secondary" id="shape-group-next" type="button">Mit nächster Form gruppieren</button><button class="button secondary" id="shape-group-ungroup" type="button">Gruppe auflösen</button></div>
+            <p class="paragraph-help">Gruppen enthalten zwei bis acht Formen. Anordnung und Abstand gelten für die Gruppe; Typ, Text, Farben, Maße und Drehung bleiben je Form erhalten.</p>
+          </fieldset>
           <label>Text<textarea id="shape-text" maxlength="1000" rows="4"></textarea></label>
           <div class="shape-preview-stage" aria-label="Formvorschau"><div id="shape-preview"></div></div>
           <p class="paragraph-help">Formen speichern nur feste Typen, Farbnamen, Maße und Klartext. Skripte, SVG, CSS und externe Inhalte sind ausgeschlossen.</p>

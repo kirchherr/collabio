@@ -5,6 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { officeShapeElement } from "./office-shapes.mjs";
+import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -63,6 +64,21 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     if (value.type === "shape") {
       if (depth !== 1 || value.content) throw new Error("Invalid shape");
       const shape = officeShapeElement(value.attrs, dom); shape.classList.add("office-print-shape"); return shape;
+    }
+    if (value.type === "shapeGroup") {
+      const attrs = officeShapeGroupAttributes(value.attrs), children = value.content || [];
+      if (depth !== 1 || children.length < 2 || children.length > OFFICE_SHAPE_GROUP_MEMBER_LIMIT ||
+          children.some((child) => child.type !== "shape" || child.attrs?.wrap != null || child.attrs?.position != null)) {
+        throw new Error("Invalid shape group");
+      }
+      const group = dom.createElement("section"); group.className = "office-shape-group office-print-shape-group";
+      group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;
+      group.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
+      group.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(children.length) : "1");
+      for (const child of children) {
+        const shape = officeShapeElement(child.attrs, dom); shape.classList.add("office-print-shape"); group.append(shape);
+      }
+      return group;
     }
     if (value.type === "bookmark") {
       const attrs = officeBookmarkAttributes(value.attrs), marker = dom.createElement("span");

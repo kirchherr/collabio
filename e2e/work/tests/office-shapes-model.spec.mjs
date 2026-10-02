@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
+import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -44,6 +45,20 @@ test("Office shape positions are bounded inert and visible in comparisons", () =
     { layer: "behind", x: 0, y: 1201 }, { layer: "front", x: 0, y: 0, style: "fixed" }]) {
     expect(() => officeShapeAttributes({ ...attrs, position })).toThrow();
   }
+});
+
+test("Office shape groups admit only bounded inert layout attributes", () => {
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "row", gap: 16 };
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  expect(officeShapeGroupAttributes({ ...group, layout: "stack", gap: 48 })).toEqual({ ...group, layout: "stack", gap: 48 });
+  expect(OFFICE_SHAPE_GROUP_LIMIT).toBe(20); expect(OFFICE_SHAPE_GROUP_MEMBER_LIMIT).toBe(8);
+  for (const invalid of [{ ...group, id: "short" }, { ...group, layout: "grid" }, { ...group, gap: -1 },
+    { ...group, gap: 49 }, { ...group, gap: true }, { ...group, style: "display:flex" }]) {
+    expect(() => officeShapeGroupAttributes(invalid)).toThrow();
+  }
+  const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
+    { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24), kind: "ellipse" } }] };
+  expect(describeOfficeBlock(block).label).toContain("Formgruppe · 2 Formen · nebeneinander · Abstand 16 px");
 });
 
 test("Office comparison exposes shape presentation and literal text changes", () => {

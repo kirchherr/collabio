@@ -30,6 +30,7 @@ BLOCKS = {
     "image",
     "imageGroup",
     "shape",
+    "shapeGroup",
     "pageBreak",
     "sectionBreak",
     "tableOfContents",
@@ -121,6 +122,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     generated_blocks: set[str] = set()
     image_group_ids: set[str] = set()
     shape_ids: set[str] = set()
+    shape_group_ids: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -322,7 +324,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 ):
                     reject()
 
-    def visit(node: Any, depth: int) -> None:
+    def visit(node: Any, depth: int, parent_kind: str | None = None) -> None:
         nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks, numbered_tables, equations
         nonlocal document_references
         nodes += 1
@@ -433,7 +435,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "textAlign",
             }
             if (
-                depth != 1
+                (depth != 1 and parent_kind != "shapeGroup")
                 or set(attrs) - (required_shape_attrs | {"position", "rotation", "wrap"})
                 or not required_shape_attrs.issubset(attrs)
                 or not isinstance(identifier, str)
@@ -491,6 +493,21 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             characters += len(text)
             if characters > MAX_DOCUMENT_CHARACTERS:
                 reject()
+        elif kind == "shapeGroup":
+            identifier = attrs.get("id")
+            if (
+                depth != 1
+                or set(attrs) != {"id", "layout", "gap"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"shape-group-[a-f0-9]{24}", identifier) is None
+                or identifier in shape_group_ids
+                or attrs.get("layout") not in {"row", "stack"}
+                or type(attrs.get("gap")) is not int
+                or not 0 <= attrs["gap"] <= 48
+                or len(shape_group_ids) >= 20
+            ):
+                reject()
+            shape_group_ids.add(identifier)
         elif kind == "bookmark":
             bookmarks += 1
             identifier, label = attrs.get("id"), attrs.get("label")
@@ -730,6 +747,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or any(child.get("attrs", {}).get("position") is not None for child in children)
             ):
                 reject()
+        elif kind == "shapeGroup":
+            if (
+                not 2 <= len(children) <= 8
+                or any(child != "shape" for child in child_types)
+                or any(child.get("attrs", {}).get("wrap") is not None for child in children)
+                or any(child.get("attrs", {}).get("position") is not None for child in children)
+            ):
+                reject()
         elif kind in {"paragraph", "heading"}:
             if any(
                 child not in {"text", "hardBreak", "bookmark", "documentField", "noteReference", "citationReference"}
@@ -754,7 +779,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif children:
             reject()
         for child in children:
-            visit(child, depth + 1)
+            visit(child, depth + 1, kind)
         if kind == "table" and len({len(row["content"]) for row in children}) != 1:
             reject()
 

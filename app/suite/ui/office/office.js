@@ -22,6 +22,8 @@ import { officeImageGroupAttributes } from "./office-image-groups.mjs";
 import { officeImageGroupExtension } from "./office-image-group-extension.mjs";
 import { officeShapeAttributes } from "./office-shapes.mjs";
 import { officeShapeExtension, installOfficeShapeControls } from "./office-shape-controls.mjs";
+import { officeShapeGroupAttributes } from "./office-shape-groups.mjs";
+import { officeShapeGroupExtension } from "./office-shape-group-extension.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
@@ -45,7 +47,7 @@ const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" }
 const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
-  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "shape", "pageBreak", "sectionBreak", "bookmark",
+  "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "shape", "shapeGroup", "pageBreak", "sectionBreak", "bookmark",
   "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
@@ -380,7 +382,8 @@ function normalizedDocument(document) {
   let documentReferences = 0;
   const imageGroupIds = new Set();
   const shapeIds = new Set();
-  const walk = (value, depth = 0) => {
+  const shapeGroupIds = new Set();
+  const walk = (value, depth = 0, parentType = null) => {
     if (!value || !allowedNodes.has(value.type) || ++nodes > 10000 || depth > 32) throw new Error("document-shape");
     const result = { type: value.type };
     if (value.type === "pageBreak" && (depth !== 1 || Object.keys(value).length !== 1 || ++pageBreaks > 100)) throw new Error("document-page-break");
@@ -399,11 +402,20 @@ function normalizedDocument(document) {
       imageGroupIds.add(result.attrs.id);
     }
     if (value.type === "shape") {
-      if (depth !== 1) throw new Error("document-shape");
+      if (depth !== 1 && parentType !== "shapeGroup") throw new Error("document-shape");
       result.attrs = officeShapeAttributes(value.attrs);
       if (shapeIds.has(result.attrs.id) || shapeIds.size >= 100) throw new Error("document-shape");
       shapeIds.add(result.attrs.id); characters += Array.from(result.attrs.text).length;
       if (characters > 100000) throw new Error("document-length");
+    }
+    if (value.type === "shapeGroup") {
+      if (depth !== 1 || !Array.isArray(value.content) || value.content.length < 2 || value.content.length > 8 ||
+          value.content.some((child) => child.type !== "shape" || child.attrs?.wrap != null || child.attrs?.position != null)) {
+        throw new Error("document-shape-group");
+      }
+      result.attrs = officeShapeGroupAttributes(value.attrs);
+      if (shapeGroupIds.has(result.attrs.id) || shapeGroupIds.size >= 20) throw new Error("document-shape-group");
+      shapeGroupIds.add(result.attrs.id);
     }
     if (value.type === "bookmark") result.attrs = officeBookmarkAttributes(value.attrs);
     if (value.type === "documentField") result.attrs = { key: officeFieldAttributes(value.attrs, new Map()).key };
@@ -472,7 +484,7 @@ function normalizedDocument(document) {
     }
     if (value.content) {
       if (!Array.isArray(value.content)) throw new Error("document-content");
-      result.content = value.content.map((child) => walk(child, depth + 1));
+      result.content = value.content.map((child) => walk(child, depth + 1, value.type));
     }
     if (value.type === "table") {
       const rows = result.content || [];
@@ -2567,6 +2579,7 @@ function prepareEditor(content, session) {
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageGroupExtension(),
+      officeShapeGroupExtension(),
       officeShapeExtension(),
       officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
