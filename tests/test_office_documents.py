@@ -206,7 +206,8 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "content": members}]})
     for key, value in (("wrap", {"side": "left", "gap": 16}), ("position", {"layer": "front", "x": 0, "y": 0})):
-        member = shape(1); member["attrs"][key] = value
+        member = shape(1)
+        member["attrs"][key] = value
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "content": [member, shape(2)]}]})
     with pytest.raises(OfficeDocumentInvalidContentError):
