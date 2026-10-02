@@ -409,21 +409,36 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             identifier = attrs.get("id")
             text = attrs.get("text")
             colors = {
-                "transparent", "white", "slate", "red", "orange", "yellow",
-                "green", "teal", "blue", "purple", "black",
+                "transparent",
+                "white",
+                "slate",
+                "red",
+                "orange",
+                "yellow",
+                "green",
+                "teal",
+                "blue",
+                "purple",
+                "black",
             }
             if (
                 depth != 1
                 or set(attrs) != {"id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign"}
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
-                or identifier in shape_ids or len(shape_ids) >= 100
+                or identifier in shape_ids
+                or len(shape_ids) >= 100
                 or attrs.get("kind") not in {"rectangle", "roundedRectangle", "ellipse"}
-                or type(attrs.get("width")) is not int or not 80 <= attrs["width"] <= 1200
-                or type(attrs.get("height")) is not int or not 40 <= attrs["height"] <= 800
-                or attrs.get("fill") not in colors or attrs.get("stroke") not in colors
-                or type(attrs.get("strokeWidth")) is not int or not 0 <= attrs["strokeWidth"] <= 8
-                or not isinstance(text, str) or len(text) > 1000
+                or type(attrs.get("width")) is not int
+                or not 80 <= attrs["width"] <= 1200
+                or type(attrs.get("height")) is not int
+                or not 40 <= attrs["height"] <= 800
+                or attrs.get("fill") not in colors
+                or attrs.get("stroke") not in colors
+                or type(attrs.get("strokeWidth")) is not int
+                or not 0 <= attrs["strokeWidth"] <= 8
+                or not isinstance(text, str)
+                or len(text) > 1000
                 or any(
                     (ord(c) < 32 and c not in "\n\t")
                     or 127 <= ord(c) <= 159

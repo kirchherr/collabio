@@ -136,10 +136,15 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     document = {"type": "doc", "content": [{"type": "shape", "attrs": attrs}]}
     assert validate_office_document(document) == document
     invalid = [
-        {**attrs, "id": "shape-short"}, {**attrs, "kind": "svg"}, {**attrs, "width": 79},
-        {**attrs, "height": 801}, {**attrs, "fill": "url(https://example.invalid)"},
-        {**attrs, "strokeWidth": True}, {**attrs, "text": "bad\x00text"},
-        {**attrs, "textAlign": "justify"}, {**attrs, "onclick": "run()"},
+        {**attrs, "id": "shape-short"},
+        {**attrs, "kind": "svg"},
+        {**attrs, "width": 79},
+        {**attrs, "height": 801},
+        {**attrs, "fill": "url(https://example.invalid)"},
+        {**attrs, "strokeWidth": True},
+        {**attrs, "text": "bad\x00text"},
+        {**attrs, "textAlign": "justify"},
+        {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:
         with pytest.raises(OfficeDocumentInvalidContentError):
