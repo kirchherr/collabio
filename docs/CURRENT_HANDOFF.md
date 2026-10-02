@@ -2,6 +2,25 @@
 
 Updated: 2026-10-02
 
+Roadmap 294 / PLANS 155 is complete under ADR-0111. A selected native shape now exposes a visible focusable resize
+control in normal flow and on front or behind layers. Pointer/touch movement previews bounded width and height and
+commits one isolated undo step on release; cancellation restores the prior display. Arrow keys change one dimension
+by one pixel and Shift plus an arrow by ten pixels. Existing 80–1,200 pixel width and 40–800 pixel height limits remain
+the single browser/server contract, with no new saved attribute.
+
+Implementation commit `c956c182` is published on `kirchherr/kb-write-unit-of-work`. Shape schema tests passed 31/31;
+the model plus desktop/mobile workflow passed 5/5, including keyboard resize, pointer resize, undo/redo, front/behind/
+flow, immutable versions, print and independently owned copies. Desktop/mobile screenshot SHA-256 values are
+`3a3dfa59c4a0c8032d16ac958c170c1a621c8634cff890494abf6e072ae89e1b` and
+`7081e50d709abc885cd1c6df2aa6d8bc8d61e8906059c882e321c6013511a02d`; both passed visual review. Full quality passed
+Ruff, formatting for 820 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-resize-c956c182` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because direct resizing reuses existing canonical dimensions and changes no durable schema.
+
 Roadmap 293 / PLANS 154 is complete under ADR-0110. Native Office shapes can now use an optional bounded logical
 anchor in front of or behind nearby text. Horizontal position is normalized from 0 through 1,000 and vertical offset
 is limited to -1,200 through 1,200 pixels. A separate visible anchor remains operable above content even for a shape
@@ -2550,9 +2569,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 293 / PLANS 154 is complete and published through `523e6be9`. Preserve the bounded logical anchor, normalized
-horizontal coordinate, vertical limits, always-operable anchor, isolated undo, exact flow reset, immutable history,
-independent copies and print. Keep the focused shape matrix and full Python quality green.
+Roadmap 294 / PLANS 155 is complete and published through `c956c182`. Preserve the bounded direct resize control,
+pointer/touch preview with single commit, keyboard increments, canonical size limits, the bounded logical anchor,
+isolated undo, exact flow reset, immutable history, independent copies and print. Keep the focused shape matrix and
+full Python quality green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML

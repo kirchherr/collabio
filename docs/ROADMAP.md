@@ -1885,6 +1885,17 @@ und unabhaengige Kopien bewahren den exakten logischen Anker. Freies CSS, physis
 Z-Indizes, Konturumfluss, Verbinder und DrawingML-Anker bleiben ausgeschlossen. Es gibt keine Datenbankmigration,
 neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+294. [x] Direkte begrenzte Formgroessenaenderung umgesetzt: Eine ausgewaehlte Form zeigt einen sichtbaren, fokussierbaren
+     Groessenregler. Zeiger und Touch zeigen Breite und Hoehe unmittelbar als Vorschau und schreiben beim Loslassen
+     genau einen Rueckgaengig-Schritt. Pfeiltasten aendern um ein Pixel, Umschalt plus Pfeiltaste um zehn Pixel. Die
+     bestehenden Grenzen von 80 bis 1200 Pixel Breite und 40 bis 800 Pixel Hoehe gelten unveraendert.
+
+Native Office bleibt vor CRM. Roadmap 294 / PLANS 155 ist unter ADR-0111 implementiert. 31 Schematests und die
+5-teilige Modell-/Desktop-/Mobile-Formmatrix bestehen; der vollstaendige Qualitaetslauf ist gruen. Normalfluss,
+vor/hinter Text, Undo/Redo, Versionen, Druck und unabhaengige Kopien bewahren die kanonischen Masse. Es gibt keine
+Schemaerweiterung, Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung. Seitenverhaeltnis-
+Sperren, Rotation, Formgruppen, Verbinder, Konturumfluss und DrawingML bleiben getrennte Entscheidungen.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

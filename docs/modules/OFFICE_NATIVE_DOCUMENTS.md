@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–293 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 293 / PLANS 154 bounded native shape layers
+Status: Roadmap 252–294 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 294 / PLANS 155 bounded direct native shape resizing
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0110; current shape layers: `ARCHITECTURE_DECISIONS/ADR-0110-native-office-shape-layers.md`
+Decisions: ADR-0079 through ADR-0111; current shape resizing: `ARCHITECTURE_DECISIONS/ADR-0111-native-office-shape-resizing.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 294 adds a visible direct resize control to the selected shape in normal flow or on either logical layer.
+Pointer/touch movement previews both dimensions and commits the final bounded size as one isolated undo step; pointer
+cancellation restores the previous display. Arrow keys change one dimension by one pixel and Shift plus an arrow by
+ten pixels. The accessible name reports the current dimensions. This editor-only control is absent from saved content
+and print, because width and height remain the existing canonical bounded integer attributes.
 
 Roadmap 293 optionally anchors a shape in front of or behind nearby text with an integer normalized X coordinate and
 bounded Y offset. The explicit dialog and an always-visible pointer/touch/keyboard anchor use the same validation.

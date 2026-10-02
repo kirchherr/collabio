@@ -316,12 +316,29 @@ rotated bounds while keeping source pixels and crop immutable. Preserve exact pr
 owned copy, print and fresh recovery through a rotate/mirror/reset lineage. Arbitrary angles, wrap contours, grouping
 and absolute DOCX page anchors remain separate.
 
+152. [x] Add bounded native image groups under ADR-0108. Group two through eight existing images with exact member
+order, row/stack layout and a bounded gap. Preserve responsive fallback, undo, history, copies, print and recovery;
+keep nested groups, positioning and transforms outside the group contract.
+
+153. [x] Add bounded inert native shapes under ADR-0109. Admit only top-level rectangles, rounded rectangles and
+ellipses with fixed colors, integer geometry, literal text and fixed alignment. Preserve exact undo, history,
+comparison, print and independent copies while rejecting arbitrary SVG, CSS, URLs, scripts and freeform paths.
+
+154. [x] Add bounded native shape layers under ADR-0110. Store only optional front/behind plus normalized horizontal
+and bounded vertical coordinates. Keep a separate pointer/touch/keyboard anchor operable above content, preserve
+isolated undo and exact flow reset, and exclude arbitrary z-index, physical page anchors and wrap contours.
+
+155. [x] Add bounded direct native shape resizing under ADR-0111. Expose a focusable control on the selected shape,
+preview pointer/touch width and height within the existing limits, and commit one isolated undo step on release.
+Support one- and ten-pixel keyboard changes and preserve the existing canonical dimensions through history, copies
+and print without adding schema, arbitrary transforms or DrawingML.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 290 / PLANS 151. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and fresh exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, absolute physical page anchors, wrap contours, arbitrary-angle rotation, grouping, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 294 / PLANS 155. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and the latest applicable exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, absolute physical page anchors, wrap contours, arbitrary-angle shape rotation, shape grouping, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
