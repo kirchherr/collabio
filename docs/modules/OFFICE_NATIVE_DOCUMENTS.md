@@ -1,11 +1,16 @@
 # Native Office Documents
 
-Status: Roadmap 252–292 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 292 / PLANS 153 bounded native shapes
+Status: Roadmap 252–293 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 293 / PLANS 154 bounded native shape layers
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0109; current shapes: `ARCHITECTURE_DECISIONS/ADR-0109-native-office-shapes.md`
+Decisions: ADR-0079 through ADR-0110; current shape layers: `ARCHITECTURE_DECISIONS/ADR-0110-native-office-shape-layers.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 293 optionally anchors a shape in front of or behind nearby text with an integer normalized X coordinate and
+bounded Y offset. The explicit dialog and an always-visible pointer/touch/keyboard anchor use the same validation.
+Normal flow omits the anchor. Responsive rendering, comparison, history, copies and print preserve its exact logical
+value without treating it as a physical page coordinate or admitting arbitrary CSS and z-index values.
 
 **Form einfügen …** creates an inert top-level rectangle, rounded rectangle or ellipse. The stored node contains only
 a unique restricted ID, bounded integer width/height/stroke width, fixed fill/stroke color tokens, literal text and a

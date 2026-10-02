@@ -1874,6 +1874,17 @@ Top-Level-Platzierung, eindeutige IDs, hoechstens 100 Formen sowie feste Grenzen
 SVG, freie Pfade, CSS, URLs, Skripte, OLE, Verbinder, Ueberlagerungsebenen und DOCX-DrawingML bleiben ausgeschlossen.
 Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+293. [x] Begrenzte verankerte Formebenen umgesetzt: Native Formen koennen optional vor oder hinter dem Text liegen und
+     verwenden eine normierte horizontale Position von 0 bis 1000 sowie einen vertikalen Versatz von -1200 bis 1200
+     Pixeln. Ein separater, immer bedienbarer Anker unterstuetzt Zeiger, Touch und Tastatur. Ebenenwechsel, Verschieben,
+     Rueckgaengig/Wiederholen und Rueckkehr in den Textfluss bleiben einzelne, kanonische Entwurfsschritte.
+
+Native Office bleibt vor CRM. Roadmap 293 / PLANS 154 ist unter ADR-0110 implementiert. Vollstaendige Python-Qualitaet
+ist gruen; 31 Schematests und die 5-teilige Modell-/Desktop-/Mobile-Formmatrix bestehen. Versionen, Vergleich, Druck
+und unabhaengige Kopien bewahren den exakten logischen Anker. Freies CSS, physische Seitenkoordinaten, beliebige
+Z-Indizes, Konturumfluss, Verbinder und DrawingML-Anker bleiben ausgeschlossen. Es gibt keine Datenbankmigration,
+neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
