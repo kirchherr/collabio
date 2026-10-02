@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeShapeAttributes, officeShapeDescription, officeShapePosition, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
+import { officeShapeAttributes, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -18,6 +18,19 @@ test("Office shapes preserve only bounded inert attributes", () => {
     { ...attrs, rotation: 45 }, { ...attrs, rotation: true }, { ...attrs, onclick: "run()" }]) {
     expect(() => officeShapeAttributes(invalid)).toThrow();
   }
+});
+
+test("Office shape wrapping is bounded and mutually exclusive with positioning", () => {
+  for (const wrap of [{ side: "left", gap: 0 }, { side: "right", gap: 48 }]) {
+    expect(officeShapeWrap(wrap)).toEqual(wrap); expect(officeShapeAttributes({ ...attrs, wrap })).toEqual({ ...attrs, wrap });
+  }
+  expect(officeShapeDescription({ ...attrs, wrap: { side: "right", gap: 24 } })).toContain("Textumfluss Form rechts · Abstand 24 px");
+  for (const wrap of [{}, [], "left", { side: "middle", gap: 0 }, { side: "left", gap: -1 },
+    { side: "right", gap: 49 }, { side: "left", gap: true }, { side: "left", gap: 0, style: "float" }]) {
+    expect(() => officeShapeAttributes({ ...attrs, wrap })).toThrow();
+  }
+  expect(() => officeShapeAttributes({ ...attrs, wrap: { side: "left", gap: 16 },
+    position: { layer: "front", x: 0, y: 0 } })).toThrow();
 });
 
 test("Office shape positions are bounded inert and visible in comparisons", () => {

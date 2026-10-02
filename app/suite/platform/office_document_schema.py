@@ -434,7 +434,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             }
             if (
                 depth != 1
-                or set(attrs) - (required_shape_attrs | {"position", "rotation"})
+                or set(attrs) - (required_shape_attrs | {"position", "rotation", "wrap"})
                 or not required_shape_attrs.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
@@ -459,7 +459,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     for c in text
                 )
                 or attrs.get("textAlign") not in {"left", "center", "right"}
-                or ("rotation" in attrs and attrs.get("rotation") not in {90, 180, 270})
+                or (
+                    "rotation" in attrs
+                    and (type(attrs.get("rotation")) is not int or attrs.get("rotation") not in {90, 180, 270})
+                )
             ):
                 reject()
             position = attrs.get("position")
@@ -472,6 +475,17 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or type(position.get("y")) is not int
                 or not -1200 <= position["y"] <= 1200
             ):
+                reject()
+            wrap = attrs.get("wrap")
+            if wrap is not None and (
+                not isinstance(wrap, dict)
+                or set(wrap) != {"side", "gap"}
+                or wrap.get("side") not in {"left", "right"}
+                or type(wrap.get("gap")) is not int
+                or not 0 <= wrap["gap"] <= 48
+            ):
+                reject()
+            if position is not None and wrap is not None:
                 reject()
             shape_ids.add(identifier)
             characters += len(text)

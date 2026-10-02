@@ -1,12 +1,12 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
+import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
 
 export function officeShapeExtension() {
   return Node.create({
     name: "shape", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "rotation", "position"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "rotation", "position", "wrap"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["div", { class: "office-shape" }, node.attrs.text || ""],
     addNodeView() {
@@ -30,6 +30,14 @@ export function officeShapeExtension() {
         const render = () => {
           const shape = officeShapeElement(current.attrs); dom.replaceChildren(shape);
           dom.toggleAttribute("data-shape-positioned", current.attrs.position != null);
+          if (current.attrs.wrap != null) {
+            const wrap = officeShapeWrap(current.attrs.wrap), sideways = [90, 270].includes(current.attrs.rotation);
+            const width = sideways ? current.attrs.height : current.attrs.width, height = sideways ? current.attrs.width : current.attrs.height;
+            dom.dataset.shapeWrap = wrap.side; dom.style.setProperty("--office-shape-wrap-gap", `${wrap.gap}px`);
+            dom.style.setProperty("--office-shape-wrap-width", `${Math.min(width, 480 * width / height)}px`);
+          } else {
+            delete dom.dataset.shapeWrap; dom.style.removeProperty("--office-shape-wrap-gap"); dom.style.removeProperty("--office-shape-wrap-width");
+          }
           dom.toggleAttribute("data-shape-sideways", [90, 270].includes(current.attrs.rotation));
           dom.style.setProperty("--office-shape-width", String(current.attrs.width));
           dom.style.setProperty("--office-shape-height", String(current.attrs.height));
@@ -152,6 +160,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
     $("shape-text").value = attrs.text; $("shape-text-align").value = attrs.textAlign;
     $("shape-rotation").value = String(attrs.rotation || 0);
+    $("shape-wrap").value = attrs.wrap?.side ?? "none"; $("shape-wrap-gap").value = String(attrs.wrap?.gap ?? 16);
     $("shape-position-layer").value = attrs.position?.layer ?? "flow";
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
   };
@@ -161,6 +170,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
     text: $("shape-text").value, textAlign: $("shape-text-align").value,
     rotation: Number($("shape-rotation").value) || null,
+    wrap: $("shape-wrap").value === "none" ? null : { side: $("shape-wrap").value, gap: Number($("shape-wrap-gap").value) },
     position: $("shape-position-layer").value === "flow" ? null : { layer: $("shape-position-layer").value,
       x: Number($("shape-position-x").value), y: Number($("shape-position-y").value) } });
   const preview = () => {
@@ -176,12 +186,15 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-title").textContent = editing ? "Form bearbeiten" : "Form einfügen";
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
     $("shape-remove").hidden = !editing;
-    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", rotation: null, position: null });
-    updatePositionControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
+    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", rotation: null, position: null, wrap: null });
+    updateLayoutControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
   };
-  const updatePositionControls = () => { const positioned = $("shape-position-layer").value !== "flow"; $("shape-position-x").disabled = !positioned; $("shape-position-y").disabled = !positioned; };
+  const updateLayoutControls = () => { const positioned = $("shape-position-layer").value !== "flow";
+    $("shape-wrap").disabled = positioned; $("shape-wrap-gap").disabled = positioned || $("shape-wrap").value === "none";
+    $("shape-position-x").disabled = !positioned; $("shape-position-y").disabled = !positioned; };
   $("shape-options").addEventListener("click", open);
-  $("shape-position-layer").addEventListener("input", updatePositionControls);
+  $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
+  $("shape-wrap").addEventListener("input", updateLayoutControls);
   $("shape-form").addEventListener("input", preview);
   $("shape-form").addEventListener("submit", (event) => {
     event.preventDefault(); if (!action || !current(action)) { close(); return; }

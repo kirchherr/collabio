@@ -20,6 +20,7 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await page.locator("#shape-apply").click();
   const shape = editor.locator(".office-shape"); await expect(shape).toHaveCount(1);
   await expect(shape).toContainText("<script>"); await expect(shape).toHaveAttribute("data-shape-fill", "yellow");
+  await editor.press("Control+End"); await editor.press("Enter"); await editor.type("Following text flows safely beside a wrapped shape.");
   const bounds = await shape.evaluate((element) => { const box = element.getBoundingClientRect(); return { width: box.width, viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth }; });
   expect(bounds.width).toBeLessThanOrEqual(bounds.viewport); expect(bounds.overflow).toBeLessThanOrEqual(0);
 
@@ -67,14 +68,20 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-position", "behind");
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-rotation", "180");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
-  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-${testInfo.project.name}.png`, fullPage: true });
 
   await anchor.click(); await page.locator("#shape-options").click(); await page.locator("#shape-position-layer").selectOption("flow");
   await page.locator("#shape-apply").click(); await expect(anchor).toHaveCount(0); const reset = await saveOffice(page, { objectId });
   expect(reset.content.content.find((entry) => entry.type === "shape").attrs.position).toBeUndefined();
   expect(reset.version.previous_version_id).toBe(behind.version.version_id);
-  await openReuseHistory(page, behind); await openReuse(page, behind, "Independent positioned shape copy"); await submitReuse(page, behind);
-  await expectReuseDraft(page, "Independent positioned shape copy"); await expect(editor.locator(".office-shape")).toHaveText("Edited ellipse");
+  await shape.click(); await page.locator("#shape-options").click(); await expect(page.locator("#shape-wrap")).toBeEnabled();
+  await page.locator("#shape-wrap").selectOption("right"); await page.locator("#shape-wrap-gap").fill("24"); await page.locator("#shape-apply").click();
+  await expect(editor.locator(".office-shape-node")).toHaveAttribute("data-shape-wrap", "right");
+  const wrapped = await saveOffice(page, { objectId });
+  expect(wrapped.content.content.find((entry) => entry.type === "shape").attrs.wrap).toEqual({ side: "right", gap: 24 });
+  await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-wrap", "right");
+  await page.locator("#print-close").click(); await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-${testInfo.project.name}.png`, fullPage: true });
+  await openReuseHistory(page, wrapped); await openReuse(page, wrapped, "Independent wrapped shape copy"); await submitReuse(page, wrapped);
+  await expectReuseDraft(page, "Independent wrapped shape copy"); await expect(editor.locator(".office-shape")).toHaveText("Edited ellipse");
   const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
-  expect(copy.content.content.find((entry) => entry.type === "shape").attrs).toEqual(behind.content.content.find((entry) => entry.type === "shape").attrs);
+  expect(copy.content.content.find((entry) => entry.type === "shape").attrs).toEqual(wrapped.content.content.find((entry) => entry.type === "shape").attrs);
 });

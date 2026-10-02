@@ -141,6 +141,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     rotated = {**attrs, "rotation": 270}
     rotated_document = {"type": "doc", "content": [{"type": "shape", "attrs": rotated}]}
     assert validate_office_document(rotated_document) == rotated_document
+    wrapped = {**attrs, "wrap": {"side": "right", "gap": 48}}
+    wrapped_document = {"type": "doc", "content": [{"type": "shape", "attrs": wrapped}]}
+    assert validate_office_document(wrapped_document) == wrapped_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -152,7 +155,13 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "textAlign": "justify"},
         {**attrs, "rotation": 0},
         {**attrs, "rotation": 45},
+        {**attrs, "rotation": 90.0},
         {**attrs, "rotation": True},
+        {**attrs, "wrap": {"side": "middle", "gap": 0}},
+        {**attrs, "wrap": {"side": "left", "gap": 49}},
+        {**attrs, "wrap": {"side": "right", "gap": True}},
+        {**attrs, "wrap": {"side": "left", "gap": 0, "style": "float"}},
+        {**attrs, "position": {"layer": "front", "x": 0, "y": 0}, "wrap": {"side": "left", "gap": 16}},
         {**attrs, "onclick": "run()"},
         {**attrs, "position": {"layer": "middle", "x": 0, "y": 0}},
         {**attrs, "position": {"layer": "behind", "x": 1001, "y": 0}},
