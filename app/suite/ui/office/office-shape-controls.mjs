@@ -37,7 +37,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
     $("shape-text").value = attrs.text; $("shape-text-align").value = attrs.textAlign;
   };
-  const read = () => officeShapeAttributes({ id: action?.attrs.id || `shape-${crypto.randomUUID().replaceAll("-", "").slice(0, 24)}`,
+  const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
+  const read = () => officeShapeAttributes({ id: action?.attrs.id || action?.id || (action.id = shapeId()),
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
     text: $("shape-text").value, textAlign: $("shape-text-align").value });
