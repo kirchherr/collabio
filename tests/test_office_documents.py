@@ -200,7 +200,7 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
             },
         }
 
-    group = {
+    group: dict[str, Any] = {
         "type": "shapeGroup",
         "attrs": {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16},
         "content": [shape(1), shape(2)],
