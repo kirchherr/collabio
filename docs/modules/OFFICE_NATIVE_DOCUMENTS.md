@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–297 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 297 / PLANS 158 bounded native shape groups
+Status: Roadmap 252–298 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 298 / PLANS 159 bounded shape-group connections
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0114; current shape groups: `ARCHITECTURE_DECISIONS/ADR-0114-native-office-shape-groups.md`
+Decisions: ADR-0079 through ADR-0115; current connections: `ARCHITECTURE_DECISIONS/ADR-0115-native-office-shape-group-connections.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 298 adds one optional uniform connection between consecutive members of a shape group. The exact bounded
+value admits only a line, direction arrow or double arrow, a fixed color token and integer 1–8 pixel width. Rows render
+horizontal connections; stacks and compact row fallback render vertical connections. The dialog disables color and
+width without a selected connection. Comparison, undo, immutable history, historical reuse, independent copies and
+print preserve the exact type, color and width without storing markup, paths, endpoints or executable styles.
 
 Roadmap 297 adds root-level groups of two through eight flow shapes with exact member order, row/stack layout and an
 integer 0–48 pixel gap. Authors can create or extend a group from adjacent shapes, change its layout, edit or remove

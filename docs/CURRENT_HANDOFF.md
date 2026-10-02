@@ -2,6 +2,25 @@
 
 Updated: 2026-10-02
 
+Roadmap 298 / PLANS 159 is complete under ADR-0115. Native shape groups can now connect each consecutive ordered member
+with one uniform line, direction arrow or double arrow. The optional exact value contains only a fixed kind, fixed color
+token and integer 1–8 pixel width. Row groups connect horizontally; stack groups and compact row fallback connect
+vertically. Arbitrary endpoints, paths, per-edge styles, URLs, CSS and SVG fail closed.
+
+Implementation commits `5f9c202e` through `dfc6067d` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 32/32. The final model plus desktop/mobile workflows passed 10/10, covering invalid kinds/colors/widths,
+dialog controls, responsive orientation, undo/redo, exact saved history, print, dissolution and independently owned
+copies. Desktop/mobile screenshot SHA-256 values are
+`1d4cba3a126ad64092226d4f2ea4e8ad7abd04922b6dcad2f44a0daaec9cbdfe` and
+`5e59dce2e80d7ab21ec5bacb02fced6ca81d20b82fbe9691b45536f406adad83`; both passed visual review. Full quality passed
+Ruff, formatting for 824 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-connect-dfc6067d` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+the optional JSON value changes no table or object-store schema.
+
 Roadmap 297 / PLANS 158 is complete under ADR-0114. Native Office now groups two through eight adjacent flow shapes
 into an exact ordered row or stack with an integer 0–48 pixel gap. Authors can create and extend groups, edit layout
 and gap, edit or remove members, undo/redo and dissolve the group. Compact views collapse rows to one column. Grouped
@@ -2671,9 +2690,9 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 297 / PLANS 158 is complete and published through `a3ca4e3e`. Preserve bounded shape groups, member order,
-flow-only membership, responsive fallback and the existing Office authorization/version/recovery contracts. Continue
-with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
+Roadmap 298 / PLANS 159 is complete and published through `dfc6067d`. Preserve bounded group connections, ordered
+flow-only membership, responsive orientation and the existing Office authorization/version/recovery contracts.
+Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
 Continue the same branch from its verified current HEAD, preserve the user's untracked files and the closed pilot,

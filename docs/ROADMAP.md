@@ -1929,6 +1929,17 @@ historische Wiederverwendung, Druck und unabhaengige Kopien bewahren Gruppen-ID,
 Formattribute exakt. Verschachtelte oder gemischte Gruppen, beliebige Gruppentransformationen, Verbinder und DrawingML
 bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+298. [x] Begrenzte Verbindungen innerhalb nativer Formgruppen umgesetzt: Eine Gruppe kann ihre aufeinanderfolgenden
+     Mitglieder einheitlich mit Linie, Richtungspfeil oder Doppelpfeil verbinden. Sie speichert nur einen festen
+     Farbtoken und eine ganzzahlige Strichstaerke von 1 bis 8 Pixeln. Reihen werden horizontal, Stapel und kompakte
+     Ansichten vertikal verbunden.
+
+Native Office bleibt vor CRM. Roadmap 298 / PLANS 159 ist unter ADR-0115 implementiert. 32 Schematests, die 10-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo/Redo, Vergleich, immutable
+Versionen, historische Wiederverwendung, Druck und unabhaengige Kopien bewahren Verbindungstyp, Farbe und Staerke
+exakt. Beliebige Endpunkte, Pfade, Kurven, Einzelkantenstile, SVG und DrawingML bleiben ausgeschlossen. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
