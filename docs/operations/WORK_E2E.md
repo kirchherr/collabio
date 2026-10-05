@@ -355,7 +355,8 @@ and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `colla
 `collabio_work_e2e_276_restore`, `collabio_work_e2e_277_restore`, `collabio_work_e2e_278_restore`,
 `collabio_work_e2e_279_restore`, `collabio_work_e2e_286_restore`, `collabio_work_e2e_287_restore`,
 `collabio_work_e2e_288_restore`, `collabio_work_e2e_289_restore`, `collabio_work_e2e_290_restore` or
-`collabio_work_e2e_291_restore`, `collabio_work_e2e_307_restore` or `collabio_work_e2e_308_restore` target,
+`collabio_work_e2e_291_restore`, `collabio_work_e2e_307_restore`, `collabio_work_e2e_308_restore` or
+`collabio_work_e2e_309_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -454,6 +455,15 @@ offset from front-layer position `(980, 1190)` to `(940, 1166)`. Its checked dum
 `e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-308.dump`, its isolated target is
 `collabio_work_e2e_308_restore`, and recovery metadata is retained under `e2e/work/artifacts/roadmap-308`. Never run
 it while browser writes are active or replace earlier evidence.
+
+Roadmap 309 adds consecutive saved versions of one freely positioned, numbered and transformed standalone image.
+The second version must use fresh asset/version IDs, a different normalized pixel hash and source dimensions
+`200 × 300` instead of `320 × 160`, while retaining the figure target and presentation and changing the locked frame
+from `300 × 150` to `300 × 450`. Crop remains absent. Its checked dump is retained as
+`e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-309.dump`, its isolated target is
+`collabio_work_e2e_309_restore`, its target-specific receipt is
+`/proof-backup/postgres-restore-receipt-309.sha256`, and recovery metadata is retained under
+`e2e/work/artifacts/roadmap-309`. Never run it while browser writes are active or replace earlier evidence.
 
 ## Evidence
 

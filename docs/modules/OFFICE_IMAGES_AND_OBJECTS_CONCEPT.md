@@ -7,6 +7,7 @@ Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is track
 Roadmap 289 implements bounded anchored foreground/background placement under ADR-0106.
 Roadmap 290 implements bounded quarter-turn rotation and mirroring under ADR-0107.
 Roadmap 291 implements bounded native image groups under ADR-0108.
+Roadmap 309 implements in-place file replacement with fresh immutable pixels under ADR-0126.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -94,6 +95,16 @@ dissolve it. Compact row groups collapse vertically without rewriting stored met
 immutable history, independently owned copies, printing and recovery retain exact order and image identities. Fresh
 recovery proves row/gap-12, stack/gap-24 and dissolved versions of the same three images. Freeform canvases, shapes,
 connectors, nested groups, wrap contours and physical-page anchors remain separate.
+
+## In-place image-file replacement
+
+ADR-0126 reuses the same authorized upload and isolated normalization path when a selected image receives a new PNG
+or JPEG file. Upload alone creates no draft mutation. Explicit apply replaces exactly the selected image node in one
+undo step while retaining alternative text, decorative state, caption, figure ID, alignment, wrapping or free
+position, group membership and inert transform. Locked dimensions follow the new pixel ratio inside the established
+bounds; unlocked frames remain exact. Source-pixel crop coordinates are omitted because they cannot be transferred
+safely to unrelated pixels. Immutable earlier versions keep their old asset/version binding, while the replacement
+uses a fresh document-owned asset/version and the existing receipt, ACL, retention and recovery controls.
 
 ## Later slice: inert linked or embedded objects
 

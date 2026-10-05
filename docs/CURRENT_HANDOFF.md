@@ -2,6 +2,34 @@
 
 Updated: 2026-10-05
 
+Roadmap 309 / PLANS 170 is complete under ADR-0126. A selected native image now exposes **Neue Bilddatei** in its
+edit dialog. The existing tenant/write-authorized PNG/JPEG upload and isolated decoder create a fresh immutable,
+document-owned asset/version without changing the draft. Explicit apply replaces exactly the selected node in one
+undo step. Alternative text, decorative state, caption, stable figure target, alignment, wrapping or anchored
+position, group membership and quarter-turn transformation remain intact. A locked frame follows the new pixel
+ratio within existing bounds; an unlocked frame keeps its exact dimensions. Source-pixel crop coordinates reset.
+Cancel, upload failure and stale context leave the draft unchanged, and earlier saved versions retain their old pixels.
+
+Implementation commits `c6db664c`, `25597752`, `147c0334` and `fce0e3dc` are published on
+`kirchherr/kb-write-unit-of-work`. The focused model contract passed 13/13, the replacement workflow passed 2/2 on
+desktop/mobile and the complete native image/figure matrix passed 59/59 in 9.0 minutes. It covers cancel, explicit
+apply, preserved metadata/layout, aspect-ratio recomputation, crop reset, undo/redo, confirmed save, immutable
+predecessor pixels, readable replacement bytes and reload. Desktop/mobile screenshot SHA-256 values are
+`72b07711e73698f2b48b3b403ec0db6e4612265b8b233a17746f23cc4671de43` and
+`fc233a3fcc08c3b32b7c58cb4e10dbcea3f5695c88cffa9faad7969f9a34bbad`; both passed visual review.
+
+Fresh recovery used dump `sha256:c74e0bfbd733cff95bcf52706a1fe6296487dedb87e6d66a19888cf08302e68d`
+and isolated database `collabio_work_e2e_309_restore`. It verified 1,642 documents, 3,431 exact Office versions,
+823 multi-version documents, 4,561 SourceObjects, 954 image assets and 1,637 saved image references. Four stored
+replacement pairs proved fresh asset/version/content identities, exact source and display dimensions, stable figure
+and presentation attributes and absent crop. Recovery report file SHA-256 is
+`42fd59edc927a77558508ba02b1bf92650d76953e20b7e773309acc15914a1db`; embedded report hash is
+`sha256:15e17ba6b194e5d82a393874450477259945f7fe62098af55b1ae5e8ef637f23`.
+
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-replacement-25597752`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 308 / PLANS 169 is complete under ADR-0125. A selected ungrouped native image now exposes **Bild
 duplizieren**. The server rechecks tenant/write authorization and the immutable source, then creates a fresh
 document-owned asset/version in one transaction. The editor accepts only a complete response with fresh identities

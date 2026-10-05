@@ -2047,6 +2047,19 @@ frische isolierte Restore prueft 1.580 Dokumente, 3.285 Office-Versionen, 4.304 
 gespeicherte Bildverweise und fuenf unabhaengig besessene Einzelbildduplikate. Es gibt keine Datenbankmigration,
 Tenant-Aktivierung oder Engine-Zulassung.
 
+309. [x] Austausch der Datei eines nativen Bildes umgesetzt: **Neue Bilddatei** erzeugt eine frische dokumenteigene
+     Asset-/Versionsbindung, behaelt Beschreibung, Abbildungsziel und validierte Darstellung bei und ersetzt den
+     ausgewaehlten Bildknoten erst mit **In Entwurf übernehmen** in einem Undo-Schritt.
+
+Native Office bleibt vor CRM. Roadmap 309 / PLANS 170 ist unter ADR-0126 implementiert. Der bestehende sichere
+PNG-/JPEG-Upload und isolierte Decoder bleiben die einzige Aufnahmegrenze. Ein neues Seitenverhaeltnis berechnet bei
+aktiver Sperre die Anzeigehoehe innerhalb der bestehenden Grenzen; ein alter pixelbezogener Zuschnitt wird verworfen.
+Abbrechen, Fehler und veraltete Selektionen lassen den Entwurf unveraendert, waehrend historische Fassungen ihre
+alten Pixel behalten. Die komplette 59-teilige Bild-/Abbildungsmatrix ist auf Desktop und Mobil gruen. Ein frischer
+isolierter Restore prueft 1.642 Dokumente, 3.431 Office-Versionen, 4.561 SourceObjects, 954 Bildassets, 1.637
+gespeicherte Bildverweise und vier Austauschpaare mit frischen Pixelidentitaeten und stabiler Darstellung. Es gibt
+keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
