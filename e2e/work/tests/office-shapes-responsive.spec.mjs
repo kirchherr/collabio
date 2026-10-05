@@ -113,6 +113,15 @@ test("Office shape groups preserve ordered members history print and independent
 
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-position-layer")).toBeDisabled(); await expect(page.locator("#shape-wrap")).toBeDisabled();
+  await expect(page.locator("#shape-group-member-previous")).toBeDisabled();
+  await expect(page.locator("#shape-group-member-next")).toBeEnabled();
+  await page.locator("#shape-group-member-next").click();
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Beta", "Alpha"]);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Alpha", "Beta"]);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Beta", "Alpha"]);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Alpha", "Beta"]);
+
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-layout").selectOption("stack"); await page.locator("#shape-group-gap").fill("24");
   await page.locator("#shape-group-connection").selectOption("doubleArrow");
   await page.locator("#shape-group-connection-color").selectOption("purple");
