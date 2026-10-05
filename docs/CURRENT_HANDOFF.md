@@ -2,6 +2,25 @@
 
 Updated: 2026-10-05
 
+Roadmap 305 / PLANS 166 is complete under ADR-0122. An ungrouped selected native shape now exposes focusable actions
+to move it exactly one top-level document position earlier or later. Each activation swaps the complete shape with
+one adjacent node in one isolated undo step; unavailable boundary directions are disabled. The stable shape ID and
+all validated presentation attributes remain unchanged. Group members retain their dedicated ordering controls, and
+missing, stale, grouped or read-only targets fail closed with no draft mutation.
+
+Implementation commit `ac9543d5` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 20/20, covering both directions, boundary controls, stable identity and presentation,
+undo/redo, confirmed save, immutable predecessor content and print. Desktop/mobile screenshot SHA-256 values are
+`94f8077d318d328cc4d5654f0321a51dc22670a230464f2191a50fc51e37ac69` and
+`7838f2316689ae5ef4df1d6236b15f08117fbbba8ddf8cf7f07cfe04859a01f9`; both passed visual review. Full quality passed
+Ruff, formatting for 783 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-order-ac9543d5` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing,
+cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery
+because shape ordering changes no durable schema and exact predecessor versions remain available.
+
 Roadmap 304 / PLANS 165 is complete under ADR-0121. An existing native shape group now exposes focusable actions to
 move it exactly one top-level document position earlier or later. Activation resolves the validated stable group ID
 against the current editor document and swaps the complete group with one adjacent node in one isolated undo step.
@@ -2795,9 +2814,10 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 304 / PLANS 165 is complete and published through `3fe3eeb7`. Preserve direct atomic group ordering, atomic
-group removal, direct group and member duplication, bounded typography, accessible member ordering, bounded
-connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts.
+Roadmap 305 / PLANS 166 is complete and published through `ac9543d5`. Preserve direct atomic standalone-shape and
+group ordering, atomic group removal, direct group and member duplication, bounded typography, accessible member
+ordering, bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery
+contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.

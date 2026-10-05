@@ -2001,6 +2001,16 @@ Mitgliedsreihenfolge, Layout, Abstand, Verbindung und alle Attribute bleiben exa
 Speichern, immutable Vorgaengerversionen und Druck bewahren die jeweilige Dokumentreihenfolge. Es gibt keine
 Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+305. [x] Direkte Reihenfolge einzelner nativer Formen umgesetzt: Eine ausgewaehlte ungruppierte Form kann genau eine
+     Top-Level-Dokumentposition frueher oder spaeter verschoben werden. Nicht moegliche Richtungen sind an den
+     Dokumentgrenzen deaktiviert; Gruppenmitglieder behalten ihre eigenen Reihenfolge-Aktionen.
+
+Native Office bleibt vor CRM. Roadmap 305 / PLANS 166 ist unter ADR-0122 implementiert. Die 20-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Stabile Form-ID, Typ, Text,
+Geometrie, Farben, Rahmen, Typografie, Drehung, Umfluss und optionale Position bleiben exakt erhalten. Undo/Redo,
+bestaetigtes Speichern, immutable Vorgaengerversionen und Druck bewahren die jeweilige Dokumentreihenfolge. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

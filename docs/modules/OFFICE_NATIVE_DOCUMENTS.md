@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–304 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 304 / PLANS 165 direct shape-group ordering
+Status: Roadmap 252–305 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 305 / PLANS 166 direct standalone shape ordering
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0121; current group ordering: `ARCHITECTURE_DECISIONS/ADR-0121-native-office-shape-group-ordering.md`
+Decisions: ADR-0079 through ADR-0122; current shape ordering: `ARCHITECTURE_DECISIONS/ADR-0122-native-office-shape-ordering.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 305 adds direct earlier/later controls for a selected standalone shape. Each action swaps the complete shape
+with exactly one adjacent top-level document node and keeps selection on the moved shape. Boundary actions are
+disabled, while grouped shapes continue to use member ordering. The isolated undo transaction preserves the stable
+shape ID and every validated presentation attribute. Confirmed save, immutable history and static print retain the
+exact resulting order without a new stored field.
 
 Roadmap 304 adds direct earlier/later controls for a selected native shape group. Each action resolves the stable
 validated group ID against the current document, swaps the complete group with exactly one adjacent top-level node
