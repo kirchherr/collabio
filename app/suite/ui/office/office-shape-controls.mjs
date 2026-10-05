@@ -376,11 +376,14 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     } catch { $("shape-status").textContent = "Die Formgruppe konnte wegen der Dokumentgrenzen nicht dupliziert werden."; }
   });
   $("shape-group-remove").addEventListener("click", () => {
-    if (!action || action.session !== state.session || action.context !== state.context ||
-      action.revision !== state.session?.revision || action.editor !== state.editor ||
-      action.document !== state.editor?.state.doc || !action.shapeContext?.grouped) return;
-    const editor = state.editor, context = action.shapeContext;
-    const tr = editor.state.tr.delete(context.groupPos, context.groupPos + context.group.nodeSize);
+    if (!action?.shapeContext?.grouped || !allowed() || !state.editor) return;
+    const editor = state.editor, groupId = action.shapeContext.group.attrs.id;
+    let group = null, groupPos = null;
+    editor.state.doc.forEach((node, offset) => {
+      if (group == null && node.type.name === "shapeGroup" && node.attrs.id === groupId) { group = node; groupPos = offset; }
+    });
+    if (!group || !Number.isInteger(groupPos)) return;
+    const tr = editor.state.tr.delete(groupPos, groupPos + group.nodeSize);
     try {
       validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       focus(editor); updateEditor(); notice("Formgruppe aus dem Entwurf entfernt. Mit Rückgängig vollständig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
