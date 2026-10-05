@@ -20,7 +20,7 @@ test("Office image model keeps immutable references and correct text offsets", (
 
 test("Office image replacement keeps presentation and description but resets crop", () => {
   const source = { ...attrs, width: 300, height: 150, align: "right", caption: "Numbered image",
-    crop: { x: 20, y: 10, width: 200, height: 100 }, position: { layer: "front", x: 640, y: 120 },
+    crop: { x: 20, y: 10, width: 180, height: 90 }, position: { layer: "front", x: 640, y: 120 },
     transform: { rotation: 90, flipX: true, flipY: false }, figureId: "figure-aaaaaaaaaaaaaaaaaaaaaaaa" };
   const replacement = { ...attrs, assetId: "office-image-" + "f".repeat(32),
     versionId: "office-image-version-" + "1".repeat(32), contentHash: "sha256:" + "2".repeat(64),
