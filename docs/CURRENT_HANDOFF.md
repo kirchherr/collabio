@@ -2,6 +2,33 @@
 
 Updated: 2026-10-05
 
+Roadmap 307 / PLANS 168 is complete under ADR-0124. A selected native image group now exposes
+**Bildgruppe duplizieren**. The server rechecks current tenant/write authorization and every immutable source member,
+then creates fresh document-owned asset/version identities in one transaction. Only a complete validated response
+inserts a fresh group directly after the source as one isolated undo step. Numbered members receive fresh figure IDs;
+order, normalized pixels, content hashes, layout, gap, dimensions, crop, transform, alignment, alternative text,
+caption and decorative state remain exact. Existing limits of 20 groups, 40 document images, eight members and 200
+retained assets fail before mutation. Errors and stale groups leave the draft unchanged.
+
+Implementation commits `b9fe379d` and `564b8ba4` are published on `kirchherr/kb-write-unit-of-work`. The focused
+desktop/mobile group workflow passed 6/6 and the complete native image/figure matrix passed 53/53. It covers server
+failure without draft mutation, fresh identities, undo/redo, confirmed save, readable copied bytes and two-group
+print output, plus all previous upload, decoder, ACL, crop, free-position, wrap, transform, numbering and copy cases.
+Desktop/mobile screenshot SHA-256 values are `4553154dd0c633a4f55e4838d5fa61438993a35f0c4b75421b9fc9583c2d126b`
+and `e21f3621c90197d72b32ee2d2f8facb716d8899a58e0c3a6b370f75b6ed524a7`; both passed visual review. Full
+quality passed Ruff, formatting for 785 files, Mypy over 605 source files and complete Pytest with only the known
+Starlette/AnyIO warning.
+
+Fresh recovery used dump `sha256:a7211b9d67e662455a11e6099190b6a956ba34c59ad5bf33603099bc96fab3c7`
+and isolated database `collabio_work_e2e_307_restore`. It verified 1,525 documents, 3,155 exact Office versions,
+744 multi-version documents, 4,088 SourceObjects, 772 image assets and 1,327 saved image references. Four stored group
+duplicates proved distinct group/asset/version identities with identical ordered pixel hashes. Recovery report file
+SHA-256 is `abef3857695465e61b1ab07b07a33e1e136a4bed4fe4cc87f2128ba04c22c870`; embedded report hash is
+`sha256:0546d998dfaaa47caa9221a653bf96929c4cb2f9d6a3cd610b2aefb35802c0d4`.
+
+The isolated review UI remains on `http://192.168.0.108:42880/office`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 306 / PLANS 167 is complete under ADR-0123. A selected native image group now exposes a focusable
 **Bildgruppe entfernen** action. Activation resolves the validated stable group ID against the current editor
 document and removes exactly that complete group as one isolated undo step. Undo restores exact group identity,
@@ -2796,10 +2823,9 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 296 / PLANS 157 is complete and published through `67a37927`. Preserve bounded left/right wrapping, the
-0–48 pixel gap, mutual exclusion with free positioning, narrow-layout fallback, quarter-turn rotation, bounded
-resizing and logical anchors, isolated undo, exact historical reuse, independent copies and print. Keep the focused
-shape matrix and full Python quality green.
+Roadmap 307 / PLANS 168 is complete. Preserve independent image-group assets and identities, atomic server copying,
+fail-closed draft insertion, the 20-group/40-image/eight-member/200-asset limits, isolated undo, exact save/history/
+print behavior and the fresh Roadmap-307 recovery. Keep the complete image matrix and full Python quality green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
@@ -2838,10 +2864,10 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 306 / PLANS 167 is complete and published through `80425397`. Preserve atomic image-group removal, direct
+Roadmap 307 / PLANS 168 is complete. Preserve independent image-group duplication, atomic image-group removal, direct
 atomic standalone-shape and group ordering, atomic shape-group removal, direct group and member duplication, bounded
 typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing Office
-authorization/version/recovery contracts.
+authorization/version/recovery contracts, including the fresh Roadmap-307 PostgreSQL/S3 proof.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.

@@ -2022,6 +2022,18 @@ Beschriftungs- und Abbildungsattribute exakt wieder her. Bestaetigtes Speichern,
 Druck bewahren ihre exakten Vertraege. Es gibt keine Asset-Loeschung, Datenbankmigration, neue Abhaengigkeit,
 Tenant-Aktivierung oder Engine-Zulassung.
 
+307. [x] Unabhaengige Duplizierung nativer Bildgruppen umgesetzt: **Bildgruppe duplizieren** kopiert die komplette
+     Gruppe direkt hinter ihre Quelle. Die Gruppe, jedes Asset, jede Asset-Version und jedes Abbildungsziel erhalten
+     frische Identitaeten; Reihenfolge, Pixel, Layout, Abstand und saemtliche Darstellungsattribute bleiben exakt.
+
+Native Office bleibt vor CRM. Roadmap 307 / PLANS 168 ist unter ADR-0124 implementiert. Der neue tenant- und
+schreibautorisierte Serverpfad prueft alle zwei bis acht Quellen erneut und legt ihre Kopien atomar unter der bestehenden
+200-Asset-Grenze an. Erst eine vollstaendige validierte Antwort aendert den lokalen Entwurf in genau einem Undo-Schritt;
+Fehler, veraltete Gruppen und Grenzverletzungen lassen ihn unveraendert. Die komplette 53-teilige native Bild- und
+Abbildungsmatrix sowie Ruff, Formatierung fuer 785 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Ein frischer
+isolierter Restore prueft 1.525 Dokumente, 3.155 Office-Versionen, 4.088 SourceObjects, 772 Bildassets und vier
+unabhaengig besessene Gruppenduplikate. Es gibt keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

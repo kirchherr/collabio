@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–306 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 306 / PLANS 167 atomic image-group removal
+Status: Roadmap 252–307 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 307 / PLANS 168 independent image-group duplication
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0123; current image-group removal: `ARCHITECTURE_DECISIONS/ADR-0123-native-office-image-group-removal.md`
+Decisions: ADR-0079 through ADR-0124; current image-group duplication: `ARCHITECTURE_DECISIONS/ADR-0124-native-office-image-group-duplication.md`
 
 ## Bounded native shapes (Roadmap 292)
 
@@ -485,6 +485,13 @@ recorded in CURRENT_HANDOFF.md; arbitrary angles, wrap contours, physical page a
 remain separate.
 
 ## Bounded native image groups (Roadmap 291)
+
+Roadmap 307 adds **Bildgruppe duplizieren**. A dedicated write-authorized endpoint revalidates every current
+document-owned member and creates fresh asset/version identities atomically. The editor inserts a fresh group directly
+after the source only after the complete response validates; numbered members also receive fresh figure identities.
+Ordered normalized pixels, content hashes and presentation remain exact, while group, image and retained-asset limits
+fail before draft mutation. Insertion is one undo step, save remains explicitly confirmed, and failed or stale requests
+leave the draft unchanged. Fresh recovery verifies the copied assets, receipts, bytes and distinct identities.
 
 Roadmap 306 adds **Bildgruppe entfernen** for a selected native image group. At activation, the editor resolves the
 stable validated group ID against the current document and removes that complete node in one isolated undo
