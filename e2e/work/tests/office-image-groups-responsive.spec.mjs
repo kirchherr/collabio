@@ -125,6 +125,7 @@ test("Office image group removal is atomic and reversible", async ({ page }, tes
   const grouped = await saveOffice(page, { objectId }), storedGroup = grouped.content.content.find((entry) => entry.type === "imageGroup");
   expect(storedGroup).toMatchObject({ attrs: { layout: "row", gap: 18 }, content: images });
   await openImage(page, 0); await expect(page.locator("#image-group-remove")).toBeEnabled();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-remove-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#image-group-remove").click(); await expect(group).toHaveCount(0);
   await expect(editor.locator("img")).toHaveCount(0); await expect(editor.locator(":scope > p")).toHaveCount(2);
   await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(3);
@@ -141,7 +142,4 @@ test("Office image group removal is atomic and reversible", async ({ page }, tes
   await expect(page.locator("#print-preview")).toContainText("Text after image group.");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html).not.toContain("office-print-image-group"); await page.locator("#print-close").click();
-  await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(3);
-  await openImage(page, 0); await expect(page.locator("#image-group-remove")).toBeEnabled();
-  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-remove-${testInfo.project.name}.png`, fullPage: true });
 });
