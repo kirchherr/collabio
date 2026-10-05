@@ -231,6 +231,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-previous").disabled = !groupCandidate(action, "previous");
     $("shape-group-next").disabled = !groupCandidate(action, "next");
     $("shape-group-ungroup").disabled = !grouped;
+    $("shape-group-move-previous").disabled = !grouped || action.shapeContext.rootIndex === 0;
+    $("shape-group-move-next").disabled = !grouped || action.shapeContext.rootIndex === action.shapeContext.root.childCount - 1;
     $("shape-group-member-previous").disabled = !grouped || action.shapeContext.shapeIndex === 0;
     $("shape-group-member-next").disabled = !grouped || action.shapeContext.shapeIndex === action.shapeContext.group.childCount - 1;
     $("shape-group-remove").disabled = !grouped;
@@ -341,6 +343,26 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   };
   $("shape-group-previous").addEventListener("click", () => group("previous"));
   $("shape-group-next").addEventListener("click", () => group("next"));
+  const moveGroup = (direction) => {
+    if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    const editor = state.editor, context = action.shapeContext;
+    const targetIndex = context.rootIndex + (direction === "previous" ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= context.root.childCount) return;
+    const other = context.root.child(targetIndex);
+    const start = direction === "previous" ? context.groupPos - other.nodeSize : context.groupPos;
+    const end = direction === "previous" ? context.groupPos + context.group.nodeSize :
+      context.groupPos + context.group.nodeSize + other.nodeSize;
+    const content = direction === "previous" ? [context.group, other] : [other, context.group];
+    const nextGroupPos = direction === "previous" ? start : context.groupPos + other.nodeSize;
+    const tr = editor.state.tr.replaceWith(start, end, content);
+    tr.setSelection(NodeSelection.create(tr.doc, nextGroupPos));
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Formgruppe im Dokument verschoben. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("shape-status").textContent = "Die Formgruppe konnte an dieser Stelle nicht verschoben werden."; }
+  };
+  $("shape-group-move-previous").addEventListener("click", () => moveGroup("previous"));
+  $("shape-group-move-next").addEventListener("click", () => moveGroup("next"));
   const reorderMember = (direction) => {
     if (!action || !current(action) || !action.shapeContext?.grouped) return;
     const editor = state.editor, context = action.shapeContext;
