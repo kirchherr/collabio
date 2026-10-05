@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { officeImageAttributes, officeImageReferences } from "../office-images.mjs";
+import { officeImageAttributes, officeImageReferences, officeImageReplacementAttributes } from "../office-images.mjs";
 import { findDocumentMatches } from "../office-search.mjs";
 import { describeOfficeBlock, compareOfficeDocuments } from "../office-comparison.mjs";
 import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "../office-image-groups.mjs";
@@ -16,6 +16,26 @@ test("Office image model keeps immutable references and correct text offsets", (
   expect(officeImageReferences(content)).toEqual([attrs]);
   expect(describeOfficeBlock(image).label).toBe("Bild");
   expect(describeOfficeBlock(image).text).toContain("<caption>");
+});
+
+test("Office image replacement keeps presentation and description but resets crop", () => {
+  const source = { ...attrs, width: 300, height: 150, align: "right", caption: "Numbered image",
+    crop: { x: 20, y: 10, width: 200, height: 100 }, position: { layer: "front", x: 640, y: 120 },
+    transform: { rotation: 90, flipX: true, flipY: false }, figureId: "figure-aaaaaaaaaaaaaaaaaaaaaaaa" };
+  const replacement = { ...attrs, assetId: "office-image-" + "f".repeat(32),
+    versionId: "office-image-version-" + "1".repeat(32), contentHash: "sha256:" + "2".repeat(64),
+    manifestHash: "sha256:" + "3".repeat(64), pixelWidth: 200, pixelHeight: 300,
+    width: 200, height: 300, align: "left", alt: "", caption: "", decorative: true };
+  expect(officeImageReplacementAttributes(source, replacement)).toEqual({ ...replacement,
+    width: 300, height: 450, align: "right", alt: source.alt, caption: source.caption,
+    decorative: false, lockAspect: true, position: source.position, transform: source.transform, figureId: source.figureId });
+  expect(officeImageReplacementAttributes({ ...source, lockAspect: false }, replacement)).toMatchObject({ width: 300, height: 150 });
+});
+
+test("Office image replacement bounds a locked portrait and validates both sources", () => {
+  const portrait = { ...attrs, pixelWidth: 100, pixelHeight: 400, height: 400 };
+  expect(officeImageReplacementAttributes({ ...attrs, width: 800, height: 400 }, portrait)).toMatchObject({ width: 400, height: 1600 });
+  expect(() => officeImageReplacementAttributes({ ...attrs, crop: { x: 0, y: 0, width: 201, height: 1 } }, portrait)).toThrow();
 });
 
 test("Office image model keeps legacy captions and admits only captioned stable figures", () => {

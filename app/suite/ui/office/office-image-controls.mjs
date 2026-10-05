@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { officeImageKeys, officeImageAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
+import { officeImageKeys, officeImageAttributes, officeImageReplacementAttributes, officeImageFigure, fetchOfficeImage, applyOfficeImageLayout } from "./office-images.mjs";
 import { OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes,
 } from "./office-image-groups.mjs";
 import { selectedOfficeImageContext } from "./office-image-group-extension.mjs";
@@ -213,10 +213,13 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     const figures = officeFigureInventory(editor.getJSON());
     action.figureNumber = selected ? figures.find(({ id }) => id === action.attrs.figureId)?.number ?? figures.length + 1 : figures.length + 1;
     $("image-title").textContent = selected ? "Bild bearbeiten" : "Bild einfügen";
-    $("image-upload-section").hidden = selected;
+    $("image-upload-section").hidden = false;
+    $("image-file-label").textContent = selected ? "Neue Bilddatei" : "Bilddatei";
+    $("image-upload").textContent = selected ? "Neue Bilddatei hochladen und prüfen" : "Bild hochladen und prüfen";
     $("image-edit-actions").hidden = !selected;
     $("image-group-section").hidden = !selected;
-    $("image-status").textContent = !state.session.objectId ? "Speichern Sie das neue Dokument zuerst. Danach können Sie ein Bild hochladen." :
+    $("image-status").textContent = !state.session.objectId ? "Speichern Sie das neue Dokument zuerst. Danach können Sie ein Bild hochladen." : selected ?
+      "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Beim Ersetzen bleiben Darstellung und Beschreibung erhalten; erst „In Entwurf übernehmen“ ändert den Entwurf." :
       "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Das Bild wird diesem Dokument zugeordnet; Einfügen ändert zunächst Ihren Entwurf.";
     if (selected) { const owner = action; fill(owner.attrs); preview(owner).catch((error) => {
       if (action !== owner || !valid()) return;
@@ -245,12 +248,13 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       }
       const result = await response.json();
       if (action !== owner || !valid()) return;
-      owner.attrs = officeImageAttributes(result.image);
-      delete owner.crop;
+      owner.attrs = owner.selected ? officeImageReplacementAttributes(owner.attrs, result.image) : officeImageAttributes(result.image);
       if (owner.attrs.documentId !== owner.session.objectId) throw new Error("owner");
       await preview(owner);
       if (action !== owner || !valid()) return;
-      fill(owner.attrs, true); $("image-status").textContent = "Bild bereit. Beschreiben Sie es mit Alternativtext oder kennzeichnen Sie es ausdrücklich als dekorativ.";
+      fill(owner.attrs, !owner.selected); $("image-status").textContent = owner.selected ?
+        "Neue Bilddatei bereit. Darstellung und Beschreibung bleiben erhalten; ein vorhandener Zuschnitt wurde zurückgesetzt. Erst „In Entwurf übernehmen“ ersetzt das Bild." :
+        "Bild bereit. Beschreiben Sie es mit Alternativtext oder kennzeichnen Sie es ausdrücklich als dekorativ.";
     } catch (error) {
       if (action === owner && valid() && [401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
       if (action === owner && valid()) $("image-status").textContent = "Bild nicht verfügbar: Datei, Größenlimit und Zugriff prüfen. Bei einer unterbrochenen Übertragung kann das Bild bereits hinterlegt sein; der Entwurf wurde nicht geändert.";

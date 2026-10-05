@@ -82,6 +82,27 @@ export function officeImageAttributes(attrs) {
   return result;
 }
 
+export function officeImageReplacementAttributes(source, replacement) {
+  const current = officeImageAttributes(source);
+  const uploaded = officeImageAttributes(replacement);
+  let width = current.width;
+  let height = current.height;
+  if (current.lockAspect) {
+    height = Math.max(1, Math.round(width * uploaded.pixelHeight / uploaded.pixelWidth));
+    if (height > 1600) {
+      width = Math.max(1, Math.round(width * 1600 / height));
+      height = 1600;
+    }
+  }
+  const result = { ...uploaded, width, height,
+    align: current.align, alt: current.alt, caption: current.caption,
+    decorative: current.decorative, lockAspect: current.lockAspect };
+  for (const key of ["wrap", "position", "transform", "figureId"]) {
+    if (current[key] != null) result[key] = current[key];
+  }
+  return officeImageAttributes(result);
+}
+
 export function officeImageReferences(content) {
   const result = [];
   const visit = (node) => {

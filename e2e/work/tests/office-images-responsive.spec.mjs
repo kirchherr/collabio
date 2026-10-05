@@ -4,13 +4,13 @@ import { openOffice, createOfficeDocument, saveOffice, officeEditor, officeConte
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 import { openReuse, submitReuse, expectReuseDraft } from "./office-reuse-support.mjs";
 
-async function fixture(page, mime = "image/png") {
-  const value = await page.evaluate((type) => {
-    const canvas = document.createElement("canvas"); canvas.width = 320; canvas.height = 160;
-    const context = canvas.getContext("2d"); context.fillStyle = "#2563eb"; context.fillRect(0, 0, 160, 160);
-    context.fillStyle = "#f97316"; context.fillRect(160, 0, 160, 160);
+async function fixture(page, mime = "image/png", width = 320, height = 160) {
+  const value = await page.evaluate(({ type, width, height }) => {
+    const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+    const context = canvas.getContext("2d"); context.fillStyle = "#2563eb"; context.fillRect(0, 0, Math.ceil(width / 2), height);
+    context.fillStyle = "#f97316"; context.fillRect(Math.ceil(width / 2), 0, Math.floor(width / 2), height);
     return canvas.toDataURL(type).split(",")[1];
-  }, mime);
+  }, { type: mime, width, height });
   return Buffer.from(value, "base64");
 }
 
@@ -184,6 +184,53 @@ test("Office duplicates one positioned numbered image with independent ownership
   await officeEditor(page).locator("img").last().click({ force: true }); await page.locator("#image-options").click();
   await expect(page.locator("#image-duplicate")).toBeEnabled(); await expect(page.locator("#image-preview img")).toBeVisible();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-duplicate-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#image-cancel").click();
+});
+
+test("Office replaces image pixels while preserving presentation with cancel undo redo and persistence", async ({ page }, testInfo) => {
+  await openOffice(page); const first = await createOfficeDocument(page, "Replace image file", "Before");
+  await insert(page, await fixture(page));
+  await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();
+  await page.locator("#image-width").fill("300");
+  await page.locator("#image-numbered").check();
+  await page.locator("#image-position-layer").selectOption("front");
+  await page.locator("#image-position-x").fill("640"); await page.locator("#image-position-y").fill("120");
+  await page.locator("#image-rotation").selectOption("90"); await page.locator("#image-flip-x").check();
+  await page.locator("#image-apply").click();
+  const baseline = await saveOffice(page, { objectId: first.document.object_id });
+  const original = baseline.content.content.find((entry) => entry.type === "image").attrs;
+  const replacement = await fixture(page, "image/png", 200, 300);
+
+  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await expect(page.locator("#image-file-label")).toHaveText("Neue Bilddatei");
+  await expect(page.locator("#image-upload")).toHaveText("Neue Bilddatei hochladen und prüfen");
+  await page.locator("#image-file").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: replacement });
+  await page.locator("#image-upload").click(); await expect(page.locator("#image-status")).toContainText("Neue Bilddatei bereit");
+  await expect(page.locator("#image-width")).toHaveValue("300"); await expect(page.locator("#image-height")).toHaveValue("450");
+  await expect(page.locator("#image-alt")).toHaveValue("Blue and orange squares");
+  await expect(page.locator("#image-caption")).toHaveValue("<literal image caption>");
+  await expect(page.locator("#image-numbered")).toBeChecked(); await expect(page.locator("#image-flip-x")).toBeChecked();
+  await page.locator("#image-cancel").click();
+  await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "150");
+
+  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await page.locator("#image-file").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: replacement });
+  await page.locator("#image-upload").click(); await expect(page.locator("#image-status")).toContainText("Neue Bilddatei bereit");
+  await page.locator("#image-apply").click(); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "450");
+  await officeEditor(page).press("Control+z"); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "150");
+  await officeEditor(page).press("Control+Shift+z"); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "450");
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  const changed = saved.content.content.find((entry) => entry.type === "image").attrs;
+  expect(changed).toMatchObject({ pixelWidth: 200, pixelHeight: 300, width: 300, height: 450,
+    align: original.align, alt: original.alt, caption: original.caption, decorative: original.decorative,
+    lockAspect: original.lockAspect, position: original.position, transform: original.transform, figureId: original.figureId });
+  expect(changed.assetId).not.toBe(original.assetId); expect(changed.versionId).not.toBe(original.versionId);
+  const bytes = await page.request.get(`${BASE_URL}/v1/office/documents/${first.document.object_id}/images/${changed.assetId}/${changed.versionId}`, { headers: OFFICE_HEADERS });
+  expect(bytes.status()).toBe(200); expect((await bytes.body()).length).toBeGreaterThan(0);
+  await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "450");
+  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await expect(page.locator("#image-preview img")).toBeVisible();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-replacement-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#image-cancel").click();
 });
 
