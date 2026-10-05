@@ -221,3 +221,34 @@ test("Office shape group duplication preserves presentation with fresh identitie
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(4); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-duplicate-${testInfo.project.name}.png`, fullPage: true });
 });
+
+test("Office shape group removal is atomic and reversible", async ({ page }, testInfo) => {
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native shape group removal proof", "Keep this paragraph");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Remove A"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").click(); await editor.press("ArrowRight"); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Remove B"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-layout").selectOption("row"); await page.locator("#shape-group-gap").fill("18");
+  await page.locator("#shape-group-connection").selectOption("doubleArrow"); await page.locator("#shape-group-previous").click();
+  const grouped = await saveOffice(page, { objectId });
+  const storedGroup = grouped.content.content.find((entry) => entry.type === "shapeGroup");
+  expect(storedGroup.content.map((entry) => entry.attrs.text)).toEqual(["Remove A", "Remove B"]);
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-remove")).toBeEnabled(); await page.locator("#shape-group-remove").click();
+  await expect(editor.locator(".office-shape-group")).toHaveCount(0); await expect(editor.locator(".office-shape")).toHaveCount(0);
+  await expect(editor).toContainText("Keep this paragraph");
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Remove A", "Remove B"]);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
+  const saved = await saveOffice(page, { objectId });
+  expect(saved.version.previous_version_id).toBe(grouped.version.version_id);
+  expect(saved.content.content.some((entry) => entry.type === "shapeGroup" || entry.type === "shape")).toBeFalsy();
+  expect((await officeContent(page, objectId, { versionId: grouped.version.version_id })).content.content
+    .find((entry) => entry.type === "shapeGroup")).toEqual(storedGroup);
+  await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape-group")).toHaveCount(0);
+  await expect(page.locator("#print-preview")).toContainText("Keep this paragraph"); await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-remove-${testInfo.project.name}.png`, fullPage: true });
+});

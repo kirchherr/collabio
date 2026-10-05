@@ -233,6 +233,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-ungroup").disabled = !grouped;
     $("shape-group-member-previous").disabled = !grouped || action.shapeContext.shapeIndex === 0;
     $("shape-group-member-next").disabled = !grouped || action.shapeContext.shapeIndex === action.shapeContext.group.childCount - 1;
+    $("shape-group-remove").disabled = !grouped;
     $("shape-group-duplicate").disabled = !grouped || groupCount(action.document) >= OFFICE_SHAPE_GROUP_LIMIT ||
       count() + (action?.shapeContext?.group?.childCount ?? 0) > OFFICE_SHAPE_LIMIT;
     $("shape-duplicate").disabled = count() >= OFFICE_SHAPE_LIMIT || (grouped && action.shapeContext.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT);
@@ -373,6 +374,15 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       focus(editor); updateEditor(); notice("Formgruppe dupliziert. Gruppe und Mitglieder besitzen neue IDs; mit Rückgängig entfernbar.");
     } catch { $("shape-status").textContent = "Die Formgruppe konnte wegen der Dokumentgrenzen nicht dupliziert werden."; }
+  });
+  $("shape-group-remove").addEventListener("click", () => {
+    if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    const editor = state.editor, context = action.shapeContext;
+    const tr = editor.state.tr.delete(context.groupPos, context.groupPos + context.group.nodeSize);
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Formgruppe aus dem Entwurf entfernt. Mit Rückgängig vollständig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("shape-status").textContent = "Die Formgruppe konnte nicht entfernt werden."; }
   });
   $("shape-group-ungroup").addEventListener("click", () => {
     if (!action || !current(action) || !action.shapeContext?.grouped) return;
