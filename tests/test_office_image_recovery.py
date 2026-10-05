@@ -5,6 +5,7 @@ import pytest
 
 from office_image_recovery import (
     verify_restored_crop_reset,
+    verify_restored_group_duplicate,
     verify_restored_group_reset,
     verify_restored_images,
     verify_restored_position_reset,
@@ -15,7 +16,7 @@ from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
 
-@pytest.mark.parametrize("number", [268, 269, 270, 291])
+@pytest.mark.parametrize("number", [268, 269, 270, 291, 307])
 def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
@@ -205,3 +206,48 @@ def test_group_recovery_requires_consecutive_row_stack_reset_with_same_members()
     for rows in ([], [row], [stack, reset], [row, reset]):
         with pytest.raises(ValueError):
             verify_restored_group_reset(rows)
+
+
+def test_group_duplicate_recovery_requires_fresh_assets_with_same_ordered_pixels() -> None:
+    version = {
+        "object_id": "doc",
+        "document_version_id": "saved",
+        "groups": [
+            {"id": "source", "layout": "row", "gap": 20, "images": [("a", "1"), ("b", "2")]},
+            {"id": "copy", "layout": "row", "gap": 20, "images": [("c", "3"), ("d", "4")]},
+        ],
+    }
+    bindings = [
+        {
+            "object_id": "doc",
+            "document_version_id": "saved",
+            "asset_id": asset,
+            "asset_version_id": image_version,
+            "content_hash": content_hash,
+        }
+        for asset, image_version, content_hash in (
+            ("a", "1", "red"),
+            ("b", "2", "blue"),
+            ("c", "3", "red"),
+            ("d", "4", "blue"),
+        )
+    ]
+    assert verify_restored_group_duplicate([version], bindings) == {
+        "verified_duplicated_image_group_count": 1,
+        "independently_owned_group_duplicate_verified": True,
+    }
+    for broken in (
+        [{**version, "groups": [{**version["groups"][0]}, {**version["groups"][1], "id": "source"}]}],
+        [{**version, "groups": [{**version["groups"][0]}, {**version["groups"][1], "layout": "stack"}]}],
+        [
+            {
+                **version,
+                "groups": [
+                    {**version["groups"][0]},
+                    {**version["groups"][1], "images": [("a", "1"), ("d", "4")]},
+                ],
+            }
+        ],
+    ):
+        with pytest.raises(ValueError):
+            verify_restored_group_duplicate(broken, bindings)

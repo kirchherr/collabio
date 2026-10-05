@@ -181,6 +181,40 @@ def verify_restored_group_reset(versions: list[dict[str, Any]]) -> dict[str, Any
     }
 
 
+def verify_restored_group_duplicate(versions: list[dict[str, Any]], bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    hashes = {
+        (row["object_id"], row["document_version_id"], row["asset_id"], row["asset_version_id"]): row["content_hash"]
+        for row in bindings
+    }
+    verified = 0
+    for row in versions:
+        for source, copied in zip(row["groups"], row["groups"][1:], strict=False):
+            source_images, copied_images = source["images"], copied["images"]
+            if (
+                source["id"] == copied["id"]
+                or source["layout"] != copied["layout"]
+                or source["gap"] != copied["gap"]
+                or len(source_images) != len(copied_images)
+                or not 2 <= len(source_images) <= 8
+                or set(source_images) & set(copied_images)
+            ):
+                continue
+            source_hashes = [
+                hashes.get((row["object_id"], row["document_version_id"], *image)) for image in source_images
+            ]
+            copied_hashes = [
+                hashes.get((row["object_id"], row["document_version_id"], *image)) for image in copied_images
+            ]
+            if None not in source_hashes and source_hashes == copied_hashes:
+                verified += 1
+    if verified < 1:
+        raise ValueError("Image group duplicate recovery requires distinct assets with identical ordered pixels")
+    return {
+        "verified_duplicated_image_group_count": verified,
+        "independently_owned_group_duplicate_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

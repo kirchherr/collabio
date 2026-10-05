@@ -18,6 +18,7 @@ import psycopg
 
 from office_image_recovery import (
     verify_restored_crop_reset,
+    verify_restored_group_duplicate,
     verify_restored_group_reset,
     verify_restored_images,
     verify_restored_position_reset,
@@ -111,6 +112,7 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         "collabio_work_e2e_289_restore",
         "collabio_work_e2e_290_restore",
         "collabio_work_e2e_291_restore",
+        "collabio_work_e2e_307_restore",
         "collabio_work_e2e_269_restore",
         "collabio_work_e2e_270_restore",
         "collabio_work_e2e_271_restore",
@@ -1350,6 +1352,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         image_evidence.update(verify_restored_transform_reset(image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_291_restore"):
         image_evidence.update(verify_restored_group_reset(image_group_versions))
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_307_restore"):
+        image_evidence.update(verify_restored_group_duplicate(image_group_versions, image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(
