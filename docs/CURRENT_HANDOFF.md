@@ -15,7 +15,7 @@ order, exact save, print and independently owned copies. Desktop/mobile screensh
 Ruff, formatting for 825 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=member-order-ff6ca228` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=member-order-fe25535a` with synthetic
 Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
 AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
 member ordering changes only the already persisted exact group sequence.
@@ -2708,7 +2708,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 299 / PLANS 160 is complete and published through implementation commit `ff6ca228`. Preserve direct accessible
+Roadmap 299 / PLANS 160 is complete and published through `fe25535a`. Preserve direct accessible
 member ordering, bounded group connections, ordered flow-only membership, responsive orientation and the existing
 Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
