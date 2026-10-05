@@ -376,7 +376,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     } catch { $("shape-status").textContent = "Die Formgruppe konnte wegen der Dokumentgrenzen nicht dupliziert werden."; }
   });
   $("shape-group-remove").addEventListener("click", () => {
-    if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    if (!action || action.session !== state.session || action.context !== state.context ||
+      action.revision !== state.session?.revision || action.editor !== state.editor ||
+      action.document !== state.editor?.state.doc || !action.shapeContext?.grouped) return;
     const editor = state.editor, context = action.shapeContext;
     const tr = editor.state.tr.delete(context.groupPos, context.groupPos + context.group.nodeSize);
     try {
