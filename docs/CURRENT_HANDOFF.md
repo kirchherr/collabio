@@ -20,7 +20,7 @@ state before removal and passed fully. Desktop/mobile screenshot SHA-256 values 
 Ruff, formatting for 784 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=image-group-remove-b3bb5472` with
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=image-group-remove-80425397` with
 synthetic Work-E2E data. Regular and review APIs remain isolated; no asset deletion, database migration, ordinary
 tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
 fresh isolated recovery because image-group removal changes no durable schema and exact predecessor versions retain
@@ -2838,7 +2838,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 306 / PLANS 167 is complete and published through `b3bb5472`. Preserve atomic image-group removal, direct
+Roadmap 306 / PLANS 167 is complete and published through `80425397`. Preserve atomic image-group removal, direct
 atomic standalone-shape and group ordering, atomic shape-group removal, direct group and member duplication, bounded
 typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing Office
 authorization/version/recovery contracts.
