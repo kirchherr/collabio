@@ -220,11 +220,17 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
     $("shape-duplicate").hidden = !editing;
     $("shape-remove").hidden = !editing;
+    $("shape-move-previous").hidden = !editing;
+    $("shape-move-next").hidden = !editing;
     $("shape-group-section").hidden = !editing;
     fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", fontSize: null, textColor: null, textStyle: null, rotation: null, position: null, wrap: null });
     updateLayoutControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
   };
   const updateLayoutControls = () => { const grouped = Boolean(action?.shapeContext?.grouped), positioned = $("shape-position-layer").value !== "flow";
+    $("shape-move-previous").hidden = !action?.editing || grouped;
+    $("shape-move-next").hidden = !action?.editing || grouped;
+    $("shape-move-previous").disabled = grouped || !action?.shapeContext || action.shapeContext.rootIndex === 0;
+    $("shape-move-next").disabled = grouped || !action?.shapeContext || action.shapeContext.rootIndex === action.shapeContext.root.childCount - 1;
     $("shape-position-layer").disabled = grouped;
     $("shape-wrap").disabled = grouped || positioned; $("shape-wrap-gap").disabled = grouped || positioned || $("shape-wrap").value === "none";
     $("shape-position-x").disabled = grouped || !positioned; $("shape-position-y").disabled = grouped || !positioned;
@@ -309,6 +315,27 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     try { validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr)); close(); focus(editor); updateEditor(); }
     catch { notice("Die Form konnte nicht entfernt werden.", true); }
   });
+  const moveShape = (direction) => {
+    if (!action || !current(action) || !action.editing || action.shapeContext?.grouped) return;
+    const editor = state.editor, context = action.shapeContext;
+    if (!context) return;
+    const targetIndex = context.rootIndex + (direction === "previous" ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= context.root.childCount) return;
+    const other = context.root.child(targetIndex);
+    const start = direction === "previous" ? context.shapePos - other.nodeSize : context.shapePos;
+    const end = direction === "previous" ? context.shapePos + context.shape.nodeSize :
+      context.shapePos + context.shape.nodeSize + other.nodeSize;
+    const content = direction === "previous" ? [context.shape, other] : [other, context.shape];
+    const nextShapePos = direction === "previous" ? start : context.shapePos + other.nodeSize;
+    const tr = editor.state.tr.replaceWith(start, end, content);
+    tr.setSelection(NodeSelection.create(tr.doc, nextShapePos));
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Form im Dokument verschoben. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("shape-status").textContent = "Die Form konnte an dieser Stelle nicht verschoben werden."; }
+  };
+  $("shape-move-previous").addEventListener("click", () => moveShape("previous"));
+  $("shape-move-next").addEventListener("click", () => moveShape("next"));
   const group = (direction) => {
     if (!action || !current(action) || !groupCandidate(action, direction)) return;
     const editor = state.editor, context = action.shapeContext, delta = direction === "previous" ? -1 : 1;

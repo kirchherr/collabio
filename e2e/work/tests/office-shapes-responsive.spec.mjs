@@ -291,3 +291,40 @@ test("Office shape groups move atomically in document order", async ({ page }, t
   await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-order-${testInfo.project.name}.png`, fullPage: true });
 });
+
+test("Office standalone shapes move atomically in document order", async ({ page }, testInfo) => {
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native shape order proof", "Paragraph before shape");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-kind").selectOption("roundedRectangle");
+  await page.locator("#shape-width").fill("360"); await page.locator("#shape-height").fill("140");
+  await page.locator("#shape-fill").selectOption("yellow"); await page.locator("#shape-stroke").selectOption("purple");
+  await page.locator("#shape-stroke-width").fill("4"); await page.locator("#shape-font-size").fill("24");
+  await page.locator("#shape-text-color").selectOption("blue"); await page.locator("#shape-text-style").selectOption("bold");
+  await page.locator("#shape-text").fill("Ordered standalone shape"); await page.locator("#shape-apply").click();
+  const shape = editor.locator(".office-shape");
+  const originalId = await shape.getAttribute("data-office-shape");
+  await shape.click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-move-previous")).toBeEnabled();
+  await expect(page.locator("#shape-move-next")).toBeDisabled();
+  await page.locator("#shape-move-previous").click();
+  await expect(editor.locator(":scope > *").first()).toHaveClass(/office-shape-node/);
+  await editor.press("Control+z"); await expect(editor.locator(":scope > p").first()).toContainText("Paragraph before shape");
+  await editor.press("Control+Shift+z"); await expect(editor.locator(":scope > *").first()).toHaveClass(/office-shape-node/);
+  await shape.click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-move-previous")).toBeDisabled();
+  await expect(page.locator("#shape-move-next")).toBeEnabled(); await page.locator("#shape-move-next").click();
+  await expect(editor.locator(":scope > p").first()).toContainText("Paragraph before shape");
+  const saved = await saveOffice(page, { objectId }), stored = saved.content.content.find((entry) => entry.type === "shape");
+  expect(saved.content.content.map((entry) => entry.type)).toEqual(["paragraph", "shape"]);
+  expect(stored.attrs).toMatchObject({ id: originalId, kind: "roundedRectangle", width: 360, height: 140,
+    fill: "yellow", stroke: "purple", strokeWidth: 4, fontSize: 24, textColor: "blue", textStyle: "bold",
+    text: "Ordered standalone shape" });
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-content > p").first()).toContainText("Paragraph before shape");
+  await expect(page.locator("#print-preview .office-print-shape")).toContainText("Ordered standalone shape");
+  await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-order-${testInfo.project.name}.png`, fullPage: true });
+});
