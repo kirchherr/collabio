@@ -23,6 +23,8 @@ def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> 
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
         env[key] = env[key].replace("/collabio_work_e2e_restore", f"/collabio_work_e2e_{number}_restore")
+    if number == 309:
+        env["SUITE_POSTGRES_RESTORE_RECEIPT_PATH"] = "/proof-backup/postgres-restore-receipt-309.sha256"
     require_office_recovery_environment(env)
     env["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = recovery_environment()["SUITE_POSTGRES_RESTORE_TARGET_DSN"]
     with pytest.raises(ValueError):

@@ -149,10 +149,14 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         raise ValueError("Office recovery source storage is outside its isolated scope")
     if env.get("SUITE_RESTORE_S3_ENDPOINT_URL") != "http://minio-restore:9000":
         raise ValueError("Office recovery target storage is outside its isolated scope")
-    if (
-        env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup"
-        or env.get("SUITE_POSTGRES_RESTORE_RECEIPT_PATH") != "/proof-backup/postgres-restore-receipt.sha256"
-    ):
+    receipt_name = (
+        "postgres-restore-receipt-309.sha256"
+        if target_database == "collabio_work_e2e_309_restore"
+        else "postgres-restore-receipt.sha256"
+    )
+    if env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup" or env.get(
+        "SUITE_POSTGRES_RESTORE_RECEIPT_PATH"
+    ) != f"/proof-backup/{receipt_name}":
         raise ValueError("Office recovery must use its separately mounted backup artifact")
 
 
