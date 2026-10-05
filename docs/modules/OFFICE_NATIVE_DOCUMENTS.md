@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–303 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 303 / PLANS 164 atomic shape-group removal
+Status: Roadmap 252–304 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 304 / PLANS 165 direct shape-group ordering
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0120; current group removal: `ARCHITECTURE_DECISIONS/ADR-0120-native-office-shape-group-removal.md`
+Decisions: ADR-0079 through ADR-0121; current group ordering: `ARCHITECTURE_DECISIONS/ADR-0121-native-office-shape-group-ordering.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 304 adds direct earlier/later controls for a selected native shape group. Each action resolves the stable
+validated group ID against the current document, swaps the complete group with exactly one adjacent top-level node
+and keeps selection on the moved group. Boundary actions are disabled. The isolated undo transaction preserves the
+group ID, member IDs and order, layout, gap, optional connection and every member attribute. Confirmed save,
+immutable history and static print retain the exact resulting order without a new stored field.
 
 Roadmap 303 adds **Gruppe entfernen** for a selected native shape group. At activation, the editor resolves the stable
 validated group ID against the current document and removes that complete node in one isolated undo transaction.
