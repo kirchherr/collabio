@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–299 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 299 / PLANS 160 direct shape-group member ordering
+Status: Roadmap 252–300 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 300 / PLANS 161 bounded shape typography
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0116; current ordering: `ARCHITECTURE_DECISIONS/ADR-0116-native-office-shape-group-member-ordering.md`
+Decisions: ADR-0079 through ADR-0117; current typography: `ARCHITECTURE_DECISIONS/ADR-0117-native-office-shape-typography.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 300 lets each shape optionally override its canonical 16-pixel text size with an integer from 10 through 72,
+choose one fixed non-transparent text-color token and choose bold, italic or bold-italic text. Automatic contrast and
+normal style remain canonical omissions. The same exact attributes render in preview, the editor, grouped shapes and
+print and appear in accessible descriptions and comparisons. Unknown keys, font names, URLs, CSS, markup, arbitrary
+style strings, booleans and out-of-range sizes fail closed in browser and server validation.
 
 Roadmap 299 adds direct keyboard-accessible controls that move the selected shape-group member exactly one position
 earlier or later. The unavailable direction is disabled at each boundary. Every move replaces the validated group in

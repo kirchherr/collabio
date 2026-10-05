@@ -2,6 +2,27 @@
 
 Updated: 2026-10-05
 
+Roadmap 300 / PLANS 161 is complete under ADR-0117. Native shape text now supports an optional integer 10–72 pixel
+size, one fixed non-transparent color token and bold, italic or bold-italic style. The canonical 16-pixel size,
+automatic contrast color and normal style remain absent from saved attributes. Browser and server validators reject
+fonts, URLs, CSS, markup, arbitrary style strings, booleans and values outside the exact bounds.
+
+Implementation commits `43584b54` through `47ae3a0c` are published on `kirchherr/kb-write-unit-of-work`. Focused
+server schema checks passed 2/2. The final model plus desktop/mobile workflows passed 10/10, covering invalid values,
+dialog preview, accessibility metadata, undo/redo, exact saved history, grouped members, print and independently owned
+copies. Single-shape desktop/mobile screenshot SHA-256 values are
+`615b73e6c461d2d902683a243a4f34ee7ec2269f1397faacc3dc2b36a59799c8` and
+`a20f0ce57cda8c3beb4d9bde2530daf7edbc645cbc3c2ffb3034c9a7f9045aab`; group desktop/mobile values are
+`225a22e964ef8794a547ea15c2c8f3365257728d2a31e3d582a3975023c47132` and
+`1fb35afccb34b3eccb74f5b66ab41ea97a7cff8456fb91d4fbcb11be8c3decb4`. All four passed visual review. Full quality
+passed Ruff, formatting for 826 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO
+warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-typography-47ae3a0c` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because the optional attributes change no table or object-store schema and legacy shapes remain valid.
+
 Roadmap 299 / PLANS 160 is complete under ADR-0116. Authors can move the selected member of a native shape group one
 exact position earlier or later. The UI disables impossible boundary actions, keeps selection on the moved member and
 records each move as one isolated undo step. The operation reuses the group's validated exact member order; layout,
@@ -2708,8 +2729,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 299 / PLANS 160 is complete and published through `fe25535a`. Preserve direct accessible
-member ordering, bounded group connections, ordered flow-only membership, responsive orientation and the existing
+Roadmap 300 / PLANS 161 is complete and published through implementation commit `47ae3a0c`. Preserve bounded shape
+typography, direct accessible member ordering, bounded group connections, ordered flow-only membership and the existing
 Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 

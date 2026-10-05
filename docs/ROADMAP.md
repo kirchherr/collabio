@@ -1951,6 +1951,16 @@ Kopien bleiben exakt erhalten. Die Funktion verwendet die bereits validierte Gru
 Schema, keine Drag-only-Bedienung, keine Ueberlappungsebenen und keinen beliebigen z-index hinzu. Es gibt keine
 Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+300. [x] Begrenzte native Formtypografie umgesetzt: Formtext kann optional eine ganzzahlige Schriftgroesse von 10 bis
+     72 Pixeln, einen festen Textfarbtoken und fett, kursiv oder fett-kursiv verwenden. Die kanonische Standardgroesse
+     16 Pixel, automatische Kontrastfarbe und normaler Schnitt bleiben ohne Zusatzattribute gespeichert.
+
+Native Office bleibt vor CRM. Roadmap 300 / PLANS 161 ist unter ADR-0117 implementiert. Die fokussierten
+Serverschematests, die 10-teilige Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen.
+Vorschau, Accessibility-Beschreibung, Undo/Redo, Vergleich, immutable Versionen, Formgruppen, Druck und unabhaengige
+Kopien bewahren die Typografie exakt. Beliebige Fonts, CSS, URLs, Markup, freie Stilwerte und transparente Schrift
+bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
