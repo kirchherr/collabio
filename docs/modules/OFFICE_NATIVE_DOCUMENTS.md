@@ -1,11 +1,17 @@
 # Native Office Documents
 
-Status: Roadmap 252–298 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 298 / PLANS 159 bounded shape-group connections
+Status: Roadmap 252–299 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 299 / PLANS 160 direct shape-group member ordering
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0115; current connections: `ARCHITECTURE_DECISIONS/ADR-0115-native-office-shape-group-connections.md`
+Decisions: ADR-0079 through ADR-0116; current ordering: `ARCHITECTURE_DECISIONS/ADR-0116-native-office-shape-group-member-ordering.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 299 adds direct keyboard-accessible controls that move the selected shape-group member exactly one position
+earlier or later. The unavailable direction is disabled at each boundary. Every move replaces the validated group in
+one isolated undo transaction and keeps selection on the moved member. It changes only the group's existing exact
+member sequence, so layout, gap, connection, member attributes, immutable history, copies and print need no new
+durable representation. Drag-only ordering, overlap layers and arbitrary z-index behavior remain excluded.
 
 Roadmap 298 adds one optional uniform connection between consecutive members of a shape group. The exact bounded
 value admits only a line, direction arrow or double arrow, a fixed color token and integer 1–8 pixel width. Rows render

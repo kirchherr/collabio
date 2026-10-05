@@ -1,6 +1,24 @@
 # Current Project Handoff
 
-Updated: 2026-10-02
+Updated: 2026-10-05
+
+Roadmap 299 / PLANS 160 is complete under ADR-0116. Authors can move the selected member of a native shape group one
+exact position earlier or later. The UI disables impossible boundary actions, keeps selection on the moved member and
+records each move as one isolated undo step. The operation reuses the group's validated exact member order; layout,
+gap, connection and every member attribute remain unchanged and no new durable schema is introduced.
+
+Implementation commit `ff6ca228` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 10/10, including boundary controls, forward move, undo, redo, restored canonical
+order, exact save, print and independently owned copies. Desktop/mobile screenshot SHA-256 values are
+`e79a21756cb9e17cfa97a430a1820924d10c9cb5dd044c8f30a5de5668e21873` and
+`9dc3beaa32c775e2682dc612ba0e4072e5e7bf048cd828adb8e0ce9badea67ce`; both passed visual review. Full quality passed
+Ruff, formatting for 825 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=member-order-ff6ca228` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+member ordering changes only the already persisted exact group sequence.
 
 Roadmap 298 / PLANS 159 is complete under ADR-0115. Native shape groups can now connect each consecutive ordered member
 with one uniform line, direction arrow or double arrow. The optional exact value contains only a fixed kind, fixed color
@@ -2690,8 +2708,9 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 298 / PLANS 159 is complete and published through `5b70f370`. Preserve bounded group connections, ordered
-flow-only membership, responsive orientation and the existing Office authorization/version/recovery contracts.
+Roadmap 299 / PLANS 160 is complete and published through implementation commit `ff6ca228`. Preserve direct accessible
+member ordering, bounded group connections, ordered flow-only membership, responsive orientation and the existing
+Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.

@@ -1940,6 +1940,17 @@ Versionen, historische Wiederverwendung, Druck und unabhaengige Kopien bewahren 
 exakt. Beliebige Endpunkte, Pfade, Kurven, Einzelkantenstile, SVG und DrawingML bleiben ausgeschlossen. Es gibt keine
 Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+299. [x] Direkte barrierefreie Reihenfolge fuer Mitglieder nativer Formgruppen umgesetzt: Die ausgewaehlte Form kann
+     jeweils eine Position frueher oder spaeter gesetzt werden. Nicht moegliche Randaktionen sind deaktiviert; jede
+     Verschiebung ist ein eigener Rueckgaengig-Schritt und die Auswahl folgt der verschobenen Form.
+
+Native Office bleibt vor CRM. Roadmap 299 / PLANS 160 ist unter ADR-0116 implementiert. Die 10-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo/Redo, gespeicherte
+Reihenfolge, Gruppenlayout, Verbindungen, immutable Versionen, historische Wiederverwendung, Druck und unabhaengige
+Kopien bleiben exakt erhalten. Die Funktion verwendet die bereits validierte Gruppenreihenfolge und fuegt kein neues
+Schema, keine Drag-only-Bedienung, keine Ueberlappungsebenen und keinen beliebigen z-index hinzu. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
