@@ -17,6 +17,8 @@ apply, preserved metadata/layout, aspect-ratio recomputation, crop reset, undo/r
 predecessor pixels, readable replacement bytes and reload. Desktop/mobile screenshot SHA-256 values are
 `72b07711e73698f2b48b3b403ec0db6e4612265b8b233a17746f23cc4671de43` and
 `fc233a3fcc08c3b32b7c58cb4e10dbcea3f5695c88cffa9faad7969f9a34bbad`; both passed visual review.
+Full quality passed Ruff, formatting for 836 files, Mypy over 605 source files and complete Pytest with only the
+known Starlette/AnyIO warning.
 
 Fresh recovery used dump `sha256:c74e0bfbd733cff95bcf52706a1fe6296487dedb87e6d66a19888cf08302e68d`
 and isolated database `collabio_work_e2e_309_restore`. It verified 1,642 documents, 3,431 exact Office versions,
