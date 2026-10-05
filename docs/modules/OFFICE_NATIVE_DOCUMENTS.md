@@ -1,11 +1,18 @@
 # Native Office Documents
 
-Status: Roadmap 252–301 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 301 / PLANS 162 direct shape duplication
+Status: Roadmap 252–302 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 302 / PLANS 163 direct shape-group duplication
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0118; current duplication: `ARCHITECTURE_DECISIONS/ADR-0118-native-office-shape-duplication.md`
+Decisions: ADR-0079 through ADR-0119; current group duplication: `ARCHITECTURE_DECISIONS/ADR-0119-native-office-shape-group-duplication.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 302 adds **Gruppe duplizieren** for an existing shape group. It generates a new opaque group ID and a new
+opaque shape ID for every member, then inserts the complete copy immediately after its source. Exact member order,
+row/stack layout, gap, optional uniform connection and every validated member attribute remain unchanged. The control
+is disabled when the document already has 20 groups or the additional members would exceed 100 shapes. The complete
+insertion and selection are one isolated undo transaction; saved versions, comparison and print treat both groups as
+independent structures.
 
 Roadmap 301 adds an explicit **Form duplizieren** action for an existing shape. Every copy receives a fresh opaque ID
 and preserves the exact validated kind, dimensions, colors, stroke, literal text, alignment, typography, rotation,

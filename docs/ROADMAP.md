@@ -1971,6 +1971,16 @@ werden vor der Mutation geprueft; jede Duplizierung ist ein isolierter Undo/Redo
 immutable Versionen, Gruppenverbindungen, Druck und unabhaengige Dokumentkopien bleiben erhalten. Es gibt keine
 Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+302. [x] Direkte native Formgruppen-Duplizierung umgesetzt: Die komplette validierte Gruppe wird direkt hinter der
+     Quelle eingefuegt. Die Kopie erhaelt eine neue Gruppen-ID und jedes Mitglied eine neue Form-ID; Reihenfolge,
+     Layout, Abstand, Verbindung sowie saemtliche Mitgliedsattribute bleiben exakt erhalten.
+
+Native Office bleibt vor CRM. Roadmap 302 / PLANS 163 ist unter ADR-0119 implementiert. Die 14-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Die Grenzen von 20 Gruppen und 100
+Formen werden vor der Mutation geprueft; die gesamte Kopie ist ein isolierter Undo/Redo-Schritt. Speicherung,
+immutable Versionen, Vergleich und Druck verwenden unabhaengige Identitaeten. Es gibt keine Datenbankmigration, neue
+Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

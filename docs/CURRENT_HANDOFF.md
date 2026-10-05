@@ -2,6 +2,24 @@
 
 Updated: 2026-10-05
 
+Roadmap 302 / PLANS 163 is complete under ADR-0119. Existing native shape groups can now be duplicated as a unit. The
+copy receives a fresh random group ID and fresh random IDs for every member while preserving exact order, layout, gap,
+optional connection and every member attribute. It is inserted immediately after the source in one isolated undo
+step. The action is disabled before exceeding 20 groups or 100 total shapes.
+
+Implementation commit `48043d6c` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 14/14, covering fresh group/member identities, exact presentation, member order,
+connections, undo/redo, confirmed save and static print. Desktop/mobile screenshot SHA-256 values are
+`a5de1cca817b688ba0f70ee39ce7af67c36b896c98a4481b401c4cb4b741245b` and
+`5746e1c303626f28a9cf3831524f555820d25755819693aafe4755b931c166ba`; both passed visual review. Full quality passed
+Ruff, formatting for 828 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=group-duplicate-48043d6c` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because group duplication reuses the existing validated representation and changes no durable schema.
+
 Roadmap 301 / PLANS 162 is complete under ADR-0118. Selected native shapes can now be duplicated directly. Every copy
 receives a fresh random opaque ID and preserves all validated content and presentation. Group copies are inserted
 immediately after their source. Positioned copies remain on the same layer and receive a bounded visible offset that
@@ -2752,8 +2770,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 301 / PLANS 162 is complete and published through `716da95e`. Preserve direct shape
-duplication, bounded typography, accessible member ordering, bounded group connections, ordered flow-only membership and the existing
+Roadmap 302 / PLANS 163 is complete and published through implementation commit `48043d6c`. Preserve direct group and
+member duplication, bounded typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing
 Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
