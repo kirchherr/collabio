@@ -1961,6 +1961,16 @@ Vorschau, Accessibility-Beschreibung, Undo/Redo, Vergleich, immutable Versionen,
 Kopien bewahren die Typografie exakt. Beliebige Fonts, CSS, URLs, Markup, freie Stilwerte und transparente Schrift
 bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+301. [x] Direkte native Formduplizierung umgesetzt: Eine ausgewaehlte Form wird mit neuer kryptografischer ID und
+     allen validierten Inhalten und Darstellungswerten kopiert. In Gruppen steht die Kopie direkt hinter der Quelle;
+     frei positionierte Kopien werden innerhalb der vorhandenen Grenzen sichtbar versetzt.
+
+Native Office bleibt vor CRM. Roadmap 301 / PLANS 162 ist unter ADR-0118 implementiert. Die 12-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Globale und gruppenbezogene Grenzen
+werden vor der Mutation geprueft; jede Duplizierung ist ein isolierter Undo/Redo-Schritt. Exakte Speicherung,
+immutable Versionen, Gruppenverbindungen, Druck und unabhaengige Dokumentkopien bleiben erhalten. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

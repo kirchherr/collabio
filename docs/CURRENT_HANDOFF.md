@@ -2,6 +2,29 @@
 
 Updated: 2026-10-05
 
+Roadmap 301 / PLANS 162 is complete under ADR-0118. Selected native shapes can now be duplicated directly. Every copy
+receives a fresh random opaque ID and preserves all validated content and presentation. Group copies are inserted
+immediately after their source. Positioned copies remain on the same layer and receive a bounded visible offset that
+reverses near the right and lower limits. Global 100-shape and eight-member group limits disable the action before
+mutation, and duplication is one isolated undo step.
+
+Implementation commits `1526642f` and `c9101d6b` are published on `kirchherr/kb-write-unit-of-work`. The final model
+plus desktop/mobile workflows passed 12/12, covering grouped and positioned copies, fresh identities, edge-safe
+offsets, undo/redo, exact save, history, print and independently owned document copies. The first run passed 11/12
+and exposed a mobile test-selection ambiguity on a rotated member; the final unchanged feature uses the existing
+focusable group control and passed fully. Single-shape desktop/mobile screenshot SHA-256 values are
+`eaaab0b09e1ae5b6086097f1c0e6d8c0a64e0008ecedf923e53fe65747453bf7` and
+`be3f333e8e5ce043d7f064a09cef58754d88f12575df5e49fe3e051d7b5cd234`; group desktop/mobile values are
+`fa4e5c7544a9e0618d4a40944cb8c29437b2763392e464a18763795d083cb574` and
+`a2004c0a93c257f516e4ae1f4c79dba54b5509b43cd02e35f79efd66d17eafaa`. The group pair passed visual review. Full
+quality passed Ruff, formatting for 827 files, Mypy over 605 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-duplicate-c9101d6b` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because duplication uses the existing validated shape representation and changes no durable schema.
+
 Roadmap 300 / PLANS 161 is complete under ADR-0117. Native shape text now supports an optional integer 10–72 pixel
 size, one fixed non-transparent color token and bold, italic or bold-italic style. The canonical 16-pixel size,
 automatic contrast color and normal style remain absent from saved attributes. Browser and server validators reject
@@ -2729,8 +2752,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 300 / PLANS 161 is complete and published through `2c0e4ab8`. Preserve bounded shape
-typography, direct accessible member ordering, bounded group connections, ordered flow-only membership and the existing
+Roadmap 301 / PLANS 162 is complete and published through implementation commit `c9101d6b`. Preserve direct shape
+duplication, bounded typography, accessible member ordering, bounded group connections, ordered flow-only membership and the existing
 Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 

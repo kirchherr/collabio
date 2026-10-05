@@ -1,11 +1,18 @@
 # Native Office Documents
 
-Status: Roadmap 252–300 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 300 / PLANS 161 bounded shape typography
+Status: Roadmap 252–301 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 301 / PLANS 162 direct shape duplication
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0117; current typography: `ARCHITECTURE_DECISIONS/ADR-0117-native-office-shape-typography.md`
+Decisions: ADR-0079 through ADR-0118; current duplication: `ARCHITECTURE_DECISIONS/ADR-0118-native-office-shape-duplication.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 301 adds an explicit **Form duplizieren** action for an existing shape. Every copy receives a fresh opaque ID
+and preserves the exact validated kind, dimensions, colors, stroke, literal text, alignment, typography, rotation,
+wrapping and layer. A grouped copy is inserted directly after its source without changing group presentation or
+connections. A positioned copy stays on the same layer and receives a bounded 25-unit horizontal and 24-pixel
+vertical offset, reversing the offset near the maximum edges. The action is disabled before the 100-shape or
+eight-member limit and commits one isolated undo transaction.
 
 Roadmap 300 lets each shape optionally override its canonical 16-pixel text size with an integer from 10 through 72,
 choose one fixed non-transparent text-color token and choose bold, italic or bold-italic text. Automatic contrast and
