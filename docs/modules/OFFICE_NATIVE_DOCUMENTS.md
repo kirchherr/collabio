@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–307 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 307 / PLANS 168 independent image-group duplication
+Status: Roadmap 252–308 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 308 / PLANS 169 independent standalone image duplication
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0124; current image-group duplication: `ARCHITECTURE_DECISIONS/ADR-0124-native-office-image-group-duplication.md`
+Decisions: ADR-0079 through ADR-0125; current image duplication: `ARCHITECTURE_DECISIONS/ADR-0125-native-office-image-duplication.md`
 
 ## Bounded native shapes (Roadmap 292)
 
@@ -485,6 +485,14 @@ recorded in CURRENT_HANDOFF.md; arbitrary angles, wrap contours, physical page a
 remain separate.
 
 ## Bounded native image groups (Roadmap 291)
+
+Roadmap 308 adds **Bild duplizieren** for a selected ungrouped native image. The server revalidates current document
+write access and immutable source bytes, then creates a fresh document-owned asset/version. Only a complete response
+with fresh identities and the same normalized pixel hash and dimensions inserts the copy after its source. Numbered
+copies receive fresh figure IDs. Wrapped presentation remains exact; freely positioned copies retain their layer and
+move by a bounded 40/24-unit offset that reverses near an edge. The insertion is one undo step, save remains
+explicitly confirmed, and failed or stale requests leave the draft unchanged. Fresh recovery verifies copied bytes,
+receipts, distinct asset/version/figure identities and the bounded position offset.
 
 Roadmap 307 adds **Bildgruppe duplizieren**. A dedicated write-authorized endpoint revalidates every current
 document-owned member and creates fresh asset/version identities atomically. The editor inserts a fresh group directly

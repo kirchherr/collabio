@@ -355,7 +355,7 @@ and a fixed `collabio_work_e2e_restore`, `collabio_work_e2e_262_restore`, `colla
 `collabio_work_e2e_276_restore`, `collabio_work_e2e_277_restore`, `collabio_work_e2e_278_restore`,
 `collabio_work_e2e_279_restore`, `collabio_work_e2e_286_restore`, `collabio_work_e2e_287_restore`,
 `collabio_work_e2e_288_restore`, `collabio_work_e2e_289_restore`, `collabio_work_e2e_290_restore` or
-`collabio_work_e2e_291_restore` or `collabio_work_e2e_307_restore` target,
+`collabio_work_e2e_291_restore`, `collabio_work_e2e_307_restore` or `collabio_work_e2e_308_restore` target,
 with a read-only mount at `/proof-backup`;
 both target DSNs must name the same database and the normal restore database is rejected. The separate 262 database
 preserves the earlier synthetic snapshot. Its dump, checksum and receipt use a separate host directory mounted at the
@@ -447,6 +447,13 @@ asset/version identities for every copied member, the same ordered normalized pi
 Its checked dump is retained as `e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-307.dump`, its isolated
 target is `collabio_work_e2e_307_restore`, and recovery metadata is retained under
 `e2e/work/artifacts/roadmap-307`. Never run it while browser writes are active or replace earlier evidence.
+
+Roadmap 308 adds a saved freely positioned and numbered standalone image followed by its direct duplicate. The proof
+requires fresh asset, version and figure identities, the same normalized pixel hash, and the exact bounded edge
+offset from front-layer position `(980, 1190)` to `(940, 1166)`. Its checked dump is retained as
+`e2e/work/artifacts/office-recovery-backup/collabio-work-e2e-308.dump`, its isolated target is
+`collabio_work_e2e_308_restore`, and recovery metadata is retained under `e2e/work/artifacts/roadmap-308`. Never run
+it while browser writes are active or replace earlier evidence.
 
 ## Evidence
 

@@ -2,6 +2,36 @@
 
 Updated: 2026-10-05
 
+Roadmap 308 / PLANS 169 is complete under ADR-0125. A selected ungrouped native image now exposes **Bild
+duplizieren**. The server rechecks tenant/write authorization and the immutable source, then creates a fresh
+document-owned asset/version in one transaction. The editor accepts only a complete response with fresh identities
+and unchanged pixel hash/dimensions, resolves the source selection again and inserts the copy directly after it in
+one undo step. Numbered copies receive fresh figure IDs. Wrapped presentation remains exact; freely positioned
+copies preserve their layer and move by a bounded 40/24-unit offset, reversing near the edge. Errors, stale
+selections and the existing 40-image or 200-retained-asset limits leave the draft unchanged.
+
+Implementation commits `e53cdd58` and `e80d2237` are published on `kirchherr/kb-write-unit-of-work`. The focused
+desktop/mobile workflow passed and the complete native image/figure matrix passed 55/55. It covers an interrupted
+request without draft mutation, fresh asset/version/figure identities, exact pixel binding, bounded free-position
+offset, undo/redo, confirmed save and readable copied bytes, plus every prior upload, decoder, ACL, crop, wrapping,
+transform, grouping, numbering and PDF case. Desktop/mobile screenshot SHA-256 values are
+`cd04e9123ba2fd5e9f606a8e8c3518a95796155a563478e188535b9a6194ff4f` and
+`fb68571b39edf1ef43ff902823d39fb33bd17de079000cb4b1428b2d710cc6bc`; both passed visual review. Full quality
+passed Ruff, formatting for 786 files, Mypy over 605 source files and complete Pytest with only the known
+Starlette/AnyIO warning.
+
+Fresh recovery used dump `sha256:922f922123e5d661967f0a6a2c747990490a94dbc590b5b6a5fe4d371c3ede9d`
+and isolated database `collabio_work_e2e_308_restore`. It verified 1,580 documents, 3,285 exact Office versions,
+781 multi-version documents, 4,304 SourceObjects, 858 image assets and 1,479 saved image references. Five stored
+single-image duplicates proved distinct asset/version/figure identities, identical pixel hashes and the bounded
+front-layer edge offset. Recovery report file SHA-256 is
+`828bc372389236acad54ecab1399a573790bcc19cff7bff7eab8e2d6c5223940`; embedded report hash is
+`sha256:d03bdd5c26c7a271111a21615a430451cca2a56da14b8df5d420196f9e2e1008`.
+
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-duplicate-e80d2237`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 307 / PLANS 168 is complete under ADR-0124. A selected native image group now exposes
 **Bildgruppe duplizieren**. The server rechecks current tenant/write authorization and every immutable source member,
 then creates fresh document-owned asset/version identities in one transaction. Only a complete validated response

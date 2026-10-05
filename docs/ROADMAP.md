@@ -2034,6 +2034,19 @@ Abbildungsmatrix sowie Ruff, Formatierung fuer 786 Dateien, Mypy ueber 605 Quell
 isolierter Restore prueft 1.525 Dokumente, 3.155 Office-Versionen, 4.088 SourceObjects, 772 Bildassets und vier
 unabhaengig besessene Gruppenduplikate. Es gibt keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
 
+308. [x] Unabhaengige Duplizierung einzelner nativer Bilder umgesetzt: **Bild duplizieren** erzeugt ein frisches
+     dokumenteigenes Asset samt Version und fuegt die Kopie direkt hinter der Quelle ein. Nummerierte Kopien erhalten
+     ein frisches Abbildungsziel; frei positionierte Kopien werden innerhalb der bestehenden Grenzen sichtbar versetzt.
+
+Native Office bleibt vor CRM. Roadmap 308 / PLANS 169 ist unter ADR-0125 implementiert. Der Server prueft Tenant,
+Schreibrecht, unveraenderliche Quellbytes und die 200-Asset-Grenze erneut. Der Client verlangt frische Identitaeten
+bei gleichem Pixelhash und gleichen Quelldimensionen, loest die Quelle nach dem Request erneut auf und fuegt genau
+einen Undo-Schritt aus. Fehler oder veraltete Selektionen lassen den Entwurf unveraendert. Die komplette 55-teilige
+Bild-/Abbildungsmatrix sowie Ruff, Formatierung fuer 786 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Der
+frische isolierte Restore prueft 1.580 Dokumente, 3.285 Office-Versionen, 4.304 SourceObjects, 858 Bildassets, 1.479
+gespeicherte Bildverweise und fuenf unabhaengig besessene Einzelbildduplikate. Es gibt keine Datenbankmigration,
+Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
