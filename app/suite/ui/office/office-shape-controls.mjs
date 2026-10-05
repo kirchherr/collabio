@@ -376,13 +376,14 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     } catch { $("shape-status").textContent = "Die Formgruppe konnte wegen der Dokumentgrenzen nicht dupliziert werden."; }
   });
   $("shape-group-remove").addEventListener("click", () => {
-    if (!action?.shapeContext?.grouped || !allowed() || !state.editor) return;
+    if (!action?.shapeContext?.grouped) { $("shape-status").textContent = "Bitte die Formgruppe erneut auswählen."; return; }
+    if (!allowed() || !state.editor) { $("shape-status").textContent = "Die Formgruppe ist derzeit schreibgeschützt."; return; }
     const editor = state.editor, groupId = action.shapeContext.group.attrs.id;
     let group = null, groupPos = null;
     editor.state.doc.forEach((node, offset) => {
       if (group == null && node.type.name === "shapeGroup" && node.attrs.id === groupId) { group = node; groupPos = offset; }
     });
-    if (!group || !Number.isInteger(groupPos)) return;
+    if (!group || !Number.isInteger(groupPos)) { $("shape-status").textContent = "Die Formgruppe wurde im aktuellen Entwurf nicht gefunden."; return; }
     const tr = editor.state.tr.delete(groupPos, groupPos + group.nodeSize);
     try {
       validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));

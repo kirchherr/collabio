@@ -238,6 +238,9 @@ test("Office shape group removal is atomic and reversible", async ({ page }, tes
   expect(storedGroup.content.map((entry) => entry.attrs.text)).toEqual(["Remove A", "Remove B"]);
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-group-remove")).toBeEnabled(); await page.locator("#shape-group-remove").click();
+  await expect(page.locator("#shape-status")).not.toContainText("erneut auswählen");
+  await expect(page.locator("#shape-status")).not.toContainText("schreibgeschützt");
+  await expect(page.locator("#shape-status")).not.toContainText("nicht gefunden");
   await expect(editor.locator(".office-shape-group")).toHaveCount(0); await expect(editor.locator(".office-shape")).toHaveCount(0);
   await expect(editor).toContainText("Keep this paragraph");
   await editor.press("Control+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(1);
