@@ -15,7 +15,7 @@ connections, undo/redo, confirmed save and static print. Desktop/mobile screensh
 Ruff, formatting for 828 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=group-duplicate-48043d6c` with
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=group-duplicate-7b3f927f` with
 synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
 indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
 recovery because group duplication reuses the existing validated representation and changes no durable schema.
@@ -2770,7 +2770,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 302 / PLANS 163 is complete and published through implementation commit `48043d6c`. Preserve direct group and
+Roadmap 302 / PLANS 163 is complete and published through `7b3f927f`. Preserve direct group and
 member duplication, bounded typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing
 Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
