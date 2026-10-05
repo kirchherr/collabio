@@ -12,7 +12,7 @@ from suite.platform.office_image_codec import (
     png_from_pixels,
 )
 from suite.platform.office_image_schema import image_references
-from suite.platform.office_images import OfficeImageGroupDuplicateCommand
+from suite.platform.office_images import OfficeImageDuplicateCommand, OfficeImageGroupDuplicateCommand
 from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
 from suite.platform.office_suggestions import replace_suggestion_text
 
@@ -434,3 +434,17 @@ def test_image_group_duplicate_command_is_exact_bounded_and_flow_only() -> None:
             OfficeImageGroupDuplicateCommand(images=invalid)
     with pytest.raises(ValueError):
         OfficeImageGroupDuplicateCommand.model_validate({"images": images, "unexpected": True})
+
+
+def test_image_duplicate_command_is_exact_and_accepts_positioned_or_wrapped_images() -> None:
+    image = image_group_document()["content"][0]["content"][0]["attrs"]
+    for placement in (
+        {"wrap": {"side": "left", "gap": 16}},
+        {"position": {"layer": "front", "x": 980, "y": 1190}},
+    ):
+        attrs = {**image, **placement}
+        assert OfficeImageDuplicateCommand(image=attrs).image == attrs
+    with pytest.raises(ValueError):
+        OfficeImageDuplicateCommand(image={**image, "assetId": "foreign"})
+    with pytest.raises(ValueError):
+        OfficeImageDuplicateCommand.model_validate({"image": image, "unexpected": True})

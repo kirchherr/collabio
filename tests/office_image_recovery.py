@@ -215,6 +215,37 @@ def verify_restored_group_duplicate(versions: list[dict[str, Any]], bindings: li
     }
 
 
+def verify_restored_image_duplicate(versions: list[dict[str, Any]], bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    hashes = {
+        (row["object_id"], row["document_version_id"], row["asset_id"], row["asset_version_id"]): row["content_hash"]
+        for row in bindings
+    }
+    verified = 0
+    for row in versions:
+        for source, copied in zip(row["standalone_images"], row["standalone_images"][1:], strict=False):
+            source_identity = (source["asset_id"], source["asset_version_id"])
+            copied_identity = (copied["asset_id"], copied["asset_version_id"])
+            if (
+                source_identity == copied_identity
+                or source.get("figure_id") is None
+                or copied.get("figure_id") is None
+                or source["figure_id"] == copied["figure_id"]
+                or source.get("position") != {"layer": "front", "x": 980, "y": 1190}
+                or copied.get("position") != {"layer": "front", "x": 940, "y": 1166}
+            ):
+                continue
+            source_hash = hashes.get((row["object_id"], row["document_version_id"], *source_identity))
+            copied_hash = hashes.get((row["object_id"], row["document_version_id"], *copied_identity))
+            if source_hash is not None and source_hash == copied_hash:
+                verified += 1
+    if verified < 1:
+        raise ValueError("Image duplicate recovery requires distinct assets, figures and bounded placement")
+    return {
+        "verified_duplicated_image_count": verified,
+        "independently_owned_image_duplicate_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

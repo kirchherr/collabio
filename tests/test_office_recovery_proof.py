@@ -35,6 +35,14 @@ def recovery_environment() -> dict[str, str]:
 
 def test_office_recovery_accepts_only_explicit_separate_synthetic_targets() -> None:
     require_office_recovery_environment(recovery_environment())
+    env = recovery_environment()
+    env["SUITE_POSTGRES_RESTORE_TARGET_DSN"] = env["SUITE_POSTGRES_RESTORE_TARGET_DSN"].replace(
+        "collabio_work_e2e_restore", "collabio_work_e2e_308_restore"
+    )
+    env["SUITE_OFFICE_RECOVERY_TARGET_DSN"] = env["SUITE_OFFICE_RECOVERY_TARGET_DSN"].replace(
+        "collabio_work_e2e_restore", "collabio_work_e2e_308_restore"
+    )
+    require_office_recovery_environment(env)
 
 
 @pytest.mark.parametrize(

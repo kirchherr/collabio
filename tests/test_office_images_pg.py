@@ -13,7 +13,7 @@ from suite.platform.office_documents import (
     OfficeDocumentSaveCommand,
 )
 from suite.platform.office_image_codec import png_from_pixels
-from suite.platform.office_images import duplicate_image_group, read_image, store_uploaded_image
+from suite.platform.office_images import duplicate_image, duplicate_image_group, read_image, store_uploaded_image
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore
 from test_office_documents_pg import Database, command, counts, editor, service_for, set_tenant
 from test_office_documents_pg import database as database
@@ -210,4 +210,45 @@ def test_pg_image_group_duplicate_has_fresh_atomic_ownership(database: Database)
     denied_before = counts(database, user)
     with pytest.raises(OfficeDocumentNotFoundError):
         duplicate_image_group(repository, foreign, object_id, images)
+    assert counts(database, user) == denied_before
+
+
+def test_pg_single_image_duplicate_preserves_presentation_with_fresh_ownership(database: Database) -> None:
+    service = service_for(database, InMemorySourceObjectContentStore())
+    user = editor()
+    created = service.create(user_context=user, command=command("duplicate-image"), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    repository = service.repository
+    assert isinstance(repository, PgOfficeDocumentRepository)
+    pixels = png_from_pixels(2, 1, b"\xff\0\0\xff\0\xff\0\xff")
+    image = store_uploaded_image(repository, user, object_id, pixels, 2, 1)
+    image.update(
+        {
+            "decorative": False,
+            "alt": "Positioned source",
+            "caption": "Numbered source",
+            "figureId": "figure-" + "a" * 24,
+            "position": {"layer": "front", "x": 980, "y": 1190},
+            "transform": {"rotation": 90, "flipX": True, "flipY": False},
+        }
+    )
+    before = counts(database, user)
+    copied = duplicate_image(repository, user, object_id, image)
+    after = counts(database, user)
+    assert tuple(current - previous for current, previous in zip(after, before, strict=True)) == (0, 0, 1, 1, 0)
+    assert copied["assetId"] != image["assetId"]
+    assert copied["versionId"] != image["versionId"]
+    assert copied["contentHash"] == image["contentHash"]
+    assert copied["figureId"] == image["figureId"]
+    assert copied["position"] == image["position"]
+    assert copied["transform"] == image["transform"]
+    document = repository.get_document(user_context=user, object_id=object_id)
+    assert read_image(service.source_repository, document, copied)[1] == pixels
+
+    foreign = editor()
+    foreign.readable_object_ids.add(object_id)
+    denied_before = counts(database, user)
+    with pytest.raises(OfficeDocumentNotFoundError):
+        duplicate_image(repository, foreign, object_id, image)
     assert counts(database, user) == denied_before

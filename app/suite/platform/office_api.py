@@ -43,7 +43,9 @@ from suite.platform.office_image_codec import (
     normalize_image,
 )
 from suite.platform.office_images import (
+    OfficeImageDuplicateCommand,
     OfficeImageGroupDuplicateCommand,
+    duplicate_image,
     duplicate_image_group,
     read_image,
     store_uploaded_image,
@@ -299,6 +301,28 @@ def register_office_routes(
             copied_asset_ids=[attrs["assetId"] for attrs in images],
         )
         return {"images": images, "audit_event_id": event}
+
+    @router.post("/{object_id}/images/duplicate", dependencies=[Depends(write_gate)])
+    def duplicate_single_image(
+        object_id: str,
+        command: OfficeImageDuplicateCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        service = request.app.state.office_document_service
+        repository = service.repository
+        if not service.writes_available or not isinstance(repository, PgOfficeDocumentRepository):
+            raise OfficeDocumentPermissionError("Image writes unavailable")
+        image = duplicate_image(repository, context.user_context, object_id, command.image)
+        event = service._audit(
+            context.user_context,
+            "office.images.duplicated",
+            object_id=object_id,
+            source_asset_id=command.image["assetId"],
+            copied_asset_id=image["assetId"],
+            copied_version_id=image["versionId"],
+        )
+        return {"image": image, "audit_event_id": event}
 
     @router.get("/{object_id}/images/{asset_id}/{version_id}")
     def image_content(

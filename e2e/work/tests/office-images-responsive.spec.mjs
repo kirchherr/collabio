@@ -156,6 +156,34 @@ test("Office image dialog supports decorative images cancellation removal and ke
   await saveOffice(page, { objectId: first.document.object_id });
 });
 
+test("Office duplicates one positioned numbered image with independent ownership and isolated undo", async ({ page }, testInfo) => {
+  await openOffice(page); const first = await createOfficeDocument(page, "Independent image duplicate", "Before");
+  await insert(page, await fixture(page));
+  await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();
+  await page.locator("#image-numbered").check();
+  await page.locator("#image-position-layer").selectOption("front");
+  await page.locator("#image-position-x").fill("980"); await page.locator("#image-position-y").fill("1190");
+  await page.locator("#image-apply").click();
+  await officeEditor(page).locator("img").first().click(); await page.locator("#image-options").click();
+  await page.route("**/v1/office/documents/*/images/duplicate", async (route) => route.abort(), { times: 1 });
+  await page.locator("#image-duplicate").click();
+  await expect(page.locator("#image-status")).toContainText("Entwurf wurde nicht geändert");
+  await expect(officeEditor(page).locator("img")).toHaveCount(1);
+  await page.locator("#image-duplicate").click();
+  await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  await officeEditor(page).press("Control+z"); await expect(officeEditor(page).locator("img")).toHaveCount(1);
+  await officeEditor(page).press("Control+Shift+z"); await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  const images = saved.content.content.filter((entry) => entry.type === "image").map((entry) => entry.attrs);
+  expect(images).toHaveLength(2);
+  expect(images[1]).toMatchObject({ contentHash: images[0].contentHash, position: { layer: "front", x: 940, y: 1166 } });
+  expect(images[1].assetId).not.toBe(images[0].assetId); expect(images[1].versionId).not.toBe(images[0].versionId);
+  expect(images[1].figureId).not.toBe(images[0].figureId);
+  const copied = await page.request.get(`${BASE_URL}/v1/office/documents/${first.document.object_id}/images/${images[1].assetId}/${images[1].versionId}`, { headers: OFFICE_HEADERS });
+  expect(copied.status()).toBe(200); expect((await copied.body()).length).toBeGreaterThan(0);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-duplicate-${testInfo.project.name}.png`, fullPage: true });
+});
+
 test("Office image controls fit desktop tablet and mobile", async ({ page }, testInfo) => {
   await openOffice(page); await createOfficeDocument(page, "Image layout", "Visible content"); await insert(page, await fixture(page));
   await officeEditor(page).locator("img").click(); await page.locator("#image-options").click();

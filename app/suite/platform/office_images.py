@@ -65,6 +65,21 @@ class OfficeImageGroupDuplicateCommand(BaseModel):
         return value
 
 
+class OfficeImageDuplicateCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    image: dict[str, Any]
+
+    @field_validator("image")
+    @classmethod
+    def validate_image(cls, value: dict[str, Any]) -> dict[str, Any]:
+        try:
+            validate_image_attributes(value)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Invalid image") from exc
+        return value
+
+
 def read_image(
     repository: SourceObjectRepository,
     document: OfficeDocumentRecord,
@@ -272,29 +287,31 @@ def store_uploaded_image(
         return persist_image(repository, connection, user, document, content, width, height)
 
 
-def duplicate_image_group(
+def _duplicate_images(
     repository: PgOfficeDocumentRepository,
     user: UserContext,
     object_id: str,
     images: list[dict[str, Any]],
+    *,
+    grouped: bool,
 ) -> list[dict[str, Any]]:
-    """Atomically give every copied group member a fresh document-owned asset."""
+    """Atomically give every copied image a fresh document-owned asset."""
     with psycopg.connect(repository.database_dsn) as connection, connection.transaction():
         repository._set_tenant(connection, user.tenant_id)
         connection.execute(
             "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"office-document-write:{user.tenant_id}",)
         )
         document = repository._authorized_document(connection, user, object_id, write=True)
-        if not 2 <= len(images) <= 8:
-            raise OfficeDocumentInvalidContentError("Invalid image group")
+        if not images or len(images) > 8 or (grouped and len(images) < 2):
+            raise OfficeDocumentInvalidContentError("Invalid image copy")
         sources: list[tuple[dict[str, Any], bytes]] = []
         for attrs in images:
             try:
                 validate_image_attributes(attrs)
             except (KeyError, TypeError, ValueError) as exc:
-                raise OfficeDocumentInvalidContentError("Invalid image group") from exc
-            if attrs["documentId"] != object_id or "wrap" in attrs or "position" in attrs:
-                raise OfficeDocumentInvalidContentError("Invalid image group")
+                raise OfficeDocumentInvalidContentError("Invalid image copy") from exc
+            if attrs["documentId"] != object_id or (grouped and ("wrap" in attrs or "position" in attrs)):
+                raise OfficeDocumentInvalidContentError("Invalid image copy")
             _, pixels = read_image(repository.source_repository, document, attrs)
             sources.append((attrs, pixels))
         count = connection.execute(
@@ -320,3 +337,23 @@ def duplicate_image_group(
                 copied[name] = identity[name]
             result.append(copied)
         return result
+
+
+def duplicate_image(
+    repository: PgOfficeDocumentRepository,
+    user: UserContext,
+    object_id: str,
+    image: dict[str, Any],
+) -> dict[str, Any]:
+    """Copy one image while preserving its presentation and isolating its asset ownership."""
+    return _duplicate_images(repository, user, object_id, [image], grouped=False)[0]
+
+
+def duplicate_image_group(
+    repository: PgOfficeDocumentRepository,
+    user: UserContext,
+    object_id: str,
+    images: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Atomically give every copied group member a fresh document-owned asset."""
+    return _duplicate_images(repository, user, object_id, images, grouped=True)

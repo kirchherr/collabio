@@ -7,6 +7,7 @@ from office_image_recovery import (
     verify_restored_crop_reset,
     verify_restored_group_duplicate,
     verify_restored_group_reset,
+    verify_restored_image_duplicate,
     verify_restored_images,
     verify_restored_position_reset,
     verify_restored_transform_reset,
@@ -260,3 +261,44 @@ def test_group_duplicate_recovery_requires_fresh_assets_with_same_ordered_pixels
     ):
         with pytest.raises(ValueError):
             verify_restored_group_duplicate(broken, bindings)
+
+
+def test_image_duplicate_recovery_requires_fresh_asset_figure_pixels_and_bounded_offset() -> None:
+    source = {
+        "asset_id": "a",
+        "asset_version_id": "1",
+        "figure_id": "figure-source",
+        "position": {"layer": "front", "x": 980, "y": 1190},
+    }
+    copied = {
+        "asset_id": "b",
+        "asset_version_id": "2",
+        "figure_id": "figure-copy",
+        "position": {"layer": "front", "x": 940, "y": 1166},
+    }
+    version = {
+        "object_id": "doc",
+        "document_version_id": "saved",
+        "standalone_images": [source, copied],
+    }
+    bindings = [
+        {
+            "object_id": "doc",
+            "document_version_id": "saved",
+            "asset_id": attrs["asset_id"],
+            "asset_version_id": attrs["asset_version_id"],
+            "content_hash": "same-pixels",
+        }
+        for attrs in (source, copied)
+    ]
+    assert verify_restored_image_duplicate([version], bindings) == {
+        "verified_duplicated_image_count": 1,
+        "independently_owned_image_duplicate_verified": True,
+    }
+    for replacement in (
+        {**copied, "asset_id": "a", "asset_version_id": "1"},
+        {**copied, "figure_id": "figure-source"},
+        {**copied, "position": {"layer": "front", "x": 960, "y": 1166}},
+    ):
+        with pytest.raises(ValueError):
+            verify_restored_image_duplicate([{**version, "standalone_images": [source, replacement]}], bindings)

@@ -160,6 +160,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-alt").required = !$("image-decorative").checked;
     $("image-caption").required = Boolean(action?.numbered);
     const grouped = Boolean(action?.imageContext?.grouped), positioned = $("image-position-layer").value !== "flow";
+    $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || grouped || imageCount(action?.document) >= 40;
     $("image-position-layer").disabled = grouped;
     $("image-wrap").disabled = grouped || positioned;
     $("image-wrap-gap").disabled = grouped || positioned || $("image-wrap").value === "none";
@@ -401,6 +402,49 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       if (action === owner && valid()) $("image-status").textContent = "Die Bildgruppe konnte nicht vollständig dupliziert werden. Der Entwurf wurde nicht geändert.";
     } finally { if (action === owner) { owner.busy = false; update(); } }
   };
+  const duplicateImage = async () => {
+    if (!valid() || action.busy || !action.selected || action.imageContext?.grouped || !state.session.objectId) return;
+    const owner = action, source = owner.attrs, sourcePos = owner.imageSelection.from;
+    if (imageCount(owner.document) >= 40) {
+      $("image-status").textContent = "Die Dokumentgrenze für Bilder ist erreicht."; return;
+    }
+    owner.busy = true; update(); $("image-status").textContent = "Bild wird mit einer unabhängigen Bilddatei dupliziert …";
+    try {
+      const response = await fetch(`/v1/office/documents/${encodeURIComponent(owner.session.objectId)}/images/duplicate`, {
+        method: "POST", cache: "no-store", signal: owner.controller.signal,
+        headers: { "Content-Type": "application/json", "X-Tenant-Id": owner.context.tenantId,
+          "X-User-Id": owner.context.userId, "X-Role-Ids": owner.context.roleIds,
+          "X-Readable-Object-Ids": owner.context.readableObjectIds },
+        body: JSON.stringify({ image: source }),
+      });
+      if (!response.ok) {
+        if ([401, 403, 404, 423].includes(response.status)) { accessDenied(); return; }
+        throw new Error("duplicate-image");
+      }
+      const payload = await response.json();
+      if (!valid() || action !== owner || payload.image == null) return;
+      const editor = owner.editor, current = editor.state.doc.nodeAt(sourcePos);
+      if (current?.type.name !== "image" || current.attrs.assetId !== source.assetId ||
+          current.attrs.versionId !== source.versionId) throw new Error("stale-image");
+      const checked = officeImageAttributes(payload.image);
+      if (checked.documentId !== source.documentId || checked.assetId === source.assetId ||
+          checked.versionId === source.versionId || checked.contentHash !== source.contentHash ||
+          checked.pixelWidth !== source.pixelWidth || checked.pixelHeight !== source.pixelHeight) throw new Error("invalid-copy");
+      const position = checked.position == null ? null : { ...checked.position,
+        x: checked.position.x <= 960 ? checked.position.x + 40 : checked.position.x - 40,
+        y: checked.position.y <= 1176 ? checked.position.y + 24 : checked.position.y - 24 };
+      const attrs = officeImageAttributes({ ...checked, position,
+        figureId: checked.figureId == null ? null : `figure-${reference().replaceAll("-", "").slice(0, 24)}` });
+      const copied = editor.schema.nodes.image.create(attrs), insertAt = sourcePos + current.nodeSize;
+      const tr = editor.state.tr.insert(insertAt, copied);
+      tr.setSelection(NodeSelection.create(tr.doc, insertAt)); validate(tr.doc);
+      close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice("Bild mit unabhängiger Bilddatei dupliziert. Mit Rückgängig entfernbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch (error) {
+      if (action === owner && valid() && [401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
+      if (action === owner && valid()) $("image-status").textContent = "Das Bild konnte nicht vollständig dupliziert werden. Der Entwurf wurde nicht geändert.";
+    } finally { if (action === owner) { owner.busy = false; update(); } }
+  };
   $("image-options").addEventListener("mousedown", (event) => event.preventDefault());
   $("image-options").addEventListener("click", open);
   $("image-file").addEventListener("change", update);
@@ -439,6 +483,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
   for (const direction of ["previous", "next"]) $(`image-group-${direction}`).addEventListener("click", () => group(direction));
   $("image-group-duplicate").addEventListener("click", duplicateGroup);
+  $("image-duplicate").addEventListener("click", duplicateImage);
   $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
   $("image-group-remove").addEventListener("click", () => {
     if (!valid() || action.busy || !action.imageContext?.grouped) {
