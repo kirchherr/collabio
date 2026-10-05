@@ -201,7 +201,7 @@ test("Office replaces image pixels while preserving presentation with cancel und
   const original = baseline.content.content.find((entry) => entry.type === "image").attrs;
   const replacement = await fixture(page, "image/png", 200, 300);
 
-  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await officeEditor(page).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
   await expect(page.locator("#image-file-label")).toHaveText("Neue Bilddatei");
   await expect(page.locator("#image-upload")).toHaveText("Neue Bilddatei hochladen und prüfen");
   await page.locator("#image-file").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: replacement });
@@ -213,7 +213,7 @@ test("Office replaces image pixels while preserving presentation with cancel und
   await page.locator("#image-cancel").click();
   await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "150");
 
-  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await officeEditor(page).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
   await page.locator("#image-file").setInputFiles({ name: "portrait.png", mimeType: "image/png", buffer: replacement });
   await page.locator("#image-upload").click(); await expect(page.locator("#image-status")).toContainText("Neue Bilddatei bereit");
   await page.locator("#image-apply").click(); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "450");
@@ -228,7 +228,7 @@ test("Office replaces image pixels while preserving presentation with cancel und
   const bytes = await page.request.get(`${BASE_URL}/v1/office/documents/${first.document.object_id}/images/${changed.assetId}/${changed.versionId}`, { headers: OFFICE_HEADERS });
   expect(bytes.status()).toBe(200); expect((await bytes.body()).length).toBeGreaterThan(0);
   await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveAttribute("height", "450");
-  await officeEditor(page).locator("img").click({ force: true }); await page.locator("#image-options").click();
+  await officeEditor(page).locator(".office-image-anchor").click(); await page.locator("#image-options").click();
   await expect(page.locator("#image-preview img")).toBeVisible();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-replacement-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#image-cancel").click();
