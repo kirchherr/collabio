@@ -233,6 +233,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-ungroup").disabled = !grouped;
     $("shape-group-member-previous").disabled = !grouped || action.shapeContext.shapeIndex === 0;
     $("shape-group-member-next").disabled = !grouped || action.shapeContext.shapeIndex === action.shapeContext.group.childCount - 1;
+    $("shape-group-duplicate").disabled = !grouped || groupCount(action.document) >= OFFICE_SHAPE_GROUP_LIMIT ||
+      count() + (action?.shapeContext?.group?.childCount ?? 0) > OFFICE_SHAPE_LIMIT;
     $("shape-duplicate").disabled = count() >= OFFICE_SHAPE_LIMIT || (grouped && action.shapeContext.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT);
     const connected = $("shape-group-connection").value !== "none";
     $("shape-group-connection-color").disabled = !connected; $("shape-group-connection-width").disabled = !connected; };
@@ -356,6 +358,22 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   };
   $("shape-group-member-previous").addEventListener("click", () => reorderMember("previous"));
   $("shape-group-member-next").addEventListener("click", () => reorderMember("next"));
+  $("shape-group-duplicate").addEventListener("click", () => {
+    if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    const editor = state.editor, context = action.shapeContext;
+    if (groupCount(editor.state.doc) >= OFFICE_SHAPE_GROUP_LIMIT || count() + context.group.childCount > OFFICE_SHAPE_LIMIT) return;
+    const members = context.group.content.content.map((member) =>
+      editor.schema.nodes.shape.create(officeShapeAttributes({ ...member.attrs, id: shapeId() })));
+    const attrs = officeShapeGroupAttributes({ ...context.group.attrs, id: shapeGroupId() });
+    const duplicate = editor.schema.nodes.shapeGroup.create(attrs, members);
+    const insertPos = context.groupPos + context.group.nodeSize;
+    const tr = editor.state.tr.insert(insertPos, duplicate);
+    tr.setSelection(NodeSelection.create(tr.doc, insertPos));
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Formgruppe dupliziert. Gruppe und Mitglieder besitzen neue IDs; mit Rückgängig entfernbar.");
+    } catch { $("shape-status").textContent = "Die Formgruppe konnte wegen der Dokumentgrenzen nicht dupliziert werden."; }
+  });
   $("shape-group-ungroup").addEventListener("click", () => {
     if (!action || !current(action) || !action.shapeContext?.grouped) return;
     const editor = state.editor, context = action.shapeContext, members = context.group.content.content;
