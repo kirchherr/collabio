@@ -8,7 +8,7 @@ import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 export function officeShapeExtension() {
   return Node.create({
     name: "shape", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "rotation", "position", "wrap"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "fontSize", "textColor", "textStyle", "rotation", "position", "wrap"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["div", { class: "office-shape" }, node.attrs.text || ""],
     addNodeView() {
@@ -173,6 +173,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-kind").value = attrs.kind; $("shape-width").value = String(attrs.width); $("shape-height").value = String(attrs.height);
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
     $("shape-text").value = attrs.text; $("shape-text-align").value = attrs.textAlign;
+    $("shape-font-size").value = String(attrs.fontSize ?? 16); $("shape-text-color").value = attrs.textColor ?? "auto";
+    $("shape-text-style").value = attrs.textStyle ?? "normal";
     $("shape-rotation").value = String(attrs.rotation || 0);
     $("shape-wrap").value = attrs.wrap?.side ?? "none"; $("shape-wrap-gap").value = String(attrs.wrap?.gap ?? 16);
     $("shape-position-layer").value = attrs.position?.layer ?? "flow";
@@ -194,6 +196,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
     text: $("shape-text").value, textAlign: $("shape-text-align").value,
+    fontSize: Number($("shape-font-size").value) === 16 ? null : Number($("shape-font-size").value),
+    textColor: $("shape-text-color").value === "auto" ? null : $("shape-text-color").value,
+    textStyle: $("shape-text-style").value === "normal" ? null : $("shape-text-style").value,
     rotation: Number($("shape-rotation").value) || null,
     wrap: $("shape-wrap").value === "none" ? null : { side: $("shape-wrap").value, gap: Number($("shape-wrap-gap").value) },
     position: $("shape-position-layer").value === "flow" ? null : { layer: $("shape-position-layer").value,
@@ -215,7 +220,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
     $("shape-remove").hidden = !editing;
     $("shape-group-section").hidden = !editing;
-    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", rotation: null, position: null, wrap: null });
+    fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", fontSize: null, textColor: null, textStyle: null, rotation: null, position: null, wrap: null });
     updateLayoutControls(); preview(); $("shape-dialog").showModal(); $("shape-kind").focus();
   };
   const updateLayoutControls = () => { const grouped = Boolean(action?.shapeContext?.grouped), positioned = $("shape-position-layer").value !== "flow";

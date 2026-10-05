@@ -144,6 +144,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     wrapped = {**attrs, "wrap": {"side": "right", "gap": 48}}
     wrapped_document = {"type": "doc", "content": [{"type": "shape", "attrs": wrapped}]}
     assert validate_office_document(wrapped_document) == wrapped_document
+    formatted = {**attrs, "fontSize": 28, "textColor": "purple", "textStyle": "boldItalic"}
+    formatted_document = {"type": "doc", "content": [{"type": "shape", "attrs": formatted}]}
+    assert validate_office_document(formatted_document) == formatted_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -153,6 +156,14 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "strokeWidth": True},
         {**attrs, "text": "bad\x00text"},
         {**attrs, "textAlign": "justify"},
+        {**attrs, "fontSize": 9},
+        {**attrs, "fontSize": 16},
+        {**attrs, "fontSize": 73},
+        {**attrs, "fontSize": True},
+        {**attrs, "textColor": "transparent"},
+        {**attrs, "textColor": "url(https://example.invalid)"},
+        {**attrs, "textStyle": "normal"},
+        {**attrs, "textStyle": "bold;position:fixed"},
         {**attrs, "rotation": 0},
         {**attrs, "rotation": 45},
         {**attrs, "rotation": 90.0},

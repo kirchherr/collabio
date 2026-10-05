@@ -26,11 +26,15 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await shape.click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-title")).toHaveText("Form bearbeiten");
   await page.locator("#shape-kind").selectOption("ellipse"); await page.locator("#shape-fill").selectOption("teal");
+  await page.locator("#shape-font-size").fill("28"); await page.locator("#shape-text-color").selectOption("purple");
+  await page.locator("#shape-text-style").selectOption("boldItalic");
   await page.locator("#shape-rotation").selectOption("90");
   await page.locator("#shape-position-layer").selectOption("front");
   await page.locator("#shape-position-x").fill("500"); await page.locator("#shape-position-y").fill("24");
   await page.locator("#shape-text").fill("Edited ellipse"); await page.locator("#shape-apply").click();
   await expect(shape).toHaveAttribute("data-shape-kind", "ellipse"); await expect(shape).toHaveAttribute("data-shape-rotation", "90");
+  await expect(shape).toHaveAttribute("data-shape-font-size", "28"); await expect(shape).toHaveAttribute("data-shape-text-color", "purple");
+  await expect(shape).toHaveAttribute("data-shape-text-style", "boldItalic"); await expect(shape).toHaveCSS("font-size", "28px");
   await expect(editor.locator(".office-shape-node")).toHaveAttribute("data-shape-sideways", "");
   await expect(shape).toHaveText("Edited ellipse");
   await editor.press("Control+z"); await expect(shape).toHaveAttribute("data-shape-kind", "roundedRectangle");
@@ -54,7 +58,8 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
 
   const saved = await saveOffice(page, { objectId });
   expect(saved.content.content.find((entry) => entry.type === "shape")).toMatchObject({ attrs: {
-    kind: "ellipse", width: 450, height: 190, fill: "teal", stroke: "blue", strokeWidth: 4, text: "Edited ellipse", textAlign: "center", rotation: 180,
+    kind: "ellipse", width: 450, height: 190, fill: "teal", stroke: "blue", strokeWidth: 4, text: "Edited ellipse", textAlign: "center",
+    fontSize: 28, textColor: "purple", textStyle: "boldItalic", rotation: 180,
     position: { layer: "front", x: 510, y: 24 },
   } });
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
@@ -66,6 +71,7 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-position", "behind");
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-rotation", "180");
+  await expect(page.locator("#print-preview .office-print-shape")).toHaveCSS("font-size", "28px");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
 
   await anchor.click(); await page.locator("#shape-options").click(); await page.locator("#shape-position-layer").selectOption("flow");
@@ -100,6 +106,8 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(page.locator("#shape-options")).toHaveText("Form einfügen …");
   await page.locator("#shape-options").click(); await page.locator("#shape-kind").selectOption("ellipse");
   await page.locator("#shape-text").fill("Beta"); await page.locator("#shape-rotation").selectOption("90");
+  await page.locator("#shape-font-size").fill("24"); await page.locator("#shape-text-color").selectOption("blue");
+  await page.locator("#shape-text-style").selectOption("bold");
   await page.locator("#shape-apply").click(); await expect(editor.locator(".office-shape")).toHaveCount(2);
 
   await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
@@ -132,12 +140,14 @@ test("Office shape groups preserve ordered members history print and independent
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
   expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connection: { kind: "doubleArrow", color: "purple", width: 4 } }, content: [
-    { type: "shape", attrs: { text: "Alpha" } }, { type: "shape", attrs: { text: "Beta", rotation: 90 } },
+    { type: "shape", attrs: { text: "Alpha" } },
+    { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
   ] });
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(2);
+  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape").nth(1)).toHaveCSS("font-size", "24px");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });
 

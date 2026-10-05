@@ -12,11 +12,17 @@ test("Office shapes preserve only bounded inert attributes", () => {
   expect(officeShapeDescription(attrs)).toContain("Abgerundetes Rechteck · 320 × 160 px");
   expect(officeShapeAttributes({ ...attrs, rotation: 270 })).toEqual({ ...attrs, rotation: 270 });
   expect(officeShapeDescription({ ...attrs, rotation: 90 })).toContain("90° gedreht");
+  const formatted = { ...attrs, fontSize: 28, textColor: "purple", textStyle: "boldItalic" };
+  expect(officeShapeAttributes(formatted)).toEqual(formatted);
+  expect(officeShapeDescription(formatted)).toContain("Schrift 28 px · Textfarbe violett · fett und kursiv");
   expect(OFFICE_SHAPE_LIMIT).toBe(100);
   for (const invalid of [{ ...attrs, id: "shape-short" }, { ...attrs, kind: "svg" }, { ...attrs, width: 79 },
     { ...attrs, height: 801 }, { ...attrs, fill: "url(external)" }, { ...attrs, strokeWidth: true },
     { ...attrs, text: "bad\u0000text" }, { ...attrs, textAlign: "justify" }, { ...attrs, rotation: 0 },
-    { ...attrs, rotation: 45 }, { ...attrs, rotation: true }, { ...attrs, onclick: "run()" }]) {
+    { ...attrs, rotation: 45 }, { ...attrs, rotation: true }, { ...attrs, fontSize: 9 }, { ...attrs, fontSize: 16 },
+    { ...attrs, fontSize: 73 }, { ...attrs, fontSize: true }, { ...attrs, textColor: "transparent" },
+    { ...attrs, textColor: "url(external)" }, { ...attrs, textStyle: "normal" },
+    { ...attrs, textStyle: "bold;position:fixed" }, { ...attrs, onclick: "run()" }]) {
     expect(() => officeShapeAttributes(invalid)).toThrow();
   }
 });
