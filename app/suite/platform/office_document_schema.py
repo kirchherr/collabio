@@ -434,13 +434,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "text",
                 "textAlign",
             }
+            optional_shape_attrs = {"fontSize", "position", "rotation", "textColor", "textStyle", "wrap"}
             if (
                 (depth != 1 and parent_kind != "shapeGroup")
-                or set(attrs)
-                - (
-                    required_shape_attrs
-                    | {"fontSize", "position", "rotation", "textColor", "textStyle", "wrap"}
-                )
+                or set(attrs) - (required_shape_attrs | optional_shape_attrs)
                 or not required_shape_attrs.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
@@ -474,10 +471,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     )
                 )
                 or ("textColor" in attrs and attrs.get("textColor") not in colors - {"transparent"})
-                or (
-                    "textStyle" in attrs
-                    and attrs.get("textStyle") not in {"bold", "italic", "boldItalic"}
-                )
+                or ("textStyle" in attrs and attrs.get("textStyle") not in {"bold", "italic", "boldItalic"})
                 or (
                     "rotation" in attrs
                     and (type(attrs.get("rotation")) is not int or attrs.get("rotation") not in {90, 180, 270})
