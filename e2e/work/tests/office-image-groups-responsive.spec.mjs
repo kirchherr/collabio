@@ -115,3 +115,33 @@ test("Office image groups combine edit move delete undo save print ungroup and o
   expect(copied.content.map((entry) => entry.attrs.assetId)).not.toEqual(images.map((entry) => entry.attrs.assetId));
   expect(copied.content.map((entry) => entry.attrs.contentHash)).toEqual(images.map((entry) => entry.attrs.contentHash));
 });
+
+test("Office image group removal is atomic and reversible", async ({ page }, testInfo) => {
+  test.setTimeout(75_000);
+  const { baseline, images } = await fixture(page), editor = officeEditor(page), objectId = baseline.document.object_id;
+  await openImage(page, 0); await page.locator("#image-group-gap").fill("18"); await page.locator("#image-group-next").click();
+  await openImage(page, 0); await page.locator("#image-group-next").click();
+  const group = editor.locator(":scope > .office-image-group"); await expect(group.locator("img")).toHaveCount(3);
+  const grouped = await saveOffice(page, { objectId }), storedGroup = grouped.content.content.find((entry) => entry.type === "imageGroup");
+  expect(storedGroup).toMatchObject({ attrs: { layout: "row", gap: 18 }, content: images });
+  await openImage(page, 0); await expect(page.locator("#image-group-remove")).toBeEnabled();
+  await page.locator("#image-group-remove").click(); await expect(group).toHaveCount(0);
+  await expect(editor.locator("img")).toHaveCount(0); await expect(editor.locator(":scope > p")).toHaveCount(2);
+  await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(3);
+  await expect(group).toHaveAttribute("data-image-group", storedGroup.attrs.id);
+  await editor.press("Control+Shift+z"); await expect(group).toHaveCount(0);
+  const removed = await saveOffice(page, { objectId });
+  expect(removed.version.previous_version_id).toBe(grouped.version.version_id);
+  expect(removed.content.content.map((entry) => entry.type)).toEqual(["paragraph", "paragraph"]);
+  expect((await officeContent(page, objectId, { versionId: grouped.version.version_id })).content.content
+    .find((entry) => entry.type === "imageGroup")).toEqual(storedGroup);
+  const prints = await installPrintProbe(page); await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-image-group")).toHaveCount(0);
+  await expect(page.locator("#print-preview")).toContainText("Group introduction");
+  await expect(page.locator("#print-preview")).toContainText("Text after image group.");
+  await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
+  expect(prints[0].snapshot.html).not.toContain("office-print-image-group"); await page.locator("#print-close").click();
+  await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(3);
+  await openImage(page, 0); await expect(page.locator("#image-group-remove")).toBeEnabled();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-remove-${testInfo.project.name}.png`, fullPage: true });
+});

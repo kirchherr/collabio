@@ -166,6 +166,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-group-previous").disabled = !valid() || action?.busy || !groupCandidate(action, "previous");
     $("image-group-next").disabled = !valid() || action?.busy || !groupCandidate(action, "next");
     $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
+    $("image-group-remove").disabled = !valid() || action?.busy || !grouped;
   };
   const fill = (attrs, uploaded = false) => {
     for (const name of ["width", "height", "align", "alt", "caption"]) $(`image-${name}`).value = attrs[name];
@@ -392,6 +393,23 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
   for (const direction of ["previous", "next"]) $(`image-group-${direction}`).addEventListener("click", () => group(direction));
   $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
+  $("image-group-remove").addEventListener("click", () => {
+    if (!valid() || action.busy || !action.imageContext?.grouped) {
+      $("image-status").textContent = "Bitte die Bildgruppe erneut auswählen."; return;
+    }
+    if (!allowed() || !state.editor) { $("image-status").textContent = "Die Bildgruppe ist derzeit schreibgeschützt."; return; }
+    const editor = state.editor, groupId = action.imageContext.group.attrs.id;
+    let group = null, groupPos = null;
+    editor.state.doc.forEach((node, offset) => {
+      if (group == null && node.type.name === "imageGroup" && node.attrs.id === groupId) { group = node; groupPos = offset; }
+    });
+    if (!group || !Number.isInteger(groupPos)) { $("image-status").textContent = "Die Bildgruppe wurde im aktuellen Entwurf nicht gefunden."; return; }
+    const tr = editor.state.tr.delete(groupPos, groupPos + group.nodeSize);
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice("Bildgruppe aus dem Entwurf entfernt. Mit Rückgängig vollständig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("image-status").textContent = "Die Bildgruppe konnte nicht entfernt werden."; }
+  });
   for (const id of ["image-close", "image-cancel"]) $(id).addEventListener("click", () => close(true));
   $("image-dialog").addEventListener("cancel", (event) => { event.preventDefault(); close(true); });
   return { update, close };
