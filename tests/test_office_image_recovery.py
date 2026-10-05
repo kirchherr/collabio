@@ -209,13 +209,22 @@ def test_group_recovery_requires_consecutive_row_stack_reset_with_same_members()
 
 
 def test_group_duplicate_recovery_requires_fresh_assets_with_same_ordered_pixels() -> None:
+    source_group: dict[str, Any] = {
+        "id": "source",
+        "layout": "row",
+        "gap": 20,
+        "images": [("a", "1"), ("b", "2")],
+    }
+    copied_group: dict[str, Any] = {
+        "id": "copy",
+        "layout": "row",
+        "gap": 20,
+        "images": [("c", "3"), ("d", "4")],
+    }
     version = {
         "object_id": "doc",
         "document_version_id": "saved",
-        "groups": [
-            {"id": "source", "layout": "row", "gap": 20, "images": [("a", "1"), ("b", "2")]},
-            {"id": "copy", "layout": "row", "gap": 20, "images": [("c", "3"), ("d", "4")]},
-        ],
+        "groups": [source_group, copied_group],
     }
     bindings = [
         {
@@ -237,14 +246,14 @@ def test_group_duplicate_recovery_requires_fresh_assets_with_same_ordered_pixels
         "independently_owned_group_duplicate_verified": True,
     }
     for broken in (
-        [{**version, "groups": [{**version["groups"][0]}, {**version["groups"][1], "id": "source"}]}],
-        [{**version, "groups": [{**version["groups"][0]}, {**version["groups"][1], "layout": "stack"}]}],
+        [{**version, "groups": [{**source_group}, {**copied_group, "id": "source"}]}],
+        [{**version, "groups": [{**source_group}, {**copied_group, "layout": "stack"}]}],
         [
             {
                 **version,
                 "groups": [
-                    {**version["groups"][0]},
-                    {**version["groups"][1], "images": [("a", "1"), ("d", "4")]},
+                    {**source_group},
+                    {**copied_group, "images": [("a", "1"), ("d", "4")]},
                 ],
             }
         ],

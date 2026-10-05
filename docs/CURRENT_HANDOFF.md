@@ -16,7 +16,7 @@ failure without draft mutation, fresh identities, undo/redo, confirmed save, rea
 print output, plus all previous upload, decoder, ACL, crop, free-position, wrap, transform, numbering and copy cases.
 Desktop/mobile screenshot SHA-256 values are `4553154dd0c633a4f55e4838d5fa61438993a35f0c4b75421b9fc9583c2d126b`
 and `e21f3621c90197d72b32ee2d2f8facb716d8899a58e0c3a6b370f75b6ed524a7`; both passed visual review. Full
-quality passed Ruff, formatting for 785 files, Mypy over 605 source files and complete Pytest with only the known
+quality passed Ruff, formatting for 786 files, Mypy over 605 source files and complete Pytest with only the known
 Starlette/AnyIO warning.
 
 Fresh recovery used dump `sha256:a7211b9d67e662455a11e6099190b6a956ba34c59ad5bf33603099bc96fab3c7`

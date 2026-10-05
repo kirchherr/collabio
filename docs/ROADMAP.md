@@ -2030,7 +2030,7 @@ Native Office bleibt vor CRM. Roadmap 307 / PLANS 168 ist unter ADR-0124 impleme
 schreibautorisierte Serverpfad prueft alle zwei bis acht Quellen erneut und legt ihre Kopien atomar unter der bestehenden
 200-Asset-Grenze an. Erst eine vollstaendige validierte Antwort aendert den lokalen Entwurf in genau einem Undo-Schritt;
 Fehler, veraltete Gruppen und Grenzverletzungen lassen ihn unveraendert. Die komplette 53-teilige native Bild- und
-Abbildungsmatrix sowie Ruff, Formatierung fuer 785 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Ein frischer
+Abbildungsmatrix sowie Ruff, Formatierung fuer 786 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Ein frischer
 isolierter Restore prueft 1.525 Dokumente, 3.155 Office-Versionen, 4.088 SourceObjects, 772 Bildassets und vier
 unabhaengig besessene Gruppenduplikate. Es gibt keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
 
