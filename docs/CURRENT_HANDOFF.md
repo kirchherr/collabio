@@ -26,7 +26,8 @@ duplicates proved distinct group/asset/version identities with identical ordered
 SHA-256 is `abef3857695465e61b1ab07b07a33e1e136a4bed4fe4cc87f2128ba04c22c870`; embedded report hash is
 `sha256:0546d998dfaaa47caa9221a653bf96929c4cb2f9d6a3cd610b2aefb35802c0d4`.
 
-The isolated review UI remains on `http://192.168.0.108:42880/office`; regular and review APIs remain isolated. No
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-duplicate-ea1786bb`; regular and review APIs remain isolated. No
 database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
 
 Roadmap 306 / PLANS 167 is complete under ADR-0123. A selected native image group now exposes a focusable
@@ -2864,7 +2865,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 307 / PLANS 168 is complete. Preserve independent image-group duplication, atomic image-group removal, direct
+Roadmap 307 / PLANS 168 is complete and published through `ea1786bb`. Preserve independent image-group duplication,
+atomic image-group removal, direct
 atomic standalone-shape and group ordering, atomic shape-group removal, direct group and member duplication, bounded
 typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing Office
 authorization/version/recovery contracts, including the fresh Roadmap-307 PostgreSQL/S3 proof.
