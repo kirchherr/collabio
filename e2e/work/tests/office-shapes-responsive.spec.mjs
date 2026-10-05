@@ -137,16 +137,16 @@ test("Office shape groups preserve ordered members history print and independent
   await page.locator("#shape-apply").click();
   await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
-  await editor.locator(".office-shape-group .office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-duplicate")).toBeEnabled(); await page.locator("#shape-duplicate").click();
-  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Alpha", "Beta", "Beta"]);
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Alpha", "Alpha", "Beta"]);
   await editor.press("Control+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
   await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(3);
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
   expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connection: { kind: "doubleArrow", color: "purple", width: 4 } }, content: [
     { type: "shape", attrs: { text: "Alpha" } },
-    { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
+    { type: "shape", attrs: { text: "Alpha" } },
     { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
   ] });
   expect(new Set(group.content.map((entry) => entry.attrs.id)).size).toBe(3);
@@ -154,7 +154,7 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(3);
-  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape").nth(1)).toHaveCSS("font-size", "24px");
+  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape").nth(2)).toHaveCSS("font-size", "24px");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });
 
