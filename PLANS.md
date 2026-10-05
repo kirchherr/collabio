@@ -388,12 +388,17 @@ top-level document position earlier or later, disable unavailable boundary actio
 isolated undo step. Preserve stable identity and every validated presentation attribute through save, immutable
 history and print without adding durable schema, arbitrary drag ordering or overlap layers.
 
+167. [x] Add atomic native image-group removal under ADR-0123. Resolve the selected group's stable validated identity
+against the current editor document, remove the complete group as one isolated undo step and restore the exact group
+on undo. Preserve source assets, member bindings and attributes, unrelated content, immutable earlier versions,
+confirmed save and print without adding an asset-deletion path or durable schema.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 305 / PLANS 166. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and the latest applicable exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 306 / PLANS 167. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, undo and the latest applicable exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

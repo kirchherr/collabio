@@ -2011,6 +2011,17 @@ Geometrie, Farben, Rahmen, Typografie, Drehung, Umfluss und optionale Position b
 bestaetigtes Speichern, immutable Vorgaengerversionen und Druck bewahren die jeweilige Dokumentreihenfolge. Es gibt
 keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+306. [x] Atomare Entfernung nativer Bildgruppen umgesetzt: **Bildgruppe entfernen** loest die stabile Gruppen-ID im
+     aktuellen Editorzustand erneut auf und entfernt den kompletten Gruppen-Knoten in genau einem Undo-Schritt.
+     Quellassets und sonstiger Dokumentinhalt bleiben unveraendert.
+
+Native Office bleibt vor CRM. Roadmap 306 / PLANS 167 ist unter ADR-0123 implementiert. Die 47-teilige native
+Modell-/Desktop-/Mobile-Bildmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo stellt Gruppenidentitaet,
+Mitgliedsreihenfolge, Layout, Abstand und saemtliche Asset-, Zuschnitt-, Transformations-, Alternativtext-,
+Beschriftungs- und Abbildungsattribute exakt wieder her. Bestaetigtes Speichern, immutable Vorgaengerversionen und
+Druck bewahren ihre exakten Vertraege. Es gibt keine Asset-Loeschung, Datenbankmigration, neue Abhaengigkeit,
+Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

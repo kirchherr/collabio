@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–305 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 305 / PLANS 166 direct standalone shape ordering
+Status: Roadmap 252–306 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 306 / PLANS 167 atomic image-group removal
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0122; current shape ordering: `ARCHITECTURE_DECISIONS/ADR-0122-native-office-shape-ordering.md`
+Decisions: ADR-0079 through ADR-0123; current image-group removal: `ARCHITECTURE_DECISIONS/ADR-0123-native-office-image-group-removal.md`
 
 ## Bounded native shapes (Roadmap 292)
 
@@ -486,6 +486,13 @@ remain separate.
 
 ## Bounded native image groups (Roadmap 291)
 
+Roadmap 306 adds **Bildgruppe entfernen** for a selected native image group. At activation, the editor resolves the
+stable validated group ID against the current document and removes that complete node in one isolated undo
+transaction. Undo restores exact group identity, member order, layout, gap and all immutable asset/version, crop,
+transform, alternative-text, caption and figure attributes; redo removes it again. Other document nodes and retained
+source assets remain unchanged. Missing, stale and read-only targets fail closed, and the removal becomes durable
+only through the existing confirmed version save. Earlier immutable versions and static print retain exact content.
+
 Two through eight existing native images can form one `imageGroup` block. A document admits at most 20 groups. Each
 group has a unique opaque identifier, exact member order, `row` or `stack` layout and an integer gap from 0 through
 48 pixels. Nested groups, active attributes, unknown keys, duplicate identifiers and grouped images with wrapping or
@@ -497,7 +504,7 @@ group control selects the group node itself and derives the first member for edi
 Undo/Redo. Every command is one undo unit and only confirmed CAS Save persists it. Comparison, immutable history,
 print and independent copies preserve the exact group and member order; copies still own separate image assets.
 
-Wide row groups use equal columns and compact row groups collapse vertically. The complete 45-case image matrix keeps
+Wide row groups use equal columns and compact row groups collapse vertically. The complete 47-case image matrix keeps
 all prior upload, crop, wrap, layer, transform, ACL, copy and real-PDF behavior green. Fresh recovery proves exact
 row/gap-12, stack/gap-24 and dissolved versions of the same three assets, including receipts and current ACLs.
 

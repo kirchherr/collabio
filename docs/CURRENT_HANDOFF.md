@@ -2,6 +2,30 @@
 
 Updated: 2026-10-05
 
+Roadmap 306 / PLANS 167 is complete under ADR-0123. A selected native image group now exposes a focusable
+**Bildgruppe entfernen** action. Activation resolves the validated stable group ID against the current editor
+document and removes exactly that complete group as one isolated undo step. Undo restores exact group identity,
+member order, layout, gap and every member's asset/version, crop, transform, alternative-text, caption and figure
+attributes; redo removes it again. Other document nodes and retained source assets remain unchanged. Missing, stale
+and read-only targets fail closed with no draft mutation.
+
+Implementation commits `f574e453` and `b3bb5472` are published on `kirchherr/kb-write-unit-of-work`. The complete
+native image model plus desktop/mobile workflows passed 47/47, covering upload/decoder defenses, owned copies, crop,
+transform, free position, wrapping, numbering, groups, exact removal, undo/redo, confirmed save, immutable predecessor
+content and print. The first removal run passed the product behavior through save and print but its final screenshot
+setup incorrectly expected pre-save undo history after a confirmed save; the corrected proof captures the review
+state before removal and passed fully. Desktop/mobile screenshot SHA-256 values are
+`0985233c97649cdff6078faa7085ca3b4f131f9a74629ddd632ff372eb802dd5` and
+`0b68a1dec4a33bf33c4ccc8d993ed6a8e47a1716e7356657b5ba733fca3398e6`; both passed visual review. Full quality passed
+Ruff, formatting for 784 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=image-group-remove-b3bb5472` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no asset deletion, database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because image-group removal changes no durable schema and exact predecessor versions retain
+all source bindings.
+
 Roadmap 305 / PLANS 166 is complete under ADR-0122. An ungrouped selected native shape now exposes focusable actions
 to move it exactly one top-level document position earlier or later. Each activation swaps the complete shape with
 one adjacent node in one isolated undo step; unavailable boundary directions are disabled. The stable shape ID and
@@ -2814,10 +2838,10 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 305 / PLANS 166 is complete and published through `b88f39bc`. Preserve direct atomic standalone-shape and
-group ordering, atomic group removal, direct group and member duplication, bounded typography, accessible member
-ordering, bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery
-contracts.
+Roadmap 306 / PLANS 167 is complete and published through `b3bb5472`. Preserve atomic image-group removal, direct
+atomic standalone-shape and group ordering, atomic shape-group removal, direct group and member duplication, bounded
+typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing Office
+authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
