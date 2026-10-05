@@ -16,7 +16,7 @@ undo/redo, confirmed save, immutable predecessor content and print. Desktop/mobi
 Ruff, formatting for 783 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-order-ac9543d5` with synthetic
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-order-b88f39bc` with synthetic
 Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing,
 cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery
 because shape ordering changes no durable schema and exact predecessor versions remain available.
@@ -2814,7 +2814,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 305 / PLANS 166 is complete and published through `ac9543d5`. Preserve direct atomic standalone-shape and
+Roadmap 305 / PLANS 166 is complete and published through `b88f39bc`. Preserve direct atomic standalone-shape and
 group ordering, atomic group removal, direct group and member duplication, bounded typography, accessible member
 ordering, bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery
 contracts.
