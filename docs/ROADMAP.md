@@ -1981,6 +1981,16 @@ Formen werden vor der Mutation geprueft; die gesamte Kopie ist ein isolierter Un
 immutable Versionen, Vergleich und Druck verwenden unabhaengige Identitaeten. Es gibt keine Datenbankmigration, neue
 Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
 
+303. [x] Atomare Entfernung nativer Formgruppen umgesetzt: **Gruppe entfernen** loest die stabile Gruppen-ID im
+     aktuellen Editorzustand erneut auf und entfernt den kompletten Gruppen-Knoten in genau einem Undo-Schritt.
+     Einzelne Mitglieder oder sonstiger Dokumentinhalt bleiben nicht versehentlich als Zwischenzustand zurueck.
+
+Native Office bleibt vor CRM. Roadmap 303 / PLANS 164 ist unter ADR-0120 implementiert. Die 16-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo stellt Identitaet,
+Mitgliedsreihenfolge, Layout, Abstand, Verbindung und alle Mitgliedsattribute exakt wieder her; Redo entfernt die
+Gruppe erneut. Bestaetigtes Speichern, immutable Vorgaengerversionen und Druck bewahren ihre exakten Vertraege. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

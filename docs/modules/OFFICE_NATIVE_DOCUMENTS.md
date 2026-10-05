@@ -1,11 +1,18 @@
 # Native Office Documents
 
-Status: Roadmap 252–302 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 302 / PLANS 163 direct shape-group duplication
+Status: Roadmap 252–303 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 303 / PLANS 164 atomic shape-group removal
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0119; current group duplication: `ARCHITECTURE_DECISIONS/ADR-0119-native-office-shape-group-duplication.md`
+Decisions: ADR-0079 through ADR-0120; current group removal: `ARCHITECTURE_DECISIONS/ADR-0120-native-office-shape-group-removal.md`
 
 ## Bounded native shapes (Roadmap 292)
+
+Roadmap 303 adds **Gruppe entfernen** for a selected native shape group. At activation, the editor resolves the stable
+validated group ID against the current document and removes that complete node in one isolated undo transaction.
+Undo restores the exact group ID, member IDs and order, layout, gap, optional connection and every member attribute;
+redo removes it again. Unrelated document content remains unchanged. Missing, stale and read-only targets fail closed,
+and the removal becomes durable only through the existing confirmed version save. Earlier immutable versions and
+static print retain their exact content without a new stored field.
 
 Roadmap 302 adds **Gruppe duplizieren** for an existing shape group. It generates a new opaque group ID and a new
 opaque shape ID for every member, then inserts the complete copy immediately after its source. Exact member order,

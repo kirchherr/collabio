@@ -2,6 +2,25 @@
 
 Updated: 2026-10-05
 
+Roadmap 303 / PLANS 164 is complete under ADR-0120. An existing native shape group now exposes a focusable **Gruppe
+entfernen** action. Activation resolves the validated stable group ID against the current editor document and removes
+exactly that complete group as one isolated undo step. Undo restores its exact group/member identities, member order,
+layout, gap, optional connection and member attributes; redo removes it again. Missing, stale and read-only targets
+fail closed with no draft mutation.
+
+Implementation commits `760cb34c` through `d31e24e7` are published on `kirchherr/kb-write-unit-of-work`. The final
+model plus desktop/mobile workflows passed 16/16, covering atomic removal, unrelated text preservation, undo/redo,
+confirmed save, exact immutable predecessor content and print. Desktop/mobile screenshot SHA-256 values are
+`391a4e2c503a2f43575827d5980323a0241e0444b8196e7772a49390ca8e8743` and
+`b69db4e755870c9e7240a9c4453f403bc4a06e6bf1a081365965c69e94fee922`; both passed visual review. Full quality passed
+Ruff, formatting for 781 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-remove-d31e24e7` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because group removal changes no durable schema and exact predecessor versions remain available.
+
 Roadmap 302 / PLANS 163 is complete under ADR-0119. Existing native shape groups can now be duplicated as a unit. The
 copy receives a fresh random group ID and fresh random IDs for every member while preserving exact order, layout, gap,
 optional connection and every member attribute. It is inserted immediately after the source in one isolated undo
@@ -2770,9 +2789,9 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 302 / PLANS 163 is complete and published through `7b3f927f`. Preserve direct group and
-member duplication, bounded typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing
-Office authorization/version/recovery contracts.
+Roadmap 303 / PLANS 164 is complete and implemented through `d31e24e7`. Preserve atomic group removal, direct group
+and member duplication, bounded typography, accessible member ordering, bounded connections, ordered flow-only
+membership and the existing Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
