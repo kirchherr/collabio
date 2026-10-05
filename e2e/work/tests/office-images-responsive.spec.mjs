@@ -181,7 +181,10 @@ test("Office duplicates one positioned numbered image with independent ownership
   expect(images[1].figureId).not.toBe(images[0].figureId);
   const copied = await page.request.get(`${BASE_URL}/v1/office/documents/${first.document.object_id}/images/${images[1].assetId}/${images[1].versionId}`, { headers: OFFICE_HEADERS });
   expect(copied.status()).toBe(200); expect((await copied.body()).length).toBeGreaterThan(0);
+  await officeEditor(page).locator("img").last().click({ force: true }); await page.locator("#image-options").click();
+  await expect(page.locator("#image-duplicate")).toBeEnabled(); await expect(page.locator("#image-preview img")).toBeVisible();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-duplicate-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#image-cancel").click();
 });
 
 test("Office image controls fit desktop tablet and mobile", async ({ page }, testInfo) => {
