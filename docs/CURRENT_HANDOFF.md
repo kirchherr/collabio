@@ -16,7 +16,7 @@ confirmed save, exact immutable predecessor content and print. Desktop/mobile sc
 Ruff, formatting for 781 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
 remains.
 
-The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-remove-d31e24e7` with
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-remove-249a67b7` with
 synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
 indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
 recovery because group removal changes no durable schema and exact predecessor versions remain available.
@@ -2789,7 +2789,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 303 / PLANS 164 is complete and implemented through `d31e24e7`. Preserve atomic group removal, direct group
+Roadmap 303 / PLANS 164 is complete and published through `249a67b7`. Preserve atomic group removal, direct group
 and member duplication, bounded typography, accessible member ordering, bounded connections, ordered flow-only
 membership and the existing Office authorization/version/recovery contracts.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
