@@ -13,7 +13,7 @@ from suite.platform.office_documents import (
     OfficeDocumentSaveCommand,
 )
 from suite.platform.office_image_codec import png_from_pixels
-from suite.platform.office_images import read_image, store_uploaded_image
+from suite.platform.office_images import duplicate_image_group, read_image, store_uploaded_image
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore
 from test_office_documents_pg import Database, command, counts, editor, service_for, set_tenant
 from test_office_documents_pg import database as database
@@ -172,3 +172,42 @@ def test_pg_wrong_owner_hash_and_foreign_tenant_images_fail_without_document_wri
         )
         with pytest.raises(OfficeDocumentInvalidContentError):
             read_image(service.source_repository, owner, attrs)
+
+
+def test_pg_image_group_duplicate_has_fresh_atomic_ownership(database: Database) -> None:
+    service = service_for(database, InMemorySourceObjectContentStore())
+    user = editor()
+    created = service.create(user_context=user, command=command("duplicate-image-group"), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    repository = service.repository
+    assert isinstance(repository, PgOfficeDocumentRepository)
+    pixels = (
+        png_from_pixels(2, 1, b"\xff\0\0\xff\0\xff\0\xff"),
+        png_from_pixels(2, 1, b"\0\0\xff\xff\xff\xff\0\xff"),
+    )
+    images = []
+    for index, png in enumerate(pixels):
+        attrs = store_uploaded_image(repository, user, object_id, png, 2, 1)
+        attrs.update({"decorative": False, "alt": f"Member {index + 1}", "caption": f"Caption {index + 1}"})
+        images.append(attrs)
+    images[0]["crop"] = {"x": 1, "y": 0, "width": 1, "height": 1}
+    images[1]["transform"] = {"rotation": 90, "flipX": True, "flipY": False}
+    before = counts(database, user)
+    copied = duplicate_image_group(repository, user, object_id, images)
+    after = counts(database, user)
+    assert tuple(current - previous for current, previous in zip(after, before, strict=True)) == (0, 0, 2, 2, 0)
+    assert [attrs["assetId"] for attrs in copied] != [attrs["assetId"] for attrs in images]
+    assert [attrs["versionId"] for attrs in copied] != [attrs["versionId"] for attrs in images]
+    assert [attrs["contentHash"] for attrs in copied] == [attrs["contentHash"] for attrs in images]
+    assert copied[0]["crop"] == images[0]["crop"]
+    assert copied[1]["transform"] == images[1]["transform"]
+    document = repository.get_document(user_context=user, object_id=object_id)
+    assert [read_image(service.source_repository, document, attrs)[1] for attrs in copied] == list(pixels)
+
+    foreign = editor()
+    foreign.readable_object_ids.add(object_id)
+    denied_before = counts(database, user)
+    with pytest.raises(OfficeDocumentNotFoundError):
+        duplicate_image_group(repository, foreign, object_id, images)
+    assert counts(database, user) == denied_before

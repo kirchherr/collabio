@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import psycopg
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from suite.ai_control_plane.audit import canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
@@ -23,7 +24,7 @@ from suite.platform.office_documents import (
     OfficeDocumentRecord,
 )
 from suite.platform.office_image_codec import MAX_IMAGE_OUTPUT, image_dimensions
-from suite.platform.office_image_schema import image_references
+from suite.platform.office_image_schema import image_references, validate_image_attributes
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
@@ -44,6 +45,24 @@ if TYPE_CHECKING:
 
 IMAGE_SOURCE_SYSTEM = "collabio_office_image"
 IMAGE_SCHEMA = "collabio_office_image.v1"
+
+
+class OfficeImageGroupDuplicateCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    images: list[dict[str, Any]] = Field(min_length=2, max_length=8)
+
+    @field_validator("images")
+    @classmethod
+    def validate_images(cls, value: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        for attrs in value:
+            try:
+                validate_image_attributes(attrs)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError("Invalid image group") from exc
+            if "wrap" in attrs or "position" in attrs:
+                raise ValueError("Grouped images must remain in document flow")
+        return value
 
 
 def read_image(
@@ -251,3 +270,53 @@ def store_uploaded_image(
         if count is None or count[0] >= 200:
             raise OfficeDocumentInvalidContentError("Document image storage limit reached")
         return persist_image(repository, connection, user, document, content, width, height)
+
+
+def duplicate_image_group(
+    repository: PgOfficeDocumentRepository,
+    user: UserContext,
+    object_id: str,
+    images: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Atomically give every copied group member a fresh document-owned asset."""
+    with psycopg.connect(repository.database_dsn) as connection, connection.transaction():
+        repository._set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"office-document-write:{user.tenant_id}",)
+        )
+        document = repository._authorized_document(connection, user, object_id, write=True)
+        if not 2 <= len(images) <= 8:
+            raise OfficeDocumentInvalidContentError("Invalid image group")
+        sources: list[tuple[dict[str, Any], bytes]] = []
+        for attrs in images:
+            try:
+                validate_image_attributes(attrs)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise OfficeDocumentInvalidContentError("Invalid image group") from exc
+            if attrs["documentId"] != object_id or "wrap" in attrs or "position" in attrs:
+                raise OfficeDocumentInvalidContentError("Invalid image group")
+            _, pixels = read_image(repository.source_repository, document, attrs)
+            sources.append((attrs, pixels))
+        count = connection.execute(
+            "SELECT count(*) FROM collabio.source_object_metadata WHERE tenant_id = %s AND parent_object_id = %s "
+            "AND source_system = %s",
+            (user.tenant_id, object_id, IMAGE_SOURCE_SYSTEM),
+        ).fetchone()
+        if count is None or count[0] + len(sources) > 200:
+            raise OfficeDocumentInvalidContentError("Document image storage limit reached")
+        result = []
+        for attrs, pixels in sources:
+            identity = persist_image(
+                repository,
+                connection,
+                user,
+                document,
+                pixels,
+                attrs["pixelWidth"],
+                attrs["pixelHeight"],
+            )
+            copied = copy.deepcopy(attrs)
+            for name in ("documentId", "assetId", "versionId", "contentHash", "manifestHash"):
+                copied[name] = identity[name]
+            result.append(copied)
+        return result

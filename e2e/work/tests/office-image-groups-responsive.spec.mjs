@@ -143,3 +143,38 @@ test("Office image group removal is atomic and reversible", async ({ page }, tes
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html).not.toContain("office-print-image-group"); await page.locator("#print-close").click();
 });
+
+test("Office image group duplication owns fresh assets and stays atomic", async ({ page }, testInfo) => {
+  test.setTimeout(75_000);
+  const { baseline } = await fixture(page), editor = officeEditor(page), objectId = baseline.document.object_id;
+  await openImage(page, 0); await page.locator("#image-group-gap").fill("20"); await page.locator("#image-group-next").click();
+  await openImage(page, 0); await page.locator("#image-group-next").click();
+  const groups = editor.locator(":scope > .office-image-group"); await expect(groups).toHaveCount(1);
+
+  await openImage(page, 0);
+  await page.route("**/image-groups/duplicate", async (route) => route.fulfill({ status: 503, contentType: "application/json", body: '{"detail":"unavailable"}' }));
+  await page.locator("#image-group-duplicate").click();
+  await expect(page.locator("#image-status")).toContainText("nicht vollständig dupliziert");
+  await expect(groups).toHaveCount(1);
+  await page.unroute("**/image-groups/duplicate");
+
+  await page.locator("#image-group-duplicate").click();
+  await expect(groups).toHaveCount(2); await expect(editor.locator(".office-image-group img")).toHaveCount(6);
+  await editor.press("Control+z"); await expect(groups).toHaveCount(1);
+  await editor.press("Control+Shift+z"); await expect(groups).toHaveCount(2);
+  const saved = await saveOffice(page, { objectId }), stored = saved.content.content.filter((entry) => entry.type === "imageGroup");
+  expect(stored).toHaveLength(2); expect(stored[1].attrs).toMatchObject({ layout: "row", gap: 20 });
+  expect(stored[1].attrs.id).not.toBe(stored[0].attrs.id);
+  expect(stored[1].content.map((entry) => entry.attrs.assetId)).not.toEqual(stored[0].content.map((entry) => entry.attrs.assetId));
+  expect(stored[1].content.map((entry) => entry.attrs.versionId)).not.toEqual(stored[0].content.map((entry) => entry.attrs.versionId));
+  expect(stored[1].content.map((entry) => entry.attrs.contentHash)).toEqual(stored[0].content.map((entry) => entry.attrs.contentHash));
+  for (const member of stored[1].content) {
+    const read = await page.request.get(`${BASE_URL}/v1/office/documents/${objectId}/images/${member.attrs.assetId}/${member.attrs.versionId}`, { headers: OFFICE_HEADERS });
+    expect(read.status()).toBe(200);
+  }
+  const prints = await installPrintProbe(page); await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-image-group")).toHaveCount(2);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-duplicate-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
+  expect(prints[0].snapshot.html.match(/office-print-image-group/g)).toHaveLength(2);
+});

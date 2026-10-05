@@ -42,7 +42,12 @@ from suite.platform.office_image_codec import (
     OfficeImageUnavailable,
     normalize_image,
 )
-from suite.platform.office_images import read_image, store_uploaded_image
+from suite.platform.office_images import (
+    OfficeImageGroupDuplicateCommand,
+    duplicate_image_group,
+    read_image,
+    store_uploaded_image,
+)
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository, PgOfficeReviewRepository
 from suite.platform.office_reviews import (
     OfficeReviewService,
@@ -273,6 +278,27 @@ def register_office_routes(
             content_hash=attrs["contentHash"],
         )
         return {"image": attrs, "audit_event_id": event}
+
+    @router.post("/{object_id}/image-groups/duplicate", dependencies=[Depends(write_gate)])
+    def duplicate_group(
+        object_id: str,
+        command: OfficeImageGroupDuplicateCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        service = request.app.state.office_document_service
+        repository = service.repository
+        if not service.writes_available or not isinstance(repository, PgOfficeDocumentRepository):
+            raise OfficeDocumentPermissionError("Image writes unavailable")
+        images = duplicate_image_group(repository, context.user_context, object_id, command.images)
+        event = service._audit(
+            context.user_context,
+            "office.image_groups.duplicated",
+            object_id=object_id,
+            source_asset_ids=[attrs["assetId"] for attrs in command.images],
+            copied_asset_ids=[attrs["assetId"] for attrs in images],
+        )
+        return {"images": images, "audit_event_id": event}
 
     @router.get("/{object_id}/images/{asset_id}/{version_id}")
     def image_content(

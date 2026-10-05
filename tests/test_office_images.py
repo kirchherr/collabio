@@ -12,6 +12,7 @@ from suite.platform.office_image_codec import (
     png_from_pixels,
 )
 from suite.platform.office_image_schema import image_references
+from suite.platform.office_images import OfficeImageGroupDuplicateCommand
 from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
 from suite.platform.office_suggestions import replace_suggestion_text
 
@@ -418,3 +419,18 @@ def test_image_groups_have_unique_bounded_identities() -> None:
         excessive["content"].append(entry)
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(excessive)
+
+
+def test_image_group_duplicate_command_is_exact_bounded_and_flow_only() -> None:
+    images = [entry["attrs"] for entry in image_group_document()["content"][0]["content"]]
+    assert OfficeImageGroupDuplicateCommand(images=images).images == images
+    for invalid in (
+        images[:1],
+        images * 5,
+        [{**images[0], "wrap": {"side": "left", "gap": 16}}, images[1]],
+        [{**images[0], "assetId": "foreign"}, images[1]],
+    ):
+        with pytest.raises(ValueError):
+            OfficeImageGroupDuplicateCommand(images=invalid)
+    with pytest.raises(ValueError):
+        OfficeImageGroupDuplicateCommand.model_validate({"images": images, "unexpected": True})

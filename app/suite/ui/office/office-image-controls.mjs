@@ -129,6 +129,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   const valid = () => action && current(action);
   const cropControls = installImageCropControls(() => action, valid);
   const groupCount = (doc) => { let count = 0; doc.forEach((node) => { if (node.type.name === "imageGroup") count += 1; }); return count; };
+  const imageCount = (doc) => { let count = 0; doc.descendants((node) => { if (node.type.name === "image") count += 1; }); return count; };
   const groupCandidate = (owner, direction) => {
     const context = owner?.imageContext;
     if (!context || owner.attrs.wrap != null || owner.attrs.position != null) return null;
@@ -165,6 +166,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const name of ["x", "y"]) $(`image-position-${name}`).disabled = grouped || !positioned;
     $("image-group-previous").disabled = !valid() || action?.busy || !groupCandidate(action, "previous");
     $("image-group-next").disabled = !valid() || action?.busy || !groupCandidate(action, "next");
+    $("image-group-duplicate").disabled = !valid() || action?.busy || !grouped ||
+      groupCount(action?.document) >= OFFICE_IMAGE_GROUP_LIMIT || imageCount(action?.document) + (action?.imageContext?.group?.childCount ?? 0) > 40;
     $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
     $("image-group-remove").disabled = !valid() || action?.busy || !grouped;
   };
@@ -355,6 +358,49 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       focus(); notice("Bildgruppe im Entwurf geändert. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
     } catch { $("image-status").textContent = "Diese Bildgruppe ist ungültig oder überschreitet die Dokumentgrenzen."; }
   };
+  const duplicateGroup = async () => {
+    if (!valid() || action.busy || !action.imageContext?.grouped || !state.session.objectId) return;
+    const owner = action, source = owner.imageContext.group;
+    if (groupCount(owner.document) >= OFFICE_IMAGE_GROUP_LIMIT || imageCount(owner.document) + source.childCount > 40) {
+      $("image-status").textContent = "Die Dokumentgrenze für Bildgruppen oder Bilder ist erreicht."; return;
+    }
+    owner.busy = true; update(); $("image-status").textContent = "Bildgruppe wird mit unabhängigen Bilddateien dupliziert …";
+    try {
+      const response = await fetch(`/v1/office/documents/${encodeURIComponent(owner.session.objectId)}/image-groups/duplicate`, {
+        method: "POST", cache: "no-store", signal: owner.controller.signal,
+        headers: { "Content-Type": "application/json", "X-Tenant-Id": owner.context.tenantId,
+          "X-User-Id": owner.context.userId, "X-Role-Ids": owner.context.roleIds,
+          "X-Readable-Object-Ids": owner.context.readableObjectIds },
+        body: JSON.stringify({ images: source.content.content.map((node) => officeImageAttributes(node.attrs)) }),
+      });
+      if (!response.ok) {
+        if ([401, 403, 404, 423].includes(response.status)) { accessDenied(); return; }
+        throw new Error("duplicate-group");
+      }
+      const payload = await response.json();
+      if (!valid() || action !== owner || !Array.isArray(payload.images) || payload.images.length !== source.childCount) return;
+      const editor = owner.editor, groupId = source.attrs.id;
+      let currentGroup = null, groupPos = null;
+      editor.state.doc.forEach((node, offset) => {
+        if (currentGroup == null && node.type.name === "imageGroup" && node.attrs.id === groupId) { currentGroup = node; groupPos = offset; }
+      });
+      if (!currentGroup || !Number.isInteger(groupPos) || currentGroup.childCount !== payload.images.length) throw new Error("stale-group");
+      const members = payload.images.map((attrs) => {
+        const checked = officeImageAttributes(attrs);
+        return editor.schema.nodes.image.create({ ...checked,
+          figureId: checked.figureId == null ? null : `figure-${reference().replaceAll("-", "").slice(0, 24)}` });
+      });
+      const copied = editor.schema.nodes.imageGroup.create(officeImageGroupAttributes({ ...currentGroup.attrs,
+        id: `image-group-${reference().replaceAll("-", "").slice(0, 24)}` }), members);
+      const insertAt = groupPos + currentGroup.nodeSize, tr = editor.state.tr.insert(insertAt, copied);
+      tr.setSelection(NodeSelection.create(tr.doc, insertAt + 1)); validate(tr.doc);
+      close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice("Bildgruppe mit unabhängigen Bilddateien dupliziert. Mit Rückgängig entfernbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch (error) {
+      if (action === owner && valid() && [401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
+      if (action === owner && valid()) $("image-status").textContent = "Die Bildgruppe konnte nicht vollständig dupliziert werden. Der Entwurf wurde nicht geändert.";
+    } finally { if (action === owner) { owner.busy = false; update(); } }
+  };
   $("image-options").addEventListener("mousedown", (event) => event.preventDefault());
   $("image-options").addEventListener("click", open);
   $("image-file").addEventListener("change", update);
@@ -392,6 +438,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-form").addEventListener("submit", (event) => { event.preventDefault(); change("apply"); });
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
   for (const direction of ["previous", "next"]) $(`image-group-${direction}`).addEventListener("click", () => group(direction));
+  $("image-group-duplicate").addEventListener("click", duplicateGroup);
   $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
   $("image-group-remove").addEventListener("click", () => {
     if (!valid() || action.busy || !action.imageContext?.grouped) {
