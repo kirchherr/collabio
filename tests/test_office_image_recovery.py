@@ -8,6 +8,7 @@ from office_image_recovery import (
     verify_restored_group_duplicate,
     verify_restored_group_reset,
     verify_restored_image_duplicate,
+    verify_restored_image_replacement,
     verify_restored_images,
     verify_restored_position_reset,
     verify_restored_transform_reset,
@@ -17,7 +18,7 @@ from office_recovery_proof import require_office_recovery_environment
 from test_office_recovery_proof import recovery_environment
 
 
-@pytest.mark.parametrize("number", [268, 269, 270, 291, 307])
+@pytest.mark.parametrize("number", [268, 269, 270, 291, 307, 309])
 def test_image_restore_target_requires_a_matching_separate_pair(number: int) -> None:
     env = recovery_environment()
     for key in ("SUITE_POSTGRES_RESTORE_TARGET_DSN", "SUITE_OFFICE_RECOVERY_TARGET_DSN"):
@@ -302,3 +303,47 @@ def test_image_duplicate_recovery_requires_fresh_asset_figure_pixels_and_bounded
     ):
         with pytest.raises(ValueError):
             verify_restored_image_duplicate([{**version, "standalone_images": [source, replacement]}], bindings)
+
+
+def test_image_replacement_recovery_requires_fresh_pixels_and_preserved_presentation() -> None:
+    common = {
+        "figure_id": "figure-stable",
+        "position": {"layer": "front", "x": 640, "y": 120},
+        "align": "left",
+        "alt": "Blue and orange squares",
+        "caption": "<literal image caption>",
+        "decorative": False,
+        "lock_aspect": True,
+        "crop": None,
+        "transform": {"rotation": 90, "flipX": True, "flipY": False},
+    }
+    source = {**common, "asset_id": "a", "asset_version_id": "1", "pixel_width": 320,
+              "pixel_height": 160, "width": 300, "height": 150}
+    replacement = {**common, "asset_id": "b", "asset_version_id": "2", "pixel_width": 200,
+                   "pixel_height": 300, "width": 300, "height": 450}
+    versions = [
+        {"object_id": "doc", "document_version_id": "old", "previous_document_version_id": None,
+         "standalone_images": [source]},
+        {"object_id": "doc", "document_version_id": "new", "previous_document_version_id": "old",
+         "standalone_images": [replacement]},
+    ]
+    bindings = [
+        {"object_id": "doc", "document_version_id": "old", "asset_id": "a", "asset_version_id": "1",
+         "content_hash": "old-pixels"},
+        {"object_id": "doc", "document_version_id": "new", "asset_id": "b", "asset_version_id": "2",
+         "content_hash": "new-pixels"},
+    ]
+    assert verify_restored_image_replacement(versions, bindings) == {
+        "verified_replaced_image_count": 1,
+        "fresh_image_replacement_with_preserved_presentation_verified": True,
+    }
+    for broken in (
+        {**replacement, "asset_id": "a", "asset_version_id": "1"},
+        {**replacement, "figure_id": "different"},
+        {**replacement, "height": 449},
+        {**replacement, "crop": {"x": 0, "y": 0, "width": 100, "height": 100}},
+    ):
+        with pytest.raises(ValueError):
+            verify_restored_image_replacement([versions[0], {**versions[1], "standalone_images": [broken]}], bindings)
+    with pytest.raises(ValueError):
+        verify_restored_image_replacement(versions, [{**bindings[1], "content_hash": "old-pixels"}, bindings[0]])

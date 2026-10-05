@@ -246,6 +246,51 @@ def verify_restored_image_duplicate(versions: list[dict[str, Any]], bindings: li
     }
 
 
+def verify_restored_image_replacement(versions: list[dict[str, Any]], bindings: list[dict[str, Any]]) -> dict[str, Any]:
+    hashes = {
+        (row["object_id"], row["document_version_id"], row["asset_id"], row["asset_version_id"]): row["content_hash"]
+        for row in bindings
+    }
+    by_version = {(row["object_id"], row["document_version_id"]): row for row in versions}
+    preserved = ("figure_id", "position", "align", "alt", "caption", "decorative", "lock_aspect", "transform")
+    verified = 0
+    for current in versions:
+        previous = by_version.get((current["object_id"], current["previous_document_version_id"]))
+        if previous is None or len(previous["standalone_images"]) != 1 or len(current["standalone_images"]) != 1:
+            continue
+        source, replacement = previous["standalone_images"][0], current["standalone_images"][0]
+        source_identity = (source["asset_id"], source["asset_version_id"])
+        replacement_identity = (replacement["asset_id"], replacement["asset_version_id"])
+        if (
+            source_identity == replacement_identity
+            or any(source.get(key) != replacement.get(key) for key in preserved)
+            or source.get("crop") is not None
+            or replacement.get("crop") is not None
+            or (source.get("pixel_width"), source.get("pixel_height"), source.get("width"), source.get("height"))
+            != (320, 160, 300, 150)
+            or (
+                replacement.get("pixel_width"),
+                replacement.get("pixel_height"),
+                replacement.get("width"),
+                replacement.get("height"),
+            )
+            != (200, 300, 300, 450)
+        ):
+            continue
+        source_hash = hashes.get((previous["object_id"], previous["document_version_id"], *source_identity))
+        replacement_hash = hashes.get(
+            (current["object_id"], current["document_version_id"], *replacement_identity)
+        )
+        if source_hash is not None and replacement_hash is not None and source_hash != replacement_hash:
+            verified += 1
+    if verified < 1:
+        raise ValueError("Image replacement recovery requires consecutive fresh pixels with preserved presentation")
+    return {
+        "verified_replaced_image_count": verified,
+        "fresh_image_replacement_with_preserved_presentation_verified": True,
+    }
+
+
 def verify_restored_images(
     *,
     documents: OfficeDocumentService,

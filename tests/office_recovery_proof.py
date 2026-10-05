@@ -21,6 +21,7 @@ from office_image_recovery import (
     verify_restored_group_duplicate,
     verify_restored_group_reset,
     verify_restored_image_duplicate,
+    verify_restored_image_replacement,
     verify_restored_images,
     verify_restored_position_reset,
     verify_restored_transform_reset,
@@ -1264,6 +1265,17 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
                             "asset_version_id": node["attrs"]["versionId"],
                             "figure_id": node["attrs"].get("figureId"),
                             "position": node["attrs"].get("position"),
+                            "pixel_width": node["attrs"]["pixelWidth"],
+                            "pixel_height": node["attrs"]["pixelHeight"],
+                            "width": node["attrs"]["width"],
+                            "height": node["attrs"]["height"],
+                            "align": node["attrs"]["align"],
+                            "alt": node["attrs"]["alt"],
+                            "caption": node["attrs"]["caption"],
+                            "decorative": node["attrs"]["decorative"],
+                            "lock_aspect": node["attrs"]["lockAspect"],
+                            "crop": node["attrs"].get("crop"),
+                            "transform": node["attrs"].get("transform"),
                         }
                         for node in read.content.get("content", [])
                         if node.get("type") == "image"
@@ -1368,6 +1380,8 @@ def run_office_recovery_proof(env: Mapping[str, str]) -> dict[str, Any]:
         image_evidence.update(verify_restored_group_duplicate(image_group_versions, image_bindings))
     if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_308_restore"):
         image_evidence.update(verify_restored_image_duplicate(image_group_versions, image_bindings))
+    if urlparse(env["SUITE_OFFICE_RECOVERY_TARGET_DSN"]).path.endswith("_309_restore"):
+        image_evidence.update(verify_restored_image_replacement(image_group_versions, image_bindings))
     if {row["version_id"] for row in evidence} != {row["version_id"] for row in inventory["document_versions"]}:
         raise ValueError("Office recovery did not read the complete version inventory")
     paragraph_evidence = verify_restored_paragraph_versions(
