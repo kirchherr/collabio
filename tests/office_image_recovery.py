@@ -278,9 +278,7 @@ def verify_restored_image_replacement(versions: list[dict[str, Any]], bindings: 
         ):
             continue
         source_hash = hashes.get((previous["object_id"], previous["document_version_id"], *source_identity))
-        replacement_hash = hashes.get(
-            (current["object_id"], current["document_version_id"], *replacement_identity)
-        )
+        replacement_hash = hashes.get((current["object_id"], current["document_version_id"], *replacement_identity))
         if source_hash is not None and replacement_hash is not None and source_hash != replacement_hash:
             verified += 1
     if verified < 1:

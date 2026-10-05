@@ -154,9 +154,10 @@ def require_office_recovery_environment(env: Mapping[str, str]) -> None:
         if target_database == "collabio_work_e2e_309_restore"
         else "postgres-restore-receipt.sha256"
     )
-    if env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup" or env.get(
-        "SUITE_POSTGRES_RESTORE_RECEIPT_PATH"
-    ) != f"/proof-backup/{receipt_name}":
+    if (
+        env.get("SUITE_POSTGRES_BACKUP_DIRECTORY") != "/proof-backup"
+        or env.get("SUITE_POSTGRES_RESTORE_RECEIPT_PATH") != f"/proof-backup/{receipt_name}"
+    ):
         raise ValueError("Office recovery must use its separately mounted backup artifact")
 
 

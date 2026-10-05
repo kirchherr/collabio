@@ -319,21 +319,53 @@ def test_image_replacement_recovery_requires_fresh_pixels_and_preserved_presenta
         "crop": None,
         "transform": {"rotation": 90, "flipX": True, "flipY": False},
     }
-    source = {**common, "asset_id": "a", "asset_version_id": "1", "pixel_width": 320,
-              "pixel_height": 160, "width": 300, "height": 150}
-    replacement = {**common, "asset_id": "b", "asset_version_id": "2", "pixel_width": 200,
-                   "pixel_height": 300, "width": 300, "height": 450}
+    source = {
+        **common,
+        "asset_id": "a",
+        "asset_version_id": "1",
+        "pixel_width": 320,
+        "pixel_height": 160,
+        "width": 300,
+        "height": 150,
+    }
+    replacement = {
+        **common,
+        "asset_id": "b",
+        "asset_version_id": "2",
+        "pixel_width": 200,
+        "pixel_height": 300,
+        "width": 300,
+        "height": 450,
+    }
     versions = [
-        {"object_id": "doc", "document_version_id": "old", "previous_document_version_id": None,
-         "standalone_images": [source]},
-        {"object_id": "doc", "document_version_id": "new", "previous_document_version_id": "old",
-         "standalone_images": [replacement]},
+        {
+            "object_id": "doc",
+            "document_version_id": "old",
+            "previous_document_version_id": None,
+            "standalone_images": [source],
+        },
+        {
+            "object_id": "doc",
+            "document_version_id": "new",
+            "previous_document_version_id": "old",
+            "standalone_images": [replacement],
+        },
     ]
     bindings = [
-        {"object_id": "doc", "document_version_id": "old", "asset_id": "a", "asset_version_id": "1",
-         "content_hash": "old-pixels"},
-        {"object_id": "doc", "document_version_id": "new", "asset_id": "b", "asset_version_id": "2",
-         "content_hash": "new-pixels"},
+        {
+            "object_id": "doc",
+            "document_version_id": "old",
+            "asset_id": "a",
+            "asset_version_id": "1",
+            "content_hash": "old-pixels",
+        },
+        {
+            "object_id": "doc",
+            "document_version_id": "new",
+            "asset_id": "b",
+            "asset_version_id": "2",
+            "content_hash": "new-pixels",
+        },
     ]
     assert verify_restored_image_replacement(versions, bindings) == {
         "verified_replaced_image_count": 1,
