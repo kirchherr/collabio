@@ -218,6 +218,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     action.shapeContext = editing ? selectedOfficeShapeContext(state.editor, shapeSelection) : null;
     $("shape-title").textContent = editing ? "Form bearbeiten" : "Form einfügen";
     $("shape-apply").textContent = editing ? "Änderungen übernehmen" : "In Entwurf einfügen";
+    $("shape-duplicate").hidden = !editing;
     $("shape-remove").hidden = !editing;
     $("shape-group-section").hidden = !editing;
     fill(action.attrs || { kind: "rectangle", width: 320, height: 160, fill: "teal", stroke: "slate", strokeWidth: 2, text: "", textAlign: "center", fontSize: null, textColor: null, textStyle: null, rotation: null, position: null, wrap: null });
@@ -232,6 +233,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-ungroup").disabled = !grouped;
     $("shape-group-member-previous").disabled = !grouped || action.shapeContext.shapeIndex === 0;
     $("shape-group-member-next").disabled = !grouped || action.shapeContext.shapeIndex === action.shapeContext.group.childCount - 1;
+    $("shape-duplicate").disabled = count() >= OFFICE_SHAPE_LIMIT || (grouped && action.shapeContext.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT);
     const connected = $("shape-group-connection").value !== "none";
     $("shape-group-connection-color").disabled = !connected; $("shape-group-connection-width").disabled = !connected; };
   $("shape-options").addEventListener("click", open);
@@ -258,6 +260,32 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       }
       close(); focus(editor); updateEditor();
     } catch { notice("Die Form konnte nicht übernommen werden. Auswahl und Grenzwerte prüfen.", true); }
+  });
+  $("shape-duplicate").addEventListener("click", () => {
+    if (!action || !current(action) || !action.editing || count() >= OFFICE_SHAPE_LIMIT) return;
+    const editor = state.editor, context = action.shapeContext;
+    if (!context || (context.grouped && context.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT)) return;
+    const position = context.shape.attrs.position == null ? null : {
+      layer: context.shape.attrs.position.layer,
+      x: context.shape.attrs.position.x <= 975 ? context.shape.attrs.position.x + 25 : context.shape.attrs.position.x - 25,
+      y: context.shape.attrs.position.y <= 1176 ? context.shape.attrs.position.y + 24 : context.shape.attrs.position.y - 24,
+    };
+    const attrs = officeShapeAttributes({ ...context.shape.attrs, id: shapeId(), position });
+    const duplicate = editor.schema.nodes.shape.create(attrs); let tr = editor.state.tr;
+    if (context.grouped) {
+      const members = [...context.group.content.content]; members.splice(context.shapeIndex + 1, 0, duplicate);
+      tr = tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize,
+        editor.schema.nodes.shapeGroup.create(context.group.attrs, members));
+      const offset = 1 + members.slice(0, context.shapeIndex + 1).reduce((total, node) => total + node.nodeSize, 0);
+      tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + offset));
+    } else {
+      const insertPos = context.shapePos + context.shape.nodeSize;
+      tr.insert(insertPos, duplicate).setSelection(NodeSelection.create(tr.doc, insertPos));
+    }
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice("Form dupliziert. Die Kopie besitzt eine neue ID und kann mit Rückgängig entfernt werden.");
+    } catch { $("shape-status").textContent = "Die Form konnte wegen der Dokument- oder Gruppengrenze nicht dupliziert werden."; }
   });
   $("shape-remove").addEventListener("click", () => {
     if (!action || !current(action) || !selected()) return;

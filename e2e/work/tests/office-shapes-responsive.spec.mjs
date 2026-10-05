@@ -137,16 +137,23 @@ test("Office shape groups preserve ordered members history print and independent
   await page.locator("#shape-apply").click();
   await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(editor.locator(".office-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
+  await editor.locator(".office-shape-group .office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-duplicate")).toBeEnabled(); await page.locator("#shape-duplicate").click();
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Alpha", "Beta", "Beta"]);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(3);
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
   expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connection: { kind: "doubleArrow", color: "purple", width: 4 } }, content: [
     { type: "shape", attrs: { text: "Alpha" } },
     { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
+    { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
   ] });
+  expect(new Set(group.content.map((entry) => entry.attrs.id)).size).toBe(3);
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-connection", "doubleArrow");
-  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(2);
+  await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(3);
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape").nth(1)).toHaveCSS("font-size", "24px");
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });
@@ -155,7 +162,32 @@ test("Office shape groups preserve ordered members history print and independent
   await page.locator("#shape-group-ungroup").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
   const ungrouped = await saveOffice(page, { objectId }); expect(ungrouped.version.previous_version_id).toBe(grouped.version.version_id);
   await openReuseHistory(page, grouped); await openReuse(page, grouped, "Independent shape group copy"); await submitReuse(page, grouped);
-  await expectReuseDraft(page, "Independent shape group copy"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
+  await expectReuseDraft(page, "Independent shape group copy"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(3);
   const copy = await saveOffice(page); expect(copy.document.object_id).not.toBe(objectId);
   expect(copy.content.content.find((entry) => entry.type === "shapeGroup")).toEqual(group);
+});
+
+test("Office positioned shape duplication creates a visible independent copy", async ({ page }) => {
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native shape duplicate proof", "Text before copy");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Offset copy"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-position-layer").selectOption("front");
+  await page.locator("#shape-position-x").fill("990"); await page.locator("#shape-position-y").fill("1190");
+  await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-duplicate")).toBeEnabled(); await page.locator("#shape-duplicate").click();
+  await expect(editor.locator(".office-shape")).toHaveCount(2);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape")).toHaveCount(1);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape")).toHaveCount(2);
+  const saved = await saveOffice(page, { objectId }), shapes = saved.content.content.filter((entry) => entry.type === "shape");
+  expect(shapes).toHaveLength(2); expect(shapes[0].attrs.position).toEqual({ layer: "front", x: 990, y: 1190 });
+  expect(shapes[1].attrs.position).toEqual({ layer: "front", x: 965, y: 1166 });
+  expect(shapes[1].attrs.id).not.toBe(shapes[0].attrs.id);
+  const first = { ...shapes[0].attrs }; delete first.id; delete first.position;
+  const second = { ...shapes[1].attrs }; delete second.id; delete second.position; expect(second).toEqual(first);
+  await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(2);
+  await page.locator("#print-close").click();
 });
