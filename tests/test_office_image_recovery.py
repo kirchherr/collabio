@@ -267,7 +267,7 @@ def test_group_duplicate_recovery_requires_fresh_assets_with_same_ordered_pixels
 
 
 def test_image_duplicate_recovery_requires_fresh_asset_figure_pixels_and_bounded_offset() -> None:
-    source = {
+    source: dict[str, Any] = {
         "asset_id": "a",
         "asset_version_id": "1",
         "figure_id": "figure-source",
@@ -328,7 +328,7 @@ def test_image_replacement_recovery_requires_fresh_pixels_and_preserved_presenta
         "width": 300,
         "height": 150,
     }
-    replacement = {
+    replacement: dict[str, Any] = {
         **common,
         "asset_id": "b",
         "asset_version_id": "2",
@@ -337,7 +337,7 @@ def test_image_replacement_recovery_requires_fresh_pixels_and_preserved_presenta
         "width": 300,
         "height": 450,
     }
-    versions = [
+    versions: list[dict[str, Any]] = [
         {
             "object_id": "doc",
             "document_version_id": "old",
@@ -351,7 +351,7 @@ def test_image_replacement_recovery_requires_fresh_pixels_and_preserved_presenta
             "standalone_images": [replacement],
         },
     ]
-    bindings = [
+    bindings: list[dict[str, Any]] = [
         {
             "object_id": "doc",
             "document_version_id": "old",
