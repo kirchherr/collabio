@@ -25,6 +25,11 @@ Implementation is published through `a1cc0a6e` on `kirchherr/kb-write-unit-of-wo
 image decoders are refreshed on `dev001`; the UI remains available on port 42880. No relational migration, ordinary
 tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
 
+Full quality on `10d8f462` passed Ruff, formatting for 855 files, Mypy over 605 sources and complete Pytest with only
+the known Starlette/AnyIO deprecation warning. The temporary quality PostgreSQL container was removed; regular and
+review APIs and both image decoders are healthy. Review the accepted UI at
+`http://192.168.0.108:42880/office?review=vector-alpha-a1cc0a6e`.
+
 Roadmap 321 through 324 / PLANS 182 through 185 are complete under ADR-0131. Native Office tables now retain bounded
 column and row spans, expose focusable merge and split actions, and support an independent semantic header-column
 toggle. Browser and server independently validate a rectangular logical grid without gaps, overlaps, truncated spans
