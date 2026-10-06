@@ -799,8 +799,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if set(attrs) - {"colspan", "rowspan", "colwidth"}:
                 reject()
             if any(
-                type(attrs.get(key, 1)) is not int
-                or not 1 <= attrs.get(key, 1) <= (20 if key == "colspan" else 200)
+                type(attrs.get(key, 1)) is not int or not 1 <= attrs.get(key, 1) <= (20 if key == "colspan" else 200)
                 for key in ("colspan", "rowspan")
             ):
                 reject()

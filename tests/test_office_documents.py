@@ -79,9 +79,7 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
         "content": [
             {
                 "type": "tableRow",
-                "content": [
-                    {"type": "tableHeader", "attrs": {"colspan": 3, "rowspan": 1}, "content": [paragraph]}
-                ],
+                "content": [{"type": "tableHeader", "attrs": {"colspan": 3, "rowspan": 1}, "content": [paragraph]}],
             },
             {
                 "type": "tableRow",
@@ -113,9 +111,7 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
             "content": [
                 {
                     "type": "tableRow",
-                    "content": [
-                        {"type": "tableCell", "attrs": {"colspan": 21, "rowspan": 1}, "content": [paragraph]}
-                    ],
+                    "content": [{"type": "tableCell", "attrs": {"colspan": 21, "rowspan": 1}, "content": [paragraph]}],
                 }
             ],
         },
