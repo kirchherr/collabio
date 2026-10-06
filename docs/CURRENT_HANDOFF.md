@@ -22,6 +22,10 @@ Implementation is published through `13db7f3d` on `kirchherr/kb-write-unit-of-wo
 immutable Office version JSON and general recovery contract, so there is no relational migration or new restore
 target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
 
+Full quality on `4af86a03` passed Ruff, formatting for 843 files, Mypy over 605 source files and the complete Pytest
+matrix with only the known Starlette/AnyIO deprecation warning. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=table-spans-13db7f3d`.
+
 Roadmap 317 through 320 / PLANS 178 through 181 are complete under ADR-0130. Native Office now supports inert top-level
 bar, line and pie charts backed only by bounded literal data. Each chart stores a fresh stable ID, title, alternative
 text, legend flag, up to twelve unique categories and up to four unique integer series with fixed colors. Bar and pie
@@ -3056,7 +3060,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 321 through 324 / PLANS 182 through 185 are complete and published through `13db7f3d`. Preserve bounded merged
+Roadmap 321 through 324 / PLANS 182 through 185 are complete; implementation is published through `13db7f3d` and full
+quality through `4af86a03`. Preserve bounded merged
 table grids, semantic row/column headers, inert native charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
 atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
 bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
