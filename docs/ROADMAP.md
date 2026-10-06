@@ -2139,6 +2139,27 @@ in der vollstaendigen Druckwiederholung 6/6. Beide finalen Druckansichten bestan
 leben im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, Datenquelle, Formelengine,
 Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
 
+321. [x] Begrenzte verbundene Tabellenzellen umgesetzt: Native Kopf- und Datenzellen speichern kanonische Spalten-
+     und Zeilenspannen. Browser und Server pruefen unabhaengig ein rechteckiges logisches Raster ohne Luecken,
+     Ueberlappungen, abgeschnittene Spannen oder mehr als zwanzig Spalten und zweihundert Zeilen.
+
+322. [x] Fokussierbares Verbinden und Teilen geschlossen: **Zellen verbinden** arbeitet nur auf einer gueltigen
+     Auswahl, **Zelle teilen** nur auf einer verbundenen Zelle. Jede erfolgreiche Aenderung ist genau ein isolierter
+     Rueckgaengig-Schritt; abgelehnte Aenderungen lassen den Entwurf unveraendert.
+
+323. [x] Semantische Kopfspalten neben Kopfzeilen umgesetzt: Der getrennte **Kopfspalte**-Schalter folgt dem logischen
+     Raster auch bei verbundenen Zellen. Der Druck gibt echte `colspan`-/`rowspan`-Attribute sowie `scope="col"` und
+     `scope="row"` aus.
+
+324. [x] Vollstaendigen Tabellen-Spannen-Lebenszyklus ueber bestaetigtes Speichern, immutable Vorgaengerversion,
+     Undo/Redo, Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 321 bis 324 / PLANS 182 bis 185 sind gemeinsam unter ADR-0131 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4; die angrenzende Tabellen-, Beschriftungs- und
+Vergleichsmatrix bestand 22/22. Beide finalen Druckansichten bestanden die visuelle Pruefung ohne horizontalen
+Ueberlauf. Die Struktur lebt im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration,
+Tabellenkalkulation, Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

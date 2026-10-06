@@ -2,6 +2,26 @@
 
 Updated: 2026-10-06
 
+Roadmap 321 through 324 / PLANS 182 through 185 are complete under ADR-0131. Native Office tables now retain bounded
+column and row spans, expose focusable merge and split actions, and support an independent semantic header-column
+toggle. Browser and server independently validate a rectangular logical grid without gaps, overlaps, truncated spans
+or expansion beyond twenty columns and two hundred rows. Editor-only attributes are removed before canonical
+validation and never enter saved content.
+
+Each accepted merge, split or header change is one isolated undo step. Confirmed CAS save, immutable predecessor,
+reload and comparison retain exact span geometry. Print emits native `colspan` and `rowspan`, column headers use
+`scope="col"`, and first-column body headers use `scope="row"`.
+
+The focused model plus desktop/mobile workflow passed 4/4. The adjacent table, caption and comparison selection passed
+22/22. Desktop/mobile screenshot SHA-256 values are
+`be1c6b8ec3d524116be8d94159b24259bc2dedd5b73b39696bb8d200db8b8b7a` and
+`0ff5220e8d3b583333feabce6754f3a495ade38ac89f2b291244f351f7581031`; both passed visual review without horizontal
+overflow. The isolated review UI remains on port 42880 and will be refreshed to the final documentation commit.
+
+Implementation is published through `13db7f3d` on `kirchherr/kb-write-unit-of-work`. The structure uses the existing
+immutable Office version JSON and general recovery contract, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 317 through 320 / PLANS 178 through 181 are complete under ADR-0130. Native Office now supports inert top-level
 bar, line and pie charts backed only by bounded literal data. Each chart stores a fresh stable ID, title, alternative
 text, legend flag, up to twelve unique categories and up to four unique integer series with fixed colors. Bar and pie
@@ -3036,8 +3056,8 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 317 through 320 / PLANS 178 through 181 are complete and published through `f28caea4`. Preserve inert native
-charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
+Roadmap 321 through 324 / PLANS 182 through 185 are complete and published through `13db7f3d`. Preserve bounded merged
+table grids, semantic row/column headers, inert native charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
 atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
 bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
 including the fresh Roadmap-309 PostgreSQL/S3 proof.

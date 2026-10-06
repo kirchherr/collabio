@@ -194,6 +194,23 @@ same canonical data. The existing Office JSON recovery contract applies; there i
 network read or engine admission. Decision:
 [ADR-0130](../../ARCHITECTURE_DECISIONS/ADR-0130-native-office-inert-charts.md).
 
+## Merged table cells and semantic headers (Roadmap 321–324)
+
+Native table cells retain canonical column spans from one through twenty and row spans from one through two hundred.
+Browser and server expand every row into the same bounded logical grid and reject gaps, overlaps, truncated spans and
+nonrectangular results. Editor-only cell attributes are normalized away before validation and never enter immutable
+version JSON.
+
+**Zellen verbinden** and **Zelle teilen** are focusable contextual actions whose availability follows the current
+selection. Each accepted operation creates one isolated undo step. **Kopfspalte** is independent of the existing
+header-row action and follows the logical grid when a merged cell covers several columns or rows.
+
+Confirmed CAS save, immutable predecessors, reload and comparison retain exact span geometry. Print emits native
+`colspan` and `rowspan`; column headers use `scope="col"`, while first-column headers in the body use `scope="row"`.
+The structure uses the existing Office JSON recovery contract and adds no spreadsheet runtime, formula evaluation,
+database migration or engine admission. Decision:
+[ADR-0131](../../ARCHITECTURE_DECISIONS/ADR-0131-native-office-merged-table-cells.md).
+
 ## Native semantic document structures (Roadmap 280–286)
 
 **Struktur …** provides one responsive, keyboard-reachable workflow for document-owned fields, generated tables of

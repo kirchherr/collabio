@@ -502,6 +502,15 @@ descriptions. The neighboring comparison and print files remain mandatory. Evide
 `office-chart-mobile-chromium.png`. Charts live inside existing immutable Office version JSON, so no new numbered
 restore target is created.
 
+Roadmap 321 through 324 add bounded merged native table cells and an independent semantic header-column toggle. The
+combined desktop/mobile proof inserts a 3-by-3 table, selects and merges its first row, verifies isolated undo/redo,
+splits and restores the merged cell, toggles the first column to headers, then verifies exact confirmed save, immutable
+predecessor, reload and semantic print spans/scopes. Pure model coverage accepts rectangular row/column spans and
+rejects gaps, truncated spans and out-of-range geometry; comparison text exposes the stored span shape. Neighboring
+table, caption and comparison files remain mandatory. Evidence is retained in `e2e/work/artifacts/results.json` plus
+`office-table-spans-desktop-chromium.png` and `office-table-spans-mobile-chromium.png`. Spans live inside existing
+immutable Office version JSON, so no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:
