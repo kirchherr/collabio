@@ -144,6 +144,46 @@ test("Office image group removal is atomic and reversible", async ({ page }, tes
   expect(prints[0].snapshot.html).not.toContain("office-print-image-group"); await page.locator("#print-close").click();
 });
 
+test("Office image group members move one accessible position with exact undo save reload and print order", async ({ page }, testInfo) => {
+  test.setTimeout(75_000);
+  const { baseline, images } = await fixture(page), editor = officeEditor(page), objectId = baseline.document.object_id;
+  await openImage(page, 0); await page.locator("#image-group-gap").fill("16"); await page.locator("#image-group-next").click();
+  await openImage(page, 0); await page.locator("#image-group-next").click();
+  const group = editor.locator(":scope > .office-image-group"); await expect(group.locator("img")).toHaveCount(3);
+
+  await openImage(page, 1);
+  await expect(page.locator("#image-group-member-previous")).toBeEnabled();
+  await expect(page.locator("#image-group-member-next")).toBeEnabled();
+  await page.locator("#image-group-member-previous").click();
+  await expect.poll(() => group.locator("img").evaluateAll((nodes) => nodes.map((node) => node.alt)))
+    .toEqual(["Grouped sample 2", "Grouped sample 1", "Grouped sample 3"]);
+  await editor.press("Control+z");
+  await expect.poll(() => group.locator("img").evaluateAll((nodes) => nodes.map((node) => node.alt)))
+    .toEqual(["Grouped sample 1", "Grouped sample 2", "Grouped sample 3"]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(() => group.locator("img").evaluateAll((nodes) => nodes.map((node) => node.alt)))
+    .toEqual(["Grouped sample 2", "Grouped sample 1", "Grouped sample 3"]);
+
+  const saved = await saveOffice(page, { objectId }), stored = saved.content.content.find((entry) => entry.type === "imageGroup");
+  expect(stored.content.map((entry) => entry.attrs)).toEqual([images[1].attrs, images[0].attrs, images[2].attrs]);
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+  await page.locator("#document-reload").click();
+  await expect.poll(() => group.locator("img").evaluateAll((nodes) => nodes.map((node) => node.alt)))
+    .toEqual(["Grouped sample 2", "Grouped sample 1", "Grouped sample 3"]);
+
+  await openImage(page, 0);
+  await expect(page.locator("#image-group-member-previous")).toBeDisabled();
+  await expect(page.locator("#image-group-member-next")).toBeEnabled();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-member-order-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#image-cancel").click();
+  const prints = await installPrintProbe(page); await page.locator("#document-print").click();
+  await expect.poll(() => page.locator("#print-preview .office-print-image-group img")
+    .evaluateAll((nodes) => nodes.map((node) => node.alt)))
+    .toEqual(["Grouped sample 2", "Grouped sample 1", "Grouped sample 3"]);
+  await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
+  expect(prints[0].snapshot.text.indexOf("Group image 2")).toBeLessThan(prints[0].snapshot.text.indexOf("Group image 1"));
+});
+
 test("Office image group duplication owns fresh assets and stays atomic", async ({ page }, testInfo) => {
   test.setTimeout(75_000);
   const { baseline } = await fixture(page), editor = officeEditor(page), objectId = baseline.document.object_id;

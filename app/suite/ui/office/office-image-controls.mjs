@@ -167,6 +167,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     for (const name of ["x", "y"]) $(`image-position-${name}`).disabled = grouped || !positioned;
     $("image-group-previous").disabled = !valid() || action?.busy || !groupCandidate(action, "previous");
     $("image-group-next").disabled = !valid() || action?.busy || !groupCandidate(action, "next");
+    $("image-group-member-previous").disabled = !valid() || action?.busy || !grouped || action.imageContext.imageIndex === 0;
+    $("image-group-member-next").disabled = !valid() || action?.busy || !grouped ||
+      action.imageContext.imageIndex === action.imageContext.group.childCount - 1;
     $("image-group-duplicate").disabled = !valid() || action?.busy || !grouped ||
       groupCount(action?.document) >= OFFICE_IMAGE_GROUP_LIMIT || imageCount(action?.document) + (action?.imageContext?.group?.childCount ?? 0) > 40;
     $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
@@ -486,6 +489,24 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   $("image-form").addEventListener("submit", (event) => { event.preventDefault(); change("apply"); });
   for (const name of ["remove", "up", "down"]) $(`image-${name}`).addEventListener("click", () => change(name));
   for (const direction of ["previous", "next"]) $(`image-group-${direction}`).addEventListener("click", () => group(direction));
+  const reorderMember = (direction) => {
+    if (!valid() || action.busy || !action.imageContext?.grouped) return;
+    const owner = action, editor = owner.editor, context = owner.imageContext;
+    const targetIndex = context.imageIndex + (direction === "previous" ? -1 : 1);
+    if (targetIndex < 0 || targetIndex >= context.group.childCount) return;
+    const members = [...context.group.content.content];
+    [members[context.imageIndex], members[targetIndex]] = [members[targetIndex], members[context.imageIndex]];
+    const tr = editor.state.tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize,
+      editor.schema.nodes.imageGroup.create(context.group.attrs, members));
+    const offset = 1 + members.slice(0, targetIndex).reduce((total, node) => total + node.nodeSize, 0);
+    tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + offset));
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice("Bild in der Gruppe umgeordnet. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+    } catch { $("image-status").textContent = "Das Bild konnte in dieser Gruppe nicht umgeordnet werden."; }
+  };
+  $("image-group-member-previous").addEventListener("click", () => reorderMember("previous"));
+  $("image-group-member-next").addEventListener("click", () => reorderMember("next"));
   $("image-group-duplicate").addEventListener("click", duplicateGroup);
   $("image-duplicate").addEventListener("click", duplicateImage);
   $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
