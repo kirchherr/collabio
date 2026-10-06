@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { compareOfficeDocuments } from "../office-comparison.mjs";
+import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeTableCellAttributes, officeTableGrid } from "../office-tables.mjs";
 
 const paragraph = (text = "") => ({ type: "paragraph", content: text ? [{ type: "text", text }] : undefined });
@@ -29,5 +29,6 @@ test("Office comparison exposes merged-cell geometry", () => {
   const after = { type: "doc", content: [merged] };
   const comparison = compareOfficeDocuments(before, after);
   expect(comparison.counts.changed).toBe(1);
-  expect(comparison.blocks.find((block) => block.status === "changed").after).toContain("3 Spalten × 1 Zeilen");
+  const changed = comparison.rows.find((row) => row.kind === "changed");
+  expect(describeOfficeBlock(changed.after).text).toContain("3 Spalten × 1 Zeilen");
 });
