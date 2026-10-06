@@ -73,8 +73,8 @@ def test_native_document_supports_bounded_rich_structure_without_active_content(
 
 
 def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
-    paragraph = {"type": "paragraph"}
-    merged = {
+    paragraph: dict[str, Any] = {"type": "paragraph"}
+    merged: dict[str, Any] = {
         "type": "table",
         "content": [
             {
