@@ -5,8 +5,7 @@ export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
 
 export function officeTableCellAttributes(value = {}) {
-  if (!value || Object.keys(value).some((key) => !["colspan", "rowspan", "colwidth"].includes(key)) ||
-      !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
+  if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
       (value.colspan ?? 1) < 1 || (value.colspan ?? 1) > 20 ||
       (value.rowspan ?? 1) < 1 || (value.rowspan ?? 1) > 200 || value.colwidth != null) {
     throw new TypeError("Invalid Office table cell");

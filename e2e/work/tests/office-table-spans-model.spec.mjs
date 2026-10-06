@@ -15,6 +15,8 @@ const merged = { type: "table", content: [
 test("Office table grids accept bounded rectangular row and column spans", () => {
   expect(officeTableGrid(merged)).toEqual({ rows: 3, columns: 3 });
   expect(officeTableCellAttributes({ colspan: 3, rowspan: 2, colwidth: null })).toEqual({ colspan: 3, rowspan: 2 });
+  expect(officeTableCellAttributes({ colspan: 1, rowspan: 1, colwidth: null, background: null }))
+    .toEqual({ colspan: 1, rowspan: 1 });
   for (const invalid of [
     { ...merged, content: merged.content.slice(0, 2) },
     { ...merged, content: [merged.content[0], merged.content[1], { type: "tableRow", content: [] }] },
