@@ -122,7 +122,7 @@ def test_native_schema_resource_limits_are_independent() -> None:
 
 
 def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
-    attrs = {
+    attrs: dict[str, Any] = {
         "id": "chart-" + "a" * 24,
         "kind": "bar",
         "title": "Quarterly plan",
