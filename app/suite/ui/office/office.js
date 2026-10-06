@@ -2597,7 +2597,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference, OfficeDocumentReference,
-      officeDocumentCardExtension(() => state.documentReferenceResolutions, () => void openDocumentCardDialog()),
+      officeDocumentCardExtension(() => state.documentReferenceResolutions, () => void documentCardControls.open()),
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageGroupExtension(),

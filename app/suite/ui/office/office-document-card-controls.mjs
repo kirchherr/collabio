@@ -218,5 +218,5 @@ export function installOfficeDocumentCardControls({ state, $, api, sessionCurren
     $("document-card-options").disabled = !allowed();
     $("document-card-options").textContent = selected() ? "Dokumentobjekt bearbeiten …" : "Dokumentobjekt einfügen …";
   };
-  return { update: updateControl, close };
+  return { update: updateControl, close, open };
 }
