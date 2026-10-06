@@ -453,7 +453,6 @@ function normalizedDocument(document) {
       result.attrs = officeEquationAttributes(value.attrs);
     }
     if (value.type === "table") {
-      officeTableGrid(value);
       const attributes = officeTableAttributes(value.attrs);
       if (attributes.tableId) result.attrs = attributes;
     }
@@ -504,11 +503,7 @@ function normalizedDocument(document) {
       result.content = value.content.map((child) => walk(child, depth + 1, value.type));
     }
     if (value.type === "table") {
-      const rows = result.content || [];
-      if (!rows.length || rows.length > 200 || rows.some((row) => row.type !== "tableRow" ||
-          !row.content?.length || row.content.length > 20 || row.content.length !== rows[0].content.length)) {
-        throw new Error("document-table");
-      }
+      officeTableGrid(result);
     }
     return result;
   };
@@ -2353,8 +2348,7 @@ function commitTableTransaction(transaction, message) {
   const editor = state.editor;
   if (!replacementAllowed() || !transaction || !transaction.docChanged || transaction.doc.eq(editor.state.doc)) return false;
   try { validateEditorDocument(transaction.doc); }
-  catch (error) {
-    console.debug("Office table transaction rejected", error?.message);
+  catch {
     $("table-message").textContent = tableLimitMessage;
     if ($("table-tools").hidden && !$("table-insert-dialog").open) notice(tableLimitMessage, true);
     return false;
