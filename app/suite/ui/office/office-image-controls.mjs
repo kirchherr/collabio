@@ -29,16 +29,15 @@ export function officeImageExtension(context, accessDenied) {
       return ({ node, editor, getPos }) => {
         const dom = document.createElement("div"); dom.className = "office-image-node";
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
-        dom.addEventListener("mousedown", (event) => {
-          if (event.target instanceof Element && event.target.closest("button")) return;
+        const edit = document.createElement("button"); edit.type = "button"; edit.className = "office-image-edit";
+        edit.setAttribute("contenteditable", "false"); edit.textContent = "Bild bearbeiten";
+        edit.addEventListener("mousedown", (event) => { event.preventDefault(); event.stopPropagation(); });
+        edit.addEventListener("click", (event) => {
+          event.preventDefault(); event.stopPropagation();
           const position = typeof getPos === "function" ? getPos() : null;
           if (!Number.isInteger(position)) return;
-          event.preventDefault(); event.stopPropagation();
           editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position)));
-        });
-        dom.addEventListener("click", (event) => {
-          if (event.target instanceof Element && event.target.closest("button")) return;
-          event.preventDefault(); event.stopPropagation();
+          document.getElementById("image-options")?.click();
         });
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
@@ -103,8 +102,8 @@ export function officeImageExtension(context, accessDenied) {
               if (Number.isInteger(position)) editor.commands.setNodeSelection(position);
             });
             positionAnchor(anchor, figure);
-            dom.replaceChildren(figure, anchor);
-          } else dom.replaceChildren(figure);
+            dom.replaceChildren(figure, anchor, edit);
+          } else dom.replaceChildren(figure, edit);
         };
         fetchOfficeImage(node.attrs, context, controller.signal).then((value) => {
           if (destroyed) { URL.revokeObjectURL(value); return; }

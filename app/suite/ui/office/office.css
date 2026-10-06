@@ -103,6 +103,9 @@
 .office-image-group-content,.office-print-image-group { display: grid; grid-template-columns: repeat(var(--image-group-columns),minmax(0,1fr)); gap: var(--image-group-gap); align-items: start; }
 .office-image-group-content > .office-image-node,.office-print-image-group > .office-image { min-width: 0; margin: 0; }
 .office-image-group .office-image { margin: 0; }
+.office-image-node { position: relative; }
+.office-image-edit { position: absolute; top: 6px; right: 6px; z-index: 6; border: 0; border-radius: 5px; padding: 3px 7px; background: #eaf5f1; color: #086560; box-shadow: 0 1px 3px #0f172a33; font: 600 10px/1.4 Inter,"Segoe UI",Arial,sans-serif; cursor: pointer; }
+.office-image-edit:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 .office-image-group-control { position: absolute; top: 5px; left: 8px; z-index: 5; border: 0; padding: 2px 6px; background: #eaf5f1; color: #086560; font: 600 10px/1.4 Inter,"Segoe UI",Arial,sans-serif; cursor: pointer; }
 .image-group-fields { margin: .9rem 0; padding: .8rem; border: 1px solid #a8d5c8; border-radius: 8px; background: #f4fbf8; }
 .image-group-fields legend { padding: 0 .35rem; color: #086560; font-weight: 700; }
