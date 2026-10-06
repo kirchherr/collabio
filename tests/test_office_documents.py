@@ -72,6 +72,59 @@ def test_native_document_supports_bounded_rich_structure_without_active_content(
     assert validate_office_document(rich) == rich
 
 
+def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
+    paragraph = {"type": "paragraph"}
+    merged = {
+        "type": "table",
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    {"type": "tableHeader", "attrs": {"colspan": 3, "rowspan": 1}, "content": [paragraph]}
+                ],
+            },
+            {
+                "type": "tableRow",
+                "content": [
+                    {"type": "tableHeader", "attrs": {"colspan": 1, "rowspan": 2}, "content": [paragraph]},
+                    {"type": "tableCell", "content": [paragraph]},
+                    {"type": "tableCell", "content": [paragraph]},
+                ],
+            },
+            {
+                "type": "tableRow",
+                "content": [
+                    {"type": "tableCell", "content": [paragraph]},
+                    {"type": "tableCell", "content": [paragraph]},
+                ],
+            },
+        ],
+    }
+    document = {"type": "doc", "content": [merged]}
+    assert validate_office_document(document) == document
+    invalid = [
+        {**merged, "content": merged["content"][:2]},
+        {
+            **merged,
+            "content": [merged["content"][0], merged["content"][1], {**merged["content"][2], "content": []}],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [
+                        {"type": "tableCell", "attrs": {"colspan": 21, "rowspan": 1}, "content": [paragraph]}
+                    ],
+                }
+            ],
+        },
+    ]
+    for table in invalid:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [table]})
+
+
 @pytest.mark.parametrize(
     "node",
     [

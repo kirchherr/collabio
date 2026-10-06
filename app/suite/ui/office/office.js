@@ -8,7 +8,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
   addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn,
-  deleteTable, goToNextCell, selectedRect, isInTable, CellSelection, TableMap,
+  deleteTable, mergeCells, splitCell, toggleHeaderColumn, goToNextCell, selectedRect, isInTable, CellSelection, TableMap,
 } from "@tiptap/pm/tables";
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
@@ -31,7 +31,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableFragment, officeTableGrid, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -453,6 +453,7 @@ function normalizedDocument(document) {
       result.attrs = officeEquationAttributes(value.attrs);
     }
     if (value.type === "table") {
+      officeTableGrid(value);
       const attributes = officeTableAttributes(value.attrs);
       if (attributes.tableId) result.attrs = attributes;
     }
@@ -477,10 +478,7 @@ function normalizedDocument(document) {
       result.attrs = { start };
     }
     if (["tableCell", "tableHeader"].includes(value.type)) {
-      if ((value.attrs?.colspan ?? 1) !== 1 || (value.attrs?.rowspan ?? 1) !== 1 || value.attrs?.colwidth != null) {
-        throw new Error("document-table");
-      }
-      result.attrs = { colspan: 1, rowspan: 1 };
+      result.attrs = officeTableCellAttributes(value.attrs);
     }
     if (value.marks?.length) {
       const types = value.marks.map((mark) => mark.type);
@@ -2281,6 +2279,9 @@ function updateTableControls() {
   $("table-row-action").disabled = !rect || !allowed;
   $("table-column-action").disabled = !rect || !allowed;
   $("table-header-toggle").disabled = !rect || !allowed;
+  $("table-header-column-toggle").disabled = !rect || !allowed;
+  $("table-merge").disabled = !rect || !allowed || !mergeCells(state.editor.state);
+  $("table-split").disabled = !rect || !allowed || !splitCell(state.editor.state);
   $("table-caption").disabled = !rect || !allowed;
   $("table-delete").disabled = !rect || !allowed;
   $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
@@ -2288,6 +2289,10 @@ function updateTableControls() {
     rect.table.firstChild.child(index).type.name === "tableHeader").every(Boolean));
   $("table-header-toggle").setAttribute("aria-pressed", String(header));
   $("table-header-toggle").title = header ? "Kopfzeile in normale Zellen umwandeln" : "Erste Zeile als Kopfzeile formatieren";
+  const columnHeader = Boolean(rect && Array.from({ length: rect.map.height }, (_, row) =>
+    state.editor.state.doc.nodeAt(rect.tableStart + rect.map.map[row * rect.map.width])?.type.name === "tableHeader").every(Boolean));
+  $("table-header-column-toggle").setAttribute("aria-pressed", String(columnHeader));
+  $("table-header-column-toggle").title = columnHeader ? "Kopfspalte in normale Zellen umwandeln" : "Erste Spalte als Kopfspalte formatieren";
   const numbered = Boolean(currentTableNode()?.entry.attrs.tableId);
   $("table-caption").setAttribute("aria-pressed", String(numbered));
   $("table-caption").textContent = numbered ? "Beschriftung bearbeiten …" : "Beschriftung …";
@@ -2446,12 +2451,23 @@ function toggleTableHeader() {
   firstRow.forEach((cell) => { if (cell.type.name !== "tableHeader") allHeaders = false; });
   const type = allHeaders ? editor.schema.nodes.tableCell : editor.schema.nodes.tableHeader;
   const transaction = editor.state.tr;
-  for (let column = 0; column < rect.map.width; column += 1) {
-    const position = rect.tableStart + rect.map.map[column];
+  for (const relative of new Set(rect.map.map.slice(0, rect.map.width))) {
+    const position = rect.tableStart + relative;
     const cell = transaction.doc.nodeAt(position);
     transaction.setNodeMarkup(position, type, cell.attrs, cell.marks);
   }
   commitTableTransaction(transaction, allHeaders ? "Kopfzeile in normale Zellen umgewandelt." : "Erste Zeile als Kopfzeile formatiert.");
+}
+
+function runTableCellCommand(command, message) {
+  if (!replacementAllowed() || !currentTable()) return false;
+  const editor = state.editor; let transaction = null;
+  command(editor.state, (candidate) => { transaction = candidate; });
+  return commitTableTransaction(transaction, message);
+}
+
+function toggleTableHeaderColumn() {
+  return runTableCellCommand(toggleHeaderColumn, "Kopfspalte umgeschaltet. Änderungen bleiben bis zum Speichern im Entwurf.");
 }
 
 function selectTablePart(part) {
@@ -5261,9 +5277,14 @@ $("section-dialog").addEventListener("close", () => { if (!$("section-dialog").o
 });
 $("table-select").addEventListener("change", () => { const part = $("table-select").value; $("table-select").value = ""; selectTablePart(part); });
 $("table-header-toggle").addEventListener("click", toggleTableHeader);
+$("table-header-column-toggle").addEventListener("click", toggleTableHeaderColumn);
+$("table-merge").addEventListener("click", () => runTableCellCommand(mergeCells,
+  "Ausgewählte Zellen verbunden. Inhalte und Formatierung bleiben erhalten."));
+$("table-split").addEventListener("click", () => runTableCellCommand(splitCell,
+  "Verbundene Zelle wieder in einzelne Zellen aufgeteilt."));
 $("table-caption").addEventListener("click", openTableCaption);
 $("table-delete").addEventListener("click", () => runTableCommand("deleteTable"));
-["table-header-toggle", "table-caption", "table-delete"].forEach((id) => {
+["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-delete"].forEach((id) => {
   $(id).addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 });
 $("table-caption-form").addEventListener("submit", (event) => { event.preventDefault(); commitTableCaption(); });

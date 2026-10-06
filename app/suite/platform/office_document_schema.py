@@ -117,6 +117,51 @@ def _valid_literal(value: Any, minimum: int, maximum: int) -> bool:
     )
 
 
+def _valid_table_grid(rows: Any) -> bool:
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 200:
+        return False
+    width: int | None = None
+    active: list[int] = []
+    for row_index, row in enumerate(rows):
+        if (
+            not isinstance(row, dict)
+            or row.get("type") != "tableRow"
+            or not isinstance(row.get("content"), list)
+            or not 1 <= len(row["content"]) <= 20
+        ):
+            return False
+        occupied = [remaining > 0 for remaining in active]
+        column = 0
+        for cell in row["content"]:
+            if not isinstance(cell, dict) or cell.get("type") not in {"tableCell", "tableHeader"}:
+                return False
+            attrs = cell.get("attrs", {})
+            colspan, rowspan = attrs.get("colspan", 1), attrs.get("rowspan", 1)
+            while column < len(occupied) and occupied[column]:
+                column += 1
+            limit = width if width is not None else 20
+            if (
+                column + colspan > limit
+                or row_index + rowspan > len(rows)
+                or any(occupied[index] for index in range(column, min(column + colspan, len(occupied))))
+            ):
+                return False
+            if len(occupied) < column + colspan:
+                occupied.extend([False] * (column + colspan - len(occupied)))
+                active.extend([0] * (column + colspan - len(active)))
+            for index in range(column, column + colspan):
+                occupied[index] = True
+                active[index] = rowspan
+            column += colspan
+        row_width = max((index + 1 for index, entry in enumerate(occupied) if entry), default=0)
+        if width is None:
+            width = row_width
+        if row_width != width or not all(occupied[:width]):
+            return False
+        active = [max(0, remaining - 1) for remaining in active[:width]]
+    return bool(width) and not any(active)
+
+
 def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     """Validate structure and resource limits before canonicalization or storage."""
     nodes = 0
@@ -753,7 +798,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif kind in {"tableCell", "tableHeader"}:
             if set(attrs) - {"colspan", "rowspan", "colwidth"}:
                 reject()
-            if any(type(attrs.get(key, 1)) is not int or attrs.get(key, 1) != 1 for key in ("colspan", "rowspan")):
+            if any(
+                type(attrs.get(key, 1)) is not int
+                or not 1 <= attrs.get(key, 1) <= (20 if key == "colspan" else 200)
+                for key in ("colspan", "rowspan")
+            ):
                 reject()
             if attrs.get("colwidth") is not None:
                 reject()
@@ -891,7 +940,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             reject()
         for child in children:
             visit(child, depth + 1, kind)
-        if kind == "table" and len({len(row["content"]) for row in children}) != 1:
+        if kind == "table" and not _valid_table_grid(children):
             reject()
 
     if document.get("type") != "doc":

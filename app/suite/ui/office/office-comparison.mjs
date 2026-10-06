@@ -6,7 +6,7 @@ import { officeStyleComparisonDocument, officeStyleDescription } from "./office-
 import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { officeTableAttributes } from "./office-tables.mjs";
+import { officeTableAttributes, officeTableCellAttributes } from "./office-tables.mjs";
 import { officeShapeDescription } from "./office-shapes.mjs";
 import { officeImageGroupLayoutLabel } from "./office-image-groups.mjs";
 import { officeDocumentCardAttributes } from "./office-document-cards.mjs";
@@ -260,7 +260,9 @@ function blockText(block, nested = false) {
     }
     case "tableRow": return children.map((cell, index) => {
       const label = cell.type === "tableHeader" ? "Kopfzelle" : "Zelle";
-      return `${label} ${index + 1}: ${blockText(cell, true)}`;
+      const attrs = officeTableCellAttributes(cell.attrs);
+      const span = attrs.colspan > 1 || attrs.rowspan > 1 ? ` · ${attrs.colspan} Spalten × ${attrs.rowspan} Zeilen` : "";
+      return `${label} ${index + 1}${span}: ${blockText(cell, true)}`;
     }).join(" │ ");
     case "doc":
     case "listItem":

@@ -4,6 +4,45 @@ const forbiddenCaption = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
 export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
 
+export function officeTableCellAttributes(value = {}) {
+  if (!value || Object.keys(value).some((key) => !["colspan", "rowspan", "colwidth"].includes(key)) ||
+      !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
+      (value.colspan ?? 1) < 1 || (value.colspan ?? 1) > 20 ||
+      (value.rowspan ?? 1) < 1 || (value.rowspan ?? 1) > 200 || value.colwidth != null) {
+    throw new TypeError("Invalid Office table cell");
+  }
+  return { colspan: value.colspan ?? 1, rowspan: value.rowspan ?? 1 };
+}
+
+export function officeTableGrid(value) {
+  const rows = value?.type === "table" ? value.content : null;
+  if (!Array.isArray(rows) || rows.length < 1 || rows.length > 200) throw new TypeError("Invalid Office table grid");
+  let width = null; let active = [];
+  rows.forEach((row, rowIndex) => {
+    if (row?.type !== "tableRow" || !Array.isArray(row.content) || row.content.length < 1 || row.content.length > 20) {
+      throw new TypeError("Invalid Office table row");
+    }
+    const occupied = active.map((remaining) => remaining > 0); let column = 0;
+    for (const cell of row.content) {
+      if (!cell || !["tableCell", "tableHeader"].includes(cell.type)) throw new TypeError("Invalid Office table cell");
+      const attrs = officeTableCellAttributes(cell.attrs); while (occupied[column]) column += 1;
+      if (column + attrs.colspan > 20 || column + attrs.colspan > (width ?? 20) ||
+          Array.from({ length: attrs.colspan }, (_, offset) => occupied[column + offset]).some(Boolean) ||
+          rowIndex + attrs.rowspan > rows.length) throw new TypeError("Invalid Office table span");
+      for (let offset = 0; offset < attrs.colspan; offset += 1) {
+        occupied[column + offset] = true; active[column + offset] = attrs.rowspan;
+      }
+      column += attrs.colspan;
+    }
+    const rowWidth = occupied.lastIndexOf(true) + 1;
+    if (width == null) width = rowWidth;
+    if (rowWidth !== width || occupied.slice(0, width).some((entry) => !entry)) throw new TypeError("Invalid Office table grid");
+    active = Array.from({ length: width }, (_, index) => Math.max(0, (active[index] || 0) - 1));
+  });
+  if (active.some(Boolean)) throw new TypeError("Invalid Office table grid");
+  return { rows: rows.length, columns: width };
+}
+
 export function officeTableId(value) {
   if (typeof value !== "string" || !tableIdentifier.test(value)) throw new TypeError("Invalid Office table ID");
   return value;

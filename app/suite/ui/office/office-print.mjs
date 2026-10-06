@@ -9,7 +9,7 @@ import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./o
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
-import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
+import { officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableFragment, officeTableGrid } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -208,6 +208,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       return text;
     }
     if (value.type === "table") {
+      officeTableGrid(value);
       const table = dom.createElement("table");
       const attrs = officeTableAttributes(value.attrs);
       if (attrs.tableId != null) {
@@ -224,10 +225,11 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         if (row.type !== "tableRow" || ++count > 10000 || depth + 1 > 32) throw new Error("Invalid print row");
         header = header && Boolean(row.content?.length) && row.content.every((cell) => cell.type === "tableHeader");
         const tr = dom.createElement("tr");
-        for (const cell of row.content || []) {
+        for (const [cellIndex, cell] of (row.content || []).entries()) {
           if (!["tableCell", "tableHeader"].includes(cell.type)) throw new Error("Invalid print cell");
           const element = render(cell, depth + 2);
           if (header) element.setAttribute("scope", "col");
+          else if (cellIndex === 0 && cell.type === "tableHeader") element.setAttribute("scope", "row");
           tr.append(element);
         }
         (header ? head : body).append(tr);
@@ -244,6 +246,11 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     else if (Object.hasOwn(blockTags, value.type)) tag = blockTags[value.type];
     else throw new Error("Unsupported print node");
     const element = dom.createElement(tag);
+    if (["tableCell", "tableHeader"].includes(value.type)) {
+      const attrs = officeTableCellAttributes(value.attrs);
+      if (attrs.colspan > 1) element.setAttribute("colspan", String(attrs.colspan));
+      if (attrs.rowspan > 1) element.setAttribute("rowspan", String(attrs.rowspan));
+    }
     if (["paragraph", "heading"].includes(value.type)) {
       for (const [name, attribute] of Object.entries(officeStyledDOMAttributes(value.attrs, styles))) {
         element.setAttribute(name, attribute);
