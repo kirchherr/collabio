@@ -39,17 +39,17 @@ export function officeImageGroupExtension() {
         control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
         contentDOM.addEventListener("mousedown", (event) => {
           const member = event.target instanceof Element ? event.target.closest(".office-image-node") : null;
-          if (!member || member.parentElement !== contentDOM) return;
-          const index = [...contentDOM.children].indexOf(member);
+          if (!member || !contentDOM.contains(member)) return;
+          const index = [...contentDOM.querySelectorAll(":scope > .office-image-node")].indexOf(member);
           const position = typeof getPos === "function" ? getPos() : null;
           if (index < 0 || !Number.isInteger(position) || index >= node.childCount) return;
           const offset = 1 + node.content.content.slice(0, index).reduce((total, child) => total + child.nodeSize, 0);
           event.preventDefault(); event.stopPropagation();
-          editor.commands.setNodeSelection(position + offset);
+          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position + offset)));
         }, true);
         contentDOM.addEventListener("click", (event) => {
           const member = event.target instanceof Element ? event.target.closest(".office-image-node") : null;
-          if (!member || member.parentElement !== contentDOM) return;
+          if (!member || !contentDOM.contains(member)) return;
           event.preventDefault(); event.stopPropagation();
         }, true);
         return { dom, contentDOM,

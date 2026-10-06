@@ -34,7 +34,7 @@ export function officeImageExtension(context, accessDenied) {
           const position = typeof getPos === "function" ? getPos() : null;
           if (!Number.isInteger(position)) return;
           event.preventDefault(); event.stopPropagation();
-          editor.commands.setNodeSelection(position);
+          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position)));
         });
         dom.addEventListener("click", (event) => {
           if (event.target instanceof Element && event.target.closest("button")) return;
