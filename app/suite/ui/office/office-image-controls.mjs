@@ -37,6 +37,10 @@ export function officeImageExtension(context, accessDenied) {
           editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position)));
           editor.view.focus();
         });
+        dom.addEventListener("click", (event) => {
+          if (event.target instanceof Element && event.target.closest("button")) return;
+          event.preventDefault(); event.stopPropagation();
+        });
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
         const commitPosition = (position) => {
