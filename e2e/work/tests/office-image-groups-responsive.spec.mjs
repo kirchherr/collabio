@@ -281,7 +281,7 @@ test("Office image-group grids duplicate one member independently and extract it
 
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-image-group[data-image-group-layout='grid-3'] img")).toHaveCount(3);
-  await expect(page.locator("#print-preview > .office-image")).toHaveCount(1);
+  await expect(page.locator("#print-preview .office-print-content > .office-image")).toHaveCount(1);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-grid-${testInfo.project.name}.png`, fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
