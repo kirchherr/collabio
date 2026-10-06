@@ -28,6 +28,9 @@ the existing immutable Office version JSON and authoritative Roadmap-287/288 res
 relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production
 admission was activated.
 
+Full quality on documentation commit `e861f6c6` passed Ruff, formatting for 841 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning.
+
 Roadmap 311 through 313 / PLANS 172 through 174 are complete under ADR-0128. Native image groups now support bounded
 responsive two-, three- and four-column grids in addition to row and stack. A focusable **Bild bearbeiten** action on
 every image makes nested selection deterministic. Authors can independently duplicate the selected group member or
