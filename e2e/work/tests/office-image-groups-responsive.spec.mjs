@@ -220,3 +220,70 @@ test("Office image group duplication owns fresh assets and stays atomic", async 
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
   expect(prints[0].snapshot.html.match(/office-print-image-group/g)).toHaveLength(2);
 });
+
+test("Office image-group grids duplicate one member independently and extract it atomically", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  const { baseline } = await fixture(page), editor = officeEditor(page), objectId = baseline.document.object_id;
+  await openImage(page, 0); await page.locator("#image-group-next").click();
+  await openImage(page, 0); await page.locator("#image-group-next").click();
+  const group = editor.locator(":scope > .office-image-group"); await expect(group.locator("img")).toHaveCount(3);
+
+  await openImage(page, 1);
+  await page.locator("#image-group-layout").selectOption("grid-3");
+  await page.locator("#image-group-gap").fill("14");
+  await page.locator("#image-apply").click();
+  await expect(group).toHaveAttribute("data-image-group-layout", "grid-3");
+  const boxes = await group.locator("img").evaluateAll((nodes) => nodes.map((node) => {
+    const box = node.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width };
+  }));
+  const narrow = await editor.evaluate((node) => node.clientWidth <= 600);
+  if (narrow) {
+    expect(boxes[1].x).toBeGreaterThan(boxes[0].x);
+    expect(boxes[2].y).toBeGreaterThan(boxes[0].y);
+  } else {
+    expect(Math.max(...boxes.map(({ y }) => y)) - Math.min(...boxes.map(({ y }) => y))).toBeLessThan(2);
+    expect(boxes[1].x).toBeGreaterThan(boxes[0].x); expect(boxes[2].x).toBeGreaterThan(boxes[1].x);
+  }
+
+  await openImage(page, 1);
+  await expect(page.locator("#image-duplicate")).toHaveText("Bild in Gruppe duplizieren");
+  await page.route("**/images/duplicate", async (route) => route.fulfill({ status: 503, contentType: "application/json", body: '{"detail":"unavailable"}' }));
+  await page.locator("#image-duplicate").click();
+  await expect(page.locator("#image-status")).toContainText("nicht vollständig dupliziert");
+  await expect(group.locator("img")).toHaveCount(3);
+  await page.unroute("**/images/duplicate");
+  await page.locator("#image-duplicate").click(); await expect(group.locator("img")).toHaveCount(4);
+  await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(3);
+  await editor.press("Control+Shift+z"); await expect(group.locator("img")).toHaveCount(4);
+
+  await openImage(page, 2);
+  await expect(page.locator("#image-group-extract-before")).toBeEnabled();
+  await expect(page.locator("#image-group-extract-after")).toBeEnabled();
+  await page.locator("#image-group-extract-after").click();
+  await expect(group.locator("img")).toHaveCount(3);
+  await expect(editor.locator(":scope > .office-image-node")).toHaveCount(1);
+  await editor.press("Control+z"); await expect(group.locator("img")).toHaveCount(4);
+  await expect(editor.locator(":scope > .office-image-node")).toHaveCount(0);
+  await editor.press("Control+Shift+z"); await expect(group.locator("img")).toHaveCount(3);
+
+  const saved = await saveOffice(page, { objectId });
+  const groupIndex = saved.content.content.findIndex((entry) => entry.type === "imageGroup");
+  const storedGroup = saved.content.content[groupIndex], extracted = saved.content.content[groupIndex + 1];
+  expect(storedGroup.attrs).toMatchObject({ layout: "grid-3", gap: 14 });
+  expect(storedGroup.content).toHaveLength(3); expect(extracted.type).toBe("image");
+  expect(extracted.attrs.assetId).not.toBe(storedGroup.content[1].attrs.assetId);
+  expect(extracted.attrs.contentHash).toBe(storedGroup.content[1].attrs.contentHash);
+  const read = await page.request.get(`${BASE_URL}/v1/office/documents/${objectId}/images/${extracted.attrs.assetId}/${extracted.attrs.versionId}`, { headers: OFFICE_HEADERS });
+  expect(read.status()).toBe(200);
+  await page.locator("#document-reload").click();
+  await expect(group).toHaveAttribute("data-image-group-layout", "grid-3");
+  await expect(editor.locator(":scope > .office-image-node")).toHaveCount(1);
+
+  const prints = await installPrintProbe(page); await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-image-group[data-image-group-layout='grid-3'] img")).toHaveCount(3);
+  await expect(page.locator("#print-preview > .office-image")).toHaveCount(1);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-grid-${testInfo.project.name}.png`, fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1);
+  expect(prints[0].snapshot.html).toContain('data-image-group-layout="grid-3"');
+});

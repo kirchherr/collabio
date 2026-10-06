@@ -109,7 +109,7 @@
 .office-image-group.ProseMirror-selectednode { outline: 2px solid #2563eb; outline-offset: 3px; }
 .office-print-image-group { padding: 0; border: 0; }
 .office-print-image-group .office-image-group-control { display: none; }
-@media(max-width:600px){.office-image-group[data-image-group-layout="row"] .office-image-group-content,.office-print-image-group[data-image-group-layout="row"]{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.office-image-group[data-image-group-layout="row"] .office-image-group-content,.office-print-image-group[data-image-group-layout="row"]{grid-template-columns:minmax(0,1fr)}.office-image-group:is([data-image-group-layout="grid-3"],[data-image-group-layout="grid-4"]) .office-image-group-content{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .office-image-transform { display: block; position: relative; max-width: 100%; overflow: visible; }
 .office-image-transform-stage { display: block; position: absolute; left: 50%; top: 50%; transform-origin: center; }
 .office-image-transform-stage > img, .office-image-transform-stage > .office-image-viewport { display: block; max-width: none; margin: 0; }

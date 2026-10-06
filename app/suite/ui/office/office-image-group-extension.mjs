@@ -1,6 +1,6 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
-import { OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes } from "./office-image-groups.mjs";
+import { OFFICE_IMAGE_GROUP_MEMBER_LIMIT, officeImageGroupAttributes, officeImageGroupColumns } from "./office-image-groups.mjs";
 
 export function officeImageGroupExtension() {
   return Node.create({
@@ -21,7 +21,7 @@ export function officeImageGroupExtension() {
           const attrs = officeImageGroupAttributes(current.attrs);
           dom.dataset.imageGroup = attrs.id; dom.dataset.imageGroupLayout = attrs.layout;
           dom.style.setProperty("--image-group-gap", `${attrs.gap}px`);
-          dom.style.setProperty("--image-group-columns", attrs.layout === "row" ? String(current.childCount) : "1");
+          dom.style.setProperty("--image-group-columns", String(officeImageGroupColumns(attrs.layout, current.childCount)));
           control.setAttribute("aria-label", `Bildgruppe mit ${current.childCount} Bildern bearbeiten`);
         };
         paint(node);

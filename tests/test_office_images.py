@@ -370,6 +370,12 @@ def test_image_groups_preserve_owned_references_and_member_presentation() -> Non
     assert references[1]["transform"] == {"rotation": 90, "flipX": True, "flipY": False}
 
 
+@pytest.mark.parametrize("layout", ["row", "stack", "grid-2", "grid-3", "grid-4"])
+def test_image_groups_accept_canonical_layouts(layout: str) -> None:
+    document = image_group_document(count=8, layout=layout, gap=12)
+    assert validate_office_document(document) == document
+
+
 @pytest.mark.parametrize(
     "change",
     [

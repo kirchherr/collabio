@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import { officeImageAttributes, officeImageReferences, officeImageReplacementAttributes } from "../office-images.mjs";
 import { findDocumentMatches } from "../office-search.mjs";
 import { describeOfficeBlock, compareOfficeDocuments } from "../office-comparison.mjs";
-import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "../office-image-groups.mjs";
+import { officeImageGroupAttributes, officeImageGroupColumns, officeImageGroupLayoutLabel,
+  OFFICE_IMAGE_GROUP_LIMIT, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "../office-image-groups.mjs";
 
 const attrs = { documentId: "office-doc-" + "a".repeat(32), assetId: "office-image-" + "b".repeat(32),
   versionId: "office-image-version-" + "c".repeat(32), contentHash: "sha256:" + "d".repeat(64), manifestHash: "sha256:" + "e".repeat(64),
@@ -133,4 +134,16 @@ test("Office image groups are bounded inert containers visible in comparisons", 
     { ...groupAttrs, gap: -1 }, { ...groupAttrs, gap: 49 }, { ...groupAttrs, gap: true }, { ...groupAttrs, style: "active" }]) {
     expect(() => officeImageGroupAttributes(invalid)).toThrow();
   }
+});
+
+test("Office image groups expose canonical responsive grid layouts", () => {
+  for (const [layout, columns] of [["grid-2", 2], ["grid-3", 3], ["grid-4", 4]]) {
+    const groupAttrs = { id: "image-group-" + "a".repeat(24), layout, gap: 12 };
+    expect(officeImageGroupAttributes(groupAttrs)).toEqual(groupAttrs);
+    expect(officeImageGroupColumns(layout, 8)).toBe(columns);
+    expect(officeImageGroupLayoutLabel(layout)).toBe(`Raster mit ${columns} Spalten`);
+  }
+  expect(officeImageGroupColumns("row", 6)).toBe(6);
+  expect(officeImageGroupColumns("stack", 6)).toBe(1);
+  expect(() => officeImageGroupColumns("grid-3", 1)).toThrow();
 });

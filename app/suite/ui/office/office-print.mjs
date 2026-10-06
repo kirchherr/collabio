@@ -3,7 +3,7 @@
 import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
-import { officeImageGroupAttributes, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
+import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { officeShapeElement } from "./office-shapes.mjs";
 import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
@@ -57,7 +57,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       const group = dom.createElement("section"); group.className = "office-image-group office-print-image-group";
       group.dataset.imageGroup = attrs.id; group.dataset.imageGroupLayout = attrs.layout;
       group.style.setProperty("--image-group-gap", `${attrs.gap}px`);
-      group.style.setProperty("--image-group-columns", attrs.layout === "row" ? String(children.length) : "1");
+      group.style.setProperty("--image-group-columns", String(officeImageGroupColumns(attrs.layout, children.length)));
       for (const child of children) group.append(render(child, depth + 1));
       return group;
     }

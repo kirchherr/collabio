@@ -400,7 +400,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"image-group-[a-f0-9]{24}", identifier) is None
                 or identifier in image_group_ids
-                or attrs.get("layout") not in {"row", "stack"}
+                or attrs.get("layout") not in {"row", "stack", "grid-2", "grid-3", "grid-4"}
                 or type(attrs.get("gap")) is not int
                 or not 0 <= attrs["gap"] <= 48
                 or len(image_group_ids) >= 20

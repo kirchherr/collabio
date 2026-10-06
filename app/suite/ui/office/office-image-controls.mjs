@@ -166,7 +166,9 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-up").disabled = !valid() || action?.busy || !action?.selected || !imageContext || imageContext.rootIndex === 0;
     $("image-down").disabled = !valid() || action?.busy || !action?.selected || !imageContext ||
       imageContext.rootIndex === imageContext.root.childCount - 1;
-    $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || grouped || imageCount(action?.document) >= 40;
+    $("image-duplicate").textContent = grouped ? "Bild in Gruppe duplizieren" : "Bild duplizieren";
+    $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || imageCount(action?.document) >= 40 ||
+      (grouped && action.imageContext.group.childCount >= OFFICE_IMAGE_GROUP_MEMBER_LIMIT);
     $("image-position-layer").disabled = grouped;
     $("image-wrap").disabled = grouped || positioned;
     $("image-wrap-gap").disabled = grouped || positioned || $("image-wrap").value === "none";
@@ -176,6 +178,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-group-member-previous").disabled = !valid() || action?.busy || !grouped || action.imageContext.imageIndex === 0;
     $("image-group-member-next").disabled = !valid() || action?.busy || !grouped ||
       action.imageContext.imageIndex === action.imageContext.group.childCount - 1;
+    $("image-group-extract-before").disabled = !valid() || action?.busy || !grouped;
+    $("image-group-extract-after").disabled = !valid() || action?.busy || !grouped;
     $("image-group-duplicate").disabled = !valid() || action?.busy || !grouped ||
       groupCount(action?.document) >= OFFICE_IMAGE_GROUP_LIMIT || imageCount(action?.document) + (action?.imageContext?.group?.childCount ?? 0) > 40;
     $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
@@ -416,9 +420,10 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     } finally { if (action === owner) { owner.busy = false; update(); } }
   };
   const duplicateImage = async () => {
-    if (!valid() || action.busy || !action.selected || action.imageContext?.grouped || !state.session.objectId) return;
+    if (!valid() || action.busy || !action.selected || !state.session.objectId) return;
     const owner = action, source = owner.attrs, sourcePos = owner.imageSelection.from;
-    if (imageCount(owner.document) >= 40) {
+    const sourceContext = owner.imageContext;
+    if (imageCount(owner.document) >= 40 || (sourceContext?.grouped && sourceContext.group.childCount >= OFFICE_IMAGE_GROUP_MEMBER_LIMIT)) {
       $("image-status").textContent = "Die Dokumentgrenze für Bilder ist erreicht."; return;
     }
     owner.busy = true; update(); $("image-status").textContent = "Bild wird mit einer unabhängigen Bilddatei dupliziert …";
@@ -448,11 +453,32 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
         y: checked.position.y <= 1176 ? checked.position.y + 24 : checked.position.y - 24 };
       const attrs = officeImageAttributes({ ...checked, position,
         figureId: checked.figureId == null ? null : `figure-${reference().replaceAll("-", "").slice(0, 24)}` });
-      const copied = editor.schema.nodes.image.create(attrs), insertAt = sourcePos + current.nodeSize;
-      const tr = editor.state.tr.insert(insertAt, copied);
-      tr.setSelection(NodeSelection.create(tr.doc, insertAt)); validate(tr.doc);
+      const copied = editor.schema.nodes.image.create(attrs);
+      let tr;
+      if (sourceContext?.grouped) {
+        const groupId = sourceContext.group.attrs.id;
+        let group = null, groupPos = null;
+        editor.state.doc.forEach((node, offset) => {
+          if (group == null && node.type.name === "imageGroup" && node.attrs.id === groupId) { group = node; groupPos = offset; }
+        });
+        if (!group || !Number.isInteger(groupPos) || group.childCount >= OFFICE_IMAGE_GROUP_MEMBER_LIMIT) throw new Error("stale-group");
+        const sourceIndex = sourceContext.imageIndex, member = group.maybeChild(sourceIndex);
+        if (!member || member.attrs.assetId !== source.assetId || member.attrs.versionId !== source.versionId) throw new Error("stale-group-member");
+        const members = [...group.content.content]; members.splice(sourceIndex + 1, 0, copied);
+        tr = editor.state.tr.replaceWith(groupPos, groupPos + group.nodeSize,
+          editor.schema.nodes.imageGroup.create(group.attrs, members));
+        const offset = 1 + members.slice(0, sourceIndex + 1).reduce((total, node) => total + node.nodeSize, 0);
+        tr.setSelection(NodeSelection.create(tr.doc, groupPos + offset));
+      } else {
+        const insertAt = sourcePos + current.nodeSize;
+        tr = editor.state.tr.insert(insertAt, copied);
+        tr.setSelection(NodeSelection.create(tr.doc, insertAt));
+      }
+      validate(tr.doc);
       close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
-      focus(); notice("Bild mit unabhängiger Bilddatei dupliziert. Mit Rückgängig entfernbar; gespeichert wird erst mit der nächsten bestätigten Version.");
+      focus(); notice(sourceContext?.grouped ?
+        "Bild in der Gruppe mit unabhängiger Bilddatei dupliziert. Mit Rückgängig entfernbar; gespeichert wird erst mit der nächsten bestätigten Version." :
+        "Bild mit unabhängiger Bilddatei dupliziert. Mit Rückgängig entfernbar; gespeichert wird erst mit der nächsten bestätigten Version.");
     } catch (error) {
       if (action === owner && valid() && [401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
       if (action === owner && valid()) $("image-status").textContent = "Das Bild konnte nicht vollständig dupliziert werden. Der Entwurf wurde nicht geändert.";
@@ -513,6 +539,31 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   };
   $("image-group-member-previous").addEventListener("click", () => reorderMember("previous"));
   $("image-group-member-next").addEventListener("click", () => reorderMember("next"));
+  const extractMember = (placement) => {
+    if (!valid() || action.busy || !action.imageContext?.grouped) return;
+    const owner = action, editor = owner.editor, groupId = owner.imageContext.group.attrs.id;
+    let group = null, groupPos = null;
+    editor.state.doc.forEach((node, offset) => {
+      if (group == null && node.type.name === "imageGroup" && node.attrs.id === groupId) { group = node; groupPos = offset; }
+    });
+    const index = owner.imageContext.imageIndex, selected = group?.maybeChild(index);
+    if (!group || !Number.isInteger(groupPos) || !selected || selected.attrs.assetId !== owner.attrs.assetId ||
+        selected.attrs.versionId !== owner.attrs.versionId) {
+      $("image-status").textContent = "Das Bild wurde in der aktuellen Gruppe nicht gefunden."; return;
+    }
+    const remaining = group.content.content.filter((_, memberIndex) => memberIndex !== index);
+    const remainder = remaining.length === 1 ? remaining[0] : editor.schema.nodes.imageGroup.create(group.attrs, remaining);
+    const replacement = placement === "before" ? [selected, remainder] : [remainder, selected];
+    const tr = editor.state.tr.replaceWith(groupPos, groupPos + group.nodeSize, replacement);
+    const selectedPos = placement === "before" ? groupPos : groupPos + remainder.nodeSize;
+    tr.setSelection(NodeSelection.create(tr.doc, selectedPos));
+    try {
+      validate(tr.doc); close(); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(); notice(`Bild ${placement === "before" ? "vor" : "nach"} der Gruppe gelöst. Mit Rückgängig wiederherstellbar; gespeichert wird erst mit der nächsten bestätigten Version.`);
+    } catch { $("image-status").textContent = "Das Bild konnte nicht aus der Gruppe gelöst werden."; }
+  };
+  $("image-group-extract-before").addEventListener("click", () => extractMember("before"));
+  $("image-group-extract-after").addEventListener("click", () => extractMember("after"));
   $("image-group-duplicate").addEventListener("click", duplicateGroup);
   $("image-duplicate").addEventListener("click", duplicateImage);
   $("image-group-ungroup").addEventListener("click", () => change("ungroup"));
