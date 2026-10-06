@@ -121,6 +121,49 @@ def test_native_schema_resource_limits_are_independent() -> None:
             validate_office_document(value)
 
 
+def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
+    attrs = {
+        "id": "chart-" + "a" * 24,
+        "kind": "bar",
+        "title": "Quarterly plan",
+        "altText": "Plan and actual values rise across four quarters.",
+        "legend": True,
+        "categories": ["Q1", "Q2", "Q3", "Q4"],
+        "series": [
+            {"name": "Plan", "color": "teal", "values": [120, 140, 160, 180]},
+            {"name": "Actual", "color": "blue", "values": [110, 152, 171, 176]},
+        ],
+    }
+    document = {"type": "doc", "content": [{"type": "chart", "attrs": attrs}]}
+    assert validate_office_document(document) == document
+    pie = {**attrs, "kind": "pie", "series": [{"name": "Share", "color": "orange", "values": [1, 2, 3, 4]}]}
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": pie}]})
+    invalid = [
+        {**attrs, "id": "chart-short"},
+        {**attrs, "kind": "script"},
+        {**attrs, "title": ""},
+        {**attrs, "altText": "bad\x00text"},
+        {**attrs, "legend": 1},
+        {**attrs, "categories": []},
+        {**attrs, "categories": ["Q1", "Q1"]},
+        {**attrs, "series": attrs["series"] * 3},
+        {**attrs, "series": [{"name": "Plan", "color": "url", "values": [1, 2, 3, 4]}]},
+        {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [1, 2]}]},
+        {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [1.5, 2, 3, 4]}]},
+        {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [-1, 2, 3, 4]}]},
+        {**pie, "series": [{"name": "Share", "color": "orange", "values": [0, 0, 0, 0]}]},
+        {**pie, "series": [{"name": "Share", "color": "orange", "values": [-1, 2, 3, 4]}]},
+        {**attrs, "onclick": "run()"},
+    ]
+    for candidate in invalid:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": candidate}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document({"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "chart", "attrs": attrs}]}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": attrs}, {"type": "chart", "attrs": attrs}]})
+
+
 def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     attrs = {
         "id": "shape-" + "a" * 24,

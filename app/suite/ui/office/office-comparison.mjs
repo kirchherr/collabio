@@ -10,6 +10,7 @@ import { officeTableAttributes } from "./office-tables.mjs";
 import { officeShapeDescription } from "./office-shapes.mjs";
 import { officeImageGroupLayoutLabel } from "./office-image-groups.mjs";
 import { officeDocumentCardAttributes } from "./office-document-cards.mjs";
+import { officeChartDescription } from "./office-charts.mjs";
 import { officeBibliographyLabel, officeSemanticInventory } from "./office-semantics.mjs";
 
 const MAX_LCS_CELLS = 262144;
@@ -24,6 +25,7 @@ const nodeLabels = {
   shape: "Form",
   shapeGroup: "Formgruppe",
   documentCard: "Dokumentobjekt",
+  chart: "Diagramm",
   bookmark: "Lesezeichen", documentField: "Dokumentfeld", noteReference: "Note", citationReference: "Quellenverweis",
   tableOfContents: "Inhaltsverzeichnis", bibliography: "Literaturverzeichnis", equation: "Formel", referenceIndex: "Referenznavigator",
 };
@@ -229,6 +231,7 @@ function blockText(block, nested = false) {
     }
     case "shapeGroup": return `Formgruppe · ${children.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px${block.attrs.connection ? ` · Verbindung ${block.attrs.connection.kind}, ${block.attrs.connection.color}, ${block.attrs.connection.width} px` : ""}\n${children.map((child) => blockText(child, true)).join("\n")}`;
     case "shape": return officeShapeDescription(block.attrs);
+    case "chart": return officeChartDescription(block.attrs);
     case "paragraph": {
       const text = children.map((child) => blockText(child)).join("") || "(Leerer Absatz)";
       const formatting = nested ? [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean) : [];
@@ -268,7 +271,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${officeImageGroupLayoutLabel(block.attrs.layout)} · Abstand ${block.attrs.gap} px` : block.type === "shapeGroup" ? `Formgruppe · ${block.content.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px${block.attrs.connection ? ` · Verbindung ${block.attrs.connection.kind}, ${block.attrs.connection.color}, ${block.attrs.connection.width} px` : ""}` : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
+  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${officeImageGroupLayoutLabel(block.attrs.layout)} · Abstand ${block.attrs.gap} px` : block.type === "shapeGroup" ? `Formgruppe · ${block.content.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px${block.attrs.connection ? ` · Verbindung ${block.attrs.connection.kind}, ${block.attrs.connection.color}, ${block.attrs.connection.width} px` : ""}` : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "chart" ? officeChartDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

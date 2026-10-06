@@ -13,6 +13,7 @@ import { officeTableAttributes, officeTableCaption, officeTableFragment } from "
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
+import { officeChartElement } from "./office-charts.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -62,6 +63,10 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         "Zugriff oder Version nicht verfügbar";
       card.setAttribute("aria-label", officeDocumentCardDescription(attrs, documentReferences));
       card.append(kind, label, detail); return card;
+    }
+    if (value.type === "chart") {
+      if (depth !== 1 || value.content) throw new Error("Invalid chart");
+      const chart = officeChartElement(value.attrs, dom); chart.classList.add("office-print-chart"); return chart;
     }
     if (value.type === "image") {
       const target = value.attrs?.figureId == null ? null : targetsById.get(value.attrs.figureId);

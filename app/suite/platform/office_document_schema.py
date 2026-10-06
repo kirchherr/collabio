@@ -30,6 +30,7 @@ BLOCKS = {
     "image",
     "imageGroup",
     "documentCard",
+    "chart",
     "shape",
     "shapeGroup",
     "pageBreak",
@@ -101,6 +102,21 @@ def _valid_link_href(value: Any) -> bool:
     )
 
 
+def _valid_literal(value: Any, minimum: int, maximum: int) -> bool:
+    return (
+        isinstance(value, str)
+        and minimum <= len(value) <= maximum
+        and value == value.strip()
+        and not any(
+            ord(character) < 32
+            or 127 <= ord(character) <= 159
+            or 0xD800 <= ord(character) <= 0xDFFF
+            or character in "\u2028\u2029"
+            for character in value
+        )
+    )
+
+
 def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     """Validate structure and resource limits before canonicalization or storage."""
     nodes = 0
@@ -124,6 +140,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     image_group_ids: set[str] = set()
     shape_ids: set[str] = set()
     shape_group_ids: set[str] = set()
+    chart_ids: set[str] = set()
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -393,6 +410,57 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or re.fullmatch(r"office-version-[a-f0-9]{32}", attrs["targetVersionId"]) is None
                 or attrs["mode"] not in {"snapshot", "linked"}
             ):
+                reject()
+        elif kind == "chart":
+            identifier = attrs.get("id")
+            categories = attrs.get("categories")
+            series = attrs.get("series")
+            if (
+                depth != 1
+                or set(node) != {"type", "attrs"}
+                or set(attrs) != {"id", "kind", "title", "altText", "legend", "categories", "series"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"chart-[a-f0-9]{24}", identifier) is None
+                or identifier in chart_ids
+                or len(chart_ids) >= 20
+                or attrs.get("kind") not in {"bar", "line", "pie"}
+                or type(attrs.get("legend")) is not bool
+                or not _valid_literal(attrs.get("title"), 1, 120)
+                or not _valid_literal(attrs.get("altText"), 1, 500)
+                or not isinstance(categories, list)
+                or not 1 <= len(categories) <= 12
+                or any(not _valid_literal(category, 1, 60) for category in categories)
+                or len(set(categories)) != len(categories)
+                or not isinstance(series, list)
+                or not 1 <= len(series) <= 4
+                or (attrs.get("kind") == "pie" and len(series) != 1)
+            ):
+                reject()
+            names: set[str] = set()
+            colors: set[str] = set()
+            for entry in series:
+                if (
+                    not isinstance(entry, dict)
+                    or set(entry) != {"name", "color", "values"}
+                    or not _valid_literal(entry.get("name"), 1, 60)
+                    or entry["name"] in names
+                    or entry.get("color") not in {"teal", "blue", "orange", "purple"}
+                    or entry["color"] in colors
+                    or not isinstance(entry.get("values"), list)
+                    or len(entry["values"]) != len(categories)
+                    or any(type(number) is not int or not -1_000_000_000 <= number <= 1_000_000_000 for number in entry["values"])
+                    or (attrs.get("kind") != "line" and any(number < 0 for number in entry["values"]))
+                ):
+                    reject()
+                names.add(entry["name"])
+                colors.add(entry["color"])
+            if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
+                reject()
+            chart_ids.add(identifier)
+            characters += len(attrs["title"]) + len(attrs["altText"]) + sum(map(len, categories)) + sum(
+                len(entry["name"]) for entry in series
+            )
+            if characters > MAX_DOCUMENT_CHARACTERS:
                 reject()
         elif kind == "image":
             images += 1

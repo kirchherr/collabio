@@ -22,6 +22,8 @@ import { officeImageGroupAttributes } from "./office-image-groups.mjs";
 import { officeImageGroupExtension } from "./office-image-group-extension.mjs";
 import { officeShapeAttributes } from "./office-shapes.mjs";
 import { officeShapeExtension, installOfficeShapeControls } from "./office-shape-controls.mjs";
+import { officeChartExtension, installOfficeChartControls } from "./office-chart-controls.mjs";
+import { officeChartAttributes } from "./office-charts.mjs";
 import { officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { officeShapeGroupExtension } from "./office-shape-group-extension.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
@@ -50,7 +52,7 @@ const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "shape", "shapeGroup", "pageBreak", "sectionBreak", "bookmark",
-  "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex", "documentCard",
+  "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex", "documentCard", "chart",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
 const commandNames = {
@@ -382,6 +384,7 @@ function normalizedDocument(document) {
   let pageBreaks = 0;
   let sectionBreaks = 0;
   let documentReferences = 0;
+  const chartIds = new Set();
   const imageGroupIds = new Set();
   const shapeIds = new Set();
   const shapeGroupIds = new Set();
@@ -396,6 +399,16 @@ function normalizedDocument(document) {
     if (value.type === "documentCard") {
       if (depth !== 1 || ++documentReferences > OFFICE_DOCUMENT_REFERENCE_LIMIT) throw new Error("document-reference-limit");
       result.attrs = officeDocumentCardAttributes(value.attrs);
+    }
+    if (value.type === "chart") {
+      if (depth !== 1 || chartIds.size >= 20) throw new Error("document-chart");
+      result.attrs = officeChartAttributes(value.attrs);
+      if (chartIds.has(result.attrs.id)) throw new Error("document-chart");
+      chartIds.add(result.attrs.id);
+      characters += Array.from(result.attrs.title + result.attrs.altText).length;
+      characters += result.attrs.categories.reduce((total, category) => total + Array.from(category).length, 0);
+      characters += result.attrs.series.reduce((total, entry) => total + Array.from(entry.name).length, 0);
+      if (characters > 100000) throw new Error("document-length");
     }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "imageGroup") {
@@ -595,6 +608,7 @@ function updateEditorState() {
   updateDocumentReferenceControls();
   paintDocumentReferences();
   documentCardControls.update();
+  chartControls.update();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -2559,6 +2573,7 @@ function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
   pageControls.close();
   imageControls.close();
+  chartControls.close();
   closeSectionDialog();
   closeReuse();
   closePrint();
@@ -2598,6 +2613,7 @@ function prepareEditor(content, session) {
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference, OfficeDocumentReference,
       officeDocumentCardExtension(() => state.documentReferenceResolutions, () => void documentCardControls.open()),
+      officeChartExtension(() => void chartControls.open()),
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageGroupExtension(),
@@ -2676,6 +2692,7 @@ function clearWorkspace() {
   pageControls.close();
   imageControls.close();
   shapeControls.close();
+  chartControls.close();
   closeSectionDialog();
   closeStyleDialog();
   state.formatSample = null;
@@ -5342,6 +5359,8 @@ const imageControls = installOfficeImageControls({ state,
   validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
 const shapeControls = installOfficeShapeControls({ state, allowed: () => paragraphAllowed(), current: characterActionCurrent,
   validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
+const chartControls = installOfficeChartControls({ state, $, sessionCurrent, validate: validateEditorDocument,
+  update: updateEditorState, notice, focus: focusEditor });
 const documentCardControls = installOfficeDocumentCardControls({ state, $, api, sessionCurrent,
   validate: validateEditorDocument, update: updateEditorState, notice, refreshReferences: refreshDocumentReferences,
   openDocument, isDirty });
