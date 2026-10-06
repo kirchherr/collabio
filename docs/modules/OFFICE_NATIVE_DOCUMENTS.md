@@ -423,9 +423,10 @@ and CURRENT_HANDOFF.md. Section layouts, headers/footers and continuous paginati
 
 ## Document-owned images (Roadmap 268)
 
-**Bild einfuegen** opens file selection and preview for a saved editable document. Explicit upload accepts PNG/JPEG
-up to 8 MiB, 4096 pixels per axis and four million decoded pixels. The isolated decoder returns only normalized
-pixels; original filenames, EXIF and original files are not retained. An upload belongs to the current document
+**Bild einfuegen** opens file selection and preview for a saved editable document. Explicit upload accepts PNG,
+JPEG, safe SVG and bounded EPS up to 8 MiB, 4096 pixels per axis and four million decoded pixels. The isolated decoder
+returns only normalized RGBA pixels; original filenames, EXIF and original files are not retained. SVG alpha and the
+unpainted EPS canvas remain transparent in the canonical PNG. An upload belongs to the current document
 but does not advance its saved version. A new document must be saved once before its first upload.
 
 The dialog supports bounded width/height, aspect lock, left/center/right alignment, literal alternative text and
@@ -448,11 +449,17 @@ existing reconciliation still applies. Printing freshly loads and decodes every 
 unavailable image. Short-lived authenticated blob URLs never enter stored native JSON and are revoked on close.
 
 The credential-free `office-image-decoder` Compose service has no network, uses a non-root read-only filesystem,
-drops all capabilities and bounds memory, CPU, child processes and decode time. Only a shared Unix socket connects
-the API. The test profile owns a separate socket volume. Start it with the `office-images` profile before image
-traffic; missing decoder access fails closed. No SQL migration or additional dependency version is introduced.
+drops all capabilities and bounds memory, CPU, child processes, output and decode time. It rejects SVG active content
+and external resources before invoking pinned CairoSVG, and accepts only EPSF with a finite bounding box before
+invoking pinned Ghostscript in `SAFER` mode for one page. Only a shared Unix socket connects the API. The test profile
+owns a separate socket volume. Start it with the `office-images` profile before image traffic; missing decoder access
+fails closed. No SQL migration is introduced.
 Decision: [ADR-0091](../../ARCHITECTURE_DECISIONS/ADR-0091-native-office-images.md). Development acceptance and the
 fresh document-plus-asset recovery proof are recorded in CURRENT_HANDOFF.md; ordinary admission remains closed.
+
+Decision for vector import: [ADR-0132](../../ARCHITECTURE_DECISIONS/ADR-0132-native-office-vector-image-import.md).
+Generic PostScript, SVG scripts/events/entities/stylesheets/external references, animated vectors and retained source
+vectors remain outside the allowlist. EPS has no partial-alpha model; only its unpainted canvas can become transparent.
 
 ## Non-destructive image cropping (Roadmap 269)
 

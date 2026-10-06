@@ -2,6 +2,29 @@
 
 Updated: 2026-10-06
 
+Roadmap 325 through 328 / PLANS 186 through 189 are complete under ADR-0132. The existing authorized native image
+upload now accepts PNG, JPEG, safe SVG and bounded EPS while retaining one storage contract: a metadata-free,
+document-owned canonical RGBA PNG. SVG alpha is preserved. EPS paints onto a transparent canvas; painted EPS regions
+remain opaque because EPS has no partial-alpha model. Original vector bytes are transient and never enter a saved
+Office version.
+
+The credential-free decoder remains non-root, read-only and network-none. CairoSVG and Ghostscript are pinned in its
+image, and each request runs in a fresh child with address-space, CPU, timeout and file-size limits. SVG document
+types, entities, XML stylesheets, active/embedded elements, event attributes, external links and CSS imports/URLs are
+rejected before rendering. EPS must declare EPSF and a finite numeric bounding box; generic PostScript is rejected,
+and only one page is rendered with Ghostscript `SAFER`.
+
+The focused desktop/mobile vector workflow passed 2/2. It sampled the returned PNG pixels and proved SVG alpha 128,
+transparent SVG/EPS canvas and opaque EPS paint, then covered SVG insertion, EPS replacement, confirmed save and
+reload. The complete image file passed 20/20 across desktop and mobile, retaining PNG/JPEG normalization, tenant/ACL
+checks, independent ownership, placement, replacement, undo/redo and PDF behavior. Screenshot SHA-256 values are
+`3277c7882e596d8976a91f4cbcf6be2f49a2b72c85d08caf000fc557b15c720b` and
+`a87208f6321b828f013f7cbd8d181bf33f7b8cbf730455357aba7dfcb725eb30`; both passed visual review.
+
+Implementation is published through `a1cc0a6e` on `kirchherr/kb-write-unit-of-work`. The review UI and both isolated
+image decoders are refreshed on `dev001`; the UI remains available on port 42880. No relational migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 321 through 324 / PLANS 182 through 185 are complete under ADR-0131. Native Office tables now retain bounded
 column and row spans, expose focusable merge and split actions, and support an independent semantic header-column
 toggle. Browser and server independently validate a rectangular logical grid without gaps, overlaps, truncated spans

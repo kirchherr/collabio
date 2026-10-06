@@ -2160,6 +2160,30 @@ Vergleichsmatrix bestand 22/22. Beide finalen Druckansichten bestanden die visue
 Ueberlauf. Die Struktur lebt im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration,
 Tabellenkalkulation, Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
 
+325. [x] Sicheren nativen SVG-Import mit Alpha umgesetzt: Der bestehende autorisierte Bildupload rendert begrenzte
+     inerte SVG-Dateien im netzlosen Decoder zu einem dokumenteigenen kanonischen RGBA-PNG. Teiltransparenz,
+     Seitenverhaeltnis und physische Einheiten bleiben erhalten; das Original wird nicht gespeichert.
+
+326. [x] Begrenzten EPS-Import mit transparentem Hintergrund umgesetzt: Nur EPSF mit numerischer BoundingBox wird
+     unter Ghostscript `SAFER` als erste Seite gerendert. Nicht bemalte Flaechen bleiben transparent; allgemeines
+     PostScript und ungebundene Dokumente werden abgelehnt.
+
+327. [x] Aktive und externe Vektorinhalte geschlossen: SVG-Skripte, Ereignisattribute, eingebettete aktive Elemente,
+     DTD/Entitaeten, XML-Stylesheets, CSS-Imports und externe Referenzen scheitern vor dem Renderer. Frische
+     Unterprozesse, Netzwerkfreiheit, fehlende Credentials sowie CPU-, Speicher-, Zeit- und Ausgabegrenzen bleiben
+     verpflichtend.
+
+328. [x] Vektorbild-Lebenszyklus im bestehenden Bilddialog geschlossen: Dateiauswahl, Vorschau, Einfuegen,
+     Ersetzen, bestaetigtes Speichern, Reload und responsive Desktop-/Mobile-Darstellung arbeiten auf derselben
+     kanonischen Bildstruktur wie PNG/JPEG.
+
+Native Office bleibt vor CRM. Roadmap 325 bis 328 / PLANS 186 bis 189 sind gemeinsam unter ADR-0132 implementiert.
+Der fokussierte Desktop-/Mobile-Ablauf und die vollstaendige Bilddatei bestanden 2/2 beziehungsweise 20/20. Der
+Nachweis prueft SVG-Teilalpha, transparenten EPS-Aussenbereich, deckende EPS-Farbe, kanonisches PNG, Dialog,
+Speichern und Reload. Die komplette bestehende Bilddatei deckt zusaetzlich PNG/JPEG, Rechte, Kopie, Positionierung,
+Ersetzen, Undo/Redo und PDF ab. Es gibt keine Migration, Vektorbytes im Versionsmodell, externe Ressource,
+Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -511,6 +511,16 @@ table, caption and comparison files remain mandatory. Evidence is retained in `e
 `office-table-spans-desktop-chromium.png` and `office-table-spans-mobile-chromium.png`. Spans live inside existing
 immutable Office version JSON, so no new numbered restore target is created.
 
+Roadmap 325 through 328 extend the existing image workflow with safe SVG and EPS import. The desktop/mobile proof
+uploads an SVG containing a half-opaque painted region and an EPS containing a painted half-page, reads both stored
+canonical PNG renditions and samples their RGBA pixels. It requires exact SVG partial alpha, transparent unpainted
+SVG/EPS canvas, opaque EPS paint, bounded dimensions and `image/png` responses. The same proof inserts SVG through
+the accessible image dialog, replaces it with EPS, confirms save and reload, and retains screenshots as
+`office-vector-import-desktop-chromium.png` and `office-vector-import-mobile-chromium.png`. The complete neighboring
+image file remains mandatory for PNG/JPEG, ACL, copy, placement, replacement, undo/redo and PDF regression. Malicious
+SVG, generic PostScript, invalid bounds and unsupported dimensions are covered by server/model tests. Only normalized
+PNG assets enter existing immutable Office versions, so no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

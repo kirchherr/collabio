@@ -1,7 +1,8 @@
 # Native Office images and objects: product design
 
 Updated: 2026-10-01
-Status: native PNG/JPEG implementation follows ADR-0091; acceptance is recorded in CURRENT_HANDOFF.md.
+Status: native PNG/JPEG implementation follows ADR-0091; safe SVG/EPS import follows ADR-0132. Acceptance is recorded
+in CURRENT_HANDOFF.md.
 Roadmap 269 implements non-destructive crop under ADR-0092; its acceptance is recorded in CURRENT_HANDOFF.md.
 Roadmap 270 implements bounded text wrapping under ADR-0093; acceptance is tracked in CURRENT_HANDOFF.md.
 Roadmap 289 implements bounded anchored foreground/background placement under ADR-0106.
@@ -10,6 +11,7 @@ Roadmap 291 implements bounded native image groups under ADR-0108.
 Roadmap 309 implements in-place file replacement with fresh immutable pixels under ADR-0126.
 Roadmap 314–316 implement inert exact-version Office document objects under ADR-0129.
 Roadmap 317–320 implement bounded inert native charts under ADR-0130.
+Roadmap 325–328 implement safe SVG/EPS normalization and authoring under ADR-0132.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -22,10 +24,11 @@ the constrained DOCX preflight. Embedded-object semantics require a separate dec
 
 ## First product slice: images
 
-Provide Insert image and explicit file selection, then preview before applying it to the draft. Begin with PNG/JPEG;
-validate signature/MIME, byte and decoded-pixel limits in a no-egress isolated decoder and produce an inert normalized
-rendition. Strip unnecessary metadata from that rendition; retain any required original only under its own policy.
-SVG, remote image URLs, animated formats and arbitrary HTML are outside the first allowlist.
+Provide Insert image and explicit file selection, then preview before applying it to the draft. PNG/JPEG and the
+later safe SVG/EPS extension validate signature/MIME, byte and decoded-pixel limits in a no-egress isolated decoder
+and produce an inert normalized RGBA PNG rendition. Strip unnecessary metadata and never retain SVG/EPS source bytes.
+SVG active/external content, generic PostScript, remote image URLs, animated formats and arbitrary HTML remain outside
+the allowlist.
 
 The native node references an exact tenant-owned asset/version/hash, never a public URL or inline base64 body. It
 contains bounded display dimensions, aspect-ratio lock, inline/block alignment, literal alternative text and an
