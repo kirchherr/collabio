@@ -106,6 +106,18 @@ bounds; unlocked frames remain exact. Source-pixel crop coordinates are omitted 
 safely to unrelated pixels. Immutable earlier versions keep their old asset/version binding, while the replacement
 uses a fresh document-owned asset/version and the existing receipt, ACL, retention and recovery controls.
 
+## Accessible image-group member ordering
+
+ADR-0127 exposes separate focusable controls for the selected member's reading order and the complete group's
+top-level document order. A member action swaps exactly one adjacent image, stays disabled at the corresponding group
+boundary and keeps selection on the moved image. Whole-group actions name **Bildgruppe** explicitly and use the
+independent document boundaries. Each move is one isolated undo transaction.
+
+The operation reuses the existing canonical ordered group representation. Group identity, layout and gap and all
+member asset/version, crop, transform, accessibility, caption, figure and display attributes remain byte-for-byte
+equivalent except for member sequence. Confirmed save, immutable history, reload, comparison and print consume that
+same sequence. No drag-only control, nested group, arbitrary overlap layer or new schema is introduced.
+
 ## Later slice: inert linked or embedded objects
 
 Represent files, native tables, charts and later sheets/slides through a typed, version-bound object reference and an

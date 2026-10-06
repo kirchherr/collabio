@@ -2060,6 +2060,17 @@ isolierter Restore prueft 1.642 Dokumente, 3.431 Office-Versionen, 4.561 SourceO
 gespeicherte Bildverweise und vier Austauschpaare mit frischen Pixelidentitaeten und stabiler Darstellung. Es gibt
 keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
 
+310. [x] Direkte barrierefreie Reihenfolge fuer Mitglieder nativer Bildgruppen umgesetzt: Das ausgewaehlte Bild kann
+     jeweils genau eine Position frueher oder spaeter gesetzt werden. Randaktionen sind deaktiviert; die Auswahl folgt
+     dem verschobenen Bild und jede Verschiebung ist ein eigener Rueckgaengig-Schritt.
+
+Native Office bleibt vor CRM. Roadmap 310 / PLANS 171 ist unter ADR-0127 implementiert. Separate eindeutig benannte
+Aktionen unterscheiden die Mitgliedsreihenfolge von der Position der kompletten Bildgruppe im Dokument. Gruppen-ID,
+Layout, Abstand sowie alle Asset-, Zuschnitt-, Transformations-, Alternativtext-, Beschriftungs-, Abbildungs- und
+Dimensionswerte bleiben exakt. Die komplette 61-teilige Bild-/Abbildungsmatrix und die finale 8-teilige
+Desktop-/Mobile-Bildgruppenmatrix sind gruen; Speichern, Reload, immutable Vorgaengerversion, Druck und Undo/Redo sind
+abgedeckt. Es gibt kein neues Datenformat, keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -465,6 +465,12 @@ from `300 × 150` to `300 × 450`. Crop remains absent. Its checked dump is reta
 `/proof-backup/postgres-restore-receipt-309.sha256`, and recovery metadata is retained under
 `e2e/work/artifacts/roadmap-309`. Never run it while browser writes are active or replace earlier evidence.
 
+Roadmap 310 changes only the order of existing members inside the validated image-group document node. Its browser
+proof covers both member directions and boundaries, distinct whole-group order controls, isolated undo/redo, exact
+confirmed save, immutable predecessor, reload and print order on desktop and mobile. Evidence is retained under
+`e2e/work/artifacts/roadmap-310`. The saved schema and asset bindings are unchanged, so the existing exact ordered
+image-group recovery contract remains applicable and no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

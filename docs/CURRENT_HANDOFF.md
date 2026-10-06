@@ -1,6 +1,25 @@
 # Current Project Handoff
 
-Updated: 2026-10-05
+Updated: 2026-10-06
+
+Roadmap 310 / PLANS 171 is complete under ADR-0127. A selected member of a native image group now exposes explicit
+**Bild eine Position früher** and **Bild eine Position später** actions. Each action swaps exactly one adjacent member,
+keeps selection on the moved image and creates one isolated undo step. Boundary actions are disabled. Separate
+**Bildgruppe eine Position früher/später** labels make whole-group document movement unambiguous and enforce their
+own top-level boundaries. Group identity, layout, gap and every member's asset/version, crop, transformation,
+accessibility, caption, figure and display attributes remain exact.
+
+The complete native image/figure matrix passed 61/61 in 9.7 minutes on implementation commit `861ff477`; the final
+clarified controls passed the complete image-group matrix 8/8 on `95d00e55`. Exact save, immutable predecessor,
+undo/redo, reload and print order passed on desktop and mobile. Final desktop/mobile screenshot SHA-256 values are
+`c6dd6ba02ff4b93aad73c3d398bf44a6485ee97c4cdf5e14441e3e11be71fb11` and
+`3c50bc32631269052da14dcd17fb8a2368888bf25ac1c446074d254070263e60`; both passed visual review without horizontal
+overflow. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-member-order-95d00e55`.
+
+The saved representation and backend contracts are unchanged, so no migration or new recovery drill is required;
+the exact ordered image-group recovery contract and the fresh Roadmap-309 PostgreSQL/S3 proof remain retained. No
+ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
 
 Roadmap 309 / PLANS 170 is complete under ADR-0126. A selected native image now exposes **Neue Bilddatei** in its
 edit dialog. The existing tenant/write-authorized PNG/JPEG upload and isolated decoder create a fresh immutable,
