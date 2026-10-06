@@ -429,12 +429,24 @@ group, image and retained-asset limits fail closed.
 before or after its group, rebuild larger groups exactly and dissolve two-member groups into ordered standalone images
 without creating or deleting assets. Prove both placements, undo/redo, save, reload and print on desktop and mobile.
 
+175. [x] Add an inert native Office document-object block under ADR-0129. Store only an exact authorized target object
+and version plus a bounded snapshot/linked mode, share the existing 100-reference limit and authoritative ACL-safe
+resolution/backlink path, and never persist a resolved title, target body, URL, HTML or executable payload.
+
+176. [x] Separate fixed snapshots from explicitly refreshable document links under ADR-0129. Keep every saved source
+version pinned; allow a linked draft to adopt the target's current saved version only through a visible author action
+that creates an ordinary undoable draft change. Never refresh during load, print or historical rendering.
+
+177. [x] Complete accessible document-object authoring under ADR-0129. Provide focusable edit, exact-target open,
+one-position movement, duplicate and remove actions with disabled boundaries and isolated undo. Prove confirmed save,
+reload, comparison, print, fresh ACL revocation, backlinks and desktop/mobile behavior without active embedding.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 313 / PLANS 174. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 316 / PLANS 177. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

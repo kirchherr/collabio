@@ -156,6 +156,24 @@ only source identity and resolution counts. No backlink table, global discovery 
 is introduced. A two-document/four-version recovery fixture proves a source pinned to target version one while target
 version two is current.
 
+## Inert document objects (Roadmap 314–316)
+
+**Dokumentobjekt einfügen …** adds a top-level atomic card that stores one exact document object/version pair and
+either `snapshot` or `linked`. The card contains no saved title, body, URL, markup or executable object. It shares the
+existing 100-occurrence limit and authoritative outbound-reference/backlink walker with inline references.
+
+Both modes stay pinned while loading, reopening, comparing and printing a saved source version. A linked card exposes
+**Auf aktuelle Version aktualisieren** only when the currently readable target has a newer saved version. Choosing it
+changes the local draft visibly and undoably. Snapshot cards never offer automatic movement. The title and current/
+historical state come only from a fresh server resolution; revoked, missing and foreign targets collapse to the same
+title-free unavailable state.
+
+The focusable card action opens its exact target only from a clean source, duplicates the exact inert binding, moves
+the block one document position earlier/later or removes it. Confirmed CAS save remains the sole durable mutation.
+Editor, immutable history, comparison and print share the same representation. No OLE, ActiveX, macro, iframe,
+external content, implicit grant, relational migration or engine path is introduced. Decision:
+[ADR-0129](../../ARCHITECTURE_DECISIONS/ADR-0129-native-office-document-objects.md).
+
 ## Native semantic document structures (Roadmap 280–286)
 
 **Struktur …** provides one responsive, keyboard-reachable workflow for document-owned fields, generated tables of

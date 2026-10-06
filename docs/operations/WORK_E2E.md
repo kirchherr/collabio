@@ -481,6 +481,17 @@ inside the existing immutable version JSON; member copy reuses the Roadmap-308 r
 extraction reuses existing bindings. The exact general Office-version and image-binding recovery contracts therefore
 remain applicable and no new numbered restore target is created.
 
+Roadmap 314 through 316 add an inert top-level Office document card with an exact object/version binding and bounded
+snapshot or linked mode. The combined desktop/mobile proof creates source and target documents, inserts a linked card,
+checks undo/redo and confirmed save, creates a new target version, proves that the card stays pinned until explicit
+refresh, then verifies duplicate, one-position movement, removal, exact saved JSON, reload and print. Revoking the
+target ACL must replace the resolved title with the common unavailable state in editor and print. Pure model coverage
+rejects active or unbounded attributes and pins comparison descriptions. The broader reference, backlink, comparison
+and print matrix remains mandatory. Evidence is retained in `e2e/work/artifacts/results.json` plus
+`office-document-card-desktop-chromium.png` and `office-document-card-mobile-chromium.png`. The block lives in existing
+immutable Office version JSON and uses the Roadmap-287/288 authoritative reference path, so no new numbered restore
+target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

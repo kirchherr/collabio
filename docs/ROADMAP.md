@@ -2096,6 +2096,26 @@ Bild-/Abbildungsmatrix bestand 63/64 im ersten Lauf; der einzige bestehende mobi
 1/1. Beide finalen Druckansichten bestanden die visuelle Pruefung. Es gibt keine relationale Datenbankmigration,
 Tenant-Aktivierung oder Engine-Zulassung.
 
+314. [x] Inertes natives Office-Dokumentobjekt umgesetzt: Ein atomarer Top-Level-Block speichert ausschliesslich eine
+     exakte Zielobjekt- und Zielversions-ID sowie den begrenzten Modus Momentaufnahme oder Verknuepfung. Titel,
+     Zielinhalt, URL, HTML und ausfuehrbare Nutzlast werden nicht im Quelldokument gespeichert.
+
+315. [x] Feste und explizit aktualisierbare Dokumentobjekte getrennt: Eine Momentaufnahme bleibt auf ihrer gespeicherten
+     Version. Eine Verknuepfung wechselt nur nach der sichtbaren Aktion **Auf aktuelle Version aktualisieren** auf eine
+     neue gespeicherte Zielfassung; gespeicherte Quelldokumente aktualisieren sich niemals still.
+
+316. [x] Vollstaendigen barrierefreien Dokumentobjekt-Lebenszyklus geschlossen: Einfuegen, Bearbeiten, exaktes Ziel
+     oeffnen, eine Position frueher oder spaeter verschieben, duplizieren und entfernen sind fokussierbar. Undo/Redo,
+     bestaetigtes Speichern, Reload, Vergleich, Druck, Rueckverweise und frische Ziel-ACL-Pruefung bleiben exakt.
+
+Native Office bleibt vor CRM. Roadmap 314 bis 316 / PLANS 175 bis 177 sind gemeinsam unter ADR-0129 implementiert.
+Dokumentobjekte teilen sich mit Inline-Dokumentreferenzen die bestehende Grenze von 100 Vorkommen und den autoritativen
+Referenz-/Rueckverweis-Pfad. Entzogener oder fehlender Zugriff zeigt keinen gespeicherten Titel und keine Zielinhalte.
+Der finale kombinierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4; die breitere Referenz-, Rueckverweis-, Vergleichs-
+und Druckmatrix bestand nach Start ihres isolierten Blocked-API-Hilfsdienstes vollstaendig. Beide finalen Druckansichten
+bestanden die visuelle Pruefung. Es gibt keine relationale Migration, keinen aktiven Objektpfad und keine Tenant-,
+Pilot-, Indexierungs-, Cloud-AI-, DOCX- oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -2,6 +2,32 @@
 
 Updated: 2026-10-06
 
+Roadmap 314 through 316 / PLANS 175 through 177 are complete under ADR-0129. Native Office now supports an inert
+top-level document card bound to one exact target object and saved target version. The card stores only those IDs and
+`snapshot` or `linked`; it stores no resolved title, target body, URL, HTML or executable payload. Snapshot cards stay
+fixed. Linked cards also stay fixed until an author explicitly chooses **Auf aktuelle Version aktualisieren**, which
+creates an ordinary visible and undoable draft change.
+
+Every display uses the existing authoritative outbound-reference resolver and current target ACL. Revoked, missing
+or foreign targets expose neither title nor content. Document cards share the existing 100-reference limit and
+backlink counts with inline references. Focusable controls insert, edit, open an exact clean target, move one position,
+duplicate the exact inert binding and remove it. Confirmed save, immutable history, reload, comparison and print use
+the same exact representation. OLE, ActiveX, macros, iframes and remote content remain rejected.
+
+The final focused model plus desktop/mobile workflow passed 4/4. The broader reference, backlink, comparison and
+print selection passed all 34 distinct cases after its required isolated Blocked API was started; the two environment
+failures from the first 32/34 attempt passed in the complete 6/6 print rerun. The focused Python reference suite passed
+5/5, including mixed inline/card resolution, fresh target ACL revocation and card-inclusive backlink counts.
+Desktop/mobile screenshot SHA-256 values are
+`2ce099d47faa945c299f1174025fd458b233d3177b530094ba3caba3af106ea1` and
+`d1d25e071ef28f73012f6848f7eda578c76b3d5ab403354de21d21d91cb965ef`; both passed visual review. The isolated review
+UI is available at `http://192.168.0.108:42880/office?review=document-object-90de2278`.
+
+Implementation commits through `42f836cc` are published on `kirchherr/kb-write-unit-of-work`. The saved block uses
+the existing immutable Office version JSON and authoritative Roadmap-287/288 resolution/recovery path; there is no
+relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production
+admission was activated.
+
 Roadmap 311 through 313 / PLANS 172 through 174 are complete under ADR-0128. Native image groups now support bounded
 responsive two-, three- and four-column grids in addition to row and stack. A focusable **Bild bearbeiten** action on
 every image makes nested selection deterministic. Authors can independently duplicate the selected group member or

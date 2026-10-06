@@ -8,6 +8,7 @@ Roadmap 289 implements bounded anchored foreground/background placement under AD
 Roadmap 290 implements bounded quarter-turn rotation and mirroring under ADR-0107.
 Roadmap 291 implements bounded native image groups under ADR-0108.
 Roadmap 309 implements in-place file replacement with fresh immutable pixels under ADR-0126.
+Roadmap 314–316 implement inert exact-version Office document objects under ADR-0129.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap
@@ -118,13 +119,15 @@ member asset/version, crop, transform, accessibility, caption, figure and displa
 equivalent except for member sequence. Confirmed save, immutable history, reload, comparison and print consume that
 same sequence. No drag-only control, nested group, arbitrary overlap layer or new schema is introduced.
 
-## Later slice: inert linked or embedded objects
+## Implemented document-object slice and later object types
 
-Represent files, native tables, charts and later sheets/slides through a typed, version-bound object reference and an
-inert preview. Show object type, title, source version and whether it is a fixed snapshot or an explicitly refreshable
-link. Opening or refreshing rechecks both document and target ACLs. Updating a linked object creates a visible draft
-change; it must never silently alter historical document renderings. Define how preview renditions, source objects and
-cross-document references are restored and retained before adding each type.
+ADR-0129 implements the first object type as an inert Office-document card. It stores an exact target object/version
+and either fixed snapshot or explicitly refreshable linked mode. The title is resolved only after a fresh target ACL
+check and is never copied into the source. Refresh creates a visible draft change and historical renderings never move.
+Move, duplicate, remove, open, undo, comparison, print and backlinks consume the same exact binding.
+
+Files, native charts and later sheets/slides still require their own typed version-bound references and inert preview
+contracts. Define rendition authorization, source-object retention and recovery before adding each type.
 
 Executable OLE/ActiveX, macros, arbitrary iframes and live external content have no admission in this design. Any future
 request for an active object needs a separate threat model, sandbox, compatibility tests and explicit release decision.
