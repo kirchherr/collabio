@@ -460,8 +460,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
                 reject()
             chart_ids.add(identifier)
-            characters += len(attrs["title"]) + len(attrs["altText"]) + sum(map(len, categories)) + sum(
-                len(entry["name"]) for entry in series
+            characters += (
+                len(attrs["title"])
+                + len(attrs["altText"])
+                + sum(map(len, categories))
+                + sum(len(entry["name"]) for entry in series)
             )
             if characters > MAX_DOCUMENT_CHARACTERS:
                 reject()
