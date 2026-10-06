@@ -21,8 +21,8 @@ async function upload(page, id, bytes, mime = "image/png", headers = OFFICE_HEAD
 
 async function alphaAt(page, bytes, x, y) {
   return page.evaluate(async ({ encoded, x, y }) => {
-    const response = await fetch(`data:image/png;base64,${encoded}`);
-    const bitmap = await createImageBitmap(await response.blob());
+    const binary = atob(encoded); const pixels = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([pixels], { type: "image/png" }));
     const canvas = document.createElement("canvas"); canvas.width = bitmap.width; canvas.height = bitmap.height;
     const context = canvas.getContext("2d"); context.drawImage(bitmap, 0, 0);
     return { width: bitmap.width, height: bitmap.height, rgba: [...context.getImageData(x, y, 1, 1).data] };
