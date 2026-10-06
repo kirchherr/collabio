@@ -2353,7 +2353,8 @@ function commitTableTransaction(transaction, message) {
   const editor = state.editor;
   if (!replacementAllowed() || !transaction || !transaction.docChanged || transaction.doc.eq(editor.state.doc)) return false;
   try { validateEditorDocument(transaction.doc); }
-  catch {
+  catch (error) {
+    console.debug("Office table transaction rejected", error?.message);
     $("table-message").textContent = tableLimitMessage;
     if ($("table-tools").hidden && !$("table-insert-dialog").open) notice(tableLimitMessage, true);
     return false;
