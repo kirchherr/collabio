@@ -242,8 +242,8 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-edit-actions").hidden = !selected;
     $("image-group-section").hidden = !selected;
     $("image-status").textContent = !state.session.objectId ? "Speichern Sie das neue Dokument zuerst. Danach können Sie ein Bild hochladen." : selected ?
-      "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Beim Ersetzen bleiben Darstellung und Beschreibung erhalten; erst „In Entwurf übernehmen“ ändert den Entwurf." :
-      "PNG oder JPEG, bis 8 MiB und 4 Millionen Pixel. Das Bild wird diesem Dokument zugeordnet; Einfügen ändert zunächst Ihren Entwurf.";
+      "PNG, JPEG, SVG oder EPS, bis 8 MiB und 4 Millionen Pixel. Beim Ersetzen bleiben Darstellung und Beschreibung erhalten; erst „In Entwurf übernehmen“ ändert den Entwurf." :
+      "PNG, JPEG, SVG oder EPS, bis 8 MiB und 4 Millionen Pixel. Vektorformate werden sicher als transparentes PNG gerastert. Das Bild wird diesem Dokument zugeordnet; Einfügen ändert zunächst Ihren Entwurf.";
     if (selected) { const owner = action; fill(owner.attrs); preview(owner).catch((error) => {
       if (action !== owner || !valid()) return;
       if ([401, 403, 404, 423].includes(error.status)) { accessDenied(); return; }
@@ -254,15 +254,17 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
   const upload = async () => {
     if (!valid() || action.busy || !state.session.objectId) return;
     const owner = action, file = $("image-file").files[0];
-    if (!file || !["image/png", "image/jpeg"].includes(file.type) || file.size > 8388608 || !file.size) {
-      $("image-status").textContent = "Wählen Sie eine PNG- oder JPEG-Datei bis 8 MiB."; return;
+    const extension = file?.name.toLowerCase().split(".").pop();
+    const mime = file?.type || (extension === "eps" ? "application/postscript" : extension === "svg" ? "image/svg+xml" : "");
+    if (!file || !["image/png", "image/jpeg", "image/svg+xml", "application/postscript", "application/eps", "image/eps", "image/x-eps"].includes(mime) || file.size > 8388608 || !file.size) {
+      $("image-status").textContent = "Wählen Sie eine PNG-, JPEG-, SVG- oder EPS-Datei bis 8 MiB."; return;
     }
     owner.busy = true; update(); $("image-status").textContent = "Bild wird hochgeladen und geprüft …";
     try {
       const context = owner.context;
       const response = await fetch(`/v1/office/documents/${encodeURIComponent(owner.session.objectId)}/images`, {
         method: "POST", cache: "no-store", signal: owner.controller.signal, body: file,
-        headers: { "Content-Type": file.type, "X-Office-Upload-Confirmed": "true", "X-Tenant-Id": context.tenantId,
+        headers: { "Content-Type": mime, "X-Office-Upload-Confirmed": "true", "X-Tenant-Id": context.tenantId,
           "X-User-Id": context.userId, "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds },
       });
       if (!response.ok) {

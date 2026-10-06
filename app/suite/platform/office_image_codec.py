@@ -11,6 +11,15 @@ MAX_IMAGE_DIMENSION = 4096
 MAX_IMAGE_PIXELS = 4_000_000
 MAX_IMAGE_OUTPUT = MAX_IMAGE_PIXELS * 4 + 65536
 IMAGE_SOCKET = "/run/office-images/decoder.sock"
+IMAGE_MIME_KINDS = {
+    "image/png": b"P",
+    "image/jpeg": b"J",
+    "image/svg+xml": b"S",
+    "application/postscript": b"E",
+    "application/eps": b"E",
+    "image/eps": b"E",
+    "image/x-eps": b"E",
+}
 
 
 class OfficeImageInvalid(ValueError):
@@ -57,11 +66,13 @@ def png_from_pixels(width: int, height: int, rgba: bytes) -> bytes:
 
 
 def normalize_image(content: bytes, mime_type: str, *, socket_path: str = IMAGE_SOCKET) -> tuple[bytes, int, int]:
-    if not 1 <= len(content) <= MAX_IMAGE_INPUT or mime_type not in {"image/png", "image/jpeg"}:
-        raise OfficeImageInvalid("Only bounded PNG and JPEG files are supported")
-    kind = b"P" if mime_type == "image/png" else b"J"
+    kind = IMAGE_MIME_KINDS.get(mime_type.lower())
+    if not 1 <= len(content) <= MAX_IMAGE_INPUT or kind is None:
+        raise OfficeImageInvalid("Only bounded PNG, JPEG, SVG and EPS files are supported")
     if (kind == b"P" and not content.startswith(b"\x89PNG\r\n\x1a\n")) or (
         kind == b"J" and not content.startswith(b"\xff\xd8\xff")
+    ) or (kind == b"S" and b"<svg" not in content[:4096].lower()) or (
+        kind == b"E" and not content.startswith(b"%!PS-Adobe-")
     ):
         raise OfficeImageInvalid("Image signature does not match its media type")
     try:

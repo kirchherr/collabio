@@ -19,6 +19,16 @@ async function upload(page, id, bytes, mime = "image/png", headers = OFFICE_HEAD
     headers: { ...headers, "Content-Type": mime, "X-Office-Upload-Confirmed": "true" } });
 }
 
+async function alphaAt(page, bytes, x, y) {
+  return page.evaluate(async ({ encoded, x, y }) => {
+    const response = await fetch(`data:image/png;base64,${encoded}`);
+    const bitmap = await createImageBitmap(await response.blob());
+    const canvas = document.createElement("canvas"); canvas.width = bitmap.width; canvas.height = bitmap.height;
+    const context = canvas.getContext("2d"); context.drawImage(bitmap, 0, 0);
+    return { width: bitmap.width, height: bitmap.height, rgba: [...context.getImageData(x, y, 1, 1).data] };
+  }, { encoded: bytes.toString("base64"), x, y });
+}
+
 async function insert(page, bytes, mime = "image/png") {
   await officeEditor(page).press("Control+End");
   await page.locator("#image-options").click();
@@ -122,6 +132,40 @@ test("Office image JPEG normalization strips original metadata and decoder rejec
   expect((await upload(page, first.document.object_id, png)).status()).toBe(400);
   expect((await upload(page, first.document.object_id, Buffer.alloc(8388609))).status()).toBe(413);
   expect((await officeContent(page, first.document.object_id)).version.version_id).toBe(first.version.version_id);
+});
+
+test("Office imports safe SVG and EPS through the image dialog with transparent canonical renditions", async ({ page }, testInfo) => {
+  await openOffice(page); const first = await createOfficeDocument(page, "Vector image import", "Transparent vectors");
+  const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100"><rect width="100" height="100" fill="#2563eb" opacity=".5"/></svg>`);
+  const eps = Buffer.from(`%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 200 100\n%%EndComments\n0.949 0.451 0.055 setrgbcolor\n0 0 100 100 rectfill\nshowpage\n%%EOF\n`);
+
+  const svgUpload = await upload(page, first.document.object_id, svg, "image/svg+xml"); expect(svgUpload.status()).toBe(200);
+  const svgAttrs = (await svgUpload.json()).image;
+  const svgRead = await page.request.get(`${BASE_URL}/v1/office/documents/${svgAttrs.documentId}/images/${svgAttrs.assetId}/${svgAttrs.versionId}`, { headers: OFFICE_HEADERS });
+  expect(svgRead.status()).toBe(200); expect(svgRead.headers()["content-type"]).toBe("image/png");
+  const svgPixels = await alphaAt(page, await svgRead.body(), 1200, 400);
+  expect(svgPixels).toMatchObject({ width: 1600, height: 800 }); expect(svgPixels.rgba[3]).toBe(0);
+  const svgPaint = await alphaAt(page, await svgRead.body(), 400, 400); expect(svgPaint.rgba[3]).toBeGreaterThanOrEqual(126); expect(svgPaint.rgba[3]).toBeLessThanOrEqual(129);
+
+  const epsUpload = await upload(page, first.document.object_id, eps, "application/postscript"); expect(epsUpload.status()).toBe(200);
+  const epsAttrs = (await epsUpload.json()).image;
+  const epsRead = await page.request.get(`${BASE_URL}/v1/office/documents/${epsAttrs.documentId}/images/${epsAttrs.assetId}/${epsAttrs.versionId}`, { headers: OFFICE_HEADERS });
+  expect(epsRead.status()).toBe(200); expect(epsRead.headers()["content-type"]).toBe("image/png");
+  const epsBytes = await epsRead.body(); const epsClear = await alphaAt(page, epsBytes, 1200, 400);
+  expect(epsClear).toMatchObject({ width: 1600, height: 800 }); expect(epsClear.rgba[3]).toBe(0);
+  const epsPaint = await alphaAt(page, epsBytes, 400, 400); expect(epsPaint.rgba[3]).toBe(255);
+
+  for (const [name, mimeType, buffer, alt] of [["transparent.svg", "image/svg+xml", svg, "Semitransparent blue vector"], ["transparent.eps", "application/postscript", eps, "Orange EPS vector"]]) {
+    await officeEditor(page).press("Control+End"); await page.locator("#image-options").click();
+    await page.locator("#image-file").setInputFiles({ name, mimeType, buffer }); await page.locator("#image-upload").click();
+    await expect(page.locator("#image-status")).toContainText("Bild bereit"); await page.locator("#image-alt").fill(alt);
+    await page.locator("#image-apply").click(); await expect(page.locator("#image-dialog")).toBeHidden();
+  }
+  await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  expect(saved.content.content.filter((entry) => entry.type === "image")).toHaveLength(2);
+  await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-vector-import-${testInfo.project.name}.png`, fullPage: true });
 });
 
 test("Office image reader and forged cross-document references cannot upload or bind someone else's image", async ({ page }) => {

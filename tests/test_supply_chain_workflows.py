@@ -76,6 +76,10 @@ def test_runtime_base_image_is_digest_pinned_and_update_managed() -> None:
 
     assert dockerfile.count("pip install --require-hashes --requirement") == 4
     image_stage = dockerfile.split("FROM base AS office-image-decoder", 1)[1].split("\nFROM ", 1)[0]
+    assert "ARG GHOSTSCRIPT_VERSION=10.07.1-r0" in image_stage
+    assert '"ghostscript=${GHOSTSCRIPT_VERSION}"' in image_stage
+    assert "ARG PY3_CAIROSVG_VERSION=2.9.0-r0" in image_stage
+    assert '"py3-cairosvg=${PY3_CAIROSVG_VERSION}"' in image_stage
     assert "pip install --require-hashes --requirement requirements-preview.lock" in image_stage
     assert "USER 10001:10001" in image_stage
     assert "COPY requirements.lock ." in dockerfile

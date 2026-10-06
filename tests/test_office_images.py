@@ -12,6 +12,7 @@ from suite.platform.office_image_codec import (
     png_from_pixels,
 )
 from suite.platform.office_image_schema import image_references
+from suite.platform.office_image_worker import eps_raster_profile, svg_raster_size
 from suite.platform.office_images import OfficeImageDuplicateCommand, OfficeImageGroupDuplicateCommand
 from suite.platform.office_reviews import ReviewAnchor, derive_review_quote
 from suite.platform.office_suggestions import replace_suggestion_text
@@ -155,7 +156,7 @@ def test_numbered_figures_require_captions_and_unique_unambiguous_targets() -> N
 
 def test_image_normalization_rejects_input_before_contacting_worker() -> None:
     for data, mime in (
-        (b"<svg/>", "image/svg+xml"),
+        (b"<svg/>", "text/svg"),
         (b"x", "image/png"),
         (b"\xff\xd8\xff", "image/png"),
         (b"\x89PNG\r\n\x1a\n" + b"x" * 8388608, "image/png"),
@@ -168,6 +169,46 @@ def test_image_normalization_rejects_input_before_contacting_worker() -> None:
         normalize_image(png, "image/png", socket_path="/missing-office-image-worker")
     with pytest.raises(OfficeImageInvalid):
         png_from_pixels(4096, 4096, b"")
+
+
+def test_vector_profiles_are_bounded_and_preserve_aspect_ratio() -> None:
+    assert svg_raster_size(
+        b'<svg xmlns="http://www.w3.org/2000/svg" width="10cm" height="5cm"><rect opacity=".5"/></svg>'
+    ) == (1600, 800)
+    assert svg_raster_size(b'<svg viewBox="0 0 200 100"><path d="M0 0h10v10z"/></svg>') == (1600, 800)
+    assert eps_raster_profile(
+        b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\n%%EndComments\nshowpage\n"
+    ) == (1600, 800, 600.0)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b'<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.test/a.png"/></svg>',
+        b'<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.test/a.css"</style></svg>',
+        b'<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg/>',
+        b'<svg width="100%" height="100%"/>',
+        b'<html/>',
+    ],
+)
+def test_svg_profile_rejects_active_external_or_ambiguous_content(content: bytes) -> None:
+    with pytest.raises((ValueError, UnicodeError)):
+        svg_raster_size(content)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        b"%!PS-Adobe-3.0\n%%BoundingBox: 0 0 10 10\nshowpage\n",
+        b"%!PS-Adobe-3.0 EPSF-3.0\nshowpage\n",
+        b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 10 10 0 0\nshowpage\n",
+    ],
+)
+def test_eps_profile_rejects_postscript_or_invalid_bounds(content: bytes) -> None:
+    with pytest.raises(ValueError):
+        eps_raster_profile(content)
 
 
 @pytest.mark.parametrize(

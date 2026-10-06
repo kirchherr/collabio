@@ -66,7 +66,12 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 FROM base AS office-image-decoder
 
 COPY requirements-preview.lock .
-RUN python -m pip install --require-hashes --requirement requirements-preview.lock \
+ARG GHOSTSCRIPT_VERSION=10.07.1-r0
+ARG PY3_CAIROSVG_VERSION=2.9.0-r0
+RUN apk add --no-cache \
+        "ghostscript=${GHOSTSCRIPT_VERSION}" \
+        "py3-cairosvg=${PY3_CAIROSVG_VERSION}" \
+    && python -m pip install --require-hashes --requirement requirements-preview.lock \
     && addgroup -S -g 10001 images \
     && adduser -S -D -H -u 10001 -G images images \
     && mkdir -p /run/office-images \
