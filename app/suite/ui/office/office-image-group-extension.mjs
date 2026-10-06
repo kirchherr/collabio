@@ -37,6 +37,17 @@ export function officeImageGroupExtension() {
           event.preventDefault(); event.stopPropagation(); selectGroup();
         });
         control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
+        contentDOM.addEventListener("mousedown", (event) => {
+          const member = event.target instanceof Element ? event.target.closest(".office-image-node") : null;
+          if (!member || member.parentElement !== contentDOM) return;
+          const index = [...contentDOM.children].indexOf(member);
+          const position = typeof getPos === "function" ? getPos() : null;
+          if (index < 0 || !Number.isInteger(position) || index >= node.childCount) return;
+          const offset = 1 + node.content.content.slice(0, index).reduce((total, child) => total + child.nodeSize, 0);
+          event.preventDefault(); event.stopPropagation();
+          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position + offset)));
+          editor.view.focus();
+        });
         return { dom, contentDOM,
           update(next) { if (next.type !== node.type) return false; paint(next); node = next; return true; },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
