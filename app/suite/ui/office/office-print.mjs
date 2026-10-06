@@ -12,6 +12,7 @@ import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInvent
 import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription } from "./office-document-cards.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -43,6 +44,24 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       const marker = dom.createElement("div"); marker.className = "office-section-break";
       marker.setAttribute("role", "separator"); marker.setAttribute("aria-label", "Abschnittsumbruch");
       return marker;
+    }
+    if (value.type === "documentCard") {
+      if (depth !== 1 || value.content) throw new Error("Invalid document object");
+      const attrs = officeDocumentCardAttributes(value.attrs);
+      const resolved = documentReferences.get(officeDocumentReferenceKey(attrs));
+      const available = resolved?.status === "resolved";
+      const card = dom.createElement("article"); card.className = "office-document-card office-print-document-card";
+      card.dataset.officeDocumentCard = attrs.targetObjectId; card.dataset.officeDocumentVersion = attrs.targetVersionId;
+      card.dataset.officeDocumentMode = attrs.mode; card.dataset.officeReferenceStatus = available ? "resolved" : "unavailable";
+      const kind = dom.createElement("span"); kind.className = "office-document-card-kind";
+      kind.textContent = attrs.mode === "linked" ? "Verknüpftes Dokument" : "Dokument-Momentaufnahme";
+      const label = dom.createElement("strong"); label.className = "office-document-card-title";
+      label.textContent = available ? resolved.title : "Dokumentobjekt nicht verfügbar";
+      const detail = dom.createElement("span"); detail.className = "office-document-card-detail";
+      detail.textContent = available ? `${resolved.isCurrentVersion ? "Aktuelle" : "Gespeicherte"} Version` :
+        "Zugriff oder Version nicht verfügbar";
+      card.setAttribute("aria-label", officeDocumentCardDescription(attrs, documentReferences));
+      card.append(kind, label, detail); return card;
     }
     if (value.type === "image") {
       const target = value.attrs?.figureId == null ? null : targetsById.get(value.attrs.figureId);

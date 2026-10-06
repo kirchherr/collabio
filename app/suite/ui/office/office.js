@@ -32,6 +32,7 @@ import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescript
 import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardExtension, installOfficeDocumentCardControls } from "./office-document-cards.mjs";
 import { OFFICE_BACKLINK_PAGE_MAX, officeBacklinkPage } from "./office-backlinks.mjs";
 
 const $ = (id) => document.getElementById(id);
@@ -48,7 +49,7 @@ const searchHighlightLimit = 200;
 const allowedNodes = new Set([
   "doc", "paragraph", "heading", "text", "hardBreak", "bulletList", "orderedList", "listItem",
   "blockquote", "codeBlock", "horizontalRule", "table", "tableRow", "tableCell", "tableHeader", "image", "imageGroup", "shape", "shapeGroup", "pageBreak", "sectionBreak", "bookmark",
-  "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex",
+  "documentField", "noteReference", "citationReference", "tableOfContents", "bibliography", "equation", "referenceIndex", "documentCard",
 ]);
 const allowedMarks = new Set(["bold", "italic", "strike", "code", "underline", "textStyle", "link", "crossReference", "documentReference"]);
 const commandNames = {
@@ -391,6 +392,10 @@ function normalizedDocument(document) {
       if (depth !== 1 || Object.keys(value).sort().join(",") !== "attrs,type" || ++sectionBreaks > OFFICE_SECTION_LIMIT) throw new Error("document-section-break");
       result.attrs = officeSectionProfile(value.attrs);
     }
+    if (value.type === "documentCard") {
+      if (depth !== 1 || ++documentReferences > OFFICE_DOCUMENT_REFERENCE_LIMIT) throw new Error("document-reference-limit");
+      result.attrs = officeDocumentCardAttributes(value.attrs);
+    }
     if (value.type === "image") result.attrs = officeImageAttributes(value.attrs);
     if (value.type === "imageGroup") {
       if (depth !== 1 || !Array.isArray(value.content) || value.content.length < 2 || value.content.length > 8 ||
@@ -588,6 +593,7 @@ function updateEditorState() {
   updateBookmarkControls();
   updateDocumentReferenceControls();
   paintDocumentReferences();
+  documentCardControls.update();
   updateFormatTransfer();
   updateListControls();
   updateStyleControls();
@@ -1523,6 +1529,19 @@ function paintDocumentReferences() {
       element.title = officeDocumentReferenceDescription(attrs, state.documentReferenceResolutions);
     } catch { element.dataset.officeReferenceStatus = "unavailable"; element.title = "Dokumentziel nicht verfügbar"; }
   });
+  state.editor?.view.dom.querySelectorAll("[data-office-document-card]").forEach((element) => {
+    try {
+      const attrs = officeDocumentCardAttributes({ targetObjectId: element.dataset.officeDocumentCard,
+        targetVersionId: element.dataset.officeDocumentVersion, mode: element.dataset.officeDocumentMode });
+      const resolved = state.documentReferenceResolutions.get(officeDocumentReferenceKey(attrs));
+      const available = resolved?.status === "resolved";
+      element.dataset.officeReferenceStatus = available ? "resolved" : "unavailable";
+      element.querySelector(".office-document-card-title").textContent = available ? resolved.title : "Dokumentobjekt nicht verfügbar";
+      element.querySelector(".office-document-card-detail").textContent = available ?
+        `${resolved.isCurrentVersion ? "Aktuelle" : "Gespeicherte"} Version` : "Zugriff oder Version nicht verfügbar";
+      element.setAttribute("aria-label", officeDocumentCardDescription(attrs, state.documentReferenceResolutions));
+    } catch { element.dataset.officeReferenceStatus = "unavailable"; }
+  });
 }
 
 async function refreshDocumentReferences(session = state.session) {
@@ -1544,6 +1563,7 @@ async function openDocumentReferenceDialog() {
   const editor = state.editor, characters = linkCharacters(editor);
   if (!characters.length || !state.session?.objectId) return;
   closeDocumentReferenceDialog();
+  documentCardControls.close();
   const action = { session: state.session, editor, context: state.context, revision: state.session.revision,
     document: editor.state.doc, selection: editor.state.selection, characters };
   state.documentReferenceAction = action;
@@ -2576,6 +2596,7 @@ function prepareEditor(content, session) {
     extensions: [
       StarterKit.configure({ link: false, heading: { levels: [1, 2, 3] }, trailingNode: false }),
       TableKit.configure({ table: false }), OfficeTable.configure({ resizable: false }), OfficeParagraphFormat, OfficeCharacterFormat, OfficeLink, OfficeBookmark, OfficeCrossReference, OfficeDocumentReference,
+      officeDocumentCardExtension(() => state.documentReferenceResolutions, () => void openDocumentCardDialog()),
       OfficeDocumentField, OfficeNoteReference, OfficeCitationReference, OfficeTableOfContents, OfficeBibliography, OfficeEquation, OfficeReferenceIndex, OfficeSemantics,
       SearchHighlights, NativeDocumentGuard, ReviewHighlight, OfficeNamedStyles, OfficePageBreak, OfficeSectionBreak,
       officeImageGroupExtension(),
@@ -5320,6 +5341,9 @@ const imageControls = installOfficeImageControls({ state,
   validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
 const shapeControls = installOfficeShapeControls({ state, allowed: () => paragraphAllowed(), current: characterActionCurrent,
   validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
+const documentCardControls = installOfficeDocumentCardControls({ state, $, api, sessionCurrent,
+  validate: validateEditorDocument, update: updateEditorState, notice, refreshReferences: refreshDocumentReferences,
+  openDocument, isDirty });
 restoreContext();
 toggleInspector(!window.matchMedia("(max-width: 1000px)").matches);
 window.matchMedia("(max-width: 1000px)").addEventListener("change", (event) => {

@@ -29,6 +29,7 @@ BLOCKS = {
     "table",
     "image",
     "imageGroup",
+    "documentCard",
     "shape",
     "shapeGroup",
     "pageBreak",
@@ -379,6 +380,20 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if depth != 1 or set(node) != {"type", "attrs"} or section_breaks > 12:
                 reject()
             validate_section_profile(attrs)
+        elif kind == "documentCard":
+            document_references += 1
+            if (
+                depth != 1
+                or document_references > 100
+                or set(node) != {"type", "attrs"}
+                or set(attrs) != {"targetObjectId", "targetVersionId", "mode"}
+                or not isinstance(attrs["targetObjectId"], str)
+                or re.fullmatch(r"office-doc-[a-f0-9]{32}", attrs["targetObjectId"]) is None
+                or not isinstance(attrs["targetVersionId"], str)
+                or re.fullmatch(r"office-version-[a-f0-9]{32}", attrs["targetVersionId"]) is None
+                or attrs["mode"] not in {"snapshot", "linked"}
+            ):
+                reject()
         elif kind == "image":
             images += 1
             if images > 40:
@@ -819,6 +834,10 @@ def office_document_reference_counts(document: dict[str, Any]) -> tuple[tuple[st
     references: dict[tuple[str, str], int] = {}
 
     def walk(node: dict[str, Any]) -> None:
+        if node.get("type") == "documentCard":
+            attrs = node["attrs"]
+            target = (attrs["targetObjectId"], attrs["targetVersionId"])
+            references[target] = references.get(target, 0) + 1
         for mark in node.get("marks", []):
             if mark.get("type") != "documentReference":
                 continue

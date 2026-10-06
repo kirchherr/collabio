@@ -49,6 +49,37 @@ def referenced_document(object_id: str = TARGET_OBJECT, version_id: str = TARGET
     }
 
 
+def document_card(mode: str = "snapshot") -> dict:
+    return {
+        "type": "documentCard",
+        "attrs": {"targetObjectId": TARGET_OBJECT, "targetVersionId": TARGET_VERSION, "mode": mode},
+    }
+
+
+def test_document_card_is_inert_bounded_and_part_of_authoritative_reference_counts() -> None:
+    for mode in ("snapshot", "linked"):
+        document = {"type": "doc", "content": [document_card(mode), {"type": "paragraph"}]}
+        assert validate_office_document(document) is document
+        assert office_document_reference_counts(document) == ((TARGET_OBJECT, TARGET_VERSION, 1),)
+
+    mixed = referenced_document()
+    mixed["content"].append(document_card("linked"))
+    assert office_document_reference_counts(mixed) == ((TARGET_OBJECT, TARGET_VERSION, 2),)
+
+    for invalid in (
+        {**document_card(), "attrs": {**document_card()["attrs"], "mode": "live"}},
+        {**document_card(), "attrs": {**document_card()["attrs"], "title": "Stored title leak"}},
+        {"type": "blockquote", "content": [document_card()]},
+    ):
+        candidate = {"type": "doc", "content": [invalid]}
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(candidate)
+
+    excessive = {"type": "doc", "content": [document_card() for _ in range(101)]}
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(excessive)
+
+
 def test_document_reference_schema_is_bounded_exact_and_deduplicated() -> None:
     document = referenced_document()
     document["content"].append(deepcopy(document["content"][0]))
