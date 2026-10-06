@@ -12,7 +12,7 @@ import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInvent
 import { officeTableAttributes, officeTableCaption, officeTableFragment } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
-import { officeDocumentCardAttributes, officeDocumentCardDescription } from "./office-document-cards.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -48,7 +48,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     if (value.type === "documentCard") {
       if (depth !== 1 || value.content) throw new Error("Invalid document object");
       const attrs = officeDocumentCardAttributes(value.attrs);
-      const resolved = documentReferences.get(officeDocumentReferenceKey(attrs));
+      const resolved = documentReferences.get(officeDocumentCardKey(attrs));
       const available = resolved?.status === "resolved";
       const card = dom.createElement("article"); card.className = "office-document-card office-print-document-card";
       card.dataset.officeDocumentCard = attrs.targetObjectId; card.dataset.officeDocumentVersion = attrs.targetVersionId;

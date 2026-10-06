@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createOfficeDocument, officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl } from "./office-support.mjs";
+import { createOfficeDocument, officeEditor, openOffice, openOfficeDocument, saveOffice, setOfficeAcl, showDocumentList } from "./office-support.mjs";
 import { ARTIFACT_DIR } from "./support.mjs";
 
 const cards = (page) => officeEditor(page).locator("[data-office-document-card]");
@@ -8,6 +8,7 @@ const cards = (page) => officeEditor(page).locator("[data-office-document-card]"
 test("Office document objects pin refresh manage save and print exact authorized versions", async ({ page }, testInfo) => {
   await openOffice(page);
   const targetV1 = await createOfficeDocument(page, "Object target v1", "Object target body one");
+  await showDocumentList(page);
   const source = await createOfficeDocument(page, "Object source", "Before object\nAfter object");
 
   await page.locator("#document-card-options").click();

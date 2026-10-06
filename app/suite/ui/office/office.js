@@ -32,7 +32,7 @@ import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescript
 import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableFragment, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
-import { officeDocumentCardAttributes, officeDocumentCardDescription } from "./office-document-cards.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
 import { officeDocumentCardExtension, installOfficeDocumentCardControls } from "./office-document-card-controls.mjs";
 import { OFFICE_BACKLINK_PAGE_MAX, officeBacklinkPage } from "./office-backlinks.mjs";
 
@@ -1534,7 +1534,7 @@ function paintDocumentReferences() {
     try {
       const attrs = officeDocumentCardAttributes({ targetObjectId: element.dataset.officeDocumentCard,
         targetVersionId: element.dataset.officeDocumentVersion, mode: element.dataset.officeDocumentMode });
-      const resolved = state.documentReferenceResolutions.get(officeDocumentReferenceKey(attrs));
+      const resolved = state.documentReferenceResolutions.get(officeDocumentCardKey(attrs));
       const available = resolved?.status === "resolved";
       element.dataset.officeReferenceStatus = available ? "resolved" : "unavailable";
       element.querySelector(".office-document-card-title").textContent = available ? resolved.title : "Dokumentobjekt nicht verfügbar";

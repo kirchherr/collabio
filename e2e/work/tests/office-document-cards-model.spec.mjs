@@ -1,8 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeDocumentCardAttributes, officeDocumentCardDescription } from "../office-document-cards.mjs";
-import { officeDocumentReferenceKey } from "../office-document-references.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "../office-document-cards.mjs";
 
 const attrs = { targetObjectId: "office-doc-" + "a".repeat(32),
   targetVersionId: "office-version-" + "b".repeat(32), mode: "snapshot" };
@@ -17,7 +16,7 @@ test("Office document objects admit only exact inert snapshot or linked bindings
 });
 
 test("Office document object descriptions and comparisons expose exact version changes", () => {
-  const resolutions = new Map([[officeDocumentReferenceKey(attrs), { ...attrs, status: "resolved",
+  const resolutions = new Map([[officeDocumentCardKey(attrs), { ...attrs, status: "resolved",
     title: "Approved plan", isCurrentVersion: false }]]);
   expect(officeDocumentCardDescription(attrs, resolutions)).toBe(
     "Dokumentobjekt · feste Momentaufnahme · Approved plan · gespeicherte Version");

@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { officeDocumentCardAttributes, officeDocumentCardDescription } from "./office-document-cards.mjs";
+import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
 import { officeDocumentReferenceKey } from "./office-document-references.mjs";
 
 export function officeDocumentCardExtension(resolutions, onEdit) {
@@ -37,7 +37,7 @@ export function officeDocumentCardExtension(resolutions, onEdit) {
         edit.type = "button"; edit.textContent = "Dokumentobjekt bearbeiten";
         const paint = () => {
           const attrs = officeDocumentCardAttributes(current.attrs);
-          const resolved = resolutions().get(officeDocumentReferenceKey(attrs));
+          const resolved = resolutions().get(officeDocumentCardKey(attrs));
           const available = resolved?.status === "resolved";
           dom.dataset.officeDocumentCard = attrs.targetObjectId;
           dom.dataset.officeDocumentVersion = attrs.targetVersionId;
@@ -80,7 +80,7 @@ export function installOfficeDocumentCardControls({ state, $, api, sessionCurren
       const node = action.editor.state.doc.nodeAt(action.position);
       if (node?.type.name !== "documentCard") return false;
       const attrs = officeDocumentCardAttributes(node.attrs);
-      return officeDocumentReferenceKey(attrs) === officeDocumentReferenceKey(action.attrs) && attrs.mode === action.attrs.mode;
+      return officeDocumentCardKey(attrs) === officeDocumentCardKey(action.attrs) && attrs.mode === action.attrs.mode;
     })()));
   const close = (focus = false) => {
     const owner = action; action = null;
@@ -135,16 +135,16 @@ export function installOfficeDocumentCardControls({ state, $, api, sessionCurren
         option.dataset.objectId = entry.object_id; option.dataset.versionId = entry.current_version_id;
         option.dataset.current = "true"; option.dataset.title = entry.title; select.append(option);
       }
-      action.resolved = attrs ? resolutions.get(officeDocumentReferenceKey(attrs)) : null;
-      if (attrs && !options().some((option) => option.value === officeDocumentReferenceKey(attrs))) {
+      action.resolved = attrs ? resolutions.get(officeDocumentCardKey(attrs)) : null;
+      if (attrs && !options().some((option) => option.value === officeDocumentCardKey(attrs))) {
         const available = action.resolved?.status === "resolved";
         const option = new Option(available ? `${action.resolved.title} · gespeicherte Version` : "Dokumentobjekt nicht verfügbar",
-          officeDocumentReferenceKey(attrs));
+          officeDocumentCardKey(attrs));
         option.dataset.objectId = attrs.targetObjectId; option.dataset.versionId = attrs.targetVersionId;
         option.dataset.current = "false"; if (available) option.dataset.title = action.resolved.title;
         else option.dataset.unavailable = "true"; select.prepend(option);
       }
-      select.value = attrs ? officeDocumentReferenceKey(attrs) : select.options[0]?.value || "";
+      select.value = attrs ? officeDocumentCardKey(attrs) : select.options[0]?.value || "";
       $("document-card-status").textContent = select.value ? (editing ? officeDocumentCardDescription(attrs, resolutions) :
         "Die aktuell freigegebene Zielversion wird als inertes Objekt eingefügt.") : "Kein anderes freigegebenes Dokument verfügbar.";
       updateButtons(); select.focus();
@@ -164,7 +164,7 @@ export function installOfficeDocumentCardControls({ state, $, api, sessionCurren
       if (action.editing) tr = tr.setNodeMarkup(action.position, undefined, attrs);
       else tr = tr.replaceSelectionWith(node, false);
       validate(tr.doc);
-      if (option.dataset.title) state.documentReferenceResolutions.set(officeDocumentReferenceKey(attrs), {
+      if (option.dataset.title) state.documentReferenceResolutions.set(officeDocumentCardKey(attrs), {
         ...attrs, status: "resolved", title: option.dataset.title, isCurrentVersion: option.dataset.current === "true",
       });
       dispatch(tr, action.editing ? "Dokumentobjekt aktualisiert. Gespeichert wird erst mit der nächsten bestätigten Version." :
