@@ -176,9 +176,11 @@ def test_vector_profiles_are_bounded_and_preserve_aspect_ratio() -> None:
         b'<svg xmlns="http://www.w3.org/2000/svg" width="10cm" height="5cm"><rect opacity=".5"/></svg>'
     ) == (1600, 800)
     assert svg_raster_size(b'<svg viewBox="0 0 200 100"><path d="M0 0h10v10z"/></svg>') == (1600, 800)
-    assert eps_raster_profile(
-        b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\n%%EndComments\nshowpage\n"
-    ) == (1600, 800, 600.0)
+    assert eps_raster_profile(b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\n%%EndComments\nshowpage\n") == (
+        1600,
+        800,
+        600.0,
+    )
 
 
 @pytest.mark.parametrize(
@@ -190,7 +192,7 @@ def test_vector_profiles_are_bounded_and_preserve_aspect_ratio() -> None:
         b'<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.test/a.css"</style></svg>',
         b'<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg/>',
         b'<svg width="100%" height="100%"/>',
-        b'<html/>',
+        b"<html/>",
     ],
 )
 def test_svg_profile_rejects_active_external_or_ambiguous_content(content: bytes) -> None:

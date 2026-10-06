@@ -117,21 +117,42 @@ def rasterize_vector(kind: bytes, content: bytes, directory: Path) -> bytes:
         width, height = svg_raster_size(content)
         source = directory / "source.svg"
         command = [
-            "/usr/bin/cairosvg", str(source), "--output", str(output),
-            "--output-width", str(width), "--output-height", str(height),
+            "/usr/bin/cairosvg",
+            str(source),
+            "--output",
+            str(output),
+            "--output-width",
+            str(width),
+            "--output-height",
+            str(height),
         ]
     else:
         width, height, dpi = eps_raster_profile(content)
         source = directory / "source.eps"
         command = [
-            "/usr/bin/gs", "-q", "-dSAFER", "-dBATCH", "-dNOPAUSE", "-dEPSCrop",
-            "-dFirstPage=1", "-dLastPage=1", "-sDEVICE=pngalpha", "-dBackgroundColor=16#00000000",
-            f"-r{dpi:.6f}", f"-sOutputFile={output}", str(source),
+            "/usr/bin/gs",
+            "-q",
+            "-dSAFER",
+            "-dBATCH",
+            "-dNOPAUSE",
+            "-dEPSCrop",
+            "-dFirstPage=1",
+            "-dLastPage=1",
+            "-sDEVICE=pngalpha",
+            "-dBackgroundColor=16#00000000",
+            f"-r{dpi:.6f}",
+            f"-sOutputFile={output}",
+            str(source),
         ]
     source.write_bytes(content)
     subprocess.run(
-        command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        timeout=8, check=True, env=environment,
+        command,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=8,
+        check=True,
+        env=environment,
     )
     if not output.is_file() or not 1 <= output.stat().st_size <= MAX_IMAGE_PIXELS * 4 + 65536:
         raise ValueError("Invalid vector rendition")

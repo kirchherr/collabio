@@ -69,10 +69,11 @@ def normalize_image(content: bytes, mime_type: str, *, socket_path: str = IMAGE_
     kind = IMAGE_MIME_KINDS.get(mime_type.lower())
     if not 1 <= len(content) <= MAX_IMAGE_INPUT or kind is None:
         raise OfficeImageInvalid("Only bounded PNG, JPEG, SVG and EPS files are supported")
-    if (kind == b"P" and not content.startswith(b"\x89PNG\r\n\x1a\n")) or (
-        kind == b"J" and not content.startswith(b"\xff\xd8\xff")
-    ) or (kind == b"S" and b"<svg" not in content[:4096].lower()) or (
-        kind == b"E" and not content.startswith(b"%!PS-Adobe-")
+    if (
+        (kind == b"P" and not content.startswith(b"\x89PNG\r\n\x1a\n"))
+        or (kind == b"J" and not content.startswith(b"\xff\xd8\xff"))
+        or (kind == b"S" and b"<svg" not in content[:4096].lower())
+        or (kind == b"E" and not content.startswith(b"%!PS-Adobe-"))
     ):
         raise OfficeImageInvalid("Image signature does not match its media type")
     try:
