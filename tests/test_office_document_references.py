@@ -125,6 +125,16 @@ def test_outbound_reference_resolution_uses_fresh_target_acl_and_exact_version(o
     target_id = target.document.object_id
     user.readable_object_ids.add(target_id)
     source_content = referenced_document(target_id, target.version.version_id)
+    source_content["content"].append(
+        {
+            "type": "documentCard",
+            "attrs": {
+                "targetObjectId": target_id,
+                "targetVersionId": target.version.version_id,
+                "mode": "linked",
+            },
+        }
+    )
     source = service.create(
         user_context=user,
         write_enabled=True,
@@ -193,6 +203,16 @@ def test_backlinks_are_exact_current_source_version_acl_safe_and_title_free_in_a
 
     source_v1_content = referenced_document(target_id, target.version.version_id)
     source_v1_content["content"].append(deepcopy(source_v1_content["content"][0]))
+    source_v1_content["content"].append(
+        {
+            "type": "documentCard",
+            "attrs": {
+                "targetObjectId": target_id,
+                "targetVersionId": target.version.version_id,
+                "mode": "snapshot",
+            },
+        }
+    )
     source_v1 = service.create(
         user_context=user,
         write_enabled=True,
@@ -238,7 +258,7 @@ def test_backlinks_are_exact_current_source_version_acl_safe_and_title_free_in_a
             "source_object_id": source_v1.document.object_id,
             "source_version_id": source_v1.version.version_id,
             "title": "Readable backlink source",
-            "reference_count": 2,
+            "reference_count": 3,
         }
     ]
     assert result.content_included is False
