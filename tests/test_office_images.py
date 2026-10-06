@@ -177,9 +177,9 @@ def test_vector_profiles_are_bounded_and_preserve_aspect_ratio() -> None:
     ) == (1600, 800)
     assert svg_raster_size(b'<svg viewBox="0 0 200 100"><path d="M0 0h10v10z"/></svg>') == (1600, 800)
     assert eps_raster_profile(b"%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\n%%EndComments\nshowpage\n") == (
-        1600,
         800,
-        600.0,
+        400,
+        576.0,
     )
 
 

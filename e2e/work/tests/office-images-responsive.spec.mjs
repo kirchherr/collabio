@@ -151,9 +151,9 @@ test("Office imports safe SVG and EPS through the image dialog with transparent 
   const epsAttrs = (await epsUpload.json()).image;
   const epsRead = await page.request.get(`${BASE_URL}/v1/office/documents/${epsAttrs.documentId}/images/${epsAttrs.assetId}/${epsAttrs.versionId}`, { headers: OFFICE_HEADERS });
   expect(epsRead.status()).toBe(200); expect(epsRead.headers()["content-type"]).toBe("image/png");
-  const epsBytes = await epsRead.body(); const epsClear = await alphaAt(page, epsBytes, 1200, 400);
-  expect(epsClear).toMatchObject({ width: 1600, height: 800 }); expect(epsClear.rgba[3]).toBe(0);
-  const epsPaint = await alphaAt(page, epsBytes, 400, 400); expect(epsPaint.rgba[3]).toBe(255);
+  const epsBytes = await epsRead.body(); const epsClear = await alphaAt(page, epsBytes, 600, 200);
+  expect(epsClear).toMatchObject({ width: 800, height: 400 }); expect(epsClear.rgba[3]).toBe(0);
+  const epsPaint = await alphaAt(page, epsBytes, 200, 200); expect(epsPaint.rgba[3]).toBe(255);
 
   for (const [name, mimeType, buffer, alt] of [["transparent.svg", "image/svg+xml", svg, "Semitransparent blue vector"], ["transparent.eps", "application/postscript", eps, "Orange EPS vector"]]) {
     await officeEditor(page).press("Control+End"); await page.locator("#image-options").click();
