@@ -29,7 +29,9 @@ relational migration or new restore target. No ordinary tenant, pilot, indexing,
 admission was activated.
 
 Full quality on documentation commit `e861f6c6` passed Ruff, formatting for 841 files, Mypy over 605 source files and
-the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning.
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The final eight documentation and
+roadmap contract checks passed. The exact temporary `postgres-test` and `work-e2e-blocked-api` services are stopped,
+no transient runner remains, and regular and review APIs both return `ok`.
 
 Roadmap 311 through 313 / PLANS 172 through 174 are complete under ADR-0128. Native image groups now support bounded
 responsive two-, three- and four-column grids in addition to row and stack. A focusable **Bild bearbeiten** action on
