@@ -17,6 +17,12 @@ undo/redo, reload and print order passed on desktop and mobile. Final desktop/mo
 overflow. The isolated review UI is available at
 `http://192.168.0.108:42880/office?review=image-group-member-order-95d00e55`.
 
+Final quality is green on `23db24a1`: Ruff passed, all 839 files are formatted, Mypy passed across 605 source files
+and the complete Pytest matrix passed with only the known Starlette/AnyIO deprecation warning. The previously expired
+exact Cryptography OpenVEX decision was renewed after explicit human confirmation. Version 2 keeps the unchanged
+`CVE-2026-69247` / `cryptography@49.0.0` scope and unreachable-PKCS#7 justification, is reviewable on 2026-11-06 and
+expires on 2026-12-06. Its focused decision/currentness/reachability test passed before the full matrix.
+
 The saved representation and backend contracts are unchanged, so no migration or new recovery drill is required;
 the exact ordered image-group recovery contract and the fresh Roadmap-309 PostgreSQL/S3 proof remain retained. No
 ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
