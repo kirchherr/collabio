@@ -174,6 +174,8 @@ test("Office image group members move one accessible position with exact undo sa
   await openImage(page, 0);
   await expect(page.locator("#image-group-member-previous")).toBeDisabled();
   await expect(page.locator("#image-group-member-next")).toBeEnabled();
+  await expect(page.locator("#image-up")).toHaveText("Bildgruppe eine Position früher");
+  await expect(page.locator("#image-down")).toHaveText("Bildgruppe eine Position später");
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-image-group-member-order-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#image-cancel").click();
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();

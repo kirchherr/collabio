@@ -155,11 +155,17 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-options").textContent = ["image", "imageGroup"].includes(state.editor?.state.selection.node?.type.name) ? "Bild bearbeiten …" : "Bild einfügen …";
     $("image-upload").disabled = !valid() || action?.busy || !state.session?.objectId || !$("image-file").files.length;
     $("image-apply").disabled = !valid() || action?.busy || !action?.attrs;
-    for (const id of ["image-remove", "image-up", "image-down"]) $(id).disabled = !valid() || action?.busy || !action?.selected;
+    $("image-remove").disabled = !valid() || action?.busy || !action?.selected;
     $("image-alt").disabled = $("image-decorative").checked;
     $("image-alt").required = !$("image-decorative").checked;
     $("image-caption").required = Boolean(action?.numbered);
-    const grouped = Boolean(action?.imageContext?.grouped), positioned = $("image-position-layer").value !== "flow";
+    const imageContext = action?.imageContext, grouped = Boolean(imageContext?.grouped);
+    const positioned = $("image-position-layer").value !== "flow";
+    $("image-up").textContent = grouped ? "Bildgruppe eine Position früher" : "Bild eine Position früher";
+    $("image-down").textContent = grouped ? "Bildgruppe eine Position später" : "Bild eine Position später";
+    $("image-up").disabled = !valid() || action?.busy || !action?.selected || !imageContext || imageContext.rootIndex === 0;
+    $("image-down").disabled = !valid() || action?.busy || !action?.selected || !imageContext ||
+      imageContext.rootIndex === imageContext.root.childCount - 1;
     $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || grouped || imageCount(action?.document) >= 40;
     $("image-position-layer").disabled = grouped;
     $("image-wrap").disabled = grouped || positioned;
