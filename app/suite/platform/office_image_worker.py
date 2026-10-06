@@ -69,9 +69,7 @@ def svg_raster_size(content: bytes) -> tuple[int, int]:
     root = ET.fromstring(text)
     if root.tag != f"{{{SVG_NAMESPACE}}}svg" and root.tag != "svg":
         raise ValueError("Invalid SVG root")
-    nodes = 0
-    for element in root.iter():
-        nodes += 1
+    for nodes, element in enumerate(root.iter(), start=1):
         if nodes > 10_000 or element.tag.rsplit("}", 1)[-1] in SVG_BLOCKED_ELEMENTS:
             raise ValueError("Unsupported SVG content")
         if element.text and SVG_BLOCKED_CSS.search(element.text):
