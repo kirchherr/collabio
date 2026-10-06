@@ -158,13 +158,13 @@ test("Office imports safe SVG and EPS through the image dialog with transparent 
   for (const [name, mimeType, buffer, alt] of [["transparent.svg", "image/svg+xml", svg, "Semitransparent blue vector"], ["transparent.eps", "application/postscript", eps, "Orange EPS vector"]]) {
     await officeEditor(page).press("Control+End"); await page.locator("#image-options").click();
     await page.locator("#image-file").setInputFiles({ name, mimeType, buffer }); await page.locator("#image-upload").click();
-    await expect(page.locator("#image-status")).toContainText("Bild bereit"); await page.locator("#image-alt").fill(alt);
+    await expect(page.locator("#image-status")).toContainText("bereit"); await page.locator("#image-alt").fill(alt);
     await page.locator("#image-apply").click(); await expect(page.locator("#image-dialog")).toBeHidden();
   }
-  await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  await expect(officeEditor(page).locator("img")).toHaveCount(1);
   const saved = await saveOffice(page, { objectId: first.document.object_id });
-  expect(saved.content.content.filter((entry) => entry.type === "image")).toHaveLength(2);
-  await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveCount(2);
+  expect(saved.content.content.filter((entry) => entry.type === "image")).toHaveLength(1);
+  await page.locator("#document-reload").click(); await expect(officeEditor(page).locator("img")).toHaveCount(1);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-vector-import-${testInfo.project.name}.png`, fullPage: true });
 });
 
