@@ -24,6 +24,11 @@ Implementation commit `f28caea4` is published on `kirchherr/kb-write-unit-of-wor
 Office version JSON and general Office recovery contract, so there is no relational migration or new restore target.
 No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
 
+Full quality on `a47f3d70` passed Ruff, formatting for 842 files, Mypy over 605 source files and the complete Pytest
+matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contract checks passed. The exact
+temporary `postgres-test`, `work-e2e-blocked-api`, failed seed and completed migration containers are removed, no
+transient runner remains, and regular and review APIs both return `ok`.
+
 Roadmap 314 through 316 / PLANS 175 through 177 are complete under ADR-0129. Native Office now supports an inert
 top-level document card bound to one exact target object and saved target version. The card stores only those IDs and
 `snapshot` or `linked`; it stores no resolved title, target body, URL, HTML or executable payload. Snapshot cards stay
