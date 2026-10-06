@@ -25,6 +25,11 @@ copy reuses the Roadmap-308 recovery-proven asset transaction and extraction onl
 There is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine
 or production admission was activated.
 
+Final quality on implementation commit `138625ab` passed Ruff, formatting for 839 files, Mypy over 605 source files
+and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Quality image manifest list
+is `sha256:d73c798464a02189294dcaa788a3e60b828722fe7c2658efd7f0ce2edb064e2e`. The temporary `postgres-test` service is
+stopped, no transient Work-E2E runner remains, and the regular and review APIs both return `ok`.
+
 Roadmap 310 / PLANS 171 is complete under ADR-0127. A selected member of a native image group now exposes explicit
 **Bild eine Position früher** and **Bild eine Position später** actions. Each action swaps exactly one adjacent member,
 keeps selection on the moved image and creates one isolated undo step. Boundary actions are disabled. Separate
