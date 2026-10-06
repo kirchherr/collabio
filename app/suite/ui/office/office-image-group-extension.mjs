@@ -45,9 +45,13 @@ export function officeImageGroupExtension() {
           if (index < 0 || !Number.isInteger(position) || index >= node.childCount) return;
           const offset = 1 + node.content.content.slice(0, index).reduce((total, child) => total + child.nodeSize, 0);
           event.preventDefault(); event.stopPropagation();
-          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position + offset)));
-          editor.view.focus();
-        });
+          editor.commands.setNodeSelection(position + offset);
+        }, true);
+        contentDOM.addEventListener("click", (event) => {
+          const member = event.target instanceof Element ? event.target.closest(".office-image-node") : null;
+          if (!member || member.parentElement !== contentDOM) return;
+          event.preventDefault(); event.stopPropagation();
+        }, true);
         return { dom, contentDOM,
           update(next) { if (next.type !== node.type) return false; paint(next); node = next; return true; },
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
