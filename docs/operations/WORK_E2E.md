@@ -471,6 +471,16 @@ confirmed save, immutable predecessor, reload and print order on desktop and mob
 `e2e/work/artifacts/roadmap-310`. The saved schema and asset bindings are unchanged, so the existing exact ordered
 image-group recovery contract remains applicable and no new numbered restore target is created.
 
+Roadmap 311 through 313 add bounded image-group grids, independent duplication of one member and atomic extraction
+before or after the group. The combined browser proof requires exact two-/three-/four-column geometry, narrow-screen
+containment, a failed copy with no draft mutation, a fresh document-owned copy with identical normalized pixels,
+isolated undo/redo, both extraction positions, confirmed save, immutable predecessor, reload, readable copied bytes
+and print order on desktop and mobile. Evidence is retained in `e2e/work/artifacts/results.json` plus
+`office-image-group-grid-desktop-chromium.png` and `office-image-group-grid-mobile-chromium.png`. The grid values live
+inside the existing immutable version JSON; member copy reuses the Roadmap-308 recovery-proven asset transaction and
+extraction reuses existing bindings. The exact general Office-version and image-binding recovery contracts therefore
+remain applicable and no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

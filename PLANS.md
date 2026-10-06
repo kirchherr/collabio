@@ -415,12 +415,26 @@ position earlier or later, disable boundary actions, keep selection on the moved
 validated group and member representation in one isolated undo step. Distinguish member order from whole-group
 document order and prove exact save, immutable predecessor, reload, print and desktop/mobile behavior.
 
+172. [x] Add bounded responsive native image-group grids under ADR-0128. Extend the canonical saved layout vocabulary
+with two-, three- and four-column grids, derive editor/comparison/print columns from one model and retain readable
+two-column fallback for denser grids on narrow viewports. Preserve every group/member attribute and prove exact save,
+reload, immutable predecessor and print geometry.
+
+173. [x] Add independent duplication of one selected native image-group member under ADR-0128. Give every nested image
+a focusable edit entry point, reuse the authorized immutable-image copy endpoint, require fresh asset/version identity
+with exact source pixels and insert the copy immediately after its source as one isolated undo step. Keep all existing
+group, image and retained-asset limits fail closed.
+
+174. [x] Add atomic extraction of one selected native image-group member under ADR-0128. Place the existing member
+before or after its group, rebuild larger groups exactly and dissolve two-member groups into ordered standalone images
+without creating or deleting assets. Prove both placements, undo/redo, save, reload and print on desktop and mobile.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 310 / PLANS 171. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 313 / PLANS 174. Preserve the complete browser/model evidence, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

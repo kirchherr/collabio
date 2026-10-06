@@ -2074,6 +2074,28 @@ fuer 605 Quelldateien und die komplette Pytest-Matrix. Die nach expliziter mensc
 exakte Cryptography-OpenVEX-Entscheidung bestand ihren Currentness- und Reachability-Guard. Es gibt kein neues
 Datenformat, keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
 
+311. [x] Responsive Raster fuer native Bildgruppen umgesetzt: Neben Zeile und Stapel stehen kanonische Raster mit
+     zwei, drei oder vier Spalten bereit. Editor, Vergleich und Druck verwenden dieselbe Spaltenableitung; schmale
+     Ansichten begrenzen drei- und vierspaltige Gruppen auf zwei lesbare Spalten ohne horizontalen Ueberlauf.
+
+312. [x] Unabhaengige Duplizierung eines ausgewaehlten Bildgruppenmitglieds umgesetzt: Jedes Bild besitzt einen
+     fokussierbaren **Bild bearbeiten**-Zugang. **Bild duplizieren** erzeugt ueber den bestehenden autorisierten
+     Kopierpfad ein frisches dokumenteigenes Asset und fuegt es direkt hinter der Quelle in die Gruppe ein.
+
+313. [x] Atomisches Herausloesen eines Bildgruppenmitglieds umgesetzt: **Bild vor Gruppe lösen** und **Bild nach
+     Gruppe lösen** platzieren das vorhandene Bild gezielt neben der Gruppe. Restgruppe, Zwei-Bild-Aufloesung,
+     Reihenfolge und Auswahl werden in genau einem Rueckgaengig-Schritt aktualisiert.
+
+Native Office bleibt vor CRM. Roadmap 311 bis 313 / PLANS 172 bis 174 sind gemeinsam unter ADR-0128 implementiert.
+Layoutwerte und Spaltenzahlen sind zentral begrenzt; Gruppe und Mitglieder behalten beim Layoutwechsel alle Identitaeten
+und Darstellungswerte. Einzelkopien werden erst nach frischen Asset-/Versionsidentitaeten, gleichem Pixelhash und
+gleichen Quelldimensionen eingesetzt. Herausloesen erzeugt oder loescht keine Assets. Die neue kombinierte
+Desktop-/Mobile-Pruefung deckt Rastergeometrie, Fehler ohne Entwurfsaenderung, unabhaengige Kopie, Undo/Redo,
+Herausloesen, bestaetigtes Speichern, immutable Vorgaengerversion, Reload, lesbare Bytes und Druck ab. Die komplette
+Bild-/Abbildungsmatrix bestand 63/64 im ersten Lauf; der einzige bestehende mobile Druck-Timeout bestand isoliert
+1/1. Beide finalen Druckansichten bestanden die visuelle Pruefung. Es gibt keine relationale Datenbankmigration,
+Tenant-Aktivierung oder Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

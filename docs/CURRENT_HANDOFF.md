@@ -2,6 +2,29 @@
 
 Updated: 2026-10-06
 
+Roadmap 311 through 313 / PLANS 172 through 174 are complete under ADR-0128. Native image groups now support bounded
+responsive two-, three- and four-column grids in addition to row and stack. A focusable **Bild bearbeiten** action on
+every image makes nested selection deterministic. Authors can independently duplicate the selected group member or
+extract it immediately before or after the group; each successful operation is one isolated undo step. Larger groups
+retain their identity, layout and gap, while extracting from a two-member group produces two ordered standalone
+images. Extraction never creates or deletes an asset.
+
+The combined grid/member workflow passed 2/2 on desktop and mobile. It covers exact grid geometry, responsive
+containment, rejected-copy no-op, fresh independently owned asset/version identity, matching source pixel hash and
+dimensions, undo/redo, extraction, confirmed save, immutable predecessor, reload, readable copied bytes and print.
+The complete native image/figure matrix passed 63/64 in 10.5 minutes; its sole existing mobile print-request timeout
+passed the isolated rerun 1/1 in 12 seconds. Desktop/mobile screenshot SHA-256 values are
+`890231a5ee459dbf30688da0afcfeb5dbfcd4e3658693ea94562df91d07d393c` and
+`d2899a7d1bbe62908f4c028ec5da8f4300c826bb454caa73679f0cc52d2b9156`; both passed visual review without horizontal
+overflow. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-layout-138625ab`.
+
+Implementation commits `f1f8481a`, `f0e23d66` and `138625ab` are published on
+`kirchherr/kb-write-unit-of-work`. The bounded layout values use the existing immutable Office version JSON; member
+copy reuses the Roadmap-308 recovery-proven asset transaction and extraction only restructures existing bindings.
+There is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine
+or production admission was activated.
+
 Roadmap 310 / PLANS 171 is complete under ADR-0127. A selected member of a native image group now exposes explicit
 **Bild eine Position früher** and **Bild eine Position später** actions. Each action swaps exactly one adjacent member,
 keeps selection on the moved image and creates one isolated undo step. Boundary actions are disabled. Separate
