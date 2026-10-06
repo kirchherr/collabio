@@ -29,6 +29,14 @@ export function officeImageExtension(context, accessDenied) {
       return ({ node, editor, getPos }) => {
         const dom = document.createElement("div"); dom.className = "office-image-node";
         dom.setAttribute("contenteditable", "false"); dom.textContent = "Bild wird geladen …";
+        dom.addEventListener("mousedown", (event) => {
+          if (event.target instanceof Element && event.target.closest("button")) return;
+          const position = typeof getPos === "function" ? getPos() : null;
+          if (!Number.isInteger(position)) return;
+          event.preventDefault(); event.stopPropagation();
+          editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, position)));
+          editor.view.focus();
+        });
         applyOfficeImageLayout(dom, node.attrs);
         const controller = new AbortController(); let url = null, current = node, destroyed = false;
         const commitPosition = (position) => {
