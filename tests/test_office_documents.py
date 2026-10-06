@@ -159,9 +159,13 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": candidate}]})
     with pytest.raises(OfficeDocumentInvalidContentError):
-        validate_office_document({"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "chart", "attrs": attrs}]}]})
+        validate_office_document(
+            {"type": "doc", "content": [{"type": "blockquote", "content": [{"type": "chart", "attrs": attrs}]}]}
+        )
     with pytest.raises(OfficeDocumentInvalidContentError):
-        validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": attrs}, {"type": "chart", "attrs": attrs}]})
+        validate_office_document(
+            {"type": "doc", "content": [{"type": "chart", "attrs": attrs}, {"type": "chart", "attrs": attrs}]}
+        )
 
 
 def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:

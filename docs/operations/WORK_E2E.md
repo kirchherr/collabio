@@ -492,6 +492,16 @@ and print matrix remains mandatory. Evidence is retained in `e2e/work/artifacts/
 immutable Office version JSON and uses the Roadmap-287/288 authoritative reference path, so no new numbered restore
 target is created.
 
+Roadmap 317 through 320 add an inert top-level native chart with bounded bar, line and pie models. The combined
+desktop/mobile proof inserts a bar chart from literal tab-separated data, checks its accessible table and responsive
+containment, covers undo/redo, changes it to a line chart, duplicates with a fresh ID, moves and removes one copy,
+changes the remainder to a pie chart, then verifies exact confirmed save, immutable predecessor, reload and print.
+Pure model coverage rejects active, unknown, duplicate, unbounded and invalid numeric attributes and pins comparison
+descriptions. The neighboring comparison and print files remain mandatory. Evidence is retained in
+`e2e/work/artifacts/results.json` plus `office-chart-desktop-chromium.png` and
+`office-chart-mobile-chromium.png`. Charts live inside existing immutable Office version JSON, so no new numbered
+restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

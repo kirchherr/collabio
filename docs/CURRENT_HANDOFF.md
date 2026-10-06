@@ -2,6 +2,28 @@
 
 Updated: 2026-10-06
 
+Roadmap 317 through 320 / PLANS 178 through 181 are complete under ADR-0130. Native Office now supports inert top-level
+bar, line and pie charts backed only by bounded literal data. Each chart stores a fresh stable ID, title, alternative
+text, legend flag, up to twelve unique categories and up to four unique integer series with fixed colors. Bar and pie
+values are nonnegative; line charts may contain negative values. Formulas, URLs, remote sources, arbitrary SVG, HTML,
+CSS and executable payloads have no admitted field.
+
+The responsive dialog previews tab-separated data and supports insert, edit, fresh-ID duplicate, one-position move
+and removal as isolated undo steps. Editor and print generate inert DOM and internal line SVG from the validated model;
+an exact hidden data table exposes every value to assistive technology. Confirmed save, immutable predecessor, reload,
+comparison and print use the same canonical representation.
+
+The focused model plus desktop/mobile workflow passed 4/4. The combined chart, comparison and print selection covered
+28 cases; its two initially absent Blocked API cases passed in the complete 6/6 print rerun after the exact helper image
+was rebuilt. Desktop/mobile screenshot SHA-256 values are
+`34b4676405b7a7c2ea4b38620aa9da7fabc32022ab7093a745576ce29f804926` and
+`c5c7640a0abe82278a5d99b5dc32d4d979cb6fe089c1c831c3fa2a6334d1c75b`; both passed visual review. The isolated review
+UI is available at `http://192.168.0.108:42880/office?review=native-chart-f28caea4`.
+
+Implementation commit `f28caea4` is published on `kirchherr/kb-write-unit-of-work`. Charts use the existing immutable
+Office version JSON and general Office recovery contract, so there is no relational migration or new restore target.
+No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
 Roadmap 314 through 316 / PLANS 175 through 177 are complete under ADR-0129. Native Office now supports an inert
 top-level document card bound to one exact target object and saved target version. The card stores only those IDs and
 `snapshot` or `linked`; it stores no resolved title, target body, URL, HTML or executable payload. Snapshot cards stay
@@ -2968,9 +2990,9 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 307 / PLANS 168 is complete. Preserve independent image-group assets and identities, atomic server copying,
-fail-closed draft insertion, the 20-group/40-image/eight-member/200-asset limits, isolated undo, exact save/history/
-print behavior and the fresh Roadmap-307 recovery. Keep the complete image matrix and full Python quality green.
+Roadmap 317 through 320 / PLANS 178 through 181 are complete. Preserve the bounded inert chart model, fixed colors,
+accessible exact data table, top-level unique IDs, isolated undo, exact save/history/comparison/print behavior and the
+existing Office recovery contract. Keep the chart, comparison, print and full Python quality matrices green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
@@ -3009,11 +3031,11 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 307 / PLANS 168 is complete and published through `ea1786bb`. Preserve independent image-group duplication,
-atomic image-group removal, direct
-atomic standalone-shape and group ordering, atomic shape-group removal, direct group and member duplication, bounded
-typography, accessible member ordering, bounded connections, ordered flow-only membership and the existing Office
-authorization/version/recovery contracts, including the fresh Roadmap-307 PostgreSQL/S3 proof.
+Roadmap 317 through 320 / PLANS 178 through 181 are complete and published through `f28caea4`. Preserve inert native
+charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
+atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
+bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
+including the fresh Roadmap-309 PostgreSQL/S3 proof.
 Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
 
 Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.

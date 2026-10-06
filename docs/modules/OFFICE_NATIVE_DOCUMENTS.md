@@ -174,6 +174,26 @@ Editor, immutable history, comparison and print share the same representation. N
 external content, implicit grant, relational migration or engine path is introduced. Decision:
 [ADR-0129](../../ARCHITECTURE_DECISIONS/ADR-0129-native-office-document-objects.md).
 
+## Inert native charts (Roadmap 317–320)
+
+**Diagramm einfügen …** creates a top-level atomic bar, line or pie chart from a bounded tab-separated literal table.
+The saved object contains a fresh stable ID, title, alternative text, legend flag, one to twelve unique categories and
+one to four uniquely named integer series using a fixed four-color vocabulary. Bar and pie values are nonnegative;
+line values may be negative. Pie charts use exactly one series with at least one positive value. Documents contain at
+most twenty charts.
+
+The model has no formula, URL, external source, arbitrary markup, style, query or executable field. Browser and server
+validate exact keys, top-level placement, IDs, lengths, character classes, colors and integer ranges independently.
+Rendering creates inert DOM, or internal SVG geometry for lines, only after validation. An exact hidden data table,
+title, alternative text and optional legend keep the result accessible without turning the chart into an embedded
+application.
+
+The responsive dialog provides preview, insert, edit, fresh-ID duplicate, one-position movement and removal. Each
+accepted change is one isolated undo step. Confirmed CAS save, immutable history, reload, comparison and print use the
+same canonical data. The existing Office JSON recovery contract applies; there is no migration, object-storage write,
+network read or engine admission. Decision:
+[ADR-0130](../../ARCHITECTURE_DECISIONS/ADR-0130-native-office-inert-charts.md).
+
 ## Native semantic document structures (Roadmap 280–286)
 
 **Struktur …** provides one responsive, keyboard-reachable workflow for document-owned fields, generated tables of

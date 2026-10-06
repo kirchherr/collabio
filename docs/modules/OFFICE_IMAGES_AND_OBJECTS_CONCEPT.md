@@ -9,6 +9,7 @@ Roadmap 290 implements bounded quarter-turn rotation and mirroring under ADR-010
 Roadmap 291 implements bounded native image groups under ADR-0108.
 Roadmap 309 implements in-place file replacement with fresh immutable pixels under ADR-0126.
 Roadmap 314–316 implement inert exact-version Office document objects under ADR-0129.
+Roadmap 317–320 implement bounded inert native charts under ADR-0130.
 Other object types remain proposals. This document does not activate ordinary tenants.
 
 ## Existing foundation and gap

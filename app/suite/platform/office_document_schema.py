@@ -448,7 +448,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or entry["color"] in colors
                     or not isinstance(entry.get("values"), list)
                     or len(entry["values"]) != len(categories)
-                    or any(type(number) is not int or not -1_000_000_000 <= number <= 1_000_000_000 for number in entry["values"])
+                    or any(
+                        type(number) is not int or not -1_000_000_000 <= number <= 1_000_000_000
+                        for number in entry["values"]
+                    )
                     or (attrs.get("kind") != "line" and any(number < 0 for number in entry["values"]))
                 ):
                     reject()

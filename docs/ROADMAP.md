@@ -2116,6 +2116,29 @@ und Druckmatrix bestand nach Start ihres isolierten Blocked-API-Hilfsdienstes vo
 bestanden die visuelle Pruefung. Es gibt keine relationale Migration, keinen aktiven Objektpfad und keine Tenant-,
 Pilot-, Indexierungs-, Cloud-AI-, DOCX- oder Engine-Zulassung.
 
+317. [x] Inerte native Office-Diagramme umgesetzt: Ein atomarer Top-Level-Block speichert ausschliesslich einen
+     begrenzten Typ, Titel, Alternativtext, Legendenstatus, eindeutige Kategorien und kleine ganzzahlige Datenreihen.
+     Formeln, URLs, externe Datenquellen, beliebiges SVG/HTML/CSS und ausfuehrbare Nutzlast sind ausgeschlossen.
+
+318. [x] Saeulen-, Linien- und Kreisdiagramme aus einem kanonischen Modell umgesetzt: Feste Farben und Wertebereiche,
+     maximal zwoelf Kategorien, vier Reihen und zwanzig Diagramme je Dokument werden in Browser und Server identisch
+     validiert. Eine zugreifbare Datentabelle enthaelt jeden gespeicherten Wert.
+
+319. [x] Vollstaendigen fokussierbaren Diagramm-Entwurfsablauf geschlossen: Tabulator-getrennte Dateneingabe mit
+     Vorschau, Einfuegen, Bearbeiten, Duplizieren mit frischer ID, eine Position frueher oder spaeter verschieben und
+     Entfernen erzeugen jeweils genau einen isolierten Rueckgaengig-Schritt.
+
+320. [x] Diagramm-Lebenszyklus ueber bestaetigtes Speichern, immutable Vorgaengerversion, Reload, Vergleich, Druck und
+     responsive Desktop-/Mobile-Darstellung geschlossen. Editor und Druck erzeugen Darstellung ausschliesslich aus
+     dem gespeicherten validierten Modell und fuehren keinen Netzwerk- oder Berechnungspfad aus.
+
+Native Office bleibt vor CRM. Roadmap 317 bis 320 / PLANS 178 bis 181 sind gemeinsam unter ADR-0130 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4. Die kombinierte Diagramm-, Vergleichs- und Druckmatrix
+bestand 28 Faelle; ihre zwei zunaechst fehlenden isolierten Blocked-API-Faelle bestanden nach kontrolliertem Aufbau
+in der vollstaendigen Druckwiederholung 6/6. Beide finalen Druckansichten bestanden die visuelle Pruefung. Diagramme
+leben im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, Datenquelle, Formelengine,
+Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
