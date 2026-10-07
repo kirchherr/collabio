@@ -2,6 +2,33 @@
 
 Updated: 2026-10-07
 
+Roadmap 383 through 388 / PLANS 244 through 249 are complete under ADR-0142. Local table formulas now preserve all four
+canonical reference forms: relative `A1`, fixed-column `$A1`, fixed-row `A$1` and fully fixed `$A$1`. Repeated or
+detached anchors fail closed. Browser and server independently tokenize, evaluate and verify the identical canonical
+formula and result inside the unchanged A1:T200, 1,000-formula and simple-table limits.
+
+Word/Excel range paste and row or column duplication shift only unanchored axes. Structural insertion, deletion,
+movement and stable sorting still follow logical source-cell identity while preserving each `$` marker; deleted
+dependencies continue to become canonical `#BEZUG!`. The existing formula dialog describes the anchor forms. Every
+formula or structural edit remains one validated undo step and retains current reader, history, session and size guards.
+
+Focused server validation passed 35/35, focused model plus desktop/mobile verification passed 18/18, and the broad
+table, caption, span, layout, cell-presentation, sort, reorder, duplication, formula and comparison matrix passed 72/72.
+Desktop and mobile screenshot SHA-256 values are `8a295cc06826d8f0f5d854c76e46f820af8875692861dd91ed3b06bc2c281872`
+and `acfff20da160e7d63c9f8c2644017c0488e99471672402ba50a59996b14212b0`; both passed visual review.
+
+Product implementation is published in `a0e163f6`, with corrected range assertions in `8e2c7ee6`, ADR/roadmap
+documentation in `920d65ed` and project-format conformance in `c94190ca`, on `kirchherr/kb-write-unit-of-work`.
+Existing immutable Office version JSON and recovery contracts are reused, so there is no relational migration or new
+restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime, DOCX engine or production admission
+was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-anchors-a0e163f6`.
+
+Full quality on documented source `c94190ca` passed Ruff, formatting for 854 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
 Roadmap 377 through 382 / PLANS 238 through 243 are complete under ADR-0141. Local table formulas now follow the
 logical source cells through supported row and column insertion, deletion, direct movement and stable sorting. A
 deleted dependency is stored as the exact inert `#BEZUG!` token; browser and server parse and recalculate it
