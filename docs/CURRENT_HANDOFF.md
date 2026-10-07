@@ -2,6 +2,34 @@
 
 Updated: 2026-10-07
 
+Roadmap 371 through 376 / PLANS 232 through 237 are complete under ADR-0140. Authors can paste a sanitized Word or
+Excel range directly into an existing simple native table. One selected cell is the range origin and grows the table
+within 200 x 20; an explicit rectangular selection requires matching dimensions or repeats one clipboard cell. Header
+cell semantics remain owned by the target. Merged grids, ambiguous dimensions, shifted references outside A1:T200,
+stale sessions, readers, historical views and document-limit overflow leave the draft unchanged.
+
+The translator preserves fixed cell presentation plus bold, italic, underline, strike and code marks. Links become
+plain text, while active, styled, framed, embedded, form, media and nested-table content stays excluded. Local formulas
+move by the target row/column offset, recalculate against the complete result and remain subject to the independent
+server validation from ADR-0139. One accepted paste replaces the target table in one undo step, selects the resulting
+range and survives redo, confirmed save and reload.
+
+The focused model plus desktop/mobile workflow passed 9/9. The broad table, caption, span, layout, cell-presentation,
+sort, reorder, duplication, formula and comparison matrix passed 63/63. Desktop and mobile screenshot SHA-256 values
+are `5dd34938cbe69595642407735f9d81dea0c28deedf2eb2884d7e7bc26922b7a2` and
+`ef123173dd0432ceab2da81f0fdf18766e3a3a5e6a9f030e0617d9d624c581e8`; both passed visual review.
+
+Product implementation is published in `bebf004b`, with ADR, roadmap and final evidence through `266a50e9`, on
+`kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery contracts are reused, so there
+is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime,
+DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-range-paste-bebf004b`.
+
+Full quality on documented source `266a50e9` passed Ruff, formatting for 852 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Exact temporary `postgres-test` and
+`work-e2e-blocked-api` containers were removed; no transient quality or E2E runner remains. Regular and review APIs
+both return `ok`.
+
 Roadmap 363 through 370 / PLANS 224 through 231 are complete under ADR-0139. Authors can paste one Word/Excel HTML
 table or bounded quoted TSV into a native Collabio document. The translator preserves semantic headers, bounded spans,
 plain text paragraphs and fixed cell presentation while removing scripts, remote media, embedded objects, forms,

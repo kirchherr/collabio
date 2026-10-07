@@ -2381,8 +2381,8 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Reload sowie responsive Desktop-/Mobile-Darstellung geschlossen.
 
 Native Office bleibt vor CRM. Roadmap 363 bis 376 / PLANS 224 bis 237 sind unter ADR-0139 und ADR-0140 implementiert.
-Der fokussierte Schema-, Modell-, Desktop- und Mobile-Ablauf bestand vollstaendig; die breite Tabellen- und
-Vergleichsmatrix bestand 59/59. HTML und TSV werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 9/9; die breite Tabellen- und Vergleichsmatrix bestand
+63/63. HTML und TSV werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
 es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
