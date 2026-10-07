@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const text = (cell) => cell.content[0].content?.[0]?.text || "";
 
@@ -57,4 +57,38 @@ test("Office table paste fills an exact selection and rejects ambiguous dimensio
   ] }] };
   const repeated = pasteOfficeTableCells(target, single, { top: 0, left: 0, bottom: 2, right: 2 });
   expect(repeated.content.map((row) => row.content.map(text))).toEqual([["9", "9"], ["9", "9"]]);
+});
+
+test("Office structural formula mapping preserves logical cells and exposes deleted references", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM(A1:B1)\n4\t6\t=SUM(A2:B2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const inserted = structuredClone(original);
+  inserted.content.splice(0, 0, { type: "tableRow", content: Array.from({ length: 3 }, () =>
+    ({ type: "tableCell", content: [{ type: "paragraph" }] })) });
+  const shifted = remapOfficeTableFormulas(original, inserted,
+    { rows: [entry(0, true), entry(0), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(shifted.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
+  expect(shifted.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
+
+  const removed = { ...original, content: original.content.map((row) => ({ ...row, content: row.content.slice(1) })) };
+  const broken = remapOfficeTableFormulas(original, removed,
+    { rows: [entry(0), entry(1)], columns: [entry(1), entry(2)] });
+  expect(broken.content[0].content[1].attrs).toMatchObject({ formula: "=SUM(#BEZUG!:A1)", formulaResult: "#BEZUG!" });
+  expect(() => setOfficeTableFormula(original, { row: 0, column: 2, formula: "=#BROKEN!" })).toThrow();
+});
+
+test("Office structural formula mapping follows moves and gives duplicates relative references", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM(A1:B1)\n4\t6\t=SUM(A2:B2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const movedRows = { ...original, content: [original.content[1], original.content[0]] };
+  const moved = remapOfficeTableFormulas(original, movedRows,
+    { rows: [entry(1), entry(0)], columns: [entry(0), entry(1), entry(2)] });
+  expect(moved.content[0].content[2].attrs.formula).toBe("=SUM(A1:B1)");
+  expect(moved.content[1].content[2].attrs.formula).toBe("=SUM(A2:B2)");
+
+  const duplicatedRows = { ...original, content: [original.content[0], structuredClone(original.content[0]), original.content[1]] };
+  const duplicated = remapOfficeTableFormulas(original, duplicatedRows,
+    { rows: [entry(0), entry(0, true), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
+  expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
 });

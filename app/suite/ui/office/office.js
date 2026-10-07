@@ -32,7 +32,7 @@ import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor,
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
-import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
+import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2481,7 +2481,12 @@ function commitTableSort(event) {
   try {
     const options = { column: Number($("table-sort-column").value), type: $("table-sort-type").value,
       direction: $("table-sort-direction").value };
-    const sorted = sortOfficeTable(action.table.toJSON(), options);
+    const original = action.table.toJSON(); let sorted = sortOfficeTable(original, options);
+    if (tableContainsFormulas(original)) {
+      const rowMap = sorted.content.map((row) => ({ source: original.content.indexOf(row), duplicate: false }));
+      sorted = remapOfficeTableFormulas(original, sorted,
+        { rows: rowMap, columns: formulaIdentityMap(original.content[0].content.length) });
+    }
     const replacement = action.editor.schema.nodeFromJSON(sorted);
     if (replacement.eq(action.table)) {
       $("table-sort-status").textContent = "Die Tabelle ist bereits in dieser Reihenfolge sortiert."; return;
@@ -2649,11 +2654,45 @@ function openTableInsert() {
   $("table-rows").focus();
 }
 
+function tableContainsFormulas(value) {
+  return value.content.some((row) => row.content.some((cell) => cell.attrs?.formula != null));
+}
+
+function formulaIdentityMap(length) {
+  return Array.from({ length }, (_entry, source) => ({ source, duplicate: false }));
+}
+
+function formulaInsertMap(length, index) {
+  const result = formulaIdentityMap(length);
+  result.splice(index, 0, { source: Math.min(index, length - 1), duplicate: true });
+  return result;
+}
+
+function formulaDeleteMap(length, from, to) {
+  return formulaIdentityMap(length).filter((entry) => entry.source < from || entry.source >= to);
+}
+
+function formulaMoveMap(length, from, to, direction) {
+  const result = formulaIdentityMap(length); const block = result.splice(from, to - from);
+  result.splice(direction === "before" ? from - 1 : from + 1, 0, ...block); return result;
+}
+
+function formulaDuplicateMap(length, from, to) {
+  const result = formulaIdentityMap(length);
+  result.splice(to, 0, ...Array.from({ length: to - from }, (_entry, offset) =>
+    ({ source: from + offset, duplicate: true })));
+  return result;
+}
+
+function remapStructuralFormulas(original, transformed, rows, columns) {
+  return tableContainsFormulas(original) ? remapOfficeTableFormulas(original, transformed, { rows, columns }) : transformed;
+}
+
 function runTableCommand(command, confirmed = false, firstColumn = false) {
   if (!replacementAllowed() || !Object.hasOwn(tableCommands, command)) return false;
   const editor = state.editor;
-  const rect = currentTable();
-  if (!rect) return false;
+  const rect = currentTable(); const current = currentTableNode();
+  if (!rect || !current) return false;
   if ((command.startsWith("addRow") && rect.map.height >= 200) ||
       (command.startsWith("addColumn") && rect.map.width >= 20)) {
     $("table-message").textContent = tableSizeMessage;
@@ -2678,8 +2717,20 @@ function runTableCommand(command, confirmed = false, firstColumn = false) {
   tableCommands[command](editor.state, (candidate) => { transaction = candidate; });
   if (!transaction) return false;
   if (command !== "deleteTable") {
-    const remainingTable = transaction.doc.nodeAt(rect.tableStart - 1);
+    let remainingTable = transaction.doc.nodeAt(rect.tableStart - 1);
     if (remainingTable?.type.name === "table") {
+      const original = current.entry.toJSON(); const transformed = remainingTable.toJSON();
+      let rows = formulaIdentityMap(original.content.length);
+      let columns = formulaIdentityMap(original.content[0].content.length);
+      if (command === "addRowBefore") rows = formulaInsertMap(rows.length, rect.top);
+      if (command === "addRowAfter") rows = formulaInsertMap(rows.length, rect.bottom);
+      if (command === "deleteRow") rows = formulaDeleteMap(rows.length, rect.top, rect.bottom);
+      if (command === "addColumnBefore") columns = formulaInsertMap(columns.length, rect.left);
+      if (command === "addColumnAfter") columns = formulaInsertMap(columns.length, rect.right);
+      if (command === "deleteColumn") columns = formulaDeleteMap(columns.length, rect.left, rect.right);
+      const remapped = editor.schema.nodeFromJSON(remapStructuralFormulas(original, transformed, rows, columns));
+      transaction = editor.state.tr.replaceWith(current.position, current.position + current.entry.nodeSize, remapped);
+      remainingTable = remapped;
       const map = TableMap.get(remainingTable);
       const row = command === "addRowAfter" ? rect.bottom : Math.min(rect.top, map.height - 1);
       const column = firstColumn ? 0 : command === "addColumnAfter" ? rect.right : Math.min(rect.left, map.width - 1);
@@ -2696,8 +2747,13 @@ function runTableReorder(command) {
   try {
     const rowMove = command.startsWith("moveRow"); const direction = command.endsWith("Before") ? "before" : "after";
     const options = { from: rowMove ? rect.top : rect.left, to: rowMove ? rect.bottom : rect.right, direction };
-    const moved = rowMove ? moveOfficeTableRows(current.entry.toJSON(), options) :
+    const original = current.entry.toJSON(); let moved = rowMove ? moveOfficeTableRows(original, options) :
       moveOfficeTableColumns(current.entry.toJSON(), options);
+    const rows = rowMove ? formulaMoveMap(original.content.length, options.from, options.to, direction) :
+      formulaIdentityMap(original.content.length);
+    const columns = rowMove ? formulaIdentityMap(original.content[0].content.length) :
+      formulaMoveMap(original.content[0].content.length, options.from, options.to, direction);
+    moved = remapStructuralFormulas(original, moved, rows, columns);
     const replacement = editor.schema.nodeFromJSON(moved); const map = TableMap.get(replacement);
     const top = rowMove ? rect.top + (direction === "before" ? -1 : 1) : rect.top;
     const left = rowMove ? rect.left : rect.left + (direction === "before" ? -1 : 1);
@@ -2723,8 +2779,13 @@ function runTableDuplicate(command) {
   try {
     const rows = command === "duplicateRows";
     const options = { from: rows ? rect.top : rect.left, to: rows ? rect.bottom : rect.right };
-    const duplicated = rows ? duplicateOfficeTableRows(current.entry.toJSON(), options) :
-      duplicateOfficeTableColumns(current.entry.toJSON(), options);
+    const original = current.entry.toJSON(); let duplicated = rows ? duplicateOfficeTableRows(original, options) :
+      duplicateOfficeTableColumns(original, options);
+    const rowMap = rows ? formulaDuplicateMap(original.content.length, options.from, options.to) :
+      formulaIdentityMap(original.content.length);
+    const columnMap = rows ? formulaIdentityMap(original.content[0].content.length) :
+      formulaDuplicateMap(original.content[0].content.length, options.from, options.to);
+    duplicated = remapStructuralFormulas(original, duplicated, rowMap, columnMap);
     const replacement = editor.schema.nodeFromJSON(duplicated); const map = TableMap.get(replacement);
     const top = rows ? rect.bottom : rect.top; const left = rows ? rect.left : rect.right;
     const bottom = top + (rect.bottom - rect.top); const right = left + (rect.right - rect.left);

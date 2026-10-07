@@ -18,6 +18,7 @@ function tokenize(source) {
     if (space) { index += space[0].length; continue; }
     const number = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?/u.exec(rest);
     if (number) { tokens.push({ type: "number", value: Number(number[0]) }); index += number[0].length; continue; }
+    if (rest.startsWith("#BEZUG!")) { tokens.push({ type: "error", value: "#BEZUG!" }); index += 7; continue; }
     const ref = /^[A-T](?:[1-9][0-9]{0,2})/u.exec(rest);
     if (ref) { tokens.push({ type: "ref", value: ref[0] }); index += ref[0].length; continue; }
     const name = /^(?:SUM|AVERAGE|MIN|MAX|COUNT)/u.exec(rest);
@@ -41,6 +42,7 @@ function parseFormula(source, context) {
     if (peek().type !== type) throw formulaError("#WERT!"); return tokens[position++];
   };
   const primary = () => {
+    if (peek().type === "error") throw formulaError(take("error").value);
     if (peek().type === "number") return take("number").value;
     if (peek().type === "ref") return context.value(take("ref").value);
     if (peek().type === "(") { take("("); const value = expression(); take(")"); return value; }
@@ -241,6 +243,47 @@ export function pasteOfficeTableCells(target, source, options) {
     const targetRow = options.top + row, targetColumn = options.left + column;
     result.content[targetRow].content[targetColumn] = pastedCell(result.content[targetRow].content[targetColumn],
       source.content[sourceRow].content[sourceColumn], targetRow - sourceRow, targetColumn - sourceColumn);
+  }
+  return recalculateOfficeTableFormulas(result);
+}
+
+function formulaStructureEntry(entry, maximum) {
+  if (!entry || Object.keys(entry).sort().join(",") !== "duplicate,source" ||
+      !Number.isInteger(entry.source) || entry.source < 0 || entry.source >= maximum || typeof entry.duplicate !== "boolean") {
+    throw new TypeError("Invalid Office table formula structure map");
+  }
+  return entry;
+}
+
+function formulaReference(row, column) {
+  if (row == null || column == null || row < 0 || row >= 200 || column < 0 || column >= 20) return "#BEZUG!";
+  return `${String.fromCharCode(65 + column)}${row + 1}`;
+}
+
+export function remapOfficeTableFormulas(original, transformed, options) {
+  const before = simpleTable(original); const after = simpleTable(transformed);
+  if (!options || Object.keys(options).sort().join(",") !== "columns,rows" ||
+      !Array.isArray(options.rows) || options.rows.length !== after.rows ||
+      !Array.isArray(options.columns) || options.columns.length !== after.columns) {
+    throw new TypeError("Invalid Office table formula structure map");
+  }
+  const rows = options.rows.map((entry) => formulaStructureEntry(entry, before.rows));
+  const columns = options.columns.map((entry) => formulaStructureEntry(entry, before.columns));
+  const canonicalRows = new Map(); const canonicalColumns = new Map();
+  rows.forEach((entry, index) => { if (!entry.duplicate && !canonicalRows.has(entry.source)) canonicalRows.set(entry.source, index); });
+  columns.forEach((entry, index) => { if (!entry.duplicate && !canonicalColumns.has(entry.source)) canonicalColumns.set(entry.source, index); });
+  const result = structuredClone(transformed);
+  for (let row = 0; row < after.rows; row += 1) for (let column = 0; column < after.columns; column += 1) {
+    const cell = result.content[row].content[column]; if (cell.attrs?.formula == null) continue;
+    const rowEntry = rows[row], columnEntry = columns[column];
+    const formula = officeTableFormulaSource(cell.attrs.formula).replace(/\b([A-T])([1-9][0-9]{0,2})\b/gu,
+      (_match, letter, rowText) => {
+        const sourceRow = Number(rowText) - 1, sourceColumn = letter.charCodeAt(0) - 65;
+        const targetRow = rowEntry.duplicate ? sourceRow + row - rowEntry.source : canonicalRows.get(sourceRow);
+        const targetColumn = columnEntry.duplicate ? sourceColumn + column - columnEntry.source : canonicalColumns.get(sourceColumn);
+        return formulaReference(targetRow, targetColumn);
+      });
+    cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula, formulaResult: "#WERT!" });
   }
   return recalculateOfficeTableFormulas(result);
 }

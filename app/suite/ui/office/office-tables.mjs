@@ -19,9 +19,12 @@ export function officeTableFormulaSource(value) {
   const source = value.trim().replaceAll("$", "").replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
     .replace(/\bANZAHL\b/giu, "COUNT").toUpperCase();
+  const identifiers = source.replaceAll("#BEZUG!", "");
   if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
-      !/^=[A-Z0-9+\-*/().,: ]+$/u.test(source)) throw new TypeError("Invalid Office table formula");
-  for (const match of source.matchAll(/[A-Z]+/gu)) {
+      !/^=[A-Z0-9#\-+*/().,:! ]+$/u.test(source) || /[#!]/u.test(identifiers)) {
+    throw new TypeError("Invalid Office table formula");
+  }
+  for (const match of identifiers.matchAll(/[A-Z]+/gu)) {
     if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT"].includes(match[0]) && !/^[A-T]$/u.test(match[0])) {
       throw new TypeError("Invalid Office table formula");
     }

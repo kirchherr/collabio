@@ -202,6 +202,10 @@ def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
             tokens.append(("number", float(number.group())))
             index += len(number.group())
             continue
+        if source.startswith("#BEZUG!", index):
+            tokens.append(("error", "#BEZUG!"))
+            index += len("#BEZUG!")
+            continue
         reference = re.match(r"[A-T](?:[1-9][0-9]{0,2})", source[index:])
         if reference:
             tokens.append(("ref", reference.group()))
@@ -291,6 +295,8 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
             return value
 
         def primary() -> float:
+            if peek() == "error":
+                raise _TableFormulaError(take("error"))
             if peek() == "number":
                 return float(take("number"))
             if peek() == "ref":
@@ -1068,6 +1074,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 table_formulas += 1
                 content = node.get("content")
                 result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
+                formula_identifiers = formula.replace("#BEZUG!", "") if isinstance(formula, str) else ""
                 if (
                     kind != "tableCell"
                     or table_formulas > 1000
@@ -1076,10 +1083,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or not isinstance(formula, str)
                     or not 2 <= len(formula) <= 256
                     or formula != formula.strip()
-                    or re.fullmatch(r"=[A-Z0-9+\-*/().,: ]+", formula) is None
+                    or re.fullmatch(r"=[A-Z0-9#\-+*/().,:! ]+", formula) is None
+                    or re.search(r"[#!]", formula_identifiers) is not None
                     or any(
                         token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"} and re.fullmatch(r"[A-T]", token) is None
-                        for token in re.findall(r"[A-Z]+", formula)
+                        for token in re.findall(r"[A-Z]+", formula_identifiers)
                     )
                     or not isinstance(formula_result, str)
                     or len(formula_result) > 64
