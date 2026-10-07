@@ -1,6 +1,28 @@
 # Current Project Handoff
 
-Updated: 2026-10-06
+Updated: 2026-10-07
+
+Roadmap 329 through 332 / PLANS 190 through 193 are complete under ADR-0133. Native table cells and headers now
+support optional fixed gray, blue, green, yellow or red fills plus middle or bottom vertical alignment; absent values
+retain the previous no-fill and top-aligned canonical representation. Browser and server independently reject
+arbitrary colors, CSS, URLs, unknown attributes and unsupported alignment values.
+
+The focusable **Zellen formatieren …** dialog operates on the current cell, row, column or rectangular selection.
+Mixed values remain untouched until explicitly replaced, and one apply operation is one validated undo step. Merge,
+split and header conversion retain exact attributes. Editor, comparison and print consume the same canonical model.
+All table mutation controls now start disabled in the static shell and are enabled only after current session,
+selection and write checks, closing the reader/historical initial-state gap.
+
+The focused model plus desktop/mobile workflow passed 4/4. The adjacent table, caption and comparison selection passed
+35/36; its only initial failure first exposed the absent isolated Blocked API and then the fail-closed shell gap. After
+the controlled helper start and correction, the complete affected reader/historical case passed 1/1. Desktop/mobile
+print screenshot SHA-256 values are `f98fc5892ce1424b5696c254a64cca9daa32d8e7c09b22354ec147bd3035effa` and
+`38ec0c183a72f8ccdb58d9e17f332aa73741b19c766faee97a8b966084c49226`; both passed visual review.
+
+Implementation is published through `ff1ebc64` on `kirchherr/kb-write-unit-of-work`. The values use existing immutable
+Office version JSON and recovery contracts, so there is no relational migration or new restore target. No ordinary
+tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated. The review
+UI remains available on port 42880 and will be refreshed to the final documentation commit.
 
 Roadmap 325 through 328 / PLANS 186 through 189 are complete under ADR-0132. The existing authorized native image
 upload now accepts PNG, JPEG, safe SVG and bounded EPS while retaining one storage contract: a metadata-free,

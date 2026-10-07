@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–308 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 308 / PLANS 169 independent standalone image duplication
+Status: Roadmap 252–332 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 332 / PLANS 193 native table-cell styling
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0125; current image duplication: `ARCHITECTURE_DECISIONS/ADR-0125-native-office-image-duplication.md`
+Decisions: ADR-0079 through ADR-0133; current table-cell styling: `ARCHITECTURE_DECISIONS/ADR-0133-native-office-table-cell-styling.md`
+
+## Bounded table-cell styling (Roadmap 329–332)
+
+Native table cells and headers may carry one optional fixed fill token (`gray`, `blue`, `green`, `yellow` or `red`)
+and one optional vertical alignment (`middle` or `bottom`). Omission preserves the legacy no-fill and top-aligned
+form. Browser and server reject unknown attributes, arbitrary color/CSS strings, URLs and unsupported alignments.
+
+**Zellen formatieren …** applies to the current cell selection, including complete rows, columns and rectangular
+ranges. Mixed values are preserved until explicitly changed. The complete selection is updated in one validated undo
+transaction, and merge, split and header conversion retain the exact attributes. Editor, comparison and print derive
+their output from the same canonical model and fixed print-safe palette. Reader and historical mutation controls fail
+closed from the initial static shell state.
 
 ## Bounded native shapes (Roadmap 292)
 

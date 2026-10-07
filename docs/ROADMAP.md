@@ -2184,6 +2184,29 @@ Speichern und Reload. Die komplette bestehende Bilddatei deckt zusaetzlich PNG/J
 Ersetzen, Undo/Redo und PDF ab. Es gibt keine Migration, Vektorbytes im Versionsmodell, externe Ressource,
 Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
 
+329. [x] Begrenzte native Zellfuellungen umgesetzt: Daten- und Kopfzellen speichern optional genau eine feste graue,
+     blaue, gruene, gelbe oder rote Fuellung. Browser und Server lehnen freie Farben, CSS, URLs und unbekannte
+     Attribute unabhaengig ab; ohne Attribut bleibt die bisherige Darstellung kanonisch.
+
+330. [x] Vertikale Zellausrichtung umgesetzt: Oben bleibt die kanonische Abwesenheit, mittig und unten sind die
+     einzigen gespeicherten Werte. Editor und Druck leiten ihre Darstellung aus denselben inerten Datenattributen
+     und der festen drucksicheren Palette ab.
+
+331. [x] Zugreifbare Mehrfachauswahl geschlossen: **Zellen formatieren …** arbeitet auf Zelle, Zeile, Spalte oder
+     rechteckiger Auswahl, erhaelt gemischte Werte bis zur expliziten Aenderung und schreibt alle Zielzellen in genau
+     einem validierten Rueckgaengig-Schritt. Verbinden, Teilen und Kopfzellen behalten das exakte Format.
+
+332. [x] Vollstaendigen Zellformat-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen. Tabellenaktionen starten im
+     statischen Shell-Zustand gesperrt und bleiben in Leser- und historischen Ansichten gesperrt.
+
+Native Office bleibt vor CRM. Roadmap 329 bis 332 / PLANS 190 bis 193 sind gemeinsam unter ADR-0133 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4. Die angrenzende Tabellen-, Beschriftungs- und
+Vergleichsmatrix bestand 35/36; der einzige fehlende Fall benoetigte zunaechst den isolierten Blocked-API-Dienst und
+bestand nach dessen kontrolliertem Start und der Fail-closed-Shell-Korrektur 1/1. Beide finalen Druckansichten
+bestanden die visuelle Pruefung. Die optionalen Werte leben im bestehenden immutable Office-Versions-JSON; es gibt
+keine relationale Migration, freie Format-Engine, Tabellenkalkulation, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

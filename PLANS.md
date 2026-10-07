@@ -485,12 +485,25 @@ dependencies from entering immutable Office versions.
 insert, replacement, confirmed save and reload, and prove alpha plus the complete PNG/JPEG image regression on
 desktop and mobile.
 
+190. [x] Add bounded native table-cell fills under ADR-0133. Store only one optional token from a fixed print-safe
+palette, reject arbitrary color and style input in browser and server validation, and preserve canonical legacy cells.
+
+191. [x] Add bounded vertical table-cell alignment under ADR-0133. Treat top as the absent default and admit only
+middle or bottom, with identical inert editor and print rendering.
+
+192. [x] Add accessible multi-cell styling under ADR-0133. Apply the selected fill and alignment across cell, row,
+column or rectangular selections in one validated undo step, preserve mixed values until explicitly changed and
+retain exact styling through merge, split and header conversion.
+
+193. [x] Close the table-cell styling lifecycle under ADR-0133. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print, responsive desktop/mobile containment and fail-closed reader/historical controls.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 328 / PLANS 189. Preserve the complete browser/model evidence, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Spreadsheet-style formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 332 / PLANS 193. Preserve the complete browser/model evidence, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed table-cell fills and vertical alignment, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Spreadsheet-style formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

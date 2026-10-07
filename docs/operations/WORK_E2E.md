@@ -521,6 +521,15 @@ image file remains mandatory for PNG/JPEG, ACL, copy, placement, replacement, un
 SVG, generic PostScript, invalid bounds and unsupported dimensions are covered by server/model tests. Only normalized
 PNG assets enter existing immutable Office versions, so no new numbered restore target is created.
 
+Roadmap 329 through 332 add bounded table-cell fills and vertical alignment. The combined desktop/mobile proof
+creates a 3-by-3 table, formats a complete selected row, proves one-step undo/redo, merges that row without losing its
+style, formats another cell independently, then verifies exact confirmed save, immutable predecessor, reload and
+print data attributes. Pure model and server coverage accept only the five fixed fill tokens plus middle/bottom and
+reject active, arbitrary or unknown values. The adjacent table, caption and comparison files remain mandatory, and
+the reader/historical workflow checks the new control alongside every existing mutation control. Evidence is retained
+as `office-table-cell-style-desktop-chromium.png` and `office-table-cell-style-mobile-chromium.png`. Styling remains
+inside existing immutable Office version JSON, so no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:
