@@ -26,7 +26,8 @@ spreadsheet runtime, DOCX engine or production admission was activated. The refr
 
 Full quality on documented commit `74079fb1` passed Ruff, formatting for 849 files, Mypy over 605 source files and
 the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contracts
-passed 6/6.
+passed 6/6. Exact temporary `postgres-test`, `work-e2e-blocked-api`, failed seed and completed migration containers
+were removed; no transient quality or E2E runner remains. Regular and review APIs both return `ok`.
 
 Roadmap 345 through 350 / PLANS 206 through 211 are complete under ADR-0136. Simple rectangular native tables with at
 least two data rows now support deterministic stable sorting by normalized text, strict decimal number or strict ISO
