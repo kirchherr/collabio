@@ -289,7 +289,7 @@ function officeTableDuplicateRange(values, from, to, minimum, maximum) {
   const count = to - from;
   if (!Number.isInteger(from) || !Number.isInteger(to) || from < minimum || to <= from || to > values.length ||
       values.length + count > maximum) throw new TypeError("Invalid Office table duplication");
-  return [...values.slice(0, to), ...values.slice(from, to), ...values.slice(to)];
+  return [...values.slice(0, to), ...structuredClone(values.slice(from, to)), ...values.slice(to)];
 }
 
 export function duplicateOfficeTableRows(value, options) {

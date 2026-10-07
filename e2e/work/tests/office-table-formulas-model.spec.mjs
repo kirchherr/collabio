@@ -89,6 +89,7 @@ test("Office structural formula mapping follows moves and gives duplicates relat
   const duplicatedRows = { ...original, content: [original.content[0], structuredClone(original.content[0]), original.content[1]] };
   const duplicated = remapOfficeTableFormulas(original, duplicatedRows,
     { rows: [entry(0), entry(0, true), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(duplicated.content[0].content[2].attrs).toMatchObject({ formula: "=SUM(A1:B1)", formulaResult: "5" });
   expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
   expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
 });

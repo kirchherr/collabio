@@ -19,6 +19,8 @@ test("Office table rows duplicate complete selections directly below", () => {
     .toEqual(["Name", "Alpha", "Bravo", "Alpha", "Bravo", "Charlie"]);
   expect(duplicated.content[3].content[1].attrs).toEqual({ background: "blue" });
   expect(duplicated.attrs).toEqual({ style: "accent" });
+  duplicated.content[3].content[0].content[0].content[0].text = "Copied Alpha";
+  expect(duplicated.content[1].content[0].content[0].content[0].text).toBe("Alpha");
 });
 
 test("Office table columns duplicate every cell directly to the right", () => {
@@ -28,6 +30,8 @@ test("Office table columns duplicate every cell directly to the right", () => {
     ["Bravo", "3", "4", "3", "4"], ["Charlie", "5", "6", "5", "6"],
   ]);
   expect(duplicated.content[1].content[3].attrs).toEqual({ background: "blue" });
+  duplicated.content[1].content[3].content[0].content[0].text = "Copied 1";
+  expect(duplicated.content[1].content[1].content[0].content[0].text).toBe("1");
 });
 
 test("Office table duplication rejects protected headers merged grids invalid options and limits", () => {
