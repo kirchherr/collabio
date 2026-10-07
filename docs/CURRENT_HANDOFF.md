@@ -22,10 +22,12 @@ print screenshot SHA-256 values are `f98fc5892ce1424b5696c254a64cca9daa32d8e7c09
 Implementation is published through `ff1ebc64` on `kirchherr/kb-write-unit-of-work`. The values use existing immutable
 Office version JSON and recovery contracts, so there is no relational migration or new restore target. No ordinary
 tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated. The review
-UI remains available on port 42880 and will be refreshed to the final documentation commit.
+UI remains available with the accepted product code at
+`http://192.168.0.108:42880/office?review=table-cell-style-5239bb33`.
 
 Full quality on documentation commit `1ce5ad65` passed Ruff, formatting for 845 files, Mypy over 605 source files and
-the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning.
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
 
 Roadmap 325 through 328 / PLANS 186 through 189 are complete under ADR-0132. The existing authorized native image
 upload now accepts PNG, JPEG, safe SVG and bounded EPS while retaining one storage contract: a metadata-free,
