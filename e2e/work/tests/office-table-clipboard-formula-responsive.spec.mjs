@@ -68,7 +68,7 @@ test("Office imports safe Word Excel tables and evaluates local formulas respons
   expect(saved.version.previous_version_id).toBe(baseline.version.version_id);
 });
 
-test("Office pastes formatted Excel cells into an existing table and expands it atomically", async ({ page }) => {
+test("Office pastes formatted Excel cells into an existing table and expands it atomically", async ({ page }, testInfo) => {
   test.setTimeout(75_000);
   await openOffice(page);
   await newOfficeDraft(page, "Clipboard range proof", { text: "Existing table follows" });
@@ -97,4 +97,5 @@ test("Office pastes formatted Excel cells into an existing table and expands it 
   const savedTable = saved.content.content.find((entry) => entry.type === "table");
   expect(savedTable.content).toHaveLength(3);
   expect(savedTable.content[2].content[3].attrs).toMatchObject({ formula: "=SUM(B3:C3)", formulaResult: "10" });
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-table-range-paste-${testInfo.project.name}.png`, fullPage: true });
 });

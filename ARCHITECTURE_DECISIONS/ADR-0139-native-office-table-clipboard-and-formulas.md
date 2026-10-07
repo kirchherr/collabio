@@ -36,5 +36,6 @@ and rejects stale or forged results. Comparison and print expose the stored sour
 Authors can paste common Word and Excel tables without losing basic structure and can build small, auditable local
 calculations that survive save, history, comparison and print. No clipboard markup, remote image, workbook identity,
 external reference, macro, network call, locale-dependent engine, relational schema or new recovery target is added.
-Rich inline clipboard formatting, paste-into-selection mapping, cross-table references, sheet semantics, relative
-formula rewriting during structural edits, charts bound to formula ranges and full Excel compatibility remain separate.
+Rich inline clipboard formatting and paste-into-selection mapping are extended by ADR-0140. Cross-table references,
+sheet semantics, relative formula rewriting during structural edits, charts bound to formula ranges and full Excel
+compatibility remain separate.

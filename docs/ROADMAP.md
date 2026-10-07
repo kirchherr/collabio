@@ -2362,7 +2362,25 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 370. [x] Vollstaendigen Clipboard-/Formellebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
      Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 370 / PLANS 224 bis 231 sind gemeinsam unter ADR-0139 implementiert.
+371. [x] Sicheres Einfuegen rechteckiger Word-/Excel-Zellbereiche in bestehende einfache Tabellen unter ADR-0140
+     umgesetzt. Eine einzelne Zielzelle dient als Ursprung; rechteckige Auswahlen verlangen passende Dimensionen.
+
+372. [x] Begrenzte Tabellenerweiterung vom Einfuegeursprung bis maximal 200 Zeilen und 20 Spalten umgesetzt. Vollstaendige
+     Kopfzeilen und Kopfspalten bleiben semantisch erhalten; verbundene oder unregelmaessige Raster bleiben unveraendert.
+
+373. [x] Lokale Formeln beim Einfuegen relativ auf die Zielkoordinaten verschoben und danach gemeinsam neu berechnet.
+     Bezuege ausserhalb A1:T200, externe Dialekte und nicht unterstuetzte Ausdruecke lassen die Aktion atomar scheitern.
+
+374. [x] Sichere Inline-Formatuebernahme fuer Fett, Kursiv, Unterstrichen, Durchgestrichen und Code umgesetzt. Links
+     werden zu Text; Skripte, Stylesheets, Medien, Frames, Formulare, Objekte und verschachtelte Tabellen bleiben entfernt.
+
+375. [x] Bereichseinfuegen als genau eine validierte Undo-Transaktion mit anschliessender Zielauswahl integriert. Leser,
+     historische Fassungen, veraltete Sitzungen, Dimensionsfehler und Grenzwertverletzungen bleiben fail closed.
+
+376. [x] Vollstaendigen Zellbereichs-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload sowie responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 376 / PLANS 224 bis 237 sind unter ADR-0139 und ADR-0140 implementiert.
 Der fokussierte Schema-, Modell-, Desktop- und Mobile-Ablauf bestand vollstaendig; die breite Tabellen- und
 Vergleichsmatrix bestand 59/59. HTML und TSV werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
 es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
