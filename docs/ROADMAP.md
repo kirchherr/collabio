@@ -2416,11 +2416,29 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 388. [x] Vollstaendigen Formelanker-Lebenszyklus ueber Dialog, Undo/Redo, bestaetigtes Speichern, Reload, Vergleich,
      Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 388 / PLANS 224 bis 249 sind unter ADR-0139 bis ADR-0142 implementiert.
-Die fokussierten Serverpruefungen bestanden 35/35, der Formelanker-Modell-/Browserlauf 18/18 und die breite Tabellen-
-und Vergleichsmatrix 72/72. HTML, TSV, Anker und Strukturabbildungen werden nur in das bestehende immutable
-Office-Versions-JSON uebersetzt; es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz,
-Tenant-Aktivierung oder DOCX-Zulassung.
+389. [x] Begrenztes Ausfuellen lokaler Tabellenformeln ueber eine rechteckige Datenzellauswahl unter ADR-0143
+     umgesetzt. Die Eingabe gilt als Vorlage fuer die linke obere Zelle und wird auf jede Zielzelle uebertragen.
+
+390. [x] Relative, absolute und gemischte Bezuge beim Ausfuellen achsenweise verschoben. Jeder Zieloffset wird aus der
+     unveraenderten Vorlage berechnet; ein Bezug ausserhalb A1:T200 verwirft die gesamte Aktion.
+
+391. [x] Gemeinsames Entfernen von Formeln fuer die aktuelle Auswahl integriert. Letzte sichtbare Ergebnisse bleiben
+     als normale Zellinhalte erhalten und verbleibende Formeln werden gegen das vollstaendige Ergebnis neu berechnet.
+
+392. [x] Bereichsdialog, Auswahlzusammenfassung und wiederhergestellte Rechteckauswahl als eine atomare Undo-Aktion
+     geschlossen. Einzelzellen behalten den bisherigen Ablauf; Zeilen, Spalten und Rechtecke verwenden denselben Dialog.
+
+393. [x] Kopfzellen, verbundene Raster, ungueltige Grenzen und Formelueberlauf fail closed gehalten. Formelanzahl,
+     Dokumentgroesse, Autorisierung, veraltete Sitzungen, Leser und historische Fassungen bleiben unveraendert begrenzt.
+
+394. [x] Vollstaendigen Bereichsformel-Lebenszyklus ueber Undo/Redo, gemeinsames Entfernen, bestaetigtes Speichern,
+     Reload, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 394 / PLANS 224 bis 255 sind unter ADR-0139 bis ADR-0143 implementiert.
+Die fokussierten Serverpruefungen bestanden 35/35 und der Bereichsformel-Modell-/Browserlauf 22/22. HTML, TSV,
+Anker, Strukturabbildungen und Bereichsaktionen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
+es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder
+DOCX-Zulassung.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
