@@ -27,6 +27,10 @@ so there is no relational migration or new restore target. No ordinary tenant, p
 spreadsheet runtime, DOCX engine or production admission was activated. The review UI is available at
 `http://192.168.0.108:42880/office?review=cell-presentation-f651580a`.
 
+Full quality on documented commit `6a82bcd2` passed Ruff, formatting for 847 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
+
 Roadmap 333 through 338 / PLANS 194 through 199 are complete under ADR-0134. Native tables now support four fixed
 presentation styles, bounded full/wide/compact widths, left/center/right alignment, equal or fixed first-column
 distributions and captions above or below the table. Omitted attributes remain the canonical grid, full-width,
