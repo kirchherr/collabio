@@ -76,6 +76,13 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
     paragraph: dict[str, Any] = {"type": "paragraph"}
     merged: dict[str, Any] = {
         "type": "table",
+        "attrs": {
+            "style": "accent",
+            "width": "compact",
+            "align": "center",
+            "columns": "first-wide",
+            "captionPosition": "top",
+        },
         "content": [
             {
                 "type": "tableRow",
@@ -109,6 +116,16 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
         {
             **merged,
             "content": [merged["content"][0], merged["content"][1], {**merged["content"][2], "content": []}],
+        },
+        {
+            "type": "table",
+            "attrs": {"style": "url(secret)"},
+            "content": [{"type": "tableRow", "content": [{"type": "tableCell", "content": [paragraph]}]}],
+        },
+        {
+            "type": "table",
+            "attrs": {"width": "42px"},
+            "content": [{"type": "tableRow", "content": [{"type": "tableCell", "content": [paragraph]}]}],
         },
         {
             "type": "table",

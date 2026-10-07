@@ -9,7 +9,7 @@ import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./o
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
-import { officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableFragment, officeTableGrid } from "./office-tables.mjs";
+import { officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableDOMAttributes, officeTableFragment, officeTableGrid } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -211,6 +211,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       officeTableGrid(value);
       const table = dom.createElement("table");
       const attrs = officeTableAttributes(value.attrs);
+      for (const [name, attribute] of Object.entries(officeTableDOMAttributes(attrs))) table.setAttribute(name, attribute);
       if (attrs.tableId != null) {
         const target = targetsById.get(attrs.tableId);
         if (!target || target.kind !== "table") throw new Error("Invalid print table target");

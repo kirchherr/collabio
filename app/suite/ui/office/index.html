@@ -74,6 +74,7 @@
               <button class="button secondary" id="table-merge" type="button" disabled>Zellen verbinden</button>
               <button class="button secondary" id="table-split" type="button" disabled>Zelle teilen</button>
               <button class="button secondary" id="table-cell-style" type="button" aria-haspopup="dialog" aria-controls="table-cell-style-dialog" disabled>Zellen formatieren …</button>
+              <button class="button secondary" id="table-layout" type="button" aria-haspopup="dialog" aria-controls="table-layout-dialog" disabled>Tabellenlayout …</button>
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog" disabled>Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button" disabled>Tabelle entfernen …</button>
             </div>
@@ -346,6 +347,18 @@
           <label>Vertikale Ausrichtung<select id="table-cell-vertical"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Oben</option><option value="middle">Mittig</option><option value="bottom">Unten</option></select></label>
         </div><p class="paragraph-help">Es werden ausschließlich feste, drucksichere Werte gespeichert. Textausrichtung und Zeichenformat bleiben unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
         <footer><button class="button secondary" id="table-cell-style-cancel" type="button">Abbrechen</button><button class="button primary" id="table-cell-style-apply" type="submit">Auf Auswahl anwenden</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog" id="table-layout-dialog" aria-labelledby="table-layout-title">
+      <form id="table-layout-form"><header><h2 id="table-layout-title">Tabellenlayout</h2><button class="icon-button" id="table-layout-close" type="button" aria-label="Tabellenlayout schließen">×</button></header>
+        <div class="dialog-body"><p id="table-layout-summary"></p><div class="table-layout-fields">
+          <label>Stil<select id="table-layout-style"><option value="default">Raster</option><option value="minimal">Minimal</option><option value="banded">Zeilenband</option><option value="accent">Akzent</option></select></label>
+          <label>Breite<select id="table-layout-width"><option value="default">Volle Breite</option><option value="wide">Breit (80 %)</option><option value="compact">Kompakt (60 %)</option></select></label>
+          <label>Ausrichtung<select id="table-layout-align"><option value="default">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label>
+          <label>Spalten<select id="table-layout-columns"><option value="default">Gleichmäßig</option><option value="first-wide">Erste Spalte breit</option><option value="first-narrow">Erste Spalte schmal</option></select></label>
+          <label>Beschriftung<select id="table-layout-caption"><option value="default">Unten</option><option value="top">Oben</option></select></label>
+        </div><p class="paragraph-help">Alle Optionen verwenden feste, drucksichere Werte. Auf schmalen Bildschirmen nutzt die Tabelle automatisch die verfügbare Breite.</p><p id="table-layout-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="button secondary" id="table-layout-reset" type="button">Standard</button><button class="button secondary" id="table-layout-cancel" type="button">Abbrechen</button><button class="button primary" id="table-layout-apply" type="submit">Übernehmen</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">

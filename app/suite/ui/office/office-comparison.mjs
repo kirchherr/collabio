@@ -6,7 +6,7 @@ import { officeStyleComparisonDocument, officeStyleDescription } from "./office-
 import { officePageSettings, officePageDescription } from "./office-page.mjs";
 import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { officeTableAttributes, officeTableCellAttributes, officeTableCellStyleDescription } from "./office-tables.mjs";
+import { officeTableAttributes, officeTableCellAttributes, officeTableCellStyleDescription, officeTableLayoutDescription } from "./office-tables.mjs";
 import { officeShapeDescription } from "./office-shapes.mjs";
 import { officeImageGroupLayoutLabel } from "./office-image-groups.mjs";
 import { officeDocumentCardAttributes } from "./office-document-cards.mjs";
@@ -285,6 +285,8 @@ export function describeOfficeBlock(block) {
     const rows = block.content.length;
     const columns = block.content[0].content.length;
     label += ` · ${rows} ${rows === 1 ? "Zeile" : "Zeilen"} × ${columns} ${columns === 1 ? "Spalte" : "Spalten"}`;
+    const layout = officeTableLayoutDescription(block.attrs);
+    if (layout.length) label += ` · ${layout.join(" · ")}`;
   }
   return { label, text: blockText(block) };
 }

@@ -775,9 +775,12 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif kind == "table":
             if attrs:
                 identifier, caption = attrs.get("tableId"), attrs.get("caption")
-                if (
-                    set(attrs) != {"tableId", "caption"}
-                    or not isinstance(identifier, str)
+                if set(attrs) - {"tableId", "caption", "style", "width", "align", "columns", "captionPosition"}:
+                    reject()
+                if (identifier is None) != (caption is None):
+                    reject()
+                if identifier is not None and (
+                    not isinstance(identifier, str)
                     or re.fullmatch(r"table-[a-f0-9]{24}", identifier) is None
                     or identifier in table_ids
                     or identifier in bookmark_ids
@@ -791,10 +794,21 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     )
                 ):
                     reject()
-                numbered_tables += 1
-                if numbered_tables > 100:
+                if identifier is not None:
+                    numbered_tables += 1
+                    if numbered_tables > 100:
+                        reject()
+                    table_ids.add(identifier)
+                if attrs.get("style") not in {None, "minimal", "banded", "accent"}:
                     reject()
-                table_ids.add(identifier)
+                if attrs.get("width") not in {None, "compact", "wide"}:
+                    reject()
+                if attrs.get("align") not in {None, "center", "right"}:
+                    reject()
+                if attrs.get("columns") not in {None, "first-wide", "first-narrow"}:
+                    reject()
+                if attrs.get("captionPosition") not in {None, "top"}:
+                    reject()
         elif kind in {"tableCell", "tableHeader"}:
             if set(attrs) - {"colspan", "rowspan", "colwidth", "background", "verticalAlign"}:
                 reject()

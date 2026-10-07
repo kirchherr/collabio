@@ -31,7 +31,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -62,10 +62,12 @@ const commandNames = {
 };
 const OfficeTable = Table.extend({
   addAttributes() {
-    return { ...(this.parent?.() || {}), caption: { default: null, rendered: false }, tableId: { default: null, rendered: false } };
+    const inert = () => ({ default: null, rendered: false });
+    return { ...(this.parent?.() || {}), caption: inert(), tableId: inert(), style: inert(), width: inert(),
+      align: inert(), columns: inert(), captionPosition: inert() };
   },
-  renderHTML() {
-    return ["table", { class: "office-table" },
+  renderHTML({ node }) {
+    return ["table", { class: "office-table", ...officeTableDOMAttributes(node.attrs) },
       ["caption", { hidden: "", "data-office-table-caption": "" }, ""], ["tbody", 0]];
   },
   addNodeView() {
@@ -74,8 +76,14 @@ const OfficeTable = Table.extend({
       const caption = document.createElement("caption"); caption.hidden = true;
       caption.dataset.officeTableCaption = "";
       const body = document.createElement("tbody"); table.append(caption, body);
+      const apply = (node) => {
+        for (const name of ["data-office-table-style", "data-office-table-width", "data-office-table-align",
+          "data-office-table-columns", "data-office-caption-position"]) table.removeAttribute(name);
+        for (const [name, value] of Object.entries(officeTableDOMAttributes(node.attrs))) table.setAttribute(name, value);
+      };
+      apply(tableNode);
       return { dom: table, contentDOM: body,
-        update(updated) { return updated.type === tableNode.type; },
+        update(updated) { if (updated.type !== tableNode.type) return false; apply(updated); return true; },
         ignoreMutation(mutation) {
           return mutation.target === caption || caption.contains(mutation.target) ||
             (mutation.type === "attributes" && mutation.target === table);
@@ -466,7 +474,7 @@ function normalizedDocument(document) {
     }
     if (value.type === "table") {
       const attributes = officeTableAttributes(value.attrs);
-      if (attributes.tableId) result.attrs = attributes;
+      if (Object.keys(attributes).length) result.attrs = attributes;
     }
     if (value.type === "text") {
       if (typeof value.text !== "string") throw new Error("document-text");
@@ -2266,6 +2274,7 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-remove-dialog").close();
   $("table-caption-dialog").close();
   $("table-cell-style-dialog").close();
+  $("table-layout-dialog").close();
   $("table-insert-form").reset();
   $("table-insert-message").textContent = "";
   $("table-remove-summary").textContent = "";
@@ -2273,8 +2282,10 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-remove-confirm").textContent = "Aus Entwurf entfernen";
   $("table-caption-form").reset();
   $("table-cell-style-form").reset();
+  $("table-layout-form").reset();
   $("table-caption-status").textContent = "";
   $("table-cell-style-status").textContent = "";
+  $("table-layout-status").textContent = "";
   if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
 }
 
@@ -2294,6 +2305,7 @@ function updateTableControls() {
   $("table-split").disabled = !rect || !allowed || !splitCell(state.editor.state);
   $("table-caption").disabled = !rect || !allowed;
   $("table-cell-style").disabled = !rect || !allowed;
+  $("table-layout").disabled = !rect || !allowed;
   $("table-delete").disabled = !rect || !allowed;
   $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
   const header = Boolean(rect && Array.from({ length: rect.table.firstChild.childCount }, (_, index) =>
@@ -2358,6 +2370,44 @@ function openTableCellStyle() {
   $("table-cell-fill").focus();
 }
 
+function tableLayoutValue(attrs, key) { return attrs[key] || "default"; }
+
+function openTableLayout() {
+  if (!replacementAllowed()) return;
+  const current = currentTableNode();
+  if (!current) return;
+  let attrs;
+  try { attrs = officeTableAttributes(current.entry.attrs); } catch { return; }
+  closeTableDialogs();
+  state.tableAction = { ...tableActionSnapshot("layout"), position: current.position, table: current.entry };
+  $("table-layout-style").value = tableLayoutValue(attrs, "style");
+  $("table-layout-width").value = tableLayoutValue(attrs, "width");
+  $("table-layout-align").value = tableLayoutValue(attrs, "align");
+  $("table-layout-columns").value = tableLayoutValue(attrs, "columns");
+  $("table-layout-caption").value = tableLayoutValue(attrs, "captionPosition");
+  $("table-layout-summary").textContent = `${current.entry.childCount} ${current.entry.childCount === 1 ? "Zeile" : "Zeilen"} · feste, drucksichere Layoutwerte`;
+  $("table-layout-dialog").showModal();
+  $("table-layout-style").focus();
+}
+
+function commitTableLayout(event, reset = false) {
+  event?.preventDefault();
+  const action = state.tableAction;
+  if (!tableActionCurrent(action) || action.kind !== "layout") { closeTableDialogs(); return; }
+  try {
+    const current = officeTableAttributes(action.table.attrs);
+    const optional = (id) => reset || $(id).value === "default" ? null : $(id).value;
+    const attrs = officeTableAttributes({ ...current, style: optional("table-layout-style"),
+      width: optional("table-layout-width"), align: optional("table-layout-align"),
+      columns: optional("table-layout-columns"), captionPosition: optional("table-layout-caption") });
+    const transaction = action.editor.state.tr.setNodeMarkup(action.position, undefined, attrs);
+    if (!commitTableTransaction(transaction, reset ? "Tabellenlayout auf Standard zurückgesetzt." :
+      "Tabellenlayout übernommen. Gespeichert wird erst mit der nächsten bestätigten Version.")) closeTableDialogs(true);
+  } catch {
+    $("table-layout-status").textContent = "Das Tabellenlayout konnte nicht sicher übernommen werden.";
+  }
+}
+
 function commitTableCellStyle(event) {
   event.preventDefault();
   const action = state.tableAction;
@@ -2389,11 +2439,12 @@ function commitTableCaption(remove = false) {
   if (!tableActionCurrent(action) || action.kind !== "caption") { closeTableDialogs(); return; }
   let attrs = {};
   try {
+    const current = officeTableAttributes(action.table.attrs);
     if (!remove) {
       const caption = $("table-caption-text").value.trim();
-      attrs = officeTableAttributes({ caption,
+      attrs = officeTableAttributes({ ...current, caption,
         tableId: action.table.attrs.tableId || `table-${mutationReference().replaceAll("-", "").slice(0, 24)}` });
-    }
+    } else attrs = officeTableAttributes({ ...current, caption: null, tableId: null });
     const transaction = action.editor.state.tr.setNodeMarkup(action.position, undefined, attrs);
     validateEditorDocument(transaction.doc);
     closeTableDialogs();
@@ -5343,14 +5394,17 @@ $("table-split").addEventListener("click", () => runTableCellCommand(splitCell,
   "Verbundene Zelle wieder in einzelne Zellen aufgeteilt."));
 $("table-caption").addEventListener("click", openTableCaption);
 $("table-cell-style").addEventListener("click", openTableCellStyle);
+$("table-layout").addEventListener("click", openTableLayout);
 $("table-delete").addEventListener("click", () => runTableCommand("deleteTable"));
-["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-delete"].forEach((id) => {
+["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-layout", "table-delete"].forEach((id) => {
   $(id).addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 });
 $("table-caption-form").addEventListener("submit", (event) => { event.preventDefault(); commitTableCaption(); });
 $("table-caption-remove").addEventListener("click", () => commitTableCaption(true));
 $("table-caption-text").addEventListener("input", () => $("table-caption-status").classList.remove("error"));
 $("table-cell-style-form").addEventListener("submit", commitTableCellStyle);
+$("table-layout-form").addEventListener("submit", commitTableLayout);
+$("table-layout-reset").addEventListener("click", () => commitTableLayout(null, true));
 $("table-insert-form").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!tableActionCurrent(state.tableAction) || state.tableAction.kind !== "insert") { closeTableDialogs(); return; }
@@ -5367,14 +5421,14 @@ $("table-remove-confirm").addEventListener("click", () => {
   closeTableDialogs();
   runTableCommand(command, true);
 });
-["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel"].forEach((id) => {
+["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel", "table-layout-close", "table-layout-cancel"].forEach((id) => {
   $(id).addEventListener("click", () => closeTableDialogs(true));
 });
-["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog"].forEach((id) => {
+["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog", "table-layout-dialog"].forEach((id) => {
   $(id).addEventListener("cancel", (event) => { event.preventDefault(); closeTableDialogs(true); });
   $(id).addEventListener("close", () => {
     const kind = id === "table-insert-dialog" ? "insert" : id === "table-remove-dialog" ? "remove" :
-      id === "table-caption-dialog" ? "caption" : "cellStyle";
+      id === "table-caption-dialog" ? "caption" : id === "table-cell-style-dialog" ? "cellStyle" : "layout";
     if (!$(id).open && state.tableAction?.kind === kind) closeTableDialogs();
   });
 });

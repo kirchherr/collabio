@@ -5,6 +5,10 @@ export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
 export const OFFICE_TABLE_CELL_FILLS = ["gray", "blue", "green", "yellow", "red"];
 export const OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS = ["middle", "bottom"];
+export const OFFICE_TABLE_STYLES = ["minimal", "banded", "accent"];
+export const OFFICE_TABLE_WIDTHS = ["compact", "wide"];
+export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
+export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 
 export function officeTableCellAttributes(value = {}) {
   if (Object.entries(value).some(([key, entry]) =>
@@ -77,13 +81,48 @@ export function officeTableFragment(id) {
 }
 
 export function officeTableAttributes(value = {}) {
-  const keys = Object.keys(value).filter((key) => value[key] != null).sort().join(",");
-  if (!keys) return {};
-  if (keys !== "caption,tableId" || typeof value.caption !== "string" || !value.caption.trim() ||
-      Array.from(value.caption).length > OFFICE_TABLE_CAPTION_MAX || forbiddenCaption.test(value.caption)) {
+  if (!value || Object.entries(value).some(([key, entry]) =>
+    !["caption", "tableId", "style", "width", "align", "columns", "captionPosition"].includes(key) && entry != null)) {
+    throw new TypeError("Invalid Office table");
+  }
+  const captioned = value.caption != null || value.tableId != null;
+  if (captioned && (typeof value.caption !== "string" || !value.caption.trim() ||
+      Array.from(value.caption).length > OFFICE_TABLE_CAPTION_MAX || forbiddenCaption.test(value.caption))) {
     throw new TypeError("Invalid Office table caption");
   }
-  return { caption: value.caption, tableId: officeTableId(value.tableId) };
+  if ((value.style != null && !OFFICE_TABLE_STYLES.includes(value.style)) ||
+      (value.width != null && !OFFICE_TABLE_WIDTHS.includes(value.width)) ||
+      (value.align != null && !OFFICE_TABLE_ALIGNMENTS.includes(value.align)) ||
+      (value.columns != null && !OFFICE_TABLE_COLUMN_LAYOUTS.includes(value.columns)) ||
+      (value.captionPosition != null && value.captionPosition !== "top")) throw new TypeError("Invalid Office table layout");
+  const result = {};
+  if (captioned) { result.caption = value.caption; result.tableId = officeTableId(value.tableId); }
+  if (value.style != null) result.style = value.style;
+  if (value.width != null) result.width = value.width;
+  if (value.align != null) result.align = value.align;
+  if (value.columns != null) result.columns = value.columns;
+  if (value.captionPosition != null) result.captionPosition = value.captionPosition;
+  return result;
+}
+
+export function officeTableDOMAttributes(value = {}) {
+  const attrs = officeTableAttributes(value); const result = {};
+  if (attrs.style) result["data-office-table-style"] = attrs.style;
+  if (attrs.width) result["data-office-table-width"] = attrs.width;
+  if (attrs.align) result["data-office-table-align"] = attrs.align;
+  if (attrs.columns) result["data-office-table-columns"] = attrs.columns;
+  if (attrs.captionPosition) result["data-office-caption-position"] = attrs.captionPosition;
+  return result;
+}
+
+export function officeTableLayoutDescription(value = {}) {
+  const attrs = officeTableAttributes(value); const result = [];
+  if (attrs.style) result.push(`Stil ${attrs.style}`);
+  if (attrs.width) result.push(`Breite ${attrs.width}`);
+  if (attrs.align) result.push(`Ausrichtung ${attrs.align}`);
+  if (attrs.columns) result.push(`Spalten ${attrs.columns}`);
+  if (attrs.captionPosition) result.push("Beschriftung oben");
+  return result;
 }
 
 export function officeTableInventory(document) {

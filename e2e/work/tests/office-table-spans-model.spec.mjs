@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeTableCellAttributes, officeTableGrid } from "../office-tables.mjs";
+import { officeTableAttributes, officeTableCellAttributes, officeTableDOMAttributes, officeTableGrid } from "../office-tables.mjs";
 
 const paragraph = (text = "") => ({ type: "paragraph", content: text ? [{ type: "text", text }] : undefined });
 const cell = (type, text, attrs = {}) => ({ type, attrs, content: [paragraph(text)] });
@@ -38,4 +38,19 @@ test("Office comparison exposes merged-cell geometry", () => {
   expect(comparison.counts.changed).toBe(1);
   const changed = comparison.rows.find((row) => row.kind === "changed");
   expect(describeOfficeBlock(changed.after).text).toContain("3 Spalten × 1 Zeilen");
+});
+
+test("Office table layouts accept only bounded inert presets", () => {
+  const attrs = { style: "accent", width: "compact", align: "center", columns: "first-wide", captionPosition: "top" };
+  expect(officeTableAttributes(attrs)).toEqual(attrs);
+  expect(officeTableDOMAttributes(attrs)).toEqual({
+    "data-office-table-style": "accent", "data-office-table-width": "compact",
+    "data-office-table-align": "center", "data-office-table-columns": "first-wide",
+    "data-office-caption-position": "top",
+  });
+  for (const invalid of [{ style: "url(secret)" }, { width: "42px" }, { align: "absolute" },
+    { columns: "1fr 2fr" }, { captionPosition: "fixed" }, { class: "hostile" }]) {
+    expect(() => officeTableAttributes(invalid)).toThrow();
+  }
+  expect(describeOfficeBlock({ ...merged, attrs }).label).toContain("Stil accent");
 });
