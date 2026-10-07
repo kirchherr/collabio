@@ -33,7 +33,9 @@ test("Office table rows and columns reorder with protected headers history save 
   await expect(page.locator('#table-column-action option[value="moveColumnBefore"]')).toHaveJSProperty("disabled", true);
   await expect(page.locator('#table-column-action option[value="moveColumnAfter"]')).toHaveJSProperty("disabled", true);
   await page.locator("#table-header-column-toggle").click();
+  await cell(page, 0, 1).click();
   await page.locator("#table-header-toggle").click();
+  await expect(table(page).locator("tr").first().locator("th")).toHaveCount(4);
 
   await cell(page, 2, 1).click(); await page.locator("#table-select").selectOption("row");
   await page.locator("#table-row-action").selectOption("moveRowBefore");
