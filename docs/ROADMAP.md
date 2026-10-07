@@ -2338,6 +2338,35 @@ Layout-, Zellformat-, Sortier-, Umordnungs- und Vergleichsmatrix bestand 54/54. 
 kanonische vollstaendige Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration,
 Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
 
+363. [x] Sicheren strukturierten HTML-Tabellenimport aus Word-/Excel-Zwischenablagen unter ADR-0139 umgesetzt. Aktive,
+     eingebettete und externe Inhalte werden entfernt; genau eine Tabelle wird in kanonische native Zellen uebersetzt.
+
+364. [x] Begrenzten quoted-TSV-Fallback mit 200 Zeilen, 20 Spalten und bestehenden Dokumentlimits umgesetzt. Unregelmaessige,
+     uebergrosse oder nicht unterstuetzte Eingaben lassen den Entwurf unveraendert.
+
+365. [x] Semantische Kopfzellen, begrenzte Spannen und feste Zellpraesentation aus der Zwischenablage erhalten. Fremde
+     Excel-Formeldialekte werden nicht ausgefuehrt; ihr angezeigter Wert bleibt als inert uebernommener Zellinhalt erhalten.
+
+366. [x] Begrenzte lokale Tabellenformeln mit A1- bis T200-Bezuegen, Arithmetik, Bereichen sowie SUM, AVERAGE, MIN, MAX
+     und COUNT umgesetzt. Deutsche Funktionsnamen und Semikolon werden kanonisch normalisiert.
+
+367. [x] Deterministische Ergebnisse, feste Fehlerwerte, Zykluserkennung und Live-Neuberechnung umgesetzt. Der Server
+     parst und berechnet jede gespeicherte Formel unabhaengig und lehnt veraltete oder gefaelschte Ergebnisse ab.
+
+368. [x] Barrierearmen Formel-Dialog mit Setzen und Entfernen sowie sichtbare Formelzellmarkierung integriert. Externe
+     Arbeitsmappen, Makros, Netzwerke, beliebige Bezeichner und mehr als 1.000 Formelzellen bleiben ausgeschlossen.
+
+369. [x] Formel-Neuberechnung auf minimale Zellaktualisierungen begrenzt, damit Quellbearbeitung und Ergebnis gemeinsam
+     sauber rueckgaengig und wiederholbar bleiben. Vergleich und Druck zeigen Quelle und kanonisches Ergebnis inert an.
+
+370. [x] Vollstaendigen Clipboard-/Formellebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 370 / PLANS 224 bis 231 sind gemeinsam unter ADR-0139 implementiert.
+Der fokussierte Schema-, Modell-, Desktop- und Mobile-Ablauf bestand vollstaendig; die breite Tabellen- und
+Vergleichsmatrix bestand 59/59. HTML und TSV werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
+es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

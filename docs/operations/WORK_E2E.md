@@ -567,6 +567,16 @@ and comparison selection passes 49/49 cases. Evidence is retained as
 attribute; it only reorders existing complete rows or cells inside immutable Office version JSON, so no new numbered
 restore target is created.
 
+Roadmap 363 through 370 add safe Word/Excel table clipboard translation and bounded local formulas. The combined
+desktop/mobile proof imports semantic HTML headers, a fixed fill and a local range formula while dropping remote media
+and script content; edits one referenced cell; verifies live result updates plus undo/redo; adds a second formula; then
+proves confirmed save, immutable predecessor, reload and print. Pure model and server coverage verify quoted TSV,
+German normalization, arithmetic, ranges, fixed errors, cycles, strict grammar and independent result recomputation.
+The complete table, caption, span, layout, cell-presentation, sort, reorder, duplication and comparison selection passes
+59/59 cases. Evidence is retained as `office-table-clipboard-formula-desktop-chromium.png` and
+`office-table-clipboard-formula-mobile-chromium.png`. Clipboard source markup is never stored; formulas remain bounded
+attributes in immutable Office version JSON, so no relational migration or new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

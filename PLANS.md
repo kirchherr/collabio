@@ -588,12 +588,36 @@ size-limit crossings, stale selections, readers and historical versions disabled
 223. [x] Close the native table-duplication lifecycle under ADR-0138. Prove undo/redo, confirmed save, immutable
 predecessor, reload, comparison, print and responsive desktop/mobile behavior.
 
+224. [x] Add safe structured HTML-table clipboard import under ADR-0139. Translate exactly one Word/Excel table into
+canonical native cells while stripping active, embedded and external content.
+
+225. [x] Add a bounded quoted-TSV fallback with the existing 200-row, 20-column and document-size limits. Reject
+irregular, oversized and unsupported input without changing the draft.
+
+226. [x] Preserve semantic headers, bounded spans and fixed cell presentation. Keep displayed values from unknown
+Excel formula dialects as inert text without executing or persisting the unsupported formula.
+
+227. [x] Add bounded local formulas with A1 through T200 references, arithmetic, ranges and SUM, AVERAGE, MIN, MAX
+and COUNT. Canonically normalize the supported German names and semicolon separators.
+
+228. [x] Add deterministic results, fixed errors, cycle detection and live recalculation. Independently parse and
+evaluate every submitted formula on the server and reject stale or forged stored results.
+
+229. [x] Add an accessible formula dialog, removal flow and visible formula-cell marker. Reject external workbooks,
+macros, networks, arbitrary identifiers and documents exceeding 1,000 formula cells.
+
+230. [x] Limit recalculation to minimal formula-cell updates so source edits and derived results retain clean undo/redo.
+Expose inert formula source/result details in comparison and preserve canonical results in print.
+
+231. [x] Close the clipboard/formula lifecycle under ADR-0139. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print and responsive desktop/mobile behavior.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 362 / PLANS 223. Preserve the complete browser/model evidence, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell presentation and table layout tokens, deterministic stable text/number/ISO-date sorting, protected direct row/column reordering and duplication, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Spreadsheet-style formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 370 / PLANS 231. Preserve the complete browser/model evidence, safe Word/Excel table clipboard translation, bounded server-verified local formulas, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell presentation and table layout tokens, deterministic stable text/number/ISO-date sorting, protected direct row/column reordering and duplication, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Full spreadsheet/workbook semantics, cross-table formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

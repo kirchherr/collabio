@@ -2,6 +2,29 @@
 
 Updated: 2026-10-07
 
+Roadmap 363 through 370 / PLANS 224 through 231 are complete under ADR-0139. Authors can paste one Word/Excel HTML
+table or bounded quoted TSV into a native Collabio document. The translator preserves semantic headers, bounded spans,
+plain text paragraphs and fixed cell presentation while removing scripts, remote media, embedded objects, forms,
+nested tables and every unsupported attribute. Unknown Excel formula dialects retain only their displayed value.
+
+Ordinary unit-span cells in simple tables now support local A1:T200 formulas with arithmetic, ranges and SUM,
+AVERAGE, MIN, MAX or COUNT. German function names and semicolons normalize to the canonical grammar. The editor
+updates dependent cells through minimal history-neutral formula-cell changes, preserving clean source-edit undo/redo.
+The server independently parses and recalculates every submitted formula, rejects stale or forged results and enforces
+the 256-character, 1,000-formula, 200-row and 20-column limits. External workbooks, sheets, URLs, macros, networks,
+arbitrary functions and merged formula grids fail closed.
+
+Focused schema validation and the model plus desktop/mobile workflow passed. The broad table, caption, span, layout,
+cell-presentation, sort, reorder, duplication and comparison matrix passed 59/59. Desktop and mobile print screenshot
+SHA-256 values are `3e420da2294b1caf0470a4d84dfd98f4347f382cec99d4d5a1351710ca58e8de` and
+`b644dd5a6d7d462cbd3f6f373edf3763231b1f029070ff56de8a60dba0e38ded`; both passed visual review.
+
+Product implementation is published through `04d2ff2a` on `kirchherr/kb-write-unit-of-work`. The implementation uses
+existing immutable Office version JSON and recovery contracts, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime, DOCX engine or production admission was
+activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-clipboard-formula-28baad6d`.
+
 Roadmap 357 through 362 / PLANS 218 through 223 are complete under ADR-0138. Authors can duplicate a contiguous
 selection of data rows directly below its source or data columns directly to its right from the existing table menus.
 The first all-header row and first all-header column remain protected. Merged or non-rectangular grids, protected
@@ -3213,16 +3236,16 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 357 through 362 / PLANS 218 through 223 are complete. Preserve protected direct row and column duplication,
-complete cell semantics and presentation, the 200-row and 20-column limits, inserted-block selection, isolated undo,
-exact save/history/comparison/print behavior and the existing Office recovery contract. Keep the complete table,
-comparison, print and full Python quality matrices green.
+Roadmap 363 through 370 / PLANS 224 through 231 are complete. Preserve safe HTML/TSV table translation, active and
+external-content stripping, bounded local A1:T200 formulas, independent server recomputation, fixed error results,
+minimal recalculation updates, clean undo/redo and exact save/history/comparison/print behavior. Keep the complete
+table, comparison, print and full Python quality matrices green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
-interchange require separate decisions. Transitive references, content-wide reference
-search, persistent backlink indexing, formula evaluation, continuous tracked changes and live collaboration also
-remain separate.
+interchange require separate decisions. Full workbook semantics, cross-table references, relative formula rewriting,
+formula-driven charts, transitive references, content-wide reference search, persistent backlink indexing, continuous
+tracked changes and live collaboration also remain separate.
 
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic
@@ -3255,8 +3278,9 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 357 through 362 / PLANS 218 through 223 are complete; product implementation is published through `1c3ef9e5`.
-Preserve bounded merged table grids, semantic row/column headers, protected row/column duplication, inert native
+Roadmap 363 through 370 / PLANS 224 through 231 are complete; product implementation is published through `04d2ff2a`.
+Preserve safe Word/Excel clipboard translation, bounded server-verified local table formulas, merged table grids,
+semantic row/column headers, protected row/column duplication, inert native
 charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
 atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
 bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
