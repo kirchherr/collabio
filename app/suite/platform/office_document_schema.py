@@ -796,7 +796,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
                 table_ids.add(identifier)
         elif kind in {"tableCell", "tableHeader"}:
-            if set(attrs) - {"colspan", "rowspan", "colwidth"}:
+            if set(attrs) - {"colspan", "rowspan", "colwidth", "background", "verticalAlign"}:
                 reject()
             if any(
                 type(attrs.get(key, 1)) is not int or not 1 <= attrs.get(key, 1) <= (20 if key == "colspan" else 200)
@@ -804,6 +804,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             ):
                 reject()
             if attrs.get("colwidth") is not None:
+                reject()
+            if attrs.get("background") not in {None, "gray", "blue", "green", "yellow", "red"}:
+                reject()
+            if attrs.get("verticalAlign") not in {None, "middle", "bottom"}:
                 reject()
         elif kind == "doc":
             if depth != 0 or set(attrs) - {"styles", "page", "running", "documentFields", "citationSources"}:

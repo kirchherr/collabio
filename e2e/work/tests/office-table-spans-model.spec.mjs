@@ -17,6 +17,11 @@ test("Office table grids accept bounded rectangular row and column spans", () =>
   expect(officeTableCellAttributes({ colspan: 3, rowspan: 2, colwidth: null })).toEqual({ colspan: 3, rowspan: 2 });
   expect(officeTableCellAttributes({ colspan: 1, rowspan: 1, colwidth: null, background: null }))
     .toEqual({ colspan: 1, rowspan: 1 });
+  expect(officeTableCellAttributes({ background: "blue", verticalAlign: "bottom" }))
+    .toEqual({ colspan: 1, rowspan: 1, background: "blue", verticalAlign: "bottom" });
+  for (const attrs of [{ background: "url(secret)" }, { verticalAlign: "baseline" }, { style: "color:red" }]) {
+    expect(() => officeTableCellAttributes(attrs)).toThrow();
+  }
   for (const invalid of [
     { ...merged, content: merged.content.slice(0, 2) },
     { ...merged, content: [merged.content[0], merged.content[1], { type: "tableRow", content: [] }] },

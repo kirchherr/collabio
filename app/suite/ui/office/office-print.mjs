@@ -9,7 +9,7 @@ import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./o
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
-import { officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableFragment, officeTableGrid } from "./office-tables.mjs";
+import { officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableFragment, officeTableGrid } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeSemanticInventory } from "./office-semantics.mjs";
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -250,6 +250,9 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       const attrs = officeTableCellAttributes(value.attrs);
       if (attrs.colspan > 1) element.setAttribute("colspan", String(attrs.colspan));
       if (attrs.rowspan > 1) element.setAttribute("rowspan", String(attrs.rowspan));
+      for (const [name, attribute] of Object.entries(officeTableCellDOMAttributes(attrs))) {
+        element.setAttribute(name, attribute);
+      }
     }
     if (["paragraph", "heading"].includes(value.type)) {
       for (const [name, attribute] of Object.entries(officeStyledDOMAttributes(value.attrs, styles))) {

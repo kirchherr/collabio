@@ -3,14 +3,39 @@ const forbiddenCaption = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
 
 export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
+export const OFFICE_TABLE_CELL_FILLS = ["gray", "blue", "green", "yellow", "red"];
+export const OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS = ["middle", "bottom"];
 
 export function officeTableCellAttributes(value = {}) {
-  if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
-      (value.colspan ?? 1) < 1 || (value.colspan ?? 1) > 20 ||
-      (value.rowspan ?? 1) < 1 || (value.rowspan ?? 1) > 200 || value.colwidth != null) {
+  if (Object.entries(value).some(([key, entry]) =>
+    !["colspan", "rowspan", "colwidth", "background", "verticalAlign"].includes(key) && entry != null)) {
     throw new TypeError("Invalid Office table cell");
   }
-  return { colspan: value.colspan ?? 1, rowspan: value.rowspan ?? 1 };
+  if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
+      (value.colspan ?? 1) < 1 || (value.colspan ?? 1) > 20 ||
+      (value.rowspan ?? 1) < 1 || (value.rowspan ?? 1) > 200 || value.colwidth != null ||
+      (value.background != null && !OFFICE_TABLE_CELL_FILLS.includes(value.background)) ||
+      (value.verticalAlign != null && !OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS.includes(value.verticalAlign))) {
+    throw new TypeError("Invalid Office table cell");
+  }
+  const result = { colspan: value.colspan ?? 1, rowspan: value.rowspan ?? 1 };
+  if (value.background != null) result.background = value.background;
+  if (value.verticalAlign != null) result.verticalAlign = value.verticalAlign;
+  return result;
+}
+
+export function officeTableCellDOMAttributes(value = {}) {
+  const attrs = officeTableCellAttributes(value); const result = {};
+  if (attrs.background) result["data-office-cell-fill"] = attrs.background;
+  if (attrs.verticalAlign) result["data-office-cell-vertical"] = attrs.verticalAlign;
+  return result;
+}
+
+export function officeTableCellStyleDescription(value = {}) {
+  const attrs = officeTableCellAttributes(value); const result = [];
+  if (attrs.background) result.push(`Füllung ${attrs.background}`);
+  if (attrs.verticalAlign) result.push(`Vertikal ${attrs.verticalAlign}`);
+  return result;
 }
 
 export function officeTableGrid(value) {

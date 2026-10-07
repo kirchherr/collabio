@@ -73,6 +73,7 @@
               <button class="button secondary" id="table-header-column-toggle" type="button" aria-pressed="false">Kopfspalte</button>
               <button class="button secondary" id="table-merge" type="button">Zellen verbinden</button>
               <button class="button secondary" id="table-split" type="button">Zelle teilen</button>
+              <button class="button secondary" id="table-cell-style" type="button" aria-haspopup="dialog" aria-controls="table-cell-style-dialog">Zellen formatieren …</button>
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog">Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button">Tabelle entfernen …</button>
             </div>
@@ -336,6 +337,15 @@
       <form id="table-caption-form"><header><h2 id="table-caption-title">Tabellenbeschriftung</h2><button class="icon-button" id="table-caption-close" type="button" aria-label="Tabellenbeschriftung schließen">×</button></header>
         <div class="dialog-body"><label>Beschriftung<input id="table-caption-text" type="text" maxlength="1000" required autocomplete="off" /></label><p class="paragraph-help">Die sichtbare Nummer folgt automatisch der Reihenfolge der Tabellen. Querverweise behalten beim Verschieben das stabile Ziel.</p><p id="table-caption-status" role="status" aria-live="polite"></p></div>
         <footer><button class="quiet-button" id="table-caption-remove" type="button">Beschriftung entfernen</button><button class="button secondary" id="table-caption-cancel" type="button">Abbrechen</button><button class="button primary" id="table-caption-apply" type="submit">Übernehmen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-cell-style-dialog" aria-labelledby="table-cell-style-title">
+      <form id="table-cell-style-form"><header><h2 id="table-cell-style-title">Zellen formatieren</h2><button class="icon-button" id="table-cell-style-close" type="button" aria-label="Zellformatierung schließen">×</button></header>
+        <div class="dialog-body"><p id="table-cell-style-summary"></p><div class="table-size-fields">
+          <label>Füllung<select id="table-cell-fill"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Keine</option><option value="gray">Grau</option><option value="blue">Blau</option><option value="green">Grün</option><option value="yellow">Gelb</option><option value="red">Rot</option></select></label>
+          <label>Vertikale Ausrichtung<select id="table-cell-vertical"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Oben</option><option value="middle">Mittig</option><option value="bottom">Unten</option></select></label>
+        </div><p class="paragraph-help">Es werden ausschließlich feste, drucksichere Werte gespeichert. Textausrichtung und Zeichenformat bleiben unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="button secondary" id="table-cell-style-cancel" type="button">Abbrechen</button><button class="button primary" id="table-cell-style-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">

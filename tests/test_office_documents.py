@@ -85,7 +85,11 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
                 "type": "tableRow",
                 "content": [
                     {"type": "tableHeader", "attrs": {"colspan": 1, "rowspan": 2}, "content": [paragraph]},
-                    {"type": "tableCell", "content": [paragraph]},
+                    {
+                        "type": "tableCell",
+                        "attrs": {"background": "blue", "verticalAlign": "middle"},
+                        "content": [paragraph],
+                    },
                     {"type": "tableCell", "content": [paragraph]},
                 ],
             },
@@ -112,6 +116,24 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
                 {
                     "type": "tableRow",
                     "content": [{"type": "tableCell", "attrs": {"colspan": 21, "rowspan": 1}, "content": [paragraph]}],
+                }
+            ],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [{"type": "tableCell", "attrs": {"background": "url(secret)"}, "content": [paragraph]}],
+                }
+            ],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [{"type": "tableCell", "attrs": {"verticalAlign": "baseline"}, "content": [paragraph]}],
                 }
             ],
         },
