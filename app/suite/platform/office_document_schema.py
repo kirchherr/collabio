@@ -1075,9 +1075,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 content = node.get("content")
                 result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
                 formula_identifiers = formula.replace("#BEZUG!", "") if isinstance(formula, str) else ""
-                unmatched_formula_anchors = re.sub(
-                    r"\$?[A-T]\$?[1-9][0-9]{0,2}", "", formula_identifiers
-                )
+                unmatched_formula_anchors = re.sub(r"\$?[A-T]\$?[1-9][0-9]{0,2}", "", formula_identifiers)
                 if (
                     kind != "tableCell"
                     or table_formulas > 1000
