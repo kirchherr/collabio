@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–344 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 344 / PLANS 205 native table-cell presentation
+Status: Roadmap 252–350 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 350 / PLANS 211 native table sorting
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0135; current cell presentation: `ARCHITECTURE_DECISIONS/ADR-0135-native-office-table-cell-presentation.md`
+Decisions: ADR-0079 through ADR-0136; current table sorting: `ARCHITECTURE_DECISIONS/ADR-0136-native-office-table-sorting.md`
+
+## Bounded native table sorting (Roadmap 345–350)
+
+Simple rectangular native tables with at least two data rows can be sorted by one selected column as normalized text,
+strict decimal number or strict ISO date. The first all-header row remains fixed, empty values always move to the end,
+and equal values retain their previous order. Complete row nodes move together, preserving cell content, marks,
+semantic types and bounded presentation.
+
+**Sortieren …** exposes column, type and ascending/descending direction in one accessible dialog. Invalid values,
+unsupported options, merged grids, stale selections, cancellation, readers and historical views fail closed without a
+document change. One accepted sort is one validated undo transaction. Confirmed save, immutable versions, reload,
+comparison and print use the resulting canonical row order without a new stored attribute or formula runtime.
 
 ## Bounded table-cell presentation (Roadmap 339–344)
 

@@ -549,6 +549,14 @@ not activate a KB write runtime. Evidence is retained as `office-table-cell-styl
 `office-table-cell-style-mobile-chromium.png`. Presentation stays inside existing immutable Office version JSON, so
 no new numbered restore target is created.
 
+Roadmap 345 through 350 add bounded native table sorting. The combined desktop/mobile proof rejects an invalid numeric
+sort, then verifies stable descending numbers, strict ascending ISO dates and normalized text with isolated undo/redo,
+confirmed save, immutable predecessor, reload and print order. Pure model coverage proves fixed headers, complete-row
+movement, empty-last behavior and rejection of merged grids and unsupported options. The adjacent table, caption,
+span, layout, cell-presentation and comparison selection passes 44/44 cases. Evidence is retained as
+`office-table-sort-desktop-chromium.png` and `office-table-sort-mobile-chromium.png`. Sorting writes no new attribute;
+it only reorders existing rows inside immutable Office version JSON, so no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

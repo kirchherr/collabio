@@ -2263,6 +2263,31 @@ Leser-/Historienfall 1/1. Beide finalen Druckansichten bestanden die visuelle Pr
 bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder
 Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
 
+345. [x] Stabile native Textsortierung fuer einfache rechteckige Tabellen umgesetzt. Unicode-NFKC und eine
+     deterministische kleingeschriebene Codepoint-Reihenfolge vermeiden browser- oder locale-abhaengige Ergebnisse.
+
+346. [x] Strikte Zahlensortierung umgesetzt. Ganze Zahlen und Dezimalwerte mit Punkt oder Komma werden ohne
+     Tausendertrennzeichen akzeptiert; ungueltige oder ausserhalb der Grenze liegende Werte lassen den Entwurf unveraendert.
+
+347. [x] Strikte ISO-Datumssortierung fuer reale Kalenderdaten im Format `JJJJ-MM-TT` umgesetzt. Leere Zellen stehen
+     bei auf- und absteigender Sortierung am Ende; gleiche Werte behalten stabil ihre bisherige Reihenfolge.
+
+348. [x] Kopfzeile, komplette Zeilenobjekte und saemtliche Zellendarstellungen beim Sortieren erhalten. Verbundene oder
+     nicht rechteckige Tabellen werden fail-closed abgelehnt.
+
+349. [x] Einen barrierearmen kompakten Sortierdialog fuer Spalte, Datentyp und Richtung umgesetzt. Eine erfolgreiche
+     Sortierung ist genau ein Undo-Schritt; Fehler, Abbruch und veraltete Auswahl sind No-ops mit sichtbarem Status.
+
+350. [x] Vollstaendigen Sortierlebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck, Desktop/Mobil sowie gesperrte Leser- und Historienansichten geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 345 bis 350 / PLANS 206 bis 211 sind gemeinsam unter ADR-0136 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 7/7; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat- und Vergleichsmatrix bestand 44/44. Der Sortierdialog und das gespeicherte Ergebnis bestanden die
+visuelle Desktop-Pruefung. Sortieren veraendert ausschliesslich die Reihenfolge bestehender Tabellenzeilen im immutable
+Office-Versions-JSON; es gibt keine relationale Migration, automatische Typinferenz, Formel- oder
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

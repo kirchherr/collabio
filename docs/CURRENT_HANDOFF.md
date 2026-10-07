@@ -2,6 +2,29 @@
 
 Updated: 2026-10-07
 
+Roadmap 345 through 350 / PLANS 206 through 211 are complete under ADR-0136. Simple rectangular native tables with at
+least two data rows now support deterministic stable sorting by normalized text, strict decimal number or strict ISO
+date. The first all-header row remains fixed, empty values remain last in either direction and equal values retain their
+previous order. Complete row nodes move together, preserving semantic cell types, content, marks and presentation;
+merged or non-rectangular grids fail closed.
+
+The accessible **Sortieren …** dialog selects column, type and ascending or descending direction. One successful sort
+is one validated undo transaction. Invalid values, unsupported options, cancellation, stale selections, readers and
+historical views leave the document unchanged. Confirmed save, immutable predecessor, reload, comparison and print
+consume the resulting canonical row order without a new stored field or formula runtime.
+
+The focused model plus desktop/mobile workflow passed 7/7. The broad table, caption, span, layout, cell-presentation
+and comparison matrix passed 44/44. Desktop and mobile screenshot SHA-256 values are
+`397cd579f45222ad2835bb9f5616c519e159a44ae5f530a615b4ed249d78b10a` and
+`fcc3579eac0de31d9c5db1aaf72618116f4b12a710f39d9318742f9bae11333c`; the live desktop editor and dialog passed
+visual review without clipping or horizontal overflow.
+
+Product implementation is published through `49b6d434` on `kirchherr/kb-write-unit-of-work`. Sorting reuses existing
+immutable Office version JSON and recovery contracts, so there is no relational migration or new restore target. No
+ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated.
+The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-sort-49b6d434`.
+
 Roadmap 339 through 344 / PLANS 200 through 205 are complete under ADR-0135. Native table cells now support optional
 center/right horizontal alignment, compact/spacious padding and no/strong border treatment in addition to the
 existing fills and vertical alignment. Omitted values remain the canonical left alignment, normal padding and table
