@@ -210,6 +210,44 @@ export function sortOfficeTable(value, options) {
   return { ...value, content: [...(info.header ? [value.content[0]] : []), ...rows.map(({ row }) => row)] };
 }
 
+export function officeTableReorderInfo(value) {
+  const info = officeTableSortInfo(value);
+  const headerColumn = value.content.every((row) => row.content[0].type === "tableHeader");
+  return { ...info, headerColumn };
+}
+
+function officeTableMoveRange(values, from, to, direction, minimum = 0) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < minimum || to <= from || to > values.length ||
+      !["before", "after"].includes(direction) ||
+      (direction === "before" && from === minimum) || (direction === "after" && to === values.length)) {
+    throw new TypeError("Invalid Office table move");
+  }
+  const result = [...values]; const block = result.splice(from, to - from);
+  result.splice(direction === "before" ? from - 1 : from + 1, 0, ...block);
+  return result;
+}
+
+export function moveOfficeTableRows(value, options) {
+  const info = officeTableReorderInfo(value);
+  if (!options || Object.keys(options).sort().join(",") !== "direction,from,to") {
+    throw new TypeError("Invalid Office table row move");
+  }
+  return { ...value, content: officeTableMoveRange(value.content, options.from, options.to, options.direction,
+    info.header ? 1 : 0) };
+}
+
+export function moveOfficeTableColumns(value, options) {
+  const info = officeTableReorderInfo(value);
+  if (!options || Object.keys(options).sort().join(",") !== "direction,from,to") {
+    throw new TypeError("Invalid Office table column move");
+  }
+  const minimum = info.headerColumn ? 1 : 0;
+  // Validate the range and boundary once before rebuilding every complete row.
+  officeTableMoveRange(Array.from({ length: info.columns }), options.from, options.to, options.direction, minimum);
+  return { ...value, content: value.content.map((row) => ({ ...row,
+    content: officeTableMoveRange(row.content, options.from, options.to, options.direction, minimum) })) };
+}
+
 export function officeTableInventory(document) {
   let nodes = 0;
   const entries = [], ids = new Set();

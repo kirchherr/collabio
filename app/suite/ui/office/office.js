@@ -31,7 +31,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2213,6 +2213,7 @@ function handleListKey(view, event) {
 }
 
 const tableCommands = { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, deleteTable };
+const tableReorderCommands = new Set(["moveRowBefore", "moveRowAfter", "moveColumnBefore", "moveColumnAfter"]);
 const tableSizeMessage = "Tabellen unterstützen höchstens 200 Zeilen und 20 Spalten.";
 const tableLimitMessage = "Die Tabellenänderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
 
@@ -2311,6 +2312,8 @@ function updateTableControls() {
   $("table-caption").disabled = !rect || !allowed;
   $("table-cell-style").disabled = !rect || !allowed;
   $("table-layout").disabled = !rect || !allowed;
+  let reorder = null;
+  try { reorder = rect ? officeTableReorderInfo(rect.table.toJSON()) : null; } catch { reorder = null; }
   let sortable = false;
   try { sortable = Boolean(rect && officeTableSortInfo(rect.table.toJSON()).dataRows >= 2); } catch { sortable = false; }
   $("table-sort").disabled = !rect || !allowed || !sortable;
@@ -2330,6 +2333,15 @@ function updateTableControls() {
   $("table-caption").textContent = numbered ? "Beschriftung bearbeiten …" : "Beschriftung …";
   for (const select of [$("table-row-action"), $("table-column-action"), $("insert-menu")]) {
     select.querySelectorAll("option").forEach((option) => {
+      if (tableReorderCommands.has(option.value)) {
+        const rowMove = option.value.startsWith("moveRow");
+        const minimum = rowMove ? (reorder?.header ? 1 : 0) : (reorder?.headerColumn ? 1 : 0);
+        const from = rowMove ? rect?.top : rect?.left; const to = rowMove ? rect?.bottom : rect?.right;
+        const limit = rowMove ? rowCount : columnCount;
+        option.disabled = !rect || !allowed || !reorder || from < minimum ||
+          (option.value.endsWith("Before") ? from <= minimum : to >= limit);
+        return;
+      }
       if (!Object.hasOwn(tableCommands, option.value)) return;
       option.disabled = !rect || !allowed ||
         (option.value === "deleteRow" && rect.bottom - rect.top === rowCount) ||
@@ -2616,6 +2628,33 @@ function runTableCommand(command, confirmed = false, firstColumn = false) {
     }
   }
   return commitTableTransaction(transaction, command.startsWith("delete") ? "Auswahl aus dem Entwurf entfernt. Rückgängig ist möglich." : "Tabelle erweitert. Änderungen bleiben im Entwurf.");
+}
+
+function runTableReorder(command) {
+  if (!replacementAllowed() || !tableReorderCommands.has(command)) return false;
+  const editor = state.editor; const rect = currentTable(); const current = currentTableNode();
+  if (!rect || !current) return false;
+  try {
+    const rowMove = command.startsWith("moveRow"); const direction = command.endsWith("Before") ? "before" : "after";
+    const options = { from: rowMove ? rect.top : rect.left, to: rowMove ? rect.bottom : rect.right, direction };
+    const moved = rowMove ? moveOfficeTableRows(current.entry.toJSON(), options) :
+      moveOfficeTableColumns(current.entry.toJSON(), options);
+    const replacement = editor.schema.nodeFromJSON(moved); const map = TableMap.get(replacement);
+    const top = rowMove ? rect.top + (direction === "before" ? -1 : 1) : rect.top;
+    const left = rowMove ? rect.left : rect.left + (direction === "before" ? -1 : 1);
+    const bottom = top + (rect.bottom - rect.top); const right = left + (rect.right - rect.left);
+    const transaction = editor.state.tr.replaceWith(current.position, current.position + current.entry.nodeSize, replacement);
+    transaction.setSelection(CellSelection.create(transaction.doc,
+      current.position + 1 + map.map[top * map.width + left],
+      current.position + 1 + map.map[(bottom - 1) * map.width + right - 1]));
+    return commitTableTransaction(transaction, rowMove ?
+      `Ausgewählte Zeilen nach ${direction === "before" ? "oben" : "unten"} verschoben.` :
+      `Ausgewählte Spalten nach ${direction === "before" ? "links" : "rechts"} verschoben.`);
+  } catch {
+    $("table-message").textContent = "Umordnen ist nur innerhalb einfacher Tabellen möglich; Kopfzeile und Kopfspalte bleiben geschützt.";
+    focusEditor();
+    return false;
+  }
 }
 
 function toggleTableHeader() {
@@ -5450,7 +5489,10 @@ for (const id of ["section-close", "section-cancel"]) $(id).addEventListener("cl
 $("section-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeSectionDialog(true); });
 $("section-dialog").addEventListener("close", () => { if (!$("section-dialog").open && state.sectionAction) closeSectionDialog(); });
 ["table-row-action", "table-column-action"].forEach((id) => {
-  $(id).addEventListener("change", () => { const command = $(id).value; $(id).value = ""; runTableCommand(command); });
+  $(id).addEventListener("change", () => {
+    const command = $(id).value; $(id).value = "";
+    if (tableReorderCommands.has(command)) runTableReorder(command); else runTableCommand(command);
+  });
 });
 $("table-select").addEventListener("change", () => { const part = $("table-select").value; $("table-select").value = ""; selectTablePart(part); });
 $("table-header-toggle").addEventListener("click", toggleTableHeader);

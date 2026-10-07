@@ -66,8 +66,8 @@
           <section class="table-tools" id="table-tools" aria-label="Aktuelle Tabelle bearbeiten" hidden>
             <div class="table-tools-heading"><strong>Tabelle</strong><span id="table-info"></span></div>
             <div class="table-controls">
-              <label>Zeilen<select id="table-row-action" disabled><option value="">Zeilen …</option><option value="addRowBefore">Zeile darüber</option><option value="addRowAfter">Zeile darunter</option><option value="deleteRow">Ausgewählte Zeilen entfernen …</option></select></label>
-              <label>Spalten<select id="table-column-action" disabled><option value="">Spalten …</option><option value="addColumnBefore">Spalte links</option><option value="addColumnAfter">Spalte rechts</option><option value="deleteColumn">Ausgewählte Spalten entfernen …</option></select></label>
+              <label>Zeilen<select id="table-row-action" disabled><option value="">Zeilen …</option><option value="addRowBefore">Zeile darüber</option><option value="addRowAfter">Zeile darunter</option><option value="moveRowBefore">Auswahl nach oben</option><option value="moveRowAfter">Auswahl nach unten</option><option value="deleteRow">Ausgewählte Zeilen entfernen …</option></select></label>
+              <label>Spalten<select id="table-column-action" disabled><option value="">Spalten …</option><option value="addColumnBefore">Spalte links</option><option value="addColumnAfter">Spalte rechts</option><option value="moveColumnBefore">Auswahl nach links</option><option value="moveColumnAfter">Auswahl nach rechts</option><option value="deleteColumn">Ausgewählte Spalten entfernen …</option></select></label>
               <label>Auswahl<select id="table-select"><option value="">Auswählen …</option><option value="cell">Zelle</option><option value="row">Zeile</option><option value="column">Spalte</option><option value="table">Ganze Tabelle</option></select></label>
               <button class="button secondary" id="table-header-toggle" type="button" aria-pressed="false" disabled>Kopfzeile</button>
               <button class="button secondary" id="table-header-column-toggle" type="button" aria-pressed="false" disabled>Kopfspalte</button>
@@ -79,7 +79,7 @@
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog" disabled>Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button" disabled>Tabelle entfernen …</button>
             </div>
-            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften. Wählen Sie mehrere Zellen zum Verbinden; eine verbundene Zelle lässt sich wieder teilen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
+            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften und bleiben beim Umordnen geschützt. Wählen Sie mehrere Zellen zum Verbinden; eine verbundene Zelle lässt sich wieder teilen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
             <p id="table-message" role="status" aria-live="polite"></p>
           </section>
           <section class="find-panel" id="find-panel" aria-label="Suchen und Ersetzen" hidden>
