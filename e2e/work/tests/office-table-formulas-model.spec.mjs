@@ -25,7 +25,7 @@ test("Office formulas normalize German input support functions and remain remova
 });
 
 test("Office formulas expose deterministic reference division cycle and syntax errors", () => {
-  let table = officeTableFromTSV("1\t=Z99\n0\t=A1/A2");
+  let table = officeTableFromTSV("1\t=T200\n0\t=A1/A2");
   expect(text(table.content[0].content[1])).toBe("#BEZUG!");
   expect(text(table.content[1].content[1])).toBe("#DIV/0!");
   table = officeTableFromTSV("=B1\t=A1");

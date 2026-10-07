@@ -2836,7 +2836,9 @@ function clipboardCellPresentation(element) {
   const vertical = (element.style.verticalAlign || element.getAttribute("valign") || "").toLowerCase();
   if (["center", "right"].includes(horizontal)) attrs.horizontalAlign = horizontal;
   if (["middle", "bottom"].includes(vertical)) attrs.verticalAlign = vertical;
-  const color = (element.style.backgroundColor || element.getAttribute("bgcolor") || "").replaceAll(" ", "").toLowerCase();
+  const inlineColor = /(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/iu.exec(element.getAttribute("style") || "")?.[1];
+  const color = (inlineColor || element.style.backgroundColor || element.getAttribute("bgcolor") || "")
+    .trim().replaceAll(" ", "").toLowerCase();
   const fills = { "#f2f2f2": "gray", "rgb(242,242,242)": "gray", "#d9eaf7": "blue", "rgb(217,234,247)": "blue",
     "#e2f0d9": "green", "rgb(226,240,217)": "green", "#fff2cc": "yellow", "rgb(255,242,204)": "yellow",
     "#f4cccc": "red", "rgb(244,204,204)": "red" };
