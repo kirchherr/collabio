@@ -199,7 +199,12 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
         "attrs": {"formula": "=SUM(A1:B1)", "formulaResult": "3"},
         "content": [{"type": "paragraph", "content": [{"type": "text", "text": "3"}]}],
     }
-    table = {"type": "table", "content": [{"type": "tableRow", "content": [formula_cell]}]}
+    def value(text: str) -> dict[str, object]:
+        return {
+            "type": "tableCell",
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+    table = {"type": "table", "content": [{"type": "tableRow", "content": [value("1"), value("2"), formula_cell]}]}
     document = {"type": "doc", "content": [table]}
     assert validate_office_document(document) == document
     invalid = [
@@ -211,9 +216,13 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
         {**formula_cell, "type": "tableHeader"},
         {**formula_cell, "attrs": {"formula": "=A1"}},
     ]
+    forged = deepcopy(formula_cell)
+    forged["attrs"]["formulaResult"] = "4"
+    forged["content"][0]["content"][0]["text"] = "4"
+    invalid.append(forged)
     for cell in invalid:
         candidate = deepcopy(document)
-        candidate["content"][0]["content"][0]["content"][0] = cell
+        candidate["content"][0]["content"][0]["content"][2] = cell
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document(candidate)
 

@@ -5,6 +5,7 @@ This is a Collabio JSON format, not an OOXML import or an engine admission.
 
 from __future__ import annotations
 
+import math
 import re
 from typing import Any
 from urllib.parse import urlsplit
@@ -160,6 +161,222 @@ def _valid_table_grid(rows: Any) -> bool:
             return False
         active = [max(0, remaining - 1) for remaining in active[:width]]
     return bool(width) and not any(active)
+
+
+_TABLE_FORMULA_ERRORS = {"#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"}
+_TABLE_FORMULA_NAMES = {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"}
+_TABLE_NUMBER = re.compile(r"[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?")
+
+
+class _TableFormulaError(ValueError):
+    pass
+
+
+def _table_cell_text(cell: dict[str, Any]) -> str:
+    parts: list[str] = []
+
+    def walk(node: dict[str, Any]) -> None:
+        if node.get("type") == "text":
+            parts.append(node["text"])
+            return
+        if node.get("type") == "hardBreak":
+            parts.append("\n")
+        for child in node.get("content", []):
+            walk(child)
+        if node.get("type") in {"paragraph", "heading", "listItem", "blockquote", "codeBlock"}:
+            parts.append(" ")
+
+    walk(cell)
+    return " ".join("".join(parts).split())
+
+
+def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
+    tokens: list[tuple[str, Any]] = []
+    index = 1
+    while index < len(source):
+        if source[index].isspace():
+            index += 1
+            continue
+        number = re.match(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", source[index:])
+        if number:
+            tokens.append(("number", float(number.group())))
+            index += len(number.group())
+            continue
+        reference = re.match(r"[A-T](?:[1-9][0-9]{0,2})", source[index:])
+        if reference:
+            tokens.append(("ref", reference.group()))
+            index += len(reference.group())
+            continue
+        name = next((candidate for candidate in _TABLE_FORMULA_NAMES if source.startswith(candidate, index)), None)
+        if name:
+            tokens.append(("name", name))
+            index += len(name)
+            continue
+        if source[index] in "+-*/(),:":
+            tokens.append((source[index], source[index]))
+            index += 1
+            continue
+        raise _TableFormulaError("#WERT!")
+    tokens.append(("end", None))
+    return tokens
+
+
+def _table_formula_result(value: float) -> str:
+    if not math.isfinite(value) or abs(value) > 1e15:
+        raise _TableFormulaError("#LIMIT!")
+    stable = 0.0 if abs(value) < 5e-11 else math.floor(value * 1e10 + 0.5) / 1e10
+    return f"{stable:.10f}".rstrip("0").rstrip(".") or "0"
+
+
+def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
+    cells = [row["content"] for row in rows]
+    if not any(cell.get("attrs", {}).get("formula") is not None for row in cells for cell in row):
+        return True
+    columns = len(cells[0])
+    if any(
+        len(row) != columns
+        or any(cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1 for cell in row)
+        for row in cells
+    ):
+        return False
+    states: dict[tuple[int, int], str] = {}
+    memo: dict[tuple[int, int], float] = {}
+
+    def point(reference: str) -> tuple[int, int]:
+        match = re.fullmatch(r"([A-T])([1-9][0-9]{0,2})", reference)
+        row = int(match.group(2)) - 1 if match else -1
+        column = ord(match.group(1)) - 65 if match else -1
+        if row < 0 or row >= len(cells) or column < 0 or column >= columns:
+            raise _TableFormulaError("#BEZUG!")
+        return row, column
+
+    def numeric(row: int, column: int) -> float:
+        cell = cells[row][column]
+        if cell.get("attrs", {}).get("formula") is not None:
+            return evaluate(row, column)
+        text = _table_cell_text(cell)
+        if not text:
+            return 0.0
+        if _TABLE_NUMBER.fullmatch(text) is None:
+            raise _TableFormulaError("#WERT!")
+        value = float(text.replace(",", "."))
+        if not math.isfinite(value):
+            raise _TableFormulaError("#WERT!")
+        return value
+
+    def evaluate(row: int, column: int) -> float:
+        key = (row, column)
+        if key in memo:
+            return memo[key]
+        if states.get(key) == "visiting":
+            raise _TableFormulaError("#ZYKLUS!")
+        states[key] = "visiting"
+        source = cells[row][column].get("attrs", {}).get("formula")
+        if source is None:
+            return numeric(row, column)
+        tokens = _table_formula_tokens(source)
+        position = 0
+
+        def peek() -> str:
+            return tokens[position][0]
+
+        def take(kind: str) -> Any:
+            nonlocal position
+            if peek() != kind:
+                raise _TableFormulaError("#WERT!")
+            value = tokens[position][1]
+            position += 1
+            return value
+
+        def primary() -> float:
+            if peek() == "number":
+                return take("number")
+            if peek() == "ref":
+                target = point(take("ref"))
+                return numeric(*target)
+            if peek() == "(":
+                take("(")
+                value = expression()
+                take(")")
+                return value
+            if peek() == "name":
+                name = take("name")
+                take("(")
+                values: list[float] = []
+                if peek() != ")":
+                    while True:
+                        if peek() == "ref" and tokens[position + 1][0] == ":":
+                            first = point(take("ref"))
+                            take(":")
+                            last = point(take("ref"))
+                            for row_index in range(min(first[0], last[0]), max(first[0], last[0]) + 1):
+                                for column_index in range(min(first[1], last[1]), max(first[1], last[1]) + 1):
+                                    values.append(numeric(row_index, column_index))
+                        else:
+                            values.append(expression())
+                        if peek() != ",":
+                            break
+                        take(",")
+                take(")")
+                if not values or len(values) > 4000:
+                    raise _TableFormulaError("#LIMIT!")
+                if name == "SUM":
+                    return sum(values)
+                if name == "AVERAGE":
+                    return sum(values) / len(values)
+                if name == "MIN":
+                    return min(values)
+                if name == "MAX":
+                    return max(values)
+                return float(len(values))
+            raise _TableFormulaError("#WERT!")
+
+        def unary() -> float:
+            if peek() == "+":
+                take("+")
+                return unary()
+            if peek() == "-":
+                take("-")
+                return -unary()
+            return primary()
+
+        def term() -> float:
+            value = unary()
+            while peek() in {"*", "/"}:
+                operator = take(peek())
+                right = unary()
+                if operator == "/" and right == 0:
+                    raise _TableFormulaError("#DIV/0!")
+                value = value * right if operator == "*" else value / right
+            return value
+
+        def expression() -> float:
+            value = term()
+            while peek() in {"+", "-"}:
+                operator = take(peek())
+                right = term()
+                value = value + right if operator == "+" else value - right
+            return value
+
+        value = expression()
+        if peek() != "end":
+            raise _TableFormulaError("#WERT!")
+        states[key] = "done"
+        memo[key] = value
+        return value
+
+    for row_index, row in enumerate(cells):
+        for column_index, cell in enumerate(row):
+            attrs = cell.get("attrs", {})
+            if attrs.get("formula") is None:
+                continue
+            try:
+                result = _table_formula_result(evaluate(row_index, column_index))
+            except _TableFormulaError as error:
+                result = str(error) if str(error) in _TABLE_FORMULA_ERRORS else "#WERT!"
+            if attrs.get("formulaResult") != result:
+                return False
+    return True
 
 
 def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
@@ -1007,6 +1224,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         for child in children:
             visit(child, depth + 1, kind)
         if kind == "table" and not _valid_table_grid(children):
+            reject()
+        if kind == "table" and not _valid_table_formula_results(children):
             reject()
 
     if document.get("type") != "doc":
