@@ -26,7 +26,9 @@ The refreshed review UI is available at
 `http://192.168.0.108:42880/office?review=table-sort-49b6d434`.
 
 Full quality on documented commit `3aa8d95f` passed Ruff, formatting for 848 files, Mypy over 605 source files and
-the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning.
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contracts
+passed 6/6. Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality
+or E2E runner remains. Regular and review APIs both return `ok`.
 
 Roadmap 339 through 344 / PLANS 200 through 205 are complete under ADR-0135. Native table cells now support optional
 center/right horizontal alignment, compact/spacious padding and no/strong border treatment in addition to the
