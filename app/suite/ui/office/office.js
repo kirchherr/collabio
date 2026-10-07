@@ -31,7 +31,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2214,6 +2214,7 @@ function handleListKey(view, event) {
 
 const tableCommands = { addRowBefore, addRowAfter, addColumnBefore, addColumnAfter, deleteRow, deleteColumn, deleteTable };
 const tableReorderCommands = new Set(["moveRowBefore", "moveRowAfter", "moveColumnBefore", "moveColumnAfter"]);
+const tableDuplicateCommands = new Set(["duplicateRows", "duplicateColumns"]);
 const tableSizeMessage = "Tabellen unterstützen höchstens 200 Zeilen und 20 Spalten.";
 const tableLimitMessage = "Die Tabellenänderung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";
 
@@ -2340,6 +2341,14 @@ function updateTableControls() {
         const limit = rowMove ? rowCount : columnCount;
         option.disabled = !rect || !allowed || !reorder || from < minimum ||
           (option.value.endsWith("Before") ? from <= minimum : to >= limit);
+        return;
+      }
+      if (tableDuplicateCommands.has(option.value)) {
+        const rows = option.value === "duplicateRows";
+        const minimum = rows ? (reorder?.header ? 1 : 0) : (reorder?.headerColumn ? 1 : 0);
+        const from = rows ? rect?.top : rect?.left; const to = rows ? rect?.bottom : rect?.right;
+        const count = rows ? rowCount : columnCount; const maximum = rows ? 200 : 20;
+        option.disabled = !rect || !allowed || !reorder || from < minimum || count + to - from > maximum;
         return;
       }
       if (!Object.hasOwn(tableCommands, option.value)) return;
@@ -2652,6 +2661,31 @@ function runTableReorder(command) {
       `Ausgewählte Spalten nach ${direction === "before" ? "links" : "rechts"} verschoben.`);
   } catch {
     $("table-message").textContent = "Umordnen ist nur innerhalb einfacher Tabellen möglich; Kopfzeile und Kopfspalte bleiben geschützt.";
+    focusEditor();
+    return false;
+  }
+}
+
+function runTableDuplicate(command) {
+  if (!replacementAllowed() || !tableDuplicateCommands.has(command)) return false;
+  const editor = state.editor; const rect = currentTable(); const current = currentTableNode();
+  if (!rect || !current) return false;
+  try {
+    const rows = command === "duplicateRows";
+    const options = { from: rows ? rect.top : rect.left, to: rows ? rect.bottom : rect.right };
+    const duplicated = rows ? duplicateOfficeTableRows(current.entry.toJSON(), options) :
+      duplicateOfficeTableColumns(current.entry.toJSON(), options);
+    const replacement = editor.schema.nodeFromJSON(duplicated); const map = TableMap.get(replacement);
+    const top = rows ? rect.bottom : rect.top; const left = rows ? rect.left : rect.right;
+    const bottom = top + (rect.bottom - rect.top); const right = left + (rect.right - rect.left);
+    const transaction = editor.state.tr.replaceWith(current.position, current.position + current.entry.nodeSize, replacement);
+    transaction.setSelection(CellSelection.create(transaction.doc,
+      current.position + 1 + map.map[top * map.width + left],
+      current.position + 1 + map.map[(bottom - 1) * map.width + right - 1]));
+    return commitTableTransaction(transaction, rows ?
+      "Ausgewählte Zeilen direkt darunter dupliziert." : "Ausgewählte Spalten direkt rechts dupliziert.");
+  } catch {
+    $("table-message").textContent = "Duplizieren ist nur innerhalb der Tabellengrenzen und ohne verbundene Zellen möglich; Kopfzeile und Kopfspalte bleiben geschützt.";
     focusEditor();
     return false;
   }
@@ -5491,7 +5525,9 @@ $("section-dialog").addEventListener("close", () => { if (!$("section-dialog").o
 ["table-row-action", "table-column-action"].forEach((id) => {
   $(id).addEventListener("change", () => {
     const command = $(id).value; $(id).value = "";
-    if (tableReorderCommands.has(command)) runTableReorder(command); else runTableCommand(command);
+    if (tableReorderCommands.has(command)) runTableReorder(command);
+    else if (tableDuplicateCommands.has(command)) runTableDuplicate(command);
+    else runTableCommand(command);
   });
 });
 $("table-select").addEventListener("change", () => { const part = $("table-select").value; $("table-select").value = ""; selectTablePart(part); });

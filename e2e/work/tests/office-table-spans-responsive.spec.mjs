@@ -24,6 +24,8 @@ test("Office merged cells split header columns save reload and print responsivel
   await expect(page.locator("#table-sort")).toBeDisabled();
   await expect(page.locator('#table-row-action option[value="moveRowBefore"]')).toHaveJSProperty("disabled", true);
   await expect(page.locator('#table-column-action option[value="moveColumnAfter"]')).toHaveJSProperty("disabled", true);
+  await expect(page.locator('#table-row-action option[value="duplicateRows"]')).toHaveJSProperty("disabled", true);
+  await expect(page.locator('#table-column-action option[value="duplicateColumns"]')).toHaveJSProperty("disabled", true);
   await expect(row(page, 0).locator("th,td")).toHaveCount(1);
   await expect(cell(page, 0)).toHaveAttribute("colspan", "3");
   await page.locator('[data-command="undo"]').click(); await expect(row(page, 0).locator("td")).toHaveCount(3);

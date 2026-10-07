@@ -248,6 +248,33 @@ export function moveOfficeTableColumns(value, options) {
     content: officeTableMoveRange(row.content, options.from, options.to, options.direction, minimum) })) };
 }
 
+function officeTableDuplicateRange(values, from, to, minimum, maximum) {
+  const count = to - from;
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from < minimum || to <= from || to > values.length ||
+      values.length + count > maximum) throw new TypeError("Invalid Office table duplication");
+  return [...values.slice(0, to), ...values.slice(from, to), ...values.slice(to)];
+}
+
+export function duplicateOfficeTableRows(value, options) {
+  const info = officeTableReorderInfo(value);
+  if (!options || Object.keys(options).sort().join(",") !== "from,to") {
+    throw new TypeError("Invalid Office table row duplication");
+  }
+  return { ...value, content: officeTableDuplicateRange(value.content, options.from, options.to,
+    info.header ? 1 : 0, 200) };
+}
+
+export function duplicateOfficeTableColumns(value, options) {
+  const info = officeTableReorderInfo(value);
+  if (!options || Object.keys(options).sort().join(",") !== "from,to") {
+    throw new TypeError("Invalid Office table column duplication");
+  }
+  const minimum = info.headerColumn ? 1 : 0;
+  officeTableDuplicateRange(Array.from({ length: info.columns }), options.from, options.to, minimum, 20);
+  return { ...value, content: value.content.map((row) => ({ ...row,
+    content: officeTableDuplicateRange(row.content, options.from, options.to, minimum, 20) })) };
+}
+
 export function officeTableInventory(document) {
   let nodes = 0;
   const entries = [], ids = new Set();
