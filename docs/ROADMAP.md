@@ -2313,6 +2313,31 @@ Spaltenaktionen bestand die visuelle Pruefung. Umordnen veraendert ausschliessli
 Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration, Drag-and-drop-Schicht,
 Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
 
+357. [x] Direkte Duplizierung einer zusammenhaengenden Datenzeilenauswahl unter ADR-0138 umgesetzt. Der vollstaendige
+     Block wird unmittelbar unter seinem Original eingefuegt.
+
+358. [x] Direkte Duplizierung einer zusammenhaengenden Datenspaltenauswahl unter ADR-0138 umgesetzt. Alle zugehoerigen
+     Zellen werden unmittelbar rechts neben ihrem Original eingefuegt.
+
+359. [x] Semantische Kopfzeile und Kopfspalte beim Duplizieren geschuetzt sowie verbundene oder nicht rechteckige
+     Tabellen fail-closed abgelehnt. Die bestehenden Grenzen von 200 Zeilen und 20 Spalten gelten vor jeder Mutation.
+
+360. [x] Vollstaendige Inhalte, Marks, Zelltypen und begrenzte Praesentationsattribute in die Kopie uebernommen, den
+     neuen Block ausgewaehlt und jede erfolgreiche Duplizierung als genau einen validierten Undo-Schritt umgesetzt.
+
+361. [x] Barrierearme Duplizierungsaktionen in die bestehenden Zeilen- und Spaltenmenues integriert. Geschuetzte
+     Bereiche, Groessenlimits, veraltete Auswahlen, Leser und Historienansichten bleiben sichtbar deaktiviert oder No-ops.
+
+362. [x] Vollstaendigen Duplizierungslebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 357 bis 362 / PLANS 218 bis 223 sind gemeinsam unter ADR-0138 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 7/7; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat-, Sortier-, Umordnungs- und Vergleichsmatrix bestand 54/54. Die gespeicherte Live-Ansicht mit
+5 x 5 Zellen und direkt sichtbaren Zeilen-/Spaltenaktionen bestand die visuelle Pruefung. Duplizieren erzeugt nur
+kanonische vollstaendige Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration,
+Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

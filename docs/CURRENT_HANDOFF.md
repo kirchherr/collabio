@@ -2,6 +2,29 @@
 
 Updated: 2026-10-07
 
+Roadmap 357 through 362 / PLANS 218 through 223 are complete under ADR-0138. Authors can duplicate a contiguous
+selection of data rows directly below its source or data columns directly to its right from the existing table menus.
+The first all-header row and first all-header column remain protected. Merged or non-rectangular grids, protected
+overlaps, the existing 200-row or 20-column limit, unsupported options, stale selections, readers and historical
+views fail closed.
+
+Each accepted action copies complete row or cell nodes with semantic type, content, marks and bounded presentation,
+selects the inserted rectangular block and creates exactly one validated undo step. Confirmed save, immutable
+predecessor, reload, comparison and print consume the canonical result without a new stored field, clipboard layer
+or spreadsheet runtime.
+
+The focused model plus desktop/mobile workflow passed 7/7. The broad table, caption, span, layout, cell-presentation,
+sort, reorder and comparison matrix passed 54/54. Desktop and mobile screenshot SHA-256 values are
+`7e16a8f24068d31ec405ddf63ece40a53388eef425b3037290a4a3aa639b6644` and
+`08c70ff9fcaacb295e4308ef40b266aac477367a1fe5c0e63fdc257a7dda2823`; the saved 5 x 5 live table and its direct
+row/column actions passed visual review.
+
+Product implementation is published in `1c3ef9e5` on `kirchherr/kb-write-unit-of-work`. Duplication reuses existing
+immutable Office version JSON and recovery contracts, so there is no relational migration or new restore target. No
+ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated.
+The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-duplicate-1c3ef9e5`.
+
 Roadmap 351 through 356 / PLANS 212 through 217 are complete under ADR-0137. Authors can move a contiguous selection
 of rows one position up or down and columns one position left or right from the existing table menus. The first
 all-header row and first all-header column remain fixed; boundary actions are disabled. Merged or non-rectangular
@@ -3185,9 +3208,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 317 through 320 / PLANS 178 through 181 are complete. Preserve the bounded inert chart model, fixed colors,
-accessible exact data table, top-level unique IDs, isolated undo, exact save/history/comparison/print behavior and the
-existing Office recovery contract. Keep the chart, comparison, print and full Python quality matrices green.
+Roadmap 357 through 362 / PLANS 218 through 223 are complete. Preserve protected direct row and column duplication,
+complete cell semantics and presentation, the 200-row and 20-column limits, inserted-block selection, isolated undo,
+exact save/history/comparison/print behavior and the existing Office recovery contract. Keep the complete table,
+comparison, print and full Python quality matrices green.
 
 Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
 polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
@@ -3226,9 +3250,9 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 321 through 324 / PLANS 182 through 185 are complete; implementation is published through `13db7f3d` and full
-quality through `4af86a03`. Preserve bounded merged
-table grids, semantic row/column headers, inert native charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
+Roadmap 357 through 362 / PLANS 218 through 223 are complete; product implementation is published through `1c3ef9e5`.
+Preserve bounded merged table grids, semantic row/column headers, protected row/column duplication, inert native
+charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
 atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
 bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
 including the fresh Roadmap-309 PostgreSQL/S3 proof.
