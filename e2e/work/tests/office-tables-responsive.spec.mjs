@@ -5,7 +5,7 @@ import { newOfficeDraft, officeEditor, officeVersions, openOffice, openOfficeDoc
 
 async function expectReachableTableTools(page) {
   for (const id of ["table-info", "table-row-action", "table-column-action", "table-select", "table-header-toggle",
-    "table-header-column-toggle", "table-merge", "table-split", "table-delete"]) {
+    "table-header-column-toggle", "table-merge", "table-split", "table-sort", "table-delete"]) {
     await expect(page.locator(`#${id}`)).toBeInViewport();
   }
   expect(await page.locator("#table-tools").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);

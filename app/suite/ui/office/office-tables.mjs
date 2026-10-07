@@ -140,6 +140,76 @@ export function officeTableLayoutDescription(value = {}) {
   return result;
 }
 
+export function officeTableCellText(value) {
+  let nodes = 0; const parts = [];
+  const walk = (node, depth = 0) => {
+    if (!node || typeof node !== "object" || ++nodes > 10000 || depth > 32) throw new TypeError("Invalid Office table text");
+    if (node.type === "text") {
+      if (typeof node.text !== "string") throw new TypeError("Invalid Office table text");
+      parts.push(node.text); return;
+    }
+    if (node.type === "hardBreak") parts.push("\n");
+    if (node.content != null && !Array.isArray(node.content)) throw new TypeError("Invalid Office table text");
+    for (const child of node.content || []) walk(child, depth + 1);
+    if (["paragraph", "heading", "listItem", "blockquote", "codeBlock"].includes(node.type)) parts.push(" ");
+  };
+  walk(value);
+  return parts.join("").replace(/\s+/gu, " ").trim();
+}
+
+export function officeTableSortInfo(value) {
+  const grid = officeTableGrid(value);
+  for (const row of value.content) {
+    if (row.content.length !== grid.columns || row.content.some((cell) => {
+      const attrs = officeTableCellAttributes(cell.attrs);
+      return attrs.colspan !== 1 || attrs.rowspan !== 1;
+    })) throw new TypeError("Office table sorting requires a simple grid");
+  }
+  const header = value.content[0].content.every((cell) => cell.type === "tableHeader");
+  return { ...grid, header, dataRows: grid.rows - (header ? 1 : 0) };
+}
+
+function officeTableSortKey(value, type) {
+  const text = officeTableCellText(value);
+  if (!text) return { empty: true, value: "" };
+  if (type === "text") return { empty: false, value: text.normalize("NFKC").toLowerCase() };
+  if (type === "number") {
+    if (!/^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u.test(text)) throw new TypeError("Invalid Office table number");
+    const number = Number(text.replace(",", "."));
+    if (!Number.isFinite(number) || Math.abs(number) > 1e15) throw new TypeError("Invalid Office table number");
+    return { empty: false, value: number };
+  }
+  if (type === "date") {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(text);
+    if (!match) throw new TypeError("Invalid Office table date");
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    const stamp = Date.UTC(year, month - 1, day);
+    const checked = new Date(stamp);
+    if (year < 1000 || year > 9999 || checked.getUTCFullYear() !== year || checked.getUTCMonth() !== month - 1 ||
+        checked.getUTCDate() !== day) throw new TypeError("Invalid Office table date");
+    return { empty: false, value: stamp };
+  }
+  throw new TypeError("Invalid Office table sort type");
+}
+
+export function sortOfficeTable(value, options) {
+  const info = officeTableSortInfo(value);
+  if (!options || Object.keys(options).sort().join(",") !== "column,direction,type" ||
+      !Number.isInteger(options.column) || options.column < 0 || options.column >= info.columns ||
+      !["text", "number", "date"].includes(options.type) || !["ascending", "descending"].includes(options.direction) ||
+      info.dataRows < 2) throw new TypeError("Invalid Office table sort");
+  const start = info.header ? 1 : 0;
+  const rows = value.content.slice(start).map((row, index) => ({ row, index,
+    key: officeTableSortKey(row.content[options.column], options.type) }));
+  rows.sort((left, right) => {
+    if (left.key.empty !== right.key.empty) return left.key.empty ? 1 : -1;
+    if (left.key.empty) return left.index - right.index;
+    const compared = left.key.value < right.key.value ? -1 : left.key.value > right.key.value ? 1 : 0;
+    return (options.direction === "descending" ? -compared : compared) || left.index - right.index;
+  });
+  return { ...value, content: [...(info.header ? [value.content[0]] : []), ...rows.map(({ row }) => row)] };
+}
+
 export function officeTableInventory(document) {
   let nodes = 0;
   const entries = [], ids = new Set();

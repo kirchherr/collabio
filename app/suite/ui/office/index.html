@@ -75,6 +75,7 @@
               <button class="button secondary" id="table-split" type="button" disabled>Zelle teilen</button>
               <button class="button secondary" id="table-cell-style" type="button" aria-haspopup="dialog" aria-controls="table-cell-style-dialog" disabled>Zellen formatieren …</button>
               <button class="button secondary" id="table-layout" type="button" aria-haspopup="dialog" aria-controls="table-layout-dialog" disabled>Tabellenlayout …</button>
+              <button class="button secondary" id="table-sort" type="button" aria-haspopup="dialog" aria-controls="table-sort-dialog" disabled>Sortieren …</button>
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog" disabled>Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button" disabled>Tabelle entfernen …</button>
             </div>
@@ -362,6 +363,16 @@
           <label>Beschriftung<select id="table-layout-caption"><option value="default">Unten</option><option value="top">Oben</option></select></label>
         </div><p class="paragraph-help">Alle Optionen verwenden feste, drucksichere Werte. Auf schmalen Bildschirmen nutzt die Tabelle automatisch die verfügbare Breite.</p><p id="table-layout-status" role="status" aria-live="polite"></p></div>
         <footer><button class="button secondary" id="table-layout-reset" type="button">Standard</button><button class="button secondary" id="table-layout-cancel" type="button">Abbrechen</button><button class="button primary" id="table-layout-apply" type="submit">Übernehmen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-sort-dialog" aria-labelledby="table-sort-title">
+      <form id="table-sort-form"><header><h2 id="table-sort-title">Tabellendaten sortieren</h2><button class="icon-button" id="table-sort-close" type="button" aria-label="Sortierung schließen">×</button></header>
+        <div class="dialog-body"><p id="table-sort-summary"></p><div class="table-sort-fields">
+          <label>Spalte<select id="table-sort-column"></select></label>
+          <label>Datentyp<select id="table-sort-type"><option value="text">Text</option><option value="number">Zahl</option><option value="date">ISO-Datum (JJJJ-MM-TT)</option></select></label>
+          <label>Reihenfolge<select id="table-sort-direction"><option value="ascending">Aufsteigend</option><option value="descending">Absteigend</option></select></label>
+        </div><p class="paragraph-help">Die Kopfzeile bleibt oben. Leere Zellen stehen am Ende; gleiche Werte behalten ihre bisherige Reihenfolge. Verbundene Zellen werden nicht sortiert.</p><p id="table-sort-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="button secondary" id="table-sort-cancel" type="button">Abbrechen</button><button class="button primary" id="table-sort-apply" type="submit">Datenzeilen sortieren</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">

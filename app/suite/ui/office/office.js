@@ -31,7 +31,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2277,6 +2277,7 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-caption-dialog").close();
   $("table-cell-style-dialog").close();
   $("table-layout-dialog").close();
+  $("table-sort-dialog").close();
   $("table-insert-form").reset();
   $("table-insert-message").textContent = "";
   $("table-remove-summary").textContent = "";
@@ -2285,9 +2286,11 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-caption-form").reset();
   $("table-cell-style-form").reset();
   $("table-layout-form").reset();
+  $("table-sort-form").reset();
   $("table-caption-status").textContent = "";
   $("table-cell-style-status").textContent = "";
   $("table-layout-status").textContent = "";
+  $("table-sort-status").textContent = "";
   if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
 }
 
@@ -2308,6 +2311,10 @@ function updateTableControls() {
   $("table-caption").disabled = !rect || !allowed;
   $("table-cell-style").disabled = !rect || !allowed;
   $("table-layout").disabled = !rect || !allowed;
+  let sortable = false;
+  try { sortable = Boolean(rect && officeTableSortInfo(rect.table.toJSON()).dataRows >= 2); } catch { sortable = false; }
+  $("table-sort").disabled = !rect || !allowed || !sortable;
+  $("table-sort").title = sortable ? "Datenzeilen nach einer Spalte sortieren" : "Sortieren benötigt mindestens zwei Datenzeilen ohne verbundene Zellen";
   $("table-delete").disabled = !rect || !allowed;
   $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
   const header = Boolean(rect && Array.from({ length: rect.table.firstChild.childCount }, (_, index) =>
@@ -2410,6 +2417,53 @@ function commitTableLayout(event, reset = false) {
       "Tabellenlayout übernommen. Gespeichert wird erst mit der nächsten bestätigten Version.")) closeTableDialogs(true);
   } catch {
     $("table-layout-status").textContent = "Das Tabellenlayout konnte nicht sicher übernommen werden.";
+  }
+}
+
+function openTableSort() {
+  if (!replacementAllowed()) return;
+  const current = currentTableNode(); const rect = currentTable();
+  if (!current || !rect) return;
+  let info;
+  try { info = officeTableSortInfo(current.entry.toJSON()); } catch {
+    $("table-message").textContent = "Sortieren ist nur für Tabellen ohne verbundene Zellen verfügbar."; return;
+  }
+  if (info.dataRows < 2) { $("table-message").textContent = "Zum Sortieren sind mindestens zwei Datenzeilen erforderlich."; return; }
+  closeTableDialogs();
+  state.tableAction = { ...tableActionSnapshot("sort"), position: current.position, table: current.entry };
+  const select = $("table-sort-column"); select.replaceChildren();
+  for (let column = 0; column < info.columns; column += 1) {
+    const option = document.createElement("option"); option.value = String(column);
+    const heading = info.header ? officeTableCellText(current.entry.firstChild.child(column).toJSON()) : "";
+    option.textContent = heading ? `Spalte ${column + 1} — ${heading.slice(0, 80)}` : `Spalte ${column + 1}`;
+    select.append(option);
+  }
+  select.value = String(Math.min(rect.left, info.columns - 1));
+  $("table-sort-summary").textContent = `${info.dataRows} Datenzeilen · ${info.header ? "Kopfzeile bleibt oben" : "keine Kopfzeile erkannt"}`;
+  $("table-sort-dialog").showModal(); select.focus();
+}
+
+function commitTableSort(event) {
+  event.preventDefault();
+  const action = state.tableAction;
+  if (!tableActionCurrent(action) || action.kind !== "sort") { closeTableDialogs(); return; }
+  try {
+    const options = { column: Number($("table-sort-column").value), type: $("table-sort-type").value,
+      direction: $("table-sort-direction").value };
+    const sorted = sortOfficeTable(action.table.toJSON(), options);
+    const replacement = action.editor.schema.nodeFromJSON(sorted);
+    if (replacement.eq(action.table)) {
+      $("table-sort-status").textContent = "Die Tabelle ist bereits in dieser Reihenfolge sortiert."; return;
+    }
+    const info = officeTableSortInfo(sorted), map = TableMap.get(replacement), row = info.header ? 1 : 0;
+    const transaction = action.editor.state.tr.replaceWith(action.position, action.position + action.table.nodeSize, replacement);
+    transaction.setSelection(Selection.near(transaction.doc.resolve(action.position + 1 + map.map[row * map.width + options.column] + 1)));
+    if (!commitTableTransaction(transaction, "Datenzeilen sortiert. Die Änderung lässt sich rückgängig machen und wird erst mit der nächsten Version gespeichert.")) {
+      closeTableDialogs(true);
+    }
+  } catch {
+    $("table-sort-status").textContent = "Alle Werte der gewählten Spalte müssen zum ausgewählten Datentyp passen; leere Zellen bleiben am Ende.";
+    $("table-sort-status").classList.add("error");
   }
 }
 
@@ -5408,8 +5462,9 @@ $("table-split").addEventListener("click", () => runTableCellCommand(splitCell,
 $("table-caption").addEventListener("click", openTableCaption);
 $("table-cell-style").addEventListener("click", openTableCellStyle);
 $("table-layout").addEventListener("click", openTableLayout);
+$("table-sort").addEventListener("click", openTableSort);
 $("table-delete").addEventListener("click", () => runTableCommand("deleteTable"));
-["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-layout", "table-delete"].forEach((id) => {
+["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-layout", "table-sort", "table-delete"].forEach((id) => {
   $(id).addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 });
 $("table-caption-form").addEventListener("submit", (event) => { event.preventDefault(); commitTableCaption(); });
@@ -5419,6 +5474,10 @@ $("table-cell-style-form").addEventListener("submit", commitTableCellStyle);
 $("table-cell-style-reset").addEventListener("click", () => commitTableCellStyle(null, true));
 $("table-layout-form").addEventListener("submit", commitTableLayout);
 $("table-layout-reset").addEventListener("click", () => commitTableLayout(null, true));
+$("table-sort-form").addEventListener("submit", commitTableSort);
+[$("table-sort-column"), $("table-sort-type"), $("table-sort-direction")].forEach((field) => field.addEventListener("change", () => {
+  $("table-sort-status").textContent = ""; $("table-sort-status").classList.remove("error");
+}));
 $("table-insert-form").addEventListener("submit", (event) => {
   event.preventDefault();
   if (!tableActionCurrent(state.tableAction) || state.tableAction.kind !== "insert") { closeTableDialogs(); return; }
@@ -5435,14 +5494,15 @@ $("table-remove-confirm").addEventListener("click", () => {
   closeTableDialogs();
   runTableCommand(command, true);
 });
-["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel", "table-layout-close", "table-layout-cancel"].forEach((id) => {
+["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel", "table-layout-close", "table-layout-cancel", "table-sort-close", "table-sort-cancel"].forEach((id) => {
   $(id).addEventListener("click", () => closeTableDialogs(true));
 });
-["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog", "table-layout-dialog"].forEach((id) => {
+["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog", "table-layout-dialog", "table-sort-dialog"].forEach((id) => {
   $(id).addEventListener("cancel", (event) => { event.preventDefault(); closeTableDialogs(true); });
   $(id).addEventListener("close", () => {
     const kind = id === "table-insert-dialog" ? "insert" : id === "table-remove-dialog" ? "remove" :
-      id === "table-caption-dialog" ? "caption" : id === "table-cell-style-dialog" ? "cellStyle" : "layout";
+      id === "table-caption-dialog" ? "caption" : id === "table-cell-style-dialog" ? "cellStyle" :
+        id === "table-sort-dialog" ? "sort" : "layout";
     if (!$(id).open && state.tableAction?.kind === kind) closeTableDialogs();
   });
 });
