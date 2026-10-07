@@ -5,6 +5,9 @@ export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
 export const OFFICE_TABLE_CELL_FILLS = ["gray", "blue", "green", "yellow", "red"];
 export const OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS = ["middle", "bottom"];
+export const OFFICE_TABLE_CELL_HORIZONTAL_ALIGNMENTS = ["center", "right"];
+export const OFFICE_TABLE_CELL_PADDINGS = ["compact", "spacious"];
+export const OFFICE_TABLE_CELL_BORDERS = ["none", "strong"];
 export const OFFICE_TABLE_STYLES = ["minimal", "banded", "accent"];
 export const OFFICE_TABLE_WIDTHS = ["compact", "wide"];
 export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
@@ -12,19 +15,25 @@ export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 
 export function officeTableCellAttributes(value = {}) {
   if (Object.entries(value).some(([key, entry]) =>
-    !["colspan", "rowspan", "colwidth", "background", "verticalAlign"].includes(key) && entry != null)) {
+    !["colspan", "rowspan", "colwidth", "background", "verticalAlign", "horizontalAlign", "padding", "border"].includes(key) && entry != null)) {
     throw new TypeError("Invalid Office table cell");
   }
   if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
       (value.colspan ?? 1) < 1 || (value.colspan ?? 1) > 20 ||
       (value.rowspan ?? 1) < 1 || (value.rowspan ?? 1) > 200 || value.colwidth != null ||
       (value.background != null && !OFFICE_TABLE_CELL_FILLS.includes(value.background)) ||
-      (value.verticalAlign != null && !OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS.includes(value.verticalAlign))) {
+      (value.verticalAlign != null && !OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS.includes(value.verticalAlign)) ||
+      (value.horizontalAlign != null && !OFFICE_TABLE_CELL_HORIZONTAL_ALIGNMENTS.includes(value.horizontalAlign)) ||
+      (value.padding != null && !OFFICE_TABLE_CELL_PADDINGS.includes(value.padding)) ||
+      (value.border != null && !OFFICE_TABLE_CELL_BORDERS.includes(value.border))) {
     throw new TypeError("Invalid Office table cell");
   }
   const result = { colspan: value.colspan ?? 1, rowspan: value.rowspan ?? 1 };
   if (value.background != null) result.background = value.background;
   if (value.verticalAlign != null) result.verticalAlign = value.verticalAlign;
+  if (value.horizontalAlign != null) result.horizontalAlign = value.horizontalAlign;
+  if (value.padding != null) result.padding = value.padding;
+  if (value.border != null) result.border = value.border;
   return result;
 }
 
@@ -32,6 +41,9 @@ export function officeTableCellDOMAttributes(value = {}) {
   const attrs = officeTableCellAttributes(value); const result = {};
   if (attrs.background) result["data-office-cell-fill"] = attrs.background;
   if (attrs.verticalAlign) result["data-office-cell-vertical"] = attrs.verticalAlign;
+  if (attrs.horizontalAlign) result["data-office-cell-align"] = attrs.horizontalAlign;
+  if (attrs.padding) result["data-office-cell-padding"] = attrs.padding;
+  if (attrs.border) result["data-office-cell-border"] = attrs.border;
   return result;
 }
 
@@ -39,6 +51,9 @@ export function officeTableCellStyleDescription(value = {}) {
   const attrs = officeTableCellAttributes(value); const result = [];
   if (attrs.background) result.push(`Füllung ${attrs.background}`);
   if (attrs.verticalAlign) result.push(`Vertikal ${attrs.verticalAlign}`);
+  if (attrs.horizontalAlign) result.push(`Horizontal ${attrs.horizontalAlign}`);
+  if (attrs.padding) result.push(`Innenabstand ${attrs.padding}`);
+  if (attrs.border) result.push(`Rahmen ${attrs.border}`);
   return result;
 }
 

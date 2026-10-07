@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeTableAttributes, officeTableCellAttributes, officeTableDOMAttributes, officeTableGrid } from "../office-tables.mjs";
+import { officeTableAttributes, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableDOMAttributes, officeTableGrid } from "../office-tables.mjs";
 
 const paragraph = (text = "") => ({ type: "paragraph", content: text ? [{ type: "text", text }] : undefined });
 const cell = (type, text, attrs = {}) => ({ type, attrs, content: [paragraph(text)] });
@@ -17,9 +17,15 @@ test("Office table grids accept bounded rectangular row and column spans", () =>
   expect(officeTableCellAttributes({ colspan: 3, rowspan: 2, colwidth: null })).toEqual({ colspan: 3, rowspan: 2 });
   expect(officeTableCellAttributes({ colspan: 1, rowspan: 1, colwidth: null, background: null }))
     .toEqual({ colspan: 1, rowspan: 1 });
-  expect(officeTableCellAttributes({ background: "blue", verticalAlign: "bottom" }))
-    .toEqual({ colspan: 1, rowspan: 1, background: "blue", verticalAlign: "bottom" });
-  for (const attrs of [{ background: "url(secret)" }, { verticalAlign: "baseline" }, { style: "color:red" }]) {
+  expect(officeTableCellAttributes({ background: "blue", verticalAlign: "bottom", horizontalAlign: "right",
+    padding: "spacious", border: "strong" }))
+    .toEqual({ colspan: 1, rowspan: 1, background: "blue", verticalAlign: "bottom", horizontalAlign: "right",
+      padding: "spacious", border: "strong" });
+  expect(officeTableCellDOMAttributes({ horizontalAlign: "center", padding: "compact", border: "none" })).toEqual({
+    "data-office-cell-align": "center", "data-office-cell-padding": "compact", "data-office-cell-border": "none",
+  });
+  for (const attrs of [{ background: "url(secret)" }, { verticalAlign: "baseline" }, { horizontalAlign: "justify" },
+    { padding: "12px" }, { border: "url(secret)" }, { style: "color:red" }]) {
     expect(() => officeTableCellAttributes(attrs)).toThrow();
   }
   for (const invalid of [
@@ -38,6 +44,10 @@ test("Office comparison exposes merged-cell geometry", () => {
   expect(comparison.counts.changed).toBe(1);
   const changed = comparison.rows.find((row) => row.kind === "changed");
   expect(describeOfficeBlock(changed.after).text).toContain("3 Spalten × 1 Zeilen");
+  const styled = { type: "table", content: [{ type: "tableRow", content: [cell("tableCell", "120", {
+    horizontalAlign: "right", padding: "compact", border: "strong",
+  })] }] };
+  expect(describeOfficeBlock(styled).text).toContain("Horizontal right · Innenabstand compact · Rahmen strong");
 });
 
 test("Office table layouts accept only bounded inert presets", () => {

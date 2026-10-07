@@ -345,8 +345,11 @@
         <div class="dialog-body"><p id="table-cell-style-summary"></p><div class="table-size-fields">
           <label>Füllung<select id="table-cell-fill"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Keine</option><option value="gray">Grau</option><option value="blue">Blau</option><option value="green">Grün</option><option value="yellow">Gelb</option><option value="red">Rot</option></select></label>
           <label>Vertikale Ausrichtung<select id="table-cell-vertical"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Oben</option><option value="middle">Mittig</option><option value="bottom">Unten</option></select></label>
-        </div><p class="paragraph-help">Es werden ausschließlich feste, drucksichere Werte gespeichert. Textausrichtung und Zeichenformat bleiben unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
-        <footer><button class="button secondary" id="table-cell-style-cancel" type="button">Abbrechen</button><button class="button primary" id="table-cell-style-apply" type="submit">Auf Auswahl anwenden</button></footer>
+          <label>Horizontale Ausrichtung<select id="table-cell-horizontal"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label>
+          <label>Innenabstand<select id="table-cell-padding"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Normal</option><option value="compact">Kompakt</option><option value="spacious">Großzügig</option></select></label>
+          <label>Rahmen<select id="table-cell-border"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Vom Tabellenstil</option><option value="none">Ohne</option><option value="strong">Stark</option></select></label>
+        </div><p class="paragraph-help">Es werden ausschließlich feste, drucksichere Werte gespeichert. Zeichenformat und explizite Absatzausrichtung bleiben unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="button secondary" id="table-cell-style-reset" type="button">Standard</button><button class="button secondary" id="table-cell-style-cancel" type="button">Abbrechen</button><button class="button primary" id="table-cell-style-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog" id="table-layout-dialog" aria-labelledby="table-layout-title">

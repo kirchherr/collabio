@@ -94,7 +94,13 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
                     {"type": "tableHeader", "attrs": {"colspan": 1, "rowspan": 2}, "content": [paragraph]},
                     {
                         "type": "tableCell",
-                        "attrs": {"background": "blue", "verticalAlign": "middle"},
+                        "attrs": {
+                            "background": "blue",
+                            "verticalAlign": "middle",
+                            "horizontalAlign": "center",
+                            "padding": "spacious",
+                            "border": "strong",
+                        },
                         "content": [paragraph],
                     },
                     {"type": "tableCell", "content": [paragraph]},
@@ -133,6 +139,33 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
                 {
                     "type": "tableRow",
                     "content": [{"type": "tableCell", "attrs": {"colspan": 21, "rowspan": 1}, "content": [paragraph]}],
+                }
+            ],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [{"type": "tableCell", "attrs": {"horizontalAlign": "justify"}, "content": [paragraph]}],
+                }
+            ],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [{"type": "tableCell", "attrs": {"padding": "24px"}, "content": [paragraph]}],
+                }
+            ],
+        },
+        {
+            "type": "table",
+            "content": [
+                {
+                    "type": "tableRow",
+                    "content": [{"type": "tableCell", "attrs": {"border": "url(secret)"}, "content": [paragraph]}],
                 }
             ],
         },

@@ -101,6 +101,8 @@ const OfficeTableCellStyle = Extension.create({
     });
     return [{ types: ["tableCell", "tableHeader"], attributes: {
       background: attribute("data-office-cell-fill"), verticalAlign: attribute("data-office-cell-vertical"),
+      horizontalAlign: attribute("data-office-cell-align"), padding: attribute("data-office-cell-padding"),
+      border: attribute("data-office-cell-border"),
     } }];
   },
 });
@@ -2365,6 +2367,9 @@ function openTableCellStyle() {
   state.tableAction = { ...tableActionSnapshot("cellStyle"), positions };
   $("table-cell-fill").value = uniform("background");
   $("table-cell-vertical").value = uniform("verticalAlign");
+  $("table-cell-horizontal").value = uniform("horizontalAlign");
+  $("table-cell-padding").value = uniform("padding");
+  $("table-cell-border").value = uniform("border");
   $("table-cell-style-summary").textContent = `${positions.length} ${positions.length === 1 ? "Zelle" : "Zellen"} ausgewählt.`;
   $("table-cell-style-dialog").showModal();
   $("table-cell-fill").focus();
@@ -2408,12 +2413,16 @@ function commitTableLayout(event, reset = false) {
   }
 }
 
-function commitTableCellStyle(event) {
-  event.preventDefault();
+function commitTableCellStyle(event, reset = false) {
+  event?.preventDefault();
   const action = state.tableAction;
   if (!tableActionCurrent(action) || action.kind !== "cellStyle") { closeTableDialogs(); return; }
   const fill = $("table-cell-fill").value;
   const vertical = $("table-cell-vertical").value;
+  const horizontal = $("table-cell-horizontal").value;
+  const padding = $("table-cell-padding").value;
+  const border = $("table-cell-border").value;
+  const chosen = (value, current) => reset ? null : value === "mixed" ? current : value === "default" ? null : value;
   try {
     let transaction = action.editor.state.tr;
     for (const position of action.positions) {
@@ -2421,12 +2430,16 @@ function commitTableCellStyle(event) {
       if (!node || !["tableCell", "tableHeader"].includes(node.type.name)) throw new Error("table-cell-style");
       const current = officeTableCellAttributes(node.attrs);
       const attrs = officeTableCellAttributes({ ...current,
-        background: fill === "mixed" ? current.background : fill === "default" ? null : fill,
-        verticalAlign: vertical === "mixed" ? current.verticalAlign : vertical === "default" ? null : vertical,
+        background: chosen(fill, current.background),
+        verticalAlign: chosen(vertical, current.verticalAlign),
+        horizontalAlign: chosen(horizontal, current.horizontalAlign),
+        padding: chosen(padding, current.padding),
+        border: chosen(border, current.border),
       });
       transaction = transaction.setNodeMarkup(position, undefined, attrs);
     }
-    if (!commitTableTransaction(transaction, "Zellformatierung übernommen. Gespeichert wird erst mit der nächsten bestätigten Version.")) {
+    if (!commitTableTransaction(transaction, reset ? "Zellformatierung auf Standard zurückgesetzt." :
+      "Zellformatierung übernommen. Gespeichert wird erst mit der nächsten bestätigten Version.")) {
       closeTableDialogs(true);
     }
   } catch {
@@ -5403,6 +5416,7 @@ $("table-caption-form").addEventListener("submit", (event) => { event.preventDef
 $("table-caption-remove").addEventListener("click", () => commitTableCaption(true));
 $("table-caption-text").addEventListener("input", () => $("table-caption-status").classList.remove("error"));
 $("table-cell-style-form").addEventListener("submit", commitTableCellStyle);
+$("table-cell-style-reset").addEventListener("click", () => commitTableCellStyle(null, true));
 $("table-layout-form").addEventListener("submit", commitTableLayout);
 $("table-layout-reset").addEventListener("click", () => commitTableLayout(null, true));
 $("table-insert-form").addEventListener("submit", (event) => {
