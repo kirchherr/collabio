@@ -324,7 +324,8 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
     )
 
 
-_install_synthetic_knowledge_runtime()
+if allow_synthetic_traffic:
+    _install_synthetic_knowledge_runtime()
 office_sdk_client = build_boto3_s3_compatible_client(
     endpoint_url=os.environ["SUITE_S3_ENDPOINT_URL"],
     access_key_id=os.environ["SUITE_S3_ACCESS_KEY_ID"],
