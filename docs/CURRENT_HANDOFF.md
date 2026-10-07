@@ -2,6 +2,36 @@
 
 Updated: 2026-10-07
 
+Roadmap 389 through 394 / PLANS 250 through 255 are complete under ADR-0143. Authors can select an ordinary data-cell
+row, column or rectangle in a simple native table, open the existing formula dialog once and fill the complete range.
+The entered formula belongs to the top-left cell; every target receives an independently shifted copy that preserves
+relative, fixed-column, fixed-row and fully fixed references under ADR-0142. A translated reference outside A1:T200,
+a header cell, merged grid, invalid range or formula-count overflow rejects the whole operation.
+
+The same dialog removes every selected formula together while retaining the last visible results as ordinary cell
+content. Fill and removal each replace the table in one validated transaction, restore the rectangular selection and
+produce exactly one undo step. Remaining formulas recalculate against the complete result. Current authorization,
+stale-session, reader, historical-version, document-size, server-result validation and confirmed-save boundaries remain
+unchanged.
+
+Focused server validation passed 35/35, focused model plus desktop/mobile verification passed 22/22, and the broad
+table, caption, span, layout, cell-presentation, sort, reorder, duplication, formula and comparison matrix passed 76/76.
+Desktop and mobile screenshot SHA-256 values are `cf9e77640798f94212d2cdcd53db0209e0e0b10902090cea24c22f4714c29b0b`
+and `33e0a2ceed29270248c08a47316cf397c8b3de1f6945f1909010d9e3db379b2e`; both passed visual review. The first broad
+attempt passed 75/76; its sole failure was `ERR_NAME_NOT_RESOLVED` for the intentionally omitted Blocked API. The exact
+unchanged reader/history case passed 1/1 after that isolated service started, followed by the clean 76/76 run.
+
+Product implementation is published in `7f7f118f` and ADR/roadmap documentation in `d2c49dd0`, on
+`kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery contracts are reused, so there
+is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime,
+DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-fill-7f7f118f`.
+
+Full quality on documented source `d2c49dd0` passed Ruff, formatting for 855 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
 Roadmap 383 through 388 / PLANS 244 through 249 are complete under ADR-0142. Local table formulas now preserve all four
 canonical reference forms: relative `A1`, fixed-column `$A1`, fixed-row `A$1` and fully fixed `$A$1`. Repeated or
 detached anchors fail closed. Browser and server independently tokenize, evaluate and verify the identical canonical
