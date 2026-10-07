@@ -2380,10 +2380,28 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 376. [x] Vollstaendigen Zellbereichs-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
      Reload sowie responsive Desktop-/Mobile-Darstellung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 376 / PLANS 224 bis 237 sind unter ADR-0139 und ADR-0140 implementiert.
-Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 9/9; die breite Tabellen- und Vergleichsmatrix bestand
-63/63. HTML und TSV werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
-es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
+377. [x] Referenzsichere Strukturabbildung fuer lokale Tabellenformeln unter ADR-0141 umgesetzt. Einfuegen und Loeschen
+     von Zeilen oder Spalten fuehrt jeden ueberlebenden A1-Bezug zur logischen Quellzelle statt zur alten Koordinate.
+
+378. [x] Geloeschte direkte und Bereichsbezuege kanonisch als `#BEZUG!` erhalten. Browser und Server akzeptieren nur
+     dieses exakte Fehlertoken, berechnen das Ergebnis unabhaengig neu und lehnen andere `#`-/`!`-Formen ab.
+
+379. [x] Direkte Zeilen-/Spaltenbewegung und stabiles Sortieren formelbewusst gemacht. Vollstaendige Zellidentitaeten
+     folgen der Strukturbewegung; die bestehenden geschuetzten Kopf- und Einfachrastergrenzen bleiben unveraendert.
+
+380. [x] Zeilen- und Spaltenduplikate tief getrennt und mit relativer Kopiersemantik versehen. Die Kopie verschiebt ihre
+     relativen Bezuege, waehrend Original und nachfolgende Zellen unabhaengige Inhalte und logische Ziele behalten.
+
+381. [x] Jede Strukturmutation als genau eine validierte Tabellenersetzung mit sauberer Auswahl und Undo/Redo integriert.
+     Leser, historische Fassungen, veraltete Sitzungen, verbundene Formelraster und Grenzwertverletzungen bleiben fail closed.
+
+382. [x] Vollstaendigen Strukturformel-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, Reload, Vergleich, Druck und
+     responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 382 / PLANS 224 bis 243 sind unter ADR-0139 bis ADR-0141 implementiert.
+Der fokussierte Strukturformel-Ablauf bestand 16/16; die breite Tabellen- und Vergleichsmatrix bestand 67/67. HTML,
+TSV und Strukturabbildungen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt; es gibt keine
+relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
