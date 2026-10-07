@@ -27,11 +27,11 @@ test("Office table rows and columns reorder with protected headers history save 
   await cell(page, 1, 0).click(); await page.locator("#table-header-column-toggle").click();
 
   await cell(page, 0, 1).click(); await page.locator("#table-select").selectOption("row");
-  await expect(page.locator('#table-row-action option[value="moveRowBefore"]')).toBeDisabled();
-  await expect(page.locator('#table-row-action option[value="moveRowAfter"]')).toBeDisabled();
+  await expect(page.locator('#table-row-action option[value="moveRowBefore"]')).toHaveJSProperty("disabled", true);
+  await expect(page.locator('#table-row-action option[value="moveRowAfter"]')).toHaveJSProperty("disabled", true);
   await cell(page, 1, 0).click(); await page.locator("#table-select").selectOption("column");
-  await expect(page.locator('#table-column-action option[value="moveColumnBefore"]')).toBeDisabled();
-  await expect(page.locator('#table-column-action option[value="moveColumnAfter"]')).toBeDisabled();
+  await expect(page.locator('#table-column-action option[value="moveColumnBefore"]')).toHaveJSProperty("disabled", true);
+  await expect(page.locator('#table-column-action option[value="moveColumnAfter"]')).toHaveJSProperty("disabled", true);
 
   await cell(page, 2, 1).click(); await page.locator("#table-select").selectOption("row");
   await page.locator("#table-row-action").selectOption("moveRowBefore");
