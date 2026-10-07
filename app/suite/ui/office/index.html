@@ -76,10 +76,11 @@
               <button class="button secondary" id="table-cell-style" type="button" aria-haspopup="dialog" aria-controls="table-cell-style-dialog" disabled>Zellen formatieren …</button>
               <button class="button secondary" id="table-layout" type="button" aria-haspopup="dialog" aria-controls="table-layout-dialog" disabled>Tabellenlayout …</button>
               <button class="button secondary" id="table-sort" type="button" aria-haspopup="dialog" aria-controls="table-sort-dialog" disabled>Sortieren …</button>
+              <button class="button secondary" id="table-formula" type="button" aria-haspopup="dialog" aria-controls="table-formula-dialog" disabled>Formel …</button>
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog" disabled>Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button" disabled>Tabelle entfernen …</button>
             </div>
-            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften und bleiben beim Duplizieren und Umordnen geschützt. Wählen Sie mehrere Zellen zum Verbinden; eine verbundene Zelle lässt sich wieder teilen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
+            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften und bleiben beim Duplizieren und Umordnen geschützt. Word-/Excel-Tabellen lassen sich sicher aus der Zwischenablage einfügen. Formeln arbeiten nur mit lokalen Zellen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
             <p id="table-message" role="status" aria-live="polite"></p>
           </section>
           <section class="find-panel" id="find-panel" aria-label="Suchen und Ersetzen" hidden>
@@ -373,6 +374,13 @@
           <label>Reihenfolge<select id="table-sort-direction"><option value="ascending">Aufsteigend</option><option value="descending">Absteigend</option></select></label>
         </div><p class="paragraph-help">Die Kopfzeile bleibt oben. Leere Zellen stehen am Ende; gleiche Werte behalten ihre bisherige Reihenfolge. Verbundene Zellen werden nicht sortiert.</p><p id="table-sort-status" role="status" aria-live="polite"></p></div>
         <footer><button class="button secondary" id="table-sort-cancel" type="button">Abbrechen</button><button class="button primary" id="table-sort-apply" type="submit">Datenzeilen sortieren</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-formula-dialog" aria-labelledby="table-formula-title">
+      <form id="table-formula-form"><header><h2 id="table-formula-title">Tabellenformel</h2><button class="icon-button" id="table-formula-close" type="button" aria-label="Tabellenformel schließen">×</button></header>
+        <div class="dialog-body"><p id="table-formula-summary"></p><label>Formel<input id="table-formula-source" type="text" maxlength="256" required autocomplete="off" placeholder="=SUM(B2:B10)" /></label>
+          <p class="paragraph-help">Unterstützt werden lokale Zellbezüge A1 bis T200, +, −, ×, ÷ sowie SUM, AVERAGE, MIN, MAX und COUNT. Deutsche Funktionsnamen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="quiet-button" id="table-formula-remove" type="button">Formel entfernen</button><button class="button secondary" id="table-formula-cancel" type="button">Abbrechen</button><button class="button primary" id="table-formula-apply" type="submit">Formel übernehmen</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">

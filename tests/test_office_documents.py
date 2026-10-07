@@ -193,6 +193,31 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
             validate_office_document({"type": "doc", "content": [table]})
 
 
+def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_results() -> None:
+    formula_cell = {
+        "type": "tableCell",
+        "attrs": {"formula": "=SUM(A1:B1)", "formulaResult": "3"},
+        "content": [{"type": "paragraph", "content": [{"type": "text", "text": "3"}]}],
+    }
+    table = {"type": "table", "content": [{"type": "tableRow", "content": [formula_cell]}]}
+    document = {"type": "doc", "content": [table]}
+    assert validate_office_document(document) == document
+    invalid = [
+        {**formula_cell, "attrs": {"formula": "=A1", "formulaResult": "4"}},
+        {**formula_cell, "attrs": {"formula": "=[external]A1", "formulaResult": "3"}},
+        {**formula_cell, "attrs": {"formula": "=FOO(A1)", "formulaResult": "3"}},
+        {**formula_cell, "attrs": {"formula": "=U1", "formulaResult": "3"}},
+        {**formula_cell, "attrs": {"formula": "=A1", "formulaResult": "3", "colspan": 2}},
+        {**formula_cell, "type": "tableHeader"},
+        {**formula_cell, "attrs": {"formula": "=A1"}},
+    ]
+    for cell in invalid:
+        candidate = deepcopy(document)
+        candidate["content"][0]["content"][0]["content"][0] = cell
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(candidate)
+
+
 @pytest.mark.parametrize(
     "node",
     [

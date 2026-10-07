@@ -12,10 +12,34 @@ export const OFFICE_TABLE_STYLES = ["minimal", "banded", "accent"];
 export const OFFICE_TABLE_WIDTHS = ["compact", "wide"];
 export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
 export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
+export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"];
+
+export function officeTableFormulaSource(value) {
+  if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
+  const source = value.trim().replaceAll("$", "").replaceAll(";", ",")
+    .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
+    .replace(/\bANZAHL\b/giu, "COUNT").toUpperCase();
+  if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
+      !/^=[A-Z0-9+\-*/().,: ]+$/u.test(source)) throw new TypeError("Invalid Office table formula");
+  for (const match of source.matchAll(/[A-Z]+/gu)) {
+    if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT"].includes(match[0]) && !/^[A-T]$/u.test(match[0])) {
+      throw new TypeError("Invalid Office table formula");
+    }
+  }
+  return source;
+}
+
+export function officeTableFormulaResult(value) {
+  if (typeof value !== "string" || value.length < 1 || value.length > 64 ||
+      (!OFFICE_TABLE_FORMULA_ERRORS.includes(value) && !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?$/u.test(value))) {
+    throw new TypeError("Invalid Office table formula result");
+  }
+  return value;
+}
 
 export function officeTableCellAttributes(value = {}) {
   if (Object.entries(value).some(([key, entry]) =>
-    !["colspan", "rowspan", "colwidth", "background", "verticalAlign", "horizontalAlign", "padding", "border"].includes(key) && entry != null)) {
+    !["colspan", "rowspan", "colwidth", "background", "verticalAlign", "horizontalAlign", "padding", "border", "formula", "formulaResult"].includes(key) && entry != null)) {
     throw new TypeError("Invalid Office table cell");
   }
   if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
@@ -25,7 +49,9 @@ export function officeTableCellAttributes(value = {}) {
       (value.verticalAlign != null && !OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS.includes(value.verticalAlign)) ||
       (value.horizontalAlign != null && !OFFICE_TABLE_CELL_HORIZONTAL_ALIGNMENTS.includes(value.horizontalAlign)) ||
       (value.padding != null && !OFFICE_TABLE_CELL_PADDINGS.includes(value.padding)) ||
-      (value.border != null && !OFFICE_TABLE_CELL_BORDERS.includes(value.border))) {
+      (value.border != null && !OFFICE_TABLE_CELL_BORDERS.includes(value.border)) ||
+      ((value.formula == null) !== (value.formulaResult == null)) ||
+      (value.formula != null && ((value.colspan ?? 1) !== 1 || (value.rowspan ?? 1) !== 1))) {
     throw new TypeError("Invalid Office table cell");
   }
   const result = { colspan: value.colspan ?? 1, rowspan: value.rowspan ?? 1 };
@@ -34,6 +60,10 @@ export function officeTableCellAttributes(value = {}) {
   if (value.horizontalAlign != null) result.horizontalAlign = value.horizontalAlign;
   if (value.padding != null) result.padding = value.padding;
   if (value.border != null) result.border = value.border;
+  if (value.formula != null) {
+    result.formula = officeTableFormulaSource(value.formula);
+    result.formulaResult = officeTableFormulaResult(value.formulaResult);
+  }
   return result;
 }
 
@@ -44,6 +74,10 @@ export function officeTableCellDOMAttributes(value = {}) {
   if (attrs.horizontalAlign) result["data-office-cell-align"] = attrs.horizontalAlign;
   if (attrs.padding) result["data-office-cell-padding"] = attrs.padding;
   if (attrs.border) result["data-office-cell-border"] = attrs.border;
+  if (attrs.formula) {
+    result["data-office-cell-formula"] = attrs.formula;
+    result["data-office-cell-formula-result"] = attrs.formulaResult;
+  }
   return result;
 }
 

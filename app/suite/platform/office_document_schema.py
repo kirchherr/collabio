@@ -175,6 +175,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     figure_ids: set[str] = set()
     table_ids: set[str] = set()
     numbered_tables = 0
+    table_formulas = 0
     document_fields: set[str] = set()
     citation_sources: set[str] = set()
     note_ids: set[str] = set()
@@ -389,6 +390,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
 
     def visit(node: Any, depth: int, parent_kind: str | None = None) -> None:
         nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks, numbered_tables, equations
+        nonlocal table_formulas
         nonlocal document_references
         nodes += 1
         if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
@@ -819,6 +821,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "horizontalAlign",
                 "padding",
                 "border",
+                "formula",
+                "formulaResult",
             }:
                 reject()
             if any(
@@ -838,6 +842,36 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             if attrs.get("border") not in {None, "none", "strong"}:
                 reject()
+            formula, formula_result = attrs.get("formula"), attrs.get("formulaResult")
+            if (formula is None) != (formula_result is None):
+                reject()
+            if formula is not None:
+                table_formulas += 1
+                content = node.get("content")
+                result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
+                if (
+                    kind != "tableCell"
+                    or table_formulas > 1000
+                    or attrs.get("colspan", 1) != 1
+                    or attrs.get("rowspan", 1) != 1
+                    or not isinstance(formula, str)
+                    or not 2 <= len(formula) <= 256
+                    or formula != formula.strip()
+                    or re.fullmatch(r"=[A-Z0-9+\-*/().,: ]+", formula) is None
+                    or any(
+                        token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"}
+                        and re.fullmatch(r"[A-T]", token) is None
+                        for token in re.findall(r"[A-Z]+", formula)
+                    )
+                    or not isinstance(formula_result, str)
+                    or len(formula_result) > 64
+                    or (
+                        formula_result not in {"#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"}
+                        and re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?", formula_result) is None
+                    )
+                    or content != [{"type": "paragraph", "content": result_content}]
+                ):
+                    reject()
         elif kind == "doc":
             if depth != 0 or set(attrs) - {"styles", "page", "running", "documentFields", "citationSources"}:
                 reject()

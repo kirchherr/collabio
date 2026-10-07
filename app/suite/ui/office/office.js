@@ -31,7 +31,8 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
+import { clearOfficeTableFormula, officeTableFromTSV, recalculateOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -44,7 +45,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -102,7 +103,8 @@ const OfficeTableCellStyle = Extension.create({
     return [{ types: ["tableCell", "tableHeader"], attributes: {
       background: attribute("data-office-cell-fill"), verticalAlign: attribute("data-office-cell-vertical"),
       horizontalAlign: attribute("data-office-cell-align"), padding: attribute("data-office-cell-padding"),
-      border: attribute("data-office-cell-border"),
+      border: attribute("data-office-cell-border"), formula: attribute("data-office-cell-formula"),
+      formulaResult: attribute("data-office-cell-formula-result"),
     } }];
   },
 });
@@ -2280,6 +2282,7 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-cell-style-dialog").close();
   $("table-layout-dialog").close();
   $("table-sort-dialog").close();
+  $("table-formula-dialog").close();
   $("table-insert-form").reset();
   $("table-insert-message").textContent = "";
   $("table-remove-summary").textContent = "";
@@ -2289,10 +2292,12 @@ function closeTableDialogs(restoreFocus = false) {
   $("table-cell-style-form").reset();
   $("table-layout-form").reset();
   $("table-sort-form").reset();
+  $("table-formula-form").reset();
   $("table-caption-status").textContent = "";
   $("table-cell-style-status").textContent = "";
   $("table-layout-status").textContent = "";
   $("table-sort-status").textContent = "";
+  $("table-formula-status").textContent = "";
   if (restoreFocus && action?.editor === state.editor && sessionCurrent(action.session)) focusEditor();
 }
 
@@ -2319,6 +2324,11 @@ function updateTableControls() {
   try { sortable = Boolean(rect && officeTableSortInfo(rect.table.toJSON()).dataRows >= 2); } catch { sortable = false; }
   $("table-sort").disabled = !rect || !allowed || !sortable;
   $("table-sort").title = sortable ? "Datenzeilen nach einer Spalte sortieren" : "Sortieren benötigt mindestens zwei Datenzeilen ohne verbundene Zellen";
+  const formulaCell = rect && reorder && rect.bottom - rect.top === 1 && rect.right - rect.left === 1 ?
+    state.editor.state.doc.nodeAt(rect.tableStart + rect.map.map[rect.top * rect.map.width + rect.left]) : null;
+  $("table-formula").disabled = !rect || !allowed || !reorder || formulaCell?.type.name !== "tableCell";
+  $("table-formula").title = formulaCell?.type.name === "tableCell" ? "Lokale Formel für diese Zelle bearbeiten" :
+    "Formeln benötigen genau eine gewöhnliche Zelle in einer Tabelle ohne verbundene Zellen";
   $("table-delete").disabled = !rect || !allowed;
   $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
   const header = Boolean(rect && Array.from({ length: rect.table.firstChild.childCount }, (_, index) =>
@@ -2485,6 +2495,46 @@ function commitTableSort(event) {
   } catch {
     $("table-sort-status").textContent = "Alle Werte der gewählten Spalte müssen zum ausgewählten Datentyp passen; leere Zellen bleiben am Ende.";
     $("table-sort-status").classList.add("error");
+  }
+}
+
+function openTableFormula() {
+  if (!replacementAllowed()) return;
+  const current = currentTableNode(); const rect = currentTable();
+  if (!current || !rect || rect.bottom - rect.top !== 1 || rect.right - rect.left !== 1) return;
+  try {
+    officeTableReorderInfo(current.entry.toJSON());
+    const cell = current.entry.child(rect.top).child(rect.left);
+    if (cell.type.name !== "tableCell") throw new Error("header");
+    closeTableDialogs();
+    state.tableAction = { ...tableActionSnapshot("formula"), position: current.position, table: current.entry,
+      row: rect.top, column: rect.left };
+    $("table-formula-source").value = cell.attrs.formula || "=";
+    $("table-formula-summary").textContent = `Zelle ${String.fromCharCode(65 + rect.left)}${rect.top + 1}${cell.attrs.formulaResult ? ` · Ergebnis ${cell.attrs.formulaResult}` : ""}`;
+    $("table-formula-remove").disabled = !cell.attrs.formula;
+    $("table-formula-dialog").showModal(); $("table-formula-source").focus();
+  } catch {
+    $("table-message").textContent = "Formeln sind nur in einzelnen Datenzellen einfacher Tabellen verfügbar.";
+  }
+}
+
+function commitTableFormula(event, remove = false) {
+  event?.preventDefault();
+  const action = state.tableAction;
+  if (!tableActionCurrent(action) || action.kind !== "formula") { closeTableDialogs(); return; }
+  try {
+    const options = { row: action.row, column: action.column };
+    const calculated = remove ? clearOfficeTableFormula(action.table.toJSON(), options) :
+      setOfficeTableFormula(action.table.toJSON(), { ...options, formula: $("table-formula-source").value });
+    const replacement = action.editor.schema.nodeFromJSON(calculated); const map = TableMap.get(replacement);
+    const transaction = action.editor.state.tr.replaceWith(action.position, action.position + action.table.nodeSize, replacement);
+    transaction.setSelection(Selection.near(transaction.doc.resolve(action.position + 1 +
+      map.map[action.row * map.width + action.column] + 1)));
+    if (!commitTableTransaction(transaction, remove ? "Tabellenformel entfernt; der letzte Ergebniswert bleibt als Zellinhalt erhalten." :
+      "Tabellenformel berechnet. Änderungen an lokalen Bezugszellen aktualisieren das Ergebnis automatisch.")) closeTableDialogs(true);
+  } catch {
+    $("table-formula-status").textContent = "Die Formel ist ungültig. Verwenden Sie nur lokale Bezüge A1 bis T200 und die unterstützten Funktionen.";
+    $("table-formula-status").classList.add("error");
   }
 }
 
@@ -2768,6 +2818,102 @@ function replaceWholeDocument(view, text) {
   return true;
 }
 
+function clipboardCellParagraphs(element) {
+  const copy = element.cloneNode(true);
+  copy.querySelectorAll("script,style,link,meta,img,svg,math,object,embed,iframe,input,button,textarea,select,table")
+    .forEach((entry) => entry.remove());
+  copy.querySelectorAll("br").forEach((entry) => entry.replaceWith("\n"));
+  copy.querySelectorAll("p,div,li").forEach((entry) => entry.append("\n"));
+  const text = (copy.textContent || "").replaceAll("\u00a0", " ").replaceAll("\r", "")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/gu, "").replace(/\n+$/u, "");
+  if (text.length > 10000) throw new TypeError("Office clipboard cell too large");
+  return text.split("\n").map((line) => ({ type: "paragraph",
+    ...(line ? { content: [{ type: "text", text: line }] } : {}) }));
+}
+
+function clipboardCellPresentation(element) {
+  const attrs = {}; const horizontal = (element.style.textAlign || element.getAttribute("align") || "").toLowerCase();
+  const vertical = (element.style.verticalAlign || element.getAttribute("valign") || "").toLowerCase();
+  if (["center", "right"].includes(horizontal)) attrs.horizontalAlign = horizontal;
+  if (["middle", "bottom"].includes(vertical)) attrs.verticalAlign = vertical;
+  const color = (element.style.backgroundColor || element.getAttribute("bgcolor") || "").replaceAll(" ", "").toLowerCase();
+  const fills = { "#f2f2f2": "gray", "rgb(242,242,242)": "gray", "#d9eaf7": "blue", "rgb(217,234,247)": "blue",
+    "#e2f0d9": "green", "rgb(226,240,217)": "green", "#fff2cc": "yellow", "rgb(255,242,204)": "yellow",
+    "#f4cccc": "red", "rgb(244,204,204)": "red" };
+  if (fills[color]) attrs.background = fills[color];
+  return attrs;
+}
+
+function officeTableFromClipboardHTML(html) {
+  if (typeof html !== "string" || !html.trim() || html.length > 400000) return null;
+  const parsed = new DOMParser().parseFromString(html, "text/html"); const tables = [...parsed.querySelectorAll("table")];
+  if (!tables.length) return null;
+  if (tables.length !== 1) throw new TypeError("Office clipboard contains multiple tables");
+  const source = tables[0]; const rows = [...source.rows];
+  if (!rows.length || rows.length > 200) throw new TypeError("Invalid Office clipboard rows");
+  const table = { type: "table", content: rows.map((row) => ({ type: "tableRow", content: [...row.cells].map((cell) => {
+    if (cell.querySelector("table")) throw new TypeError("Nested Office clipboard table");
+    const colspan = Number(cell.getAttribute("colspan") || 1), rowspan = Number(cell.getAttribute("rowspan") || 1);
+    const formulaValue = cell.getAttribute("data-office-formula") || cell.getAttribute("data-formula") ||
+      cell.getAttribute("x:fmla");
+    let formula = null;
+    if (formulaValue && cell.tagName.toLowerCase() !== "th") {
+      try {
+        formula = officeTableFormulaSource(formulaValue);
+      } catch (_error) {
+        // Excel can expose R1C1, external workbook or vendor-specific formulas.
+        // Keep the displayed value instead of rejecting an otherwise valid table.
+      }
+    }
+    const attrs = officeTableCellAttributes({ colspan, rowspan, ...clipboardCellPresentation(cell),
+      ...(formula ? { formula, formulaResult: "#WERT!" } : {}) });
+    return { type: cell.tagName.toLowerCase() === "th" ? "tableHeader" : "tableCell", attrs,
+      content: formula ? [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }] : clipboardCellParagraphs(cell) };
+  }) })) };
+  officeTableGrid(table); return recalculateOfficeTableFormulas(table);
+}
+
+function insertClipboardTable(view, event) {
+  if (state.editor?.view !== view || !replacementAllowed() || !event.clipboardData || isInTable(view.state) ||
+      view.state.selection instanceof AllSelection) return false;
+  const html = event.clipboardData.getData("text/html") || ""; const text = event.clipboardData.getData("text/plain") || "";
+  let table = null; const containsHTMLTable = /<table[\s>]/iu.test(html);
+  try { table = officeTableFromClipboardHTML(html) || officeTableFromTSV(text); }
+  catch {
+    if (containsHTMLTable || text.includes("\t")) {
+      event.preventDefault(); notice("Die kopierte Tabelle ist zu groß, unregelmäßig oder enthält nicht unterstützte Formeln. Der Entwurf blieb unverändert.", true); return true;
+    }
+  }
+  if (!table) return false;
+  event.preventDefault();
+  try {
+    const node = view.state.schema.nodeFromJSON(table); const transaction = view.state.tr.replaceSelectionWith(node);
+    return commitTableTransaction(transaction, "Word-/Excel-Tabelle sicher eingefügt. Aktive Inhalte und externe Bezüge wurden nicht übernommen.");
+  } catch {
+    notice("Die kopierte Tabelle überschreitet die unterstützte Dokumentgröße oder Struktur. Der Entwurf blieb unverändert.", true); return true;
+  }
+}
+
+function refreshTableFormulaResults(editor) {
+  if (state.formulaRecalculating || editor !== state.editor) return false;
+  const replacements = [];
+  editor.state.doc.descendants((entry, position) => {
+    if (entry.type.name !== "table" || !entry.toJSON().content.some((row) => row.content.some((cell) => cell.attrs?.formula))) return;
+    const calculated = recalculateOfficeTableFormulas(entry.toJSON()); const replacement = editor.schema.nodeFromJSON(calculated);
+    if (!replacement.eq(entry)) replacements.push({ position, entry, replacement });
+    return false;
+  });
+  if (!replacements.length) return false;
+  let transaction = editor.state.tr;
+  for (const item of replacements.reverse()) transaction = transaction.replaceWith(item.position, item.position + item.entry.nodeSize, item.replacement);
+  try { validateEditorDocument(transaction.doc); }
+  catch { return false; }
+  state.formulaRecalculating = true;
+  try { editor.view.dispatch(transaction.setMeta("addToHistory", false)); }
+  finally { state.formulaRecalculating = false; }
+  return true;
+}
+
 function handleTableKey(view, event) {
   if (state.editor?.view !== view || event.altKey) return false;
   if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "a") {
@@ -2914,6 +3060,7 @@ function prepareEditor(content, session) {
         },
       },
       handlePaste(view, event) {
+        if (insertClipboardTable(view, event)) return true;
         event.preventDefault();
         if (state.editor?.view !== view || !replacementAllowed()) return true;
         const text = event.clipboardData?.getData("text/plain") || "";
@@ -2927,7 +3074,7 @@ function prepareEditor(content, session) {
       },
       handleDrop() { notice("Dateien werden hier nicht eingefügt. Text lässt sich über die Zwischenablage übernehmen."); return true; },
     },
-    onUpdate: () => contentChanged(session),
+    onUpdate: ({ editor: updatedEditor }) => { if (!refreshTableFormulaResults(updatedEditor)) contentChanged(session); },
     onSelectionUpdate: () => { if (sessionCurrent(session)) updateEditorState(); },
   });
   try {
@@ -5541,8 +5688,9 @@ $("table-caption").addEventListener("click", openTableCaption);
 $("table-cell-style").addEventListener("click", openTableCellStyle);
 $("table-layout").addEventListener("click", openTableLayout);
 $("table-sort").addEventListener("click", openTableSort);
+$("table-formula").addEventListener("click", openTableFormula);
 $("table-delete").addEventListener("click", () => runTableCommand("deleteTable"));
-["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-layout", "table-sort", "table-delete"].forEach((id) => {
+["table-header-toggle", "table-header-column-toggle", "table-merge", "table-split", "table-caption", "table-cell-style", "table-layout", "table-sort", "table-formula", "table-delete"].forEach((id) => {
   $(id).addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 });
 $("table-caption-form").addEventListener("submit", (event) => { event.preventDefault(); commitTableCaption(); });
@@ -5553,6 +5701,11 @@ $("table-cell-style-reset").addEventListener("click", () => commitTableCellStyle
 $("table-layout-form").addEventListener("submit", commitTableLayout);
 $("table-layout-reset").addEventListener("click", () => commitTableLayout(null, true));
 $("table-sort-form").addEventListener("submit", commitTableSort);
+$("table-formula-form").addEventListener("submit", commitTableFormula);
+$("table-formula-remove").addEventListener("click", () => commitTableFormula(null, true));
+$("table-formula-source").addEventListener("input", () => {
+  $("table-formula-status").textContent = ""; $("table-formula-status").classList.remove("error");
+});
 [$("table-sort-column"), $("table-sort-type"), $("table-sort-direction")].forEach((field) => field.addEventListener("change", () => {
   $("table-sort-status").textContent = ""; $("table-sort-status").classList.remove("error");
 }));
@@ -5572,15 +5725,15 @@ $("table-remove-confirm").addEventListener("click", () => {
   closeTableDialogs();
   runTableCommand(command, true);
 });
-["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel", "table-layout-close", "table-layout-cancel", "table-sort-close", "table-sort-cancel"].forEach((id) => {
+["table-insert-cancel", "table-insert-close", "table-remove-cancel", "table-caption-close", "table-caption-cancel", "table-cell-style-close", "table-cell-style-cancel", "table-layout-close", "table-layout-cancel", "table-sort-close", "table-sort-cancel", "table-formula-close", "table-formula-cancel"].forEach((id) => {
   $(id).addEventListener("click", () => closeTableDialogs(true));
 });
-["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog", "table-layout-dialog", "table-sort-dialog"].forEach((id) => {
+["table-insert-dialog", "table-remove-dialog", "table-caption-dialog", "table-cell-style-dialog", "table-layout-dialog", "table-sort-dialog", "table-formula-dialog"].forEach((id) => {
   $(id).addEventListener("cancel", (event) => { event.preventDefault(); closeTableDialogs(true); });
   $(id).addEventListener("close", () => {
     const kind = id === "table-insert-dialog" ? "insert" : id === "table-remove-dialog" ? "remove" :
       id === "table-caption-dialog" ? "caption" : id === "table-cell-style-dialog" ? "cellStyle" :
-        id === "table-sort-dialog" ? "sort" : "layout";
+        id === "table-sort-dialog" ? "sort" : id === "table-formula-dialog" ? "formula" : "layout";
     if (!$(id).open && state.tableAction?.kind === kind) closeTableDialogs();
   });
 });

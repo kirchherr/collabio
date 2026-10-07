@@ -4560,6 +4560,12 @@ services:
         target: /work-e2e/office-tables.mjs
         read_only: true
       - type: bind
+        source: ./app/suite/ui/office/office-table-formulas.mjs
+        target: /work-e2e/office-table-formulas.mjs
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: ./app/suite/ui/office/office-semantics.mjs
         target: /work-e2e/office-semantics.mjs
         read_only: true

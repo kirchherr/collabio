@@ -263,7 +263,8 @@ function blockText(block, nested = false) {
       const attrs = officeTableCellAttributes(cell.attrs);
       const span = attrs.colspan > 1 || attrs.rowspan > 1 ? ` · ${attrs.colspan} Spalten × ${attrs.rowspan} Zeilen` : "";
       const style = officeTableCellStyleDescription(attrs);
-      return `${label} ${index + 1}${span}${style.length ? ` · ${style.join(" · ")}` : ""}: ${blockText(cell, true)}`;
+      const formula = attrs.formula ? ` · Formel ${attrs.formula} → ${attrs.formulaResult}` : "";
+      return `${label} ${index + 1}${span}${style.length ? ` · ${style.join(" · ")}` : ""}${formula}: ${blockText(cell, true)}`;
     }).join(" │ ");
     case "doc":
     case "listItem":
