@@ -2398,10 +2398,29 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 382. [x] Vollstaendigen Strukturformel-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, Reload, Vergleich, Druck und
      responsive Desktop-/Mobile-Darstellung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 382 / PLANS 224 bis 243 sind unter ADR-0139 bis ADR-0141 implementiert.
-Der fokussierte Strukturformel-Ablauf bestand 16/16; die breite Tabellen- und Vergleichsmatrix bestand 67/67. HTML,
-TSV und Strukturabbildungen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt; es gibt keine
-relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder DOCX-Zulassung.
+383. [x] Absolute und gemischte lokale Tabellenbezuege unter ADR-0142 umgesetzt. `A1`, `$A1`, `A$1` und `$A$1`
+     bleiben innerhalb A1:T200 kanonisch erhalten; wiederholte oder frei stehende `$`-Anker werden abgelehnt.
+
+384. [x] Browser- und Servergrammatik fuer feste Zeilen- und Spaltenanker unabhaengig erweitert. Beide Seiten parsen,
+     berechnen und validieren dieselbe Quelle und denselben deterministischen Ergebniswert.
+
+385. [x] Word-/Excel-Bereichseinfuegen formelankerbewusst gemacht. Beim Kopieren verschieben sich nur relative Achsen;
+     jeder Bereichsendpunkt wird einzeln behandelt und globale Grenzverletzungen scheitern atomar.
+
+386. [x] Strukturabbildung fuer feste und gemischte Bezuege geschlossen. Einfuegen, Loeschen, Verschieben und Sortieren
+     folgen weiter der logischen Quellzelle, erhalten die `$`-Marker und verwenden bei Loeschung `#BEZUG!`.
+
+387. [x] Zeilen- und Spaltenduplikate mit achsenweiser Kopiersemantik integriert. Vollstaendig feste Bezuege bleiben
+     unveraendert, gemischte Bezuege verschieben nur ihre relative Achse und Originale bleiben unabhaengig.
+
+388. [x] Vollstaendigen Formelanker-Lebenszyklus ueber Dialog, Undo/Redo, bestaetigtes Speichern, Reload, Vergleich,
+     Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 388 / PLANS 224 bis 249 sind unter ADR-0139 bis ADR-0142 implementiert.
+Die fokussierten Serverpruefungen bestanden 35/35, der Formelanker-Modell-/Browserlauf 18/18 und die breite Tabellen-
+und Vergleichsmatrix 72/72. HTML, TSV, Anker und Strukturabbildungen werden nur in das bestehende immutable
+Office-Versions-JSON uebersetzt; es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz,
+Tenant-Aktivierung oder DOCX-Zulassung.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 
