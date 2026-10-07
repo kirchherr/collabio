@@ -2,6 +2,7 @@ import { officeTableCellAttributes, officeTableCellText, officeTableFormulaSourc
 
 const formulaErrors = new Set(["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"]);
 const numericText = /^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u;
+const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
 
 function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
 
@@ -19,7 +20,7 @@ function tokenize(source) {
     const number = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?/u.exec(rest);
     if (number) { tokens.push({ type: "number", value: Number(number[0]) }); index += number[0].length; continue; }
     if (rest.startsWith("#BEZUG!")) { tokens.push({ type: "error", value: "#BEZUG!" }); index += 7; continue; }
-    const ref = /^[A-T](?:[1-9][0-9]{0,2})/u.exec(rest);
+    const ref = /^\$?[A-T]\$?(?:[1-9][0-9]{0,2})/u.exec(rest);
     if (ref) { tokens.push({ type: "ref", value: ref[0] }); index += ref[0].length; continue; }
     const name = /^(?:SUM|AVERAGE|MIN|MAX|COUNT)/u.exec(rest);
     if (name) { tokens.push({ type: "name", value: name[0] }); index += name[0].length; continue; }
@@ -30,7 +31,7 @@ function tokenize(source) {
 }
 
 function referenceCoordinates(reference, rows, columns) {
-  const match = /^([A-T])([1-9][0-9]{0,2})$/u.exec(reference);
+  const match = /^\$?([A-T])\$?([1-9][0-9]{0,2})$/u.exec(reference);
   const row = match ? Number(match[2]) - 1 : -1; const column = match ? match[1].charCodeAt(0) - 65 : -1;
   if (row < 0 || row >= rows || column < 0 || column >= columns) throw formulaError("#BEZUG!");
   return { row, column };
@@ -177,11 +178,11 @@ export function officeTableFromTSV(text) {
 
 function shiftedFormula(source, rowOffset, columnOffset) {
   const normalized = officeTableFormulaSource(source);
-  return normalized.replace(/\b([A-T])([1-9][0-9]{0,2})\b/gu, (_match, letter, rowText) => {
-    const column = letter.charCodeAt(0) - 65 + columnOffset;
-    const row = Number(rowText) - 1 + rowOffset;
+  return normalized.replace(formulaReferencePattern, (_match, columnAnchor, letter, rowAnchor, rowText) => {
+    const column = letter.charCodeAt(0) - 65 + (columnAnchor ? 0 : columnOffset);
+    const row = Number(rowText) - 1 + (rowAnchor ? 0 : rowOffset);
     if (column < 0 || column >= 20 || row < 0 || row >= 200) throw new TypeError("Shifted Office table formula is out of bounds");
-    return `${String.fromCharCode(65 + column)}${row + 1}`;
+    return `${columnAnchor}${String.fromCharCode(65 + column)}${rowAnchor}${row + 1}`;
   });
 }
 
@@ -255,9 +256,9 @@ function formulaStructureEntry(entry, maximum) {
   return entry;
 }
 
-function formulaReference(row, column) {
+function formulaReference(row, column, rowAnchor = "", columnAnchor = "") {
   if (row == null || column == null || row < 0 || row >= 200 || column < 0 || column >= 20) return "#BEZUG!";
-  return `${String.fromCharCode(65 + column)}${row + 1}`;
+  return `${columnAnchor}${String.fromCharCode(65 + column)}${rowAnchor}${row + 1}`;
 }
 
 export function remapOfficeTableFormulas(original, transformed, options) {
@@ -276,12 +277,16 @@ export function remapOfficeTableFormulas(original, transformed, options) {
   for (let row = 0; row < after.rows; row += 1) for (let column = 0; column < after.columns; column += 1) {
     const cell = result.content[row].content[column]; if (cell.attrs?.formula == null) continue;
     const rowEntry = rows[row], columnEntry = columns[column];
-    const formula = officeTableFormulaSource(cell.attrs.formula).replace(/\b([A-T])([1-9][0-9]{0,2})\b/gu,
-      (_match, letter, rowText) => {
+    const formula = officeTableFormulaSource(cell.attrs.formula).replace(formulaReferencePattern,
+      (_match, columnAnchor, letter, rowAnchor, rowText) => {
         const sourceRow = Number(rowText) - 1, sourceColumn = letter.charCodeAt(0) - 65;
-        const targetRow = rowEntry.duplicate ? sourceRow + row - rowEntry.source : canonicalRows.get(sourceRow);
-        const targetColumn = columnEntry.duplicate ? sourceColumn + column - columnEntry.source : canonicalColumns.get(sourceColumn);
-        return formulaReference(targetRow, targetColumn);
+        const canonicalRow = canonicalRows.get(sourceRow), canonicalColumn = canonicalColumns.get(sourceColumn);
+        const sourceFormulaRow = canonicalRows.get(rowEntry.source), sourceFormulaColumn = canonicalColumns.get(columnEntry.source);
+        const targetRow = rowEntry.duplicate && !rowAnchor && canonicalRow != null && sourceFormulaRow != null ?
+          canonicalRow + row - sourceFormulaRow : canonicalRow;
+        const targetColumn = columnEntry.duplicate && !columnAnchor && canonicalColumn != null && sourceFormulaColumn != null ?
+          canonicalColumn + column - sourceFormulaColumn : canonicalColumn;
+        return formulaReference(targetRow, targetColumn, rowAnchor, columnAnchor);
       });
     cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula, formulaResult: "#WERT!" });
   }

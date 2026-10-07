@@ -16,12 +16,13 @@ export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#
 
 export function officeTableFormulaSource(value) {
   if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
-  const source = value.trim().replaceAll("$", "").replaceAll(";", ",")
+  const source = value.trim().replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
     .replace(/\bANZAHL\b/giu, "COUNT").toUpperCase();
   const identifiers = source.replaceAll("#BEZUG!", "");
+  const unmatchedAnchors = identifiers.replace(/\$?[A-T]\$?[1-9][0-9]{0,2}/gu, "");
   if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
-      !/^=[A-Z0-9#\-+*/().,:! ]+$/u.test(source) || /[#!]/u.test(identifiers)) {
+      !/^=[A-Z0-9$#\-+*/().,:! ]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
     throw new TypeError("Invalid Office table formula");
   }
   for (const match of identifiers.matchAll(/[A-Z]+/gu)) {

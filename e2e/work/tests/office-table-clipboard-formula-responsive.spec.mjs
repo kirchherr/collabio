@@ -138,3 +138,42 @@ test("Office formulas follow column insertion row duplication and deleted refere
   expect(savedTable.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(#BEZUG!:B3)", formulaResult: "#BEZUG!" });
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-table-formula-structure-${testInfo.project.name}.png`, fullPage: true });
 });
+
+test("Office absolute and mixed formulas copy and restructure by anchor axis", async ({ page }, testInfo) => {
+  test.setTimeout(75_000);
+  await openOffice(page);
+  await newOfficeDraft(page, "Anchored formula proof", { text: "Anchored formulas follow" });
+  await officeEditor(page).press("Control+End"); await officeEditor(page).press("Enter");
+  await pasteTable(page,
+    `<table><tr><th>Name</th><th>Q1</th><th>Q2</th><th>Total</th></tr>
+      <tr><td>Alpha</td><td>2</td><td>3</td><td data-formula="=SUM($B$2:C2)">5</td></tr>
+      <tr><td>Bravo</td><td>4</td><td>6</td><td data-formula="=SUM($B3:C$3)">10</td></tr></table>`,
+    "Name\tQ1\tQ2\tTotal\nAlpha\t2\t3\t5\nBravo\t4\t6\t10");
+  await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2:C2)");
+  await cell(page, 1, 3).click(); await page.locator("#table-formula").click();
+  await page.locator("#table-formula-source").fill("=SUM($B$2;C2)");
+  await page.locator("#table-formula-apply").click();
+  await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C2)");
+
+  await cell(page, 1, 1).click(); await page.locator("#table-column-action").selectOption("addColumnBefore");
+  await expect(cell(page, 1, 4)).toHaveAttribute("data-office-cell-formula", "=SUM($C$2,D2)");
+  await expect(cell(page, 2, 4)).toHaveAttribute("data-office-cell-formula", "=SUM($C3,D$3)");
+  await page.locator('[data-command="undo"]').click();
+  await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C2)");
+  await page.locator('[data-command="redo"]').click(); await expect(cell(page, 1, 4)).toHaveText("5");
+  await cell(page, 1, 1).click(); await page.locator("#table-column-action").selectOption("deleteColumn");
+  await page.locator("#table-remove-confirm").click();
+
+  await cell(page, 1, 0).click(); await page.locator("#table-select").selectOption("row");
+  await page.locator("#table-row-action").selectOption("duplicateRows");
+  await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C2)");
+  await expect(cell(page, 2, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C3)");
+  await expect(cell(page, 3, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B4,C$4)");
+  const saved = await saveOffice(page);
+  await openOfficeDocument(page, saved.document.object_id);
+  await expect(cell(page, 2, 3)).toHaveText("5");
+  await page.locator("#document-print").click();
+  await expect(page.locator('#print-preview td[data-office-cell-formula="=SUM($B$2,C3)"]')).toHaveText("5");
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-table-formula-anchors-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#print-close").click();
+});

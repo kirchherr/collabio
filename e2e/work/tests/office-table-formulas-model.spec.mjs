@@ -24,6 +24,17 @@ test("Office formulas normalize German input support functions and remain remova
   expect(text(table.content[1].content[1])).toBe("4");
 });
 
+test("Office formulas preserve absolute and mixed row and column anchors", () => {
+  let table = officeTableFromTSV("2\t3\t0\n4\t6\t0");
+  table = setOfficeTableFormula(table, { row: 1, column: 2, formula: "=SUM($A$1;$B1;A$2)" });
+  expect(table.content[1].content[2].attrs).toMatchObject({
+    formula: "=SUM($A$1,$B1,A$2)", formulaResult: "9",
+  });
+  for (const formula of ["=$$A1", "=A$$1", "=$A$", "=$1+A1"]) {
+    expect(() => setOfficeTableFormula(table, { row: 1, column: 2, formula })).toThrow();
+  }
+});
+
 test("Office formulas expose deterministic reference division cycle and syntax errors", () => {
   let table = officeTableFromTSV("1\t=T200\n0\t=A1/A2");
   expect(text(table.content[0].content[1])).toBe("#BEZUG!");
@@ -45,6 +56,15 @@ test("Office table paste expands from one cell and shifts relative formulas", ()
   ]);
   expect(pasted.content[1].content[3].attrs.formula).toBe("=SUM(B2:C2)");
   expect(pasted.content[2].content[3].attrs.formula).toBe("=SUM(B3:C3)");
+});
+
+test("Office table paste shifts only relative reference axes", () => {
+  const target = officeTableFromTSV("10\t20\t30\t40\t50\n11\t21\t31\t41\t51\n12\t22\t32\t42\t52");
+  const source = officeTableFromTSV("1\t2\t3\t=SUM($A$1,$B1,A$1,B1)");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 1, bottom: 2, right: 2 });
+  expect(pasted.content[1].content[4].attrs).toMatchObject({
+    formula: "=SUM($A$1,$B2,B$1,C2)", formulaResult: "33",
+  });
 });
 
 test("Office table paste fills an exact selection and rejects ambiguous dimensions", () => {
@@ -92,4 +112,16 @@ test("Office structural formula mapping follows moves and gives duplicates relat
   expect(duplicated.content[0].content[2].attrs).toMatchObject({ formula: "=SUM(A1:B1)", formulaResult: "5" });
   expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
   expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
+});
+
+test("Office structural formula mapping follows anchored cells but copies only relative axes", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM($A$1,B1)\n4\t6\t=SUM($A2,B$2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const duplicatedRows = { ...original,
+    content: [original.content[0], structuredClone(original.content[0]), original.content[1]] };
+  const duplicated = remapOfficeTableFormulas(original, duplicatedRows,
+    { rows: [entry(0), entry(0, true), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(duplicated.content[0].content[2].attrs.formula).toBe("=SUM($A$1,B1)");
+  expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM($A$1,B2)", formulaResult: "5" });
+  expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM($A3,B$3)", formulaResult: "10" });
 });

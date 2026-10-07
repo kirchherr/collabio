@@ -2538,7 +2538,7 @@ function commitTableFormula(event, remove = false) {
     if (!commitTableTransaction(transaction, remove ? "Tabellenformel entfernt; der letzte Ergebniswert bleibt als Zellinhalt erhalten." :
       "Tabellenformel berechnet. Änderungen an lokalen Bezugszellen aktualisieren das Ergebnis automatisch.")) closeTableDialogs(true);
   } catch {
-    $("table-formula-status").textContent = "Die Formel ist ungültig. Verwenden Sie nur lokale Bezüge A1 bis T200 und die unterstützten Funktionen.";
+    $("table-formula-status").textContent = "Die Formel ist ungültig. Verwenden Sie nur lokale Bezüge A1 bis T200, optionale $-Anker und die unterstützten Funktionen.";
     $("table-formula-status").classList.add("error");
   }
 }

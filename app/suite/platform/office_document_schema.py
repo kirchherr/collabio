@@ -206,7 +206,7 @@ def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
             tokens.append(("error", "#BEZUG!"))
             index += len("#BEZUG!")
             continue
-        reference = re.match(r"[A-T](?:[1-9][0-9]{0,2})", source[index:])
+        reference = re.match(r"\$?[A-T]\$?(?:[1-9][0-9]{0,2})", source[index:])
         if reference:
             tokens.append(("ref", reference.group()))
             index += len(reference.group())
@@ -249,7 +249,7 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
     memo: dict[tuple[int, int], float] = {}
 
     def point(reference: str) -> tuple[int, int]:
-        match = re.fullmatch(r"([A-T])([1-9][0-9]{0,2})", reference)
+        match = re.fullmatch(r"\$?([A-T])\$?([1-9][0-9]{0,2})", reference)
         row = int(match.group(2)) - 1 if match else -1
         column = ord(match.group(1)) - 65 if match else -1
         if row < 0 or row >= len(cells) or column < 0 or column >= columns:
@@ -1075,6 +1075,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 content = node.get("content")
                 result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
                 formula_identifiers = formula.replace("#BEZUG!", "") if isinstance(formula, str) else ""
+                unmatched_formula_anchors = re.sub(
+                    r"\$?[A-T]\$?[1-9][0-9]{0,2}", "", formula_identifiers
+                )
                 if (
                     kind != "tableCell"
                     or table_formulas > 1000
@@ -1083,8 +1086,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or not isinstance(formula, str)
                     or not 2 <= len(formula) <= 256
                     or formula != formula.strip()
-                    or re.fullmatch(r"=[A-Z0-9#\-+*/().,:! ]+", formula) is None
+                    or re.fullmatch(r"=[A-Z0-9$#\-+*/().,:! ]+", formula) is None
                     or re.search(r"[#!]", formula_identifiers) is not None
+                    or "$" in unmatched_formula_anchors
                     or any(
                         token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"} and re.fullmatch(r"[A-T]", token) is None
                         for token in re.findall(r"[A-Z]+", formula_identifiers)

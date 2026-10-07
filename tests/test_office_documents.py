@@ -212,6 +212,12 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
     }
     document: dict[str, Any] = {"type": "doc", "content": [table]}
     assert validate_office_document(document) == document
+    anchored = deepcopy(document)
+    anchored["content"][0]["content"][0]["content"][2] = {
+        **formula_cell,
+        "attrs": {"formula": "=SUM($A$1:B$1)", "formulaResult": "3"},
+    }
+    assert validate_office_document(anchored) == anchored
     reference_error = deepcopy(document)
     reference_error["content"][0]["content"][0]["content"][2] = {
         **formula_cell,
@@ -225,6 +231,8 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
         {**formula_cell, "attrs": {"formula": "=FOO(A1)", "formulaResult": "3"}},
         {**formula_cell, "attrs": {"formula": "=U1", "formulaResult": "3"}},
         {**formula_cell, "attrs": {"formula": "=#BROKEN!", "formulaResult": "#BEZUG!"}},
+        {**formula_cell, "attrs": {"formula": "=$$A1", "formulaResult": "1"}},
+        {**formula_cell, "attrs": {"formula": "=A$$1", "formulaResult": "1"}},
         {**formula_cell, "attrs": {"formula": "=A1", "formulaResult": "3", "colspan": 2}},
         {**formula_cell, "type": "tableHeader"},
         {**formula_cell, "attrs": {"formula": "=A1"}},
