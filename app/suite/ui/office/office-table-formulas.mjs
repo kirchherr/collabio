@@ -125,26 +125,21 @@ export function recalculateOfficeTableFormulas(value) {
 }
 
 export function setOfficeTableFormula(value, options) {
-  const info = officeTableReorderInfo(value);
   if (!options || Object.keys(options).sort().join(",") !== "column,formula,row" ||
-      !Number.isInteger(options.row) || !Number.isInteger(options.column) || options.row < 0 || options.row >= info.rows ||
-      options.column < 0 || options.column >= info.columns || value.content[options.row].content[options.column].type !== "tableCell") {
+      !Number.isInteger(options.row) || !Number.isInteger(options.column)) {
     throw new TypeError("Invalid Office table formula target");
   }
-  const result = structuredClone(value); const cell = result.content[options.row].content[options.column];
-  cell.attrs = { ...officeTableCellAttributes(cell.attrs), formula: officeTableFormulaSource(options.formula), formulaResult: "#WERT!" };
-  return recalculateOfficeTableFormulas(result);
+  return fillOfficeTableFormulas(value, { top: options.row, left: options.column,
+    bottom: options.row + 1, right: options.column + 1, formula: options.formula });
 }
 
 export function clearOfficeTableFormula(value, options) {
-  const info = officeTableReorderInfo(value);
   if (!options || Object.keys(options).sort().join(",") !== "column,row" || !Number.isInteger(options.row) ||
-      !Number.isInteger(options.column) || options.row < 0 || options.row >= info.rows || options.column < 0 || options.column >= info.columns) {
+      !Number.isInteger(options.column)) {
     throw new TypeError("Invalid Office table formula target");
   }
-  const result = structuredClone(value); const cell = result.content[options.row].content[options.column];
-  const attrs = { ...(cell.attrs || {}) }; delete attrs.formula; delete attrs.formulaResult;
-  cell.attrs = officeTableCellAttributes(attrs); return recalculateOfficeTableFormulas(result);
+  return clearOfficeTableFormulas(value, { top: options.row, left: options.column,
+    bottom: options.row + 1, right: options.column + 1 });
 }
 
 export function officeTableFromTSV(text) {
@@ -193,6 +188,49 @@ function simpleTable(value) {
     return attrs.colspan !== 1 || attrs.rowspan !== 1;
   }))) throw new TypeError("Office table paste requires a simple grid");
   return info;
+}
+
+function formulaRange(value, options, keys) {
+  const info = simpleTable(value);
+  if (!options || Object.keys(options).sort().join(",") !== keys ||
+      ![options.top, options.left, options.bottom, options.right].every(Number.isInteger) ||
+      options.top < 0 || options.left < 0 || options.bottom <= options.top || options.right <= options.left ||
+      options.bottom > info.rows || options.right > info.columns) {
+    throw new TypeError("Invalid Office table formula range");
+  }
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      if (value.content[row].content[column].type !== "tableCell") {
+        throw new TypeError("Office table formulas require data cells");
+      }
+    }
+  }
+  return info;
+}
+
+export function fillOfficeTableFormulas(value, options) {
+  formulaRange(value, options, "bottom,formula,left,right,top");
+  const source = officeTableFormulaSource(options.formula); const result = structuredClone(value);
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      const cell = result.content[row].content[column];
+      cell.attrs = { ...officeTableCellAttributes(cell.attrs),
+        formula: shiftedFormula(source, row - options.top, column - options.left), formulaResult: "#WERT!" };
+    }
+  }
+  return recalculateOfficeTableFormulas(result);
+}
+
+export function clearOfficeTableFormulas(value, options) {
+  formulaRange(value, options, "bottom,left,right,top");
+  const result = structuredClone(value);
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      const cell = result.content[row].content[column]; const attrs = { ...(cell.attrs || {}) };
+      delete attrs.formula; delete attrs.formulaResult; cell.attrs = officeTableCellAttributes(attrs);
+    }
+  }
+  return recalculateOfficeTableFormulas(result);
 }
 
 function emptyCell(type) {

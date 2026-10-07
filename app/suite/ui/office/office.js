@@ -32,7 +32,7 @@ import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor,
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
-import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
+import { clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas } from "./office-table-formulas.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2273,6 +2273,17 @@ function tableActionCurrent(action) {
     action.selection.eq(state.editor.state.selection) && replacementAllowed());
 }
 
+function tableFormulaRange(rect = currentTable()) {
+  if (!rect) return null;
+  officeTableReorderInfo(rect.table.toJSON());
+  for (let row = rect.top; row < rect.bottom; row += 1) {
+    for (let column = rect.left; column < rect.right; column += 1) {
+      if (rect.table.child(row).child(column).type.name !== "tableCell") return null;
+    }
+  }
+  return { top: rect.top, left: rect.left, bottom: rect.bottom, right: rect.right };
+}
+
 function closeTableDialogs(restoreFocus = false) {
   const action = state.tableAction;
   state.tableAction = null;
@@ -2324,11 +2335,11 @@ function updateTableControls() {
   try { sortable = Boolean(rect && officeTableSortInfo(rect.table.toJSON()).dataRows >= 2); } catch { sortable = false; }
   $("table-sort").disabled = !rect || !allowed || !sortable;
   $("table-sort").title = sortable ? "Datenzeilen nach einer Spalte sortieren" : "Sortieren benötigt mindestens zwei Datenzeilen ohne verbundene Zellen";
-  const formulaCell = rect && reorder && rect.bottom - rect.top === 1 && rect.right - rect.left === 1 ?
-    state.editor.state.doc.nodeAt(rect.tableStart + rect.map.map[rect.top * rect.map.width + rect.left]) : null;
-  $("table-formula").disabled = !rect || !allowed || !reorder || formulaCell?.type.name !== "tableCell";
-  $("table-formula").title = formulaCell?.type.name === "tableCell" ? "Lokale Formel für diese Zelle bearbeiten" :
-    "Formeln benötigen genau eine gewöhnliche Zelle in einer Tabelle ohne verbundene Zellen";
+  let formulaRange = null;
+  try { formulaRange = reorder ? tableFormulaRange(rect) : null; } catch { formulaRange = null; }
+  $("table-formula").disabled = !allowed || !formulaRange;
+  $("table-formula").title = formulaRange ? "Lokale Formeln für die Auswahl bearbeiten oder ausfüllen" :
+    "Formeln benötigen gewöhnliche Datenzellen in einer Tabelle ohne verbundene Zellen";
   $("table-delete").disabled = !rect || !allowed;
   $("table-select").disabled = !rect || Boolean(state.session?.loading || state.session?.saving || state.session?.restoring);
   const header = Boolean(rect && Array.from({ length: rect.table.firstChild.childCount }, (_, index) =>
@@ -2506,20 +2517,26 @@ function commitTableSort(event) {
 function openTableFormula() {
   if (!replacementAllowed()) return;
   const current = currentTableNode(); const rect = currentTable();
-  if (!current || !rect || rect.bottom - rect.top !== 1 || rect.right - rect.left !== 1) return;
+  if (!current || !rect) return;
   try {
-    officeTableReorderInfo(current.entry.toJSON());
-    const cell = current.entry.child(rect.top).child(rect.left);
-    if (cell.type.name !== "tableCell") throw new Error("header");
+    const range = tableFormulaRange(rect); if (!range) throw new Error("header");
+    const cell = current.entry.child(range.top).child(range.left);
+    const cells = (range.bottom - range.top) * (range.right - range.left);
+    let formulas = 0;
+    for (let row = range.top; row < range.bottom; row += 1) for (let column = range.left; column < range.right; column += 1) {
+      if (current.entry.child(row).child(column).attrs.formula) formulas += 1;
+    }
     closeTableDialogs();
     state.tableAction = { ...tableActionSnapshot("formula"), position: current.position, table: current.entry,
-      row: rect.top, column: rect.left };
+      ...range };
     $("table-formula-source").value = cell.attrs.formula || "=";
-    $("table-formula-summary").textContent = `Zelle ${String.fromCharCode(65 + rect.left)}${rect.top + 1}${cell.attrs.formulaResult ? ` · Ergebnis ${cell.attrs.formulaResult}` : ""}`;
-    $("table-formula-remove").disabled = !cell.attrs.formula;
+    $("table-formula-summary").textContent = cells === 1 ?
+      `Zelle ${String.fromCharCode(65 + range.left)}${range.top + 1}${cell.attrs.formulaResult ? ` · Ergebnis ${cell.attrs.formulaResult}` : ""}` :
+      `Bereich ${String.fromCharCode(65 + range.left)}${range.top + 1}:${String.fromCharCode(64 + range.right)}${range.bottom} · ${cells} Zellen${formulas ? ` · ${formulas} mit Formel` : ""}`;
+    $("table-formula-remove").disabled = formulas === 0;
     $("table-formula-dialog").showModal(); $("table-formula-source").focus();
   } catch {
-    $("table-message").textContent = "Formeln sind nur in einzelnen Datenzellen einfacher Tabellen verfügbar.";
+    $("table-message").textContent = "Formeln sind nur in gewöhnlichen Datenzellen einfacher Tabellen verfügbar.";
   }
 }
 
@@ -2528,15 +2545,21 @@ function commitTableFormula(event, remove = false) {
   const action = state.tableAction;
   if (!tableActionCurrent(action) || action.kind !== "formula") { closeTableDialogs(); return; }
   try {
-    const options = { row: action.row, column: action.column };
-    const calculated = remove ? clearOfficeTableFormula(action.table.toJSON(), options) :
-      setOfficeTableFormula(action.table.toJSON(), { ...options, formula: $("table-formula-source").value });
+    const options = { top: action.top, left: action.left, bottom: action.bottom, right: action.right };
+    const calculated = remove ? clearOfficeTableFormulas(action.table.toJSON(), options) :
+      fillOfficeTableFormulas(action.table.toJSON(), { ...options, formula: $("table-formula-source").value });
     const replacement = action.editor.schema.nodeFromJSON(calculated); const map = TableMap.get(replacement);
     const transaction = action.editor.state.tr.replaceWith(action.position, action.position + action.table.nodeSize, replacement);
-    transaction.setSelection(Selection.near(transaction.doc.resolve(action.position + 1 +
-      map.map[action.row * map.width + action.column] + 1)));
-    if (!commitTableTransaction(transaction, remove ? "Tabellenformel entfernt; der letzte Ergebniswert bleibt als Zellinhalt erhalten." :
-      "Tabellenformel berechnet. Änderungen an lokalen Bezugszellen aktualisieren das Ergebnis automatisch.")) closeTableDialogs(true);
+    if (action.bottom - action.top === 1 && action.right - action.left === 1) {
+      transaction.setSelection(Selection.near(transaction.doc.resolve(action.position + 1 +
+        map.map[action.top * map.width + action.left] + 1)));
+    } else transaction.setSelection(CellSelection.create(transaction.doc,
+      action.position + 1 + map.map[action.top * map.width + action.left],
+      action.position + 1 + map.map[(action.bottom - 1) * map.width + action.right - 1]));
+    const cells = (action.bottom - action.top) * (action.right - action.left);
+    if (!commitTableTransaction(transaction, remove ?
+      `${cells === 1 ? "Tabellenformel" : "Tabellenformeln"} entfernt; die letzten Ergebniswerte bleiben als Zellinhalt erhalten.` :
+      `${cells === 1 ? "Tabellenformel" : `${cells} Tabellenformeln`} berechnet. Relative Bezüge wurden über die Auswahl ausgefüllt.`)) closeTableDialogs(true);
   } catch {
     $("table-formula-status").textContent = "Die Formel ist ungültig. Verwenden Sie nur lokale Bezüge A1 bis T200, optionale $-Anker und die unterstützten Funktionen.";
     $("table-formula-status").classList.add("error");

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { clearOfficeTableFormula, clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const text = (cell) => cell.content[0].content?.[0]?.text || "";
 
@@ -33,6 +33,28 @@ test("Office formulas preserve absolute and mixed row and column anchors", () =>
   for (const formula of ["=$$A1", "=A$$1", "=$A$", "=$1+A1"]) {
     expect(() => setOfficeTableFormula(table, { row: 1, column: 2, formula })).toThrow();
   }
+});
+
+test("Office formulas fill and clear a range with anchored reference axes", () => {
+  let table = officeTableFromTSV("1\t2\t0\t0\n3\t4\t0\t0");
+  table = fillOfficeTableFormulas(table, { top: 0, left: 2, bottom: 2, right: 4, formula: "=$A1+B$1" });
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map((cell) => cell.attrs.formula))).toEqual([
+    ["=$A1+B$1", "=$A1+C$1"], ["=$A2+B$1", "=$A2+C$1"],
+  ]);
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map(text))).toEqual([["3", "4"], ["5", "6"]]);
+  table = clearOfficeTableFormulas(table, { top: 0, left: 2, bottom: 2, right: 4 });
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map(text))).toEqual([["3", "4"], ["5", "6"]]);
+  expect(table.content[1].content[3].attrs.formula).toBeUndefined();
+});
+
+test("Office formula ranges reject headers invalid bounds and shifted overflow", () => {
+  const table = officeTableFromTSV("1\t2\n3\t4");
+  table.content[0].content[0].type = "tableHeader";
+  expect(() => fillOfficeTableFormulas(table,
+    { top: 0, left: 0, bottom: 1, right: 2, formula: "=A1" })).toThrow();
+  expect(() => clearOfficeTableFormulas(table, { top: 1, left: 0, bottom: 3, right: 1 })).toThrow();
+  expect(() => fillOfficeTableFormulas(officeTableFromTSV("1\t2"),
+    { top: 0, left: 0, bottom: 1, right: 2, formula: "=T1" })).toThrow();
 });
 
 test("Office formulas expose deterministic reference division cycle and syntax errors", () => {

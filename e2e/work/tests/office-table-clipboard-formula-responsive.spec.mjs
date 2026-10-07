@@ -4,6 +4,7 @@ import { ARTIFACT_DIR } from "./support.mjs";
 import { newOfficeDraft, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice } from "./office-support.mjs";
 
 const table = (page) => officeEditor(page).locator("table").first();
+const row = (page, index) => table(page).locator("tr").nth(index);
 const cell = (page, row, column) => table(page).locator("tr").nth(row).locator("th,td").nth(column);
 const matrix = (page) => table(page).locator("tr").evaluateAll((rows) => rows.map((row) =>
   [...row.querySelectorAll("th,td")].map((entry) => entry.textContent.trim())));
@@ -175,5 +176,46 @@ test("Office absolute and mixed formulas copy and restructure by anchor axis", a
   await page.locator("#document-print").click();
   await expect(page.locator('#print-preview td[data-office-cell-formula="=SUM($B$2,C3)"]')).toHaveText("5");
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-table-formula-anchors-${testInfo.project.name}.png`, fullPage: true });
+  await page.locator("#print-close").click();
+});
+
+test("Office fills and clears formulas across a selected range as one history step", async ({ page }, testInfo) => {
+  test.setTimeout(75_000);
+  await openOffice(page);
+  await newOfficeDraft(page, "Formula range fill proof", { text: "Formula fill table follows" });
+  await officeEditor(page).press("Control+End"); await officeEditor(page).press("Enter");
+  await pasteTable(page,
+    "<table><tr><td>1</td><td>2</td><td>3</td><td>4</td></tr><tr><td>0</td><td>0</td><td>0</td><td>0</td></tr></table>",
+    "1\t2\t3\t4\n0\t0\t0\t0");
+
+  await cell(page, 1, 0).click(); await page.locator("#table-select").selectOption("row");
+  await expect(page.locator("#table-formula")).toBeEnabled(); await page.locator("#table-formula").click();
+  await expect(page.locator("#table-formula-summary")).toContainText("Bereich A2:D2 · 4 Zellen");
+  await page.locator("#table-formula-source").fill("=SUM($A$1;A$1)");
+  await page.locator("#table-formula-apply").click();
+  await expect(row(page, 1).locator("td")).toHaveText(["2", "3", "4", "5"]);
+  for (const [column, formula] of [
+    [0, "=SUM($A$1,A$1)"], [1, "=SUM($A$1,B$1)"], [2, "=SUM($A$1,C$1)"], [3, "=SUM($A$1,D$1)"],
+  ]) await expect(cell(page, 1, column)).toHaveAttribute("data-office-cell-formula", formula);
+  await page.locator('[data-command="undo"]').click();
+  await expect(row(page, 1).locator("td")).toHaveText(["0", "0", "0", "0"]);
+  await page.locator('[data-command="redo"]').click();
+  await expect(row(page, 1).locator("td")).toHaveText(["2", "3", "4", "5"]);
+
+  await cell(page, 1, 0).click(); await page.locator("#table-select").selectOption("row");
+  await page.locator("#table-formula").click();
+  await expect(page.locator("#table-formula-summary")).toContainText("4 mit Formel");
+  await page.locator("#table-formula-remove").click();
+  await expect(row(page, 1).locator("td[data-office-cell-formula]")).toHaveCount(0);
+  await expect(row(page, 1).locator("td")).toHaveText(["2", "3", "4", "5"]);
+  await page.locator('[data-command="undo"]').click();
+  await expect(row(page, 1).locator("td[data-office-cell-formula]")).toHaveCount(4);
+
+  const saved = await saveOffice(page);
+  await openOfficeDocument(page, saved.document.object_id);
+  await expect(row(page, 1).locator("td")).toHaveText(["2", "3", "4", "5"]);
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview tr").nth(1).locator("td[data-office-cell-formula]")).toHaveCount(4);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-table-formula-fill-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#print-close").click();
 });
