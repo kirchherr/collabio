@@ -2,6 +2,29 @@
 
 Updated: 2026-10-07
 
+Roadmap 333 through 338 / PLANS 194 through 199 are complete under ADR-0134. Native tables now support four fixed
+presentation styles, bounded full/wide/compact widths, left/center/right alignment, equal or fixed first-column
+distributions and captions above or below the table. Omitted attributes remain the canonical grid, full-width,
+left-aligned, equal-column and bottom-caption defaults. Browser and server independently reject arbitrary CSS, URLs,
+unknown attributes and unsupported values.
+
+The accessible **Tabellenlayout …** dialog edits the complete table layout in one validated undo step and provides
+one canonical reset. Caption add, edit and removal preserve the remaining layout. Editor, comparison, immutable
+history and print consume the same canonical model; constrained tables safely expand to the available width on
+compact screens while preserving style, caption placement and column emphasis.
+
+The focused model plus desktop/mobile layout workflow passed 9/9. The adjacent table, caption and comparison
+selection passed 38/39; its only failure was a mobile page-canvas height regression caused by the additional toolbar
+control. After tightening the compact toolbar, the complete affected responsive case passed 1/1. Desktop/mobile
+screenshot SHA-256 values are `263c3ac2933510e9755274e3db31354a4027be26e3c50e95751affdf4e8e08f6` and
+`dfe6f57713458c7f15ca7847a771617baa9b518dce8ada1342f76328822d742d`; both passed visual review.
+
+Product implementation is published through `a4a2f45c` on `kirchherr/kb-write-unit-of-work`. Layout values use the
+existing immutable Office version JSON and recovery contracts, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was
+activated. The review UI is available at
+`http://192.168.0.108:42880/office?review=table-layout-a4a2f45c`.
+
 Roadmap 329 through 332 / PLANS 190 through 193 are complete under ADR-0133. Native table cells and headers now
 support optional fixed gray, blue, green, yellow or red fills plus middle or bottom vertical alignment; absent values
 retain the previous no-fill and top-aligned canonical representation. Browser and server independently reject

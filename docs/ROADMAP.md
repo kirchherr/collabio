@@ -2207,6 +2207,36 @@ bestand nach dessen kontrolliertem Start und der Fail-closed-Shell-Korrektur 1/1
 bestanden die visuelle Pruefung. Die optionalen Werte leben im bestehenden immutable Office-Versions-JSON; es gibt
 keine relationale Migration, freie Format-Engine, Tabellenkalkulation, Tenant-Aktivierung oder DOCX-Zulassung.
 
+333. [x] Feste native Tabellenstile umgesetzt: Raster bleibt kanonischer Standard; Minimal, Zeilenband und Akzent
+     sind die einzigen gespeicherten Alternativen. Freies CSS, Klassen, URLs und beliebige Farbangaben werden in
+     Browser und Server abgelehnt.
+
+334. [x] Begrenzte Tabellenbreiten und Ausrichtung umgesetzt: Volle Breite und links bleiben kanonische Abwesenheit;
+     breit oder kompakt sowie mittig oder rechts sind feste responsive Tokens ohne Pixel- oder Seitenanker.
+
+335. [x] Zugreifbare Spaltenverteilung umgesetzt: Gleichmaessig bleibt Standard; erste Spalte breit oder schmal sind
+     die einzigen Alternativen. Die Darstellung funktioniert mit semantischen Kopfzellen und verbundenen Zellen ohne
+     ein freies Spaltenraster zu speichern.
+
+336. [x] Beschriftungsposition geschlossen: Tabellenbeschriftungen koennen unten oder oben stehen. Hinzufuegen,
+     Bearbeiten und Entfernen der Beschriftung bewahrt das Layout; Layoutaenderungen bewahren stabile Tabellen-ID und
+     Beschriftung.
+
+337. [x] Gemeinsamen fokussierbaren Layoutdialog und Standard-Reset umgesetzt: Alle fuenf Dimensionen werden in
+     genau einem validierten Rueckgaengig-Schritt angewendet oder gemeinsam auf kanonische Defaults zurueckgesetzt.
+
+338. [x] Vollstaendigen Tabellenlayout-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable
+     Vorgaengerversion, Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen. Auf schmalen
+     Ansichten bleibt der Dokumentbereich erreichbar und begrenzte Tabellen nutzen automatisch die verfuegbare Breite.
+
+Native Office bleibt vor CRM. Roadmap 333 bis 338 / PLANS 194 bis 199 sind gemeinsam unter ADR-0134 implementiert.
+Der fokussierte Layout-, Zellformat- und Spannenablauf bestand 9/9. Die vollstaendige angrenzende Tabellen-,
+Beschriftungs- und Vergleichsmatrix bestand 38/39; der zusaetzliche Layoutknopf deckte dabei einen knappen mobilen
+Dokumentbereich auf. Nach der gezielten Verdichtung bestand der vollstaendige betroffene Mobilfall 1/1. Beide
+finalen Druckansichten bestanden die visuelle Pruefung. Die optionalen Werte leben im bestehenden immutable
+Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder Tabellenkalkulations-Engine,
+Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

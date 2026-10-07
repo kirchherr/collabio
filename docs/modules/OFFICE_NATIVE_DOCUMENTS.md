@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–332 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 332 / PLANS 193 native table-cell styling
+Status: Roadmap 252–338 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 338 / PLANS 199 native table layouts
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0133; current table-cell styling: `ARCHITECTURE_DECISIONS/ADR-0133-native-office-table-cell-styling.md`
+Decisions: ADR-0079 through ADR-0134; current table layouts: `ARCHITECTURE_DECISIONS/ADR-0134-native-office-table-layouts.md`
+
+## Bounded table layouts (Roadmap 333–338)
+
+Native tables may select grid, minimal, banded or accent presentation; full, wide or compact width; left, center or
+right alignment; equal columns or a fixed wider/narrower first column; and top or bottom caption placement. Omission
+is the canonical grid, full-width, left-aligned, equal-column and bottom-caption representation. Browser and server
+reject unknown keys, arbitrary CSS, URLs and unsupported values.
+
+**Tabellenlayout …** edits or resets the whole table in one validated undo transaction. Caption creation, editing
+and removal preserve every independent layout value. Comparison and print describe and render the same canonical
+state, confirmed saves preserve it in immutable versions, and compact views expand constrained tables to their
+available width while retaining the selected style, caption placement and column emphasis.
 
 ## Bounded table-cell styling (Roadmap 329–332)
 

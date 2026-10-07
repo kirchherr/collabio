@@ -530,6 +530,15 @@ the reader/historical workflow checks the new control alongside every existing m
 as `office-table-cell-style-desktop-chromium.png` and `office-table-cell-style-mobile-chromium.png`. Styling remains
 inside existing immutable Office version JSON, so no new numbered restore target is created.
 
+Roadmap 333 through 338 add bounded native table layouts. The combined desktop/mobile proof applies an accent style,
+compact centered width, a wider first column and a bottom caption, proves isolated undo/redo and canonical reset,
+then verifies confirmed save, immutable predecessor, reload, comparison text and print attributes. The mobile case
+requires a constrained table to expand to the available canvas without losing its style, caption position or column
+emphasis. Pure model and server coverage admit only the fixed style, width, alignment, column and caption-position
+tokens and reject arbitrary or unknown values. Evidence is retained as
+`office-table-layout-desktop-chromium.png` and `office-table-layout-mobile-chromium.png`. Layout stays inside existing
+immutable Office version JSON, so no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:
