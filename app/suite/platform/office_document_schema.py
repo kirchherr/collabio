@@ -235,7 +235,10 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
     columns = len(cells[0])
     if any(
         len(row) != columns
-        or any(cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1 for cell in row)
+        or any(
+            cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
+            for cell in row
+        )
         for row in cells
     ):
         return False
