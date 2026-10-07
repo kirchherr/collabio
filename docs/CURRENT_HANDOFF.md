@@ -2,6 +2,31 @@
 
 Updated: 2026-10-07
 
+Roadmap 339 through 344 / PLANS 200 through 205 are complete under ADR-0135. Native table cells now support optional
+center/right horizontal alignment, compact/spacious padding and no/strong border treatment in addition to the
+existing fills and vertical alignment. Omitted values remain the canonical left alignment, normal padding and table
+style border. Browser and server independently reject arbitrary CSS, URLs, dimensions, colors, per-edge models and
+unsupported values.
+
+The accessible **Zellen formatieren …** dialog applies all five dimensions to the current cell, row, column or
+rectangular selection. Mixed values remain untouched until explicitly changed; apply and the complete standard reset
+are each one validated undo step. Merge, split and header conversion preserve the presentation. Editor, comparison,
+immutable history and print consume the same canonical attributes, while explicit paragraph alignment stays
+independent.
+
+The focused Python suite passed 34/34 and the focused model plus desktop/mobile workflow passed 7/7. The adjacent
+table, caption and comparison selection passed 38/39; its only failure exposed that the isolated Blocked API still
+attempted to activate a KB write runtime. The fail-closed test server now skips that activation when synthetic traffic
+is disabled, and the complete affected reader/historical case passed 1/1. Desktop/mobile screenshot SHA-256 values
+are `2d0c7f7a99abedc9b7037aeb195b189eb69ce911c7cbb86fa04cdfdd1b025c08` and
+`68ea3553fc1ef69a40fe78077bdb28aedf8864c3f2f8234ce87b7f65fbf16a89`; both passed visual review.
+
+Product implementation is published through `f651580a`, with the fail-closed E2E helper correction in `3ce13284`,
+on `kirchherr/kb-write-unit-of-work`. The values use existing immutable Office version JSON and recovery contracts,
+so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI,
+spreadsheet runtime, DOCX engine or production admission was activated. The review UI is available at
+`http://192.168.0.108:42880/office?review=cell-presentation-f651580a`.
+
 Roadmap 333 through 338 / PLANS 194 through 199 are complete under ADR-0134. Native tables now support four fixed
 presentation styles, bounded full/wide/compact widths, left/center/right alignment, equal or fixed first-column
 distributions and captions above or below the table. Omitted attributes remain the canonical grid, full-width,

@@ -19,7 +19,7 @@ async function styleSelection(page, fill, vertical, horizontal = "default", padd
   await expect(page.locator("#table-cell-style-dialog")).toBeHidden();
 }
 
-test("Office table cell fills and vertical alignment preserve selection history save reload and print", async ({ page }, testInfo) => {
+test("Office table cell presentation preserves selection reset history save reload and print", async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   await openOffice(page);
   await newOfficeDraft(page, "Native table cell style proof", { text: "Cell style introduction" });

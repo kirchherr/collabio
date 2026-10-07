@@ -516,12 +516,30 @@ dimension in one validated undo step with fail-closed read-only and historical c
 199. [x] Close the native table-layout lifecycle under ADR-0134. Prove undo/redo, confirmed save, immutable
 predecessor, reload, comparison, print and responsive desktop/mobile containment with a reachable document canvas.
 
+200. [x] Add bounded horizontal table-cell alignment under ADR-0135. Keep left alignment canonical and admit only
+center or right as inert cell defaults without overriding explicit paragraph formatting.
+
+201. [x] Add bounded table-cell padding under ADR-0135. Keep normal padding canonical and admit only compact or
+spacious fixed mappings without pixels, percentages or arbitrary dimensions in saved content.
+
+202. [x] Add bounded table-cell borders under ADR-0135. Keep the table style canonical and admit only no border or
+one fixed strong border without per-edge models, arbitrary colors or CSS.
+
+203. [x] Extend the accessible multi-cell formatting dialog and add a complete canonical reset under ADR-0135.
+Preserve mixed values until explicitly changed and apply or reset the full selection in one validated undo step.
+
+204. [x] Preserve the complete cell presentation through merge, split and header conversion under ADR-0135, with
+identical inert editor, comparison and print attributes.
+
+205. [x] Close the expanded table-cell presentation lifecycle under ADR-0135. Prove undo/redo, confirmed save,
+immutable predecessor, reload, comparison, print, desktop/mobile containment and fail-closed reader/history controls.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 338 / PLANS 199. Preserve the complete browser/model evidence, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell and table layout tokens, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Spreadsheet-style formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 344 / PLANS 205. Preserve the complete browser/model evidence, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell presentation and table layout tokens, full Python quality, immutable versions/reviews/suggestions, current ACLs, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Spreadsheet-style formulas, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, formula evaluation, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

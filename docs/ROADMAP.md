@@ -2237,6 +2237,32 @@ finalen Druckansichten bestanden die visuelle Pruefung. Die optionalen Werte leb
 Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder Tabellenkalkulations-Engine,
 Tenant-Aktivierung oder DOCX-Zulassung.
 
+339. [x] Begrenzte horizontale Zellenausrichtung umgesetzt: Links bleibt kanonischer Standard; mittig und rechts
+     sind die einzigen gespeicherten Alternativen. Explizite Absatzausrichtung bleibt davon unabhängig.
+
+340. [x] Begrenzte Zelleninnenabstaende umgesetzt: Normal bleibt kanonischer Standard; kompakt und grosszuegig sind
+     feste drucksichere Mappings ohne gespeicherte Pixel-, Prozent- oder CSS-Ausdruecke.
+
+341. [x] Begrenzte Zellenrahmen umgesetzt: Der Tabellenstil bleibt kanonischer Standard; ohne Rahmen und ein fester
+     starker Rahmen sind die einzigen Alternativen. Beliebige Farben, URLs und Kantenmodelle werden abgelehnt.
+
+342. [x] Den bestehenden fokussierbaren Mehrzellen-Dialog erweitert und einen vollstaendigen Standard-Reset
+     hinzugefuegt. Gemischte Werte bleiben unangetastet; Anwenden und Reset sind jeweils genau ein Undo-Schritt.
+
+343. [x] Horizontale Ausrichtung, Innenabstand und Rahmen durch Verbinden, Teilen und Kopfzellen-Konvertierung
+     erhalten. Editor, Vergleich und Druck verwenden dieselben validierten Attribute und festen Darstellungen.
+
+344. [x] Vollstaendigen erweiterten Zellformat-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable
+     Vorgaengerversion, Reload, Vergleich, Druck, Desktop/Mobil und gesperrte Leser-/Historienansichten geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 339 bis 344 / PLANS 200 bis 205 sind gemeinsam unter ADR-0135 implementiert.
+Die fokussierten Python-, Modell-, Desktop- und Mobile-Ablaufe bestanden 34/34 und 7/7. Die vollstaendige angrenzende
+Tabellen-, Beschriftungs- und Vergleichsmatrix bestand 38/39; ihr einziger Infrastrukturfall deckte auf, dass der
+gesperrte Hilfsdienst unnoetig einen KB-Schreibruntime aktivierte. Nach der fail-closed Korrektur bestand der genaue
+Leser-/Historienfall 1/1. Beide finalen Druckansichten bestanden die visuelle Pruefung. Die optionalen Werte leben im
+bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–338 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 338 / PLANS 199 native table layouts
+Status: Roadmap 252–344 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 344 / PLANS 205 native table-cell presentation
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0134; current table layouts: `ARCHITECTURE_DECISIONS/ADR-0134-native-office-table-layouts.md`
+Decisions: ADR-0079 through ADR-0135; current cell presentation: `ARCHITECTURE_DECISIONS/ADR-0135-native-office-table-cell-presentation.md`
+
+## Bounded table-cell presentation (Roadmap 339–344)
+
+Native table cells and headers may add center/right horizontal alignment, compact/spacious padding and no/strong
+border treatment to the existing bounded fills and vertical alignment. Omission preserves left alignment, normal
+padding and the table style border. Browser and server reject unknown keys, arbitrary CSS, URLs, dimensions, colors,
+per-edge border expressions and unsupported values.
+
+**Zellen formatieren …** applies or resets all five dimensions across cell, row, column and rectangular selections
+in one validated undo transaction. Mixed values remain unchanged until explicitly selected. Merge, split and header
+conversion retain the exact attributes. Editor, comparison, immutable versions and print use the same canonical
+state, while explicit paragraph alignment remains independent and reader/historical controls fail closed.
 
 ## Bounded table layouts (Roadmap 333–338)
 

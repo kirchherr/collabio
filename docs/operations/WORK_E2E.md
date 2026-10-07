@@ -539,6 +539,16 @@ tokens and reject arbitrary or unknown values. Evidence is retained as
 `office-table-layout-desktop-chromium.png` and `office-table-layout-mobile-chromium.png`. Layout stays inside existing
 immutable Office version JSON, so no new numbered restore target is created.
 
+Roadmap 339 through 344 expand bounded table-cell presentation. The combined desktop/mobile proof applies fill,
+vertical and horizontal alignment, padding and border treatment to a selected row; proves isolated undo/redo,
+merge preservation and a complete one-step standard reset; formats another cell independently; then verifies exact
+confirmed save, immutable predecessor, reload, comparison text and print attributes. Pure model and server coverage
+admit only the fixed tokens and reject arbitrary alignment, dimensions, CSS, URLs and border expressions. The
+reader/historical workflow verifies fail-closed controls through the synthetic-traffic-disabled helper, which does
+not activate a KB write runtime. Evidence is retained as `office-table-cell-style-desktop-chromium.png` and
+`office-table-cell-style-mobile-chromium.png`. Presentation stays inside existing immutable Office version JSON, so
+no new numbered restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:
