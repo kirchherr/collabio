@@ -199,11 +199,13 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
         "attrs": {"formula": "=SUM(A1:B1)", "formulaResult": "3"},
         "content": [{"type": "paragraph", "content": [{"type": "text", "text": "3"}]}],
     }
+
     def value(text: str) -> dict[str, object]:
         return {
             "type": "tableCell",
             "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
         }
+
     table = {"type": "table", "content": [{"type": "tableRow", "content": [value("1"), value("2"), formula_cell]}]}
     document = {"type": "doc", "content": [table]}
     assert validate_office_document(document) == document

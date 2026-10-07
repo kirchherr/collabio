@@ -236,8 +236,7 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
     if any(
         len(row) != columns
         or any(
-            cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
-            for cell in row
+            cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1 for cell in row
         )
         for row in cells
     ):
@@ -1079,8 +1078,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or formula != formula.strip()
                     or re.fullmatch(r"=[A-Z0-9+\-*/().,: ]+", formula) is None
                     or any(
-                        token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"}
-                        and re.fullmatch(r"[A-T]", token) is None
+                        token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"} and re.fullmatch(r"[A-T]", token) is None
                         for token in re.findall(r"[A-Z]+", formula)
                     )
                     or not isinstance(formula_result, str)
