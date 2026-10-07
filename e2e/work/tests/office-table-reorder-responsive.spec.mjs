@@ -54,11 +54,16 @@ test("Office table rows and columns reorder with protected headers history save 
   const saved = await saveOffice(page, { objectId: baseline.document.object_id });
   expect((await officeContent(page, baseline.document.object_id, { versionId: baseline.version.version_id })).content)
     .toEqual(baseline.content);
+  const savedTable = saved.content.content.find((entry) => entry.type === "table");
+  expect(savedTable.content[0].content.map((entry) => entry.type))
+    .toEqual(["tableHeader", "tableHeader", "tableHeader", "tableHeader"]);
   await openOfficeDocument(page, baseline.document.object_id);
   expect((await matrix(page)).map((entry) => entry[0])).toEqual(["Name", "Bravo", "Alpha", "Charlie"]);
   expect((await matrix(page))[0]).toEqual(["Name", "Q2", "Q1", "Owner"]);
+  await expect(table(page).locator("tr").first().locator("th")).toHaveCount(4);
   await page.locator("#document-print").click();
   const printed = page.locator("#print-preview table tr");
+  await expect(printed).toHaveCount(4);
   expect(await printed.first().locator("th").allTextContents()).toEqual(["Name", "Q2", "Q1", "Owner"]);
   expect(await printed.evaluateAll((entries) => entries.slice(1).map((entry) => entry.querySelector("th,td").textContent.trim())))
     .toEqual(["Bravo", "Alpha", "Charlie"]);
