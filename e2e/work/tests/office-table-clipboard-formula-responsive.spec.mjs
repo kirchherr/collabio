@@ -33,8 +33,12 @@ test("Office imports safe Word Excel tables and evaluates local formulas respons
   await expect(cell(page, 1, 0)).toHaveAttribute("data-office-cell-fill", "blue");
   await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM(B2:C2)");
 
-  const input = cell(page, 1, 1).locator("p"); await input.click(); await input.press("Home");
-  await input.press("Shift+End"); await page.keyboard.type("7");
+  const input = cell(page, 1, 1).locator("p"); await input.click();
+  await input.evaluate((paragraph) => {
+    const selection = window.getSelection(), range = document.createRange(); range.selectNodeContents(paragraph);
+    selection.removeAllRanges(); selection.addRange(range);
+  });
+  await page.keyboard.type("7"); await expect(cell(page, 1, 1)).toHaveText("7");
   await expect(cell(page, 1, 3)).toHaveText("10");
   await page.locator('[data-command="undo"]').click(); await expect(cell(page, 1, 1)).toHaveText("2");
   await expect(cell(page, 1, 3)).toHaveText("5"); await page.locator('[data-command="redo"]').click();
