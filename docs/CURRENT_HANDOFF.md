@@ -25,6 +25,10 @@ target. No ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX
 activated. The review UI is available at
 `http://192.168.0.108:42880/office?review=table-layout-a4a2f45c`.
 
+Full quality on documented commit `60349c31` passed Ruff, formatting for 846 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
+
 Roadmap 329 through 332 / PLANS 190 through 193 are complete under ADR-0133. Native table cells and headers now
 support optional fixed gray, blue, green, yellow or red fills plus middle or bottom vertical alignment; absent values
 retain the previous no-fill and top-aligned canonical representation. Browser and server independently reject
