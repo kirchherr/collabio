@@ -172,3 +172,75 @@ export function officeTableFromTSV(text) {
   }) })) };
   return recalculateOfficeTableFormulas(table);
 }
+
+function shiftedFormula(source, rowOffset, columnOffset) {
+  const normalized = officeTableFormulaSource(source);
+  return normalized.replace(/\b([A-T])([1-9][0-9]{0,2})\b/gu, (_match, letter, rowText) => {
+    const column = letter.charCodeAt(0) - 65 + columnOffset;
+    const row = Number(rowText) - 1 + rowOffset;
+    if (column < 0 || column >= 20 || row < 0 || row >= 200) throw new TypeError("Shifted Office table formula is out of bounds");
+    return `${String.fromCharCode(65 + column)}${row + 1}`;
+  });
+}
+
+function simpleTable(value) {
+  const info = officeTableReorderInfo(value);
+  if (value.content.some((row) => row.content.some((cell) => {
+    const attrs = officeTableCellAttributes(cell.attrs);
+    return attrs.colspan !== 1 || attrs.rowspan !== 1;
+  }))) throw new TypeError("Office table paste requires a simple grid");
+  return info;
+}
+
+function emptyCell(type) {
+  return { type, attrs: { colspan: 1, rowspan: 1 }, content: [{ type: "paragraph" }] };
+}
+
+function pastedCell(target, source, rowOffset, columnOffset) {
+  const sourceAttrs = officeTableCellAttributes(source.attrs); const attrs = { ...sourceAttrs, colspan: 1, rowspan: 1 };
+  if (sourceAttrs.formula) {
+    attrs.formula = shiftedFormula(sourceAttrs.formula, rowOffset, columnOffset);
+    attrs.formulaResult = "#WERT!";
+  }
+  return { type: target.type, attrs: officeTableCellAttributes(attrs), content: structuredClone(source.content) };
+}
+
+export function pasteOfficeTableCells(target, source, options) {
+  const targetInfo = simpleTable(target); const sourceInfo = simpleTable(source);
+  if (!options || Object.keys(options).sort().join(",") !== "bottom,left,right,top" ||
+      ![options.top, options.left, options.bottom, options.right].every(Number.isInteger) ||
+      options.top < 0 || options.left < 0 || options.bottom <= options.top || options.right <= options.left ||
+      options.bottom > targetInfo.rows || options.right > targetInfo.columns) {
+    throw new TypeError("Invalid Office table paste target");
+  }
+  const selectedRows = options.bottom - options.top, selectedColumns = options.right - options.left;
+  const singleTarget = selectedRows === 1 && selectedColumns === 1;
+  if (!singleTarget && !((sourceInfo.rows === selectedRows && sourceInfo.columns === selectedColumns) ||
+      (sourceInfo.rows === 1 && sourceInfo.columns === 1))) {
+    throw new TypeError("Office table paste dimensions do not match the selection");
+  }
+  const pasteRows = singleTarget ? sourceInfo.rows : selectedRows;
+  const pasteColumns = singleTarget ? sourceInfo.columns : selectedColumns;
+  const requiredRows = Math.max(targetInfo.rows, options.top + pasteRows);
+  const requiredColumns = Math.max(targetInfo.columns, options.left + pasteColumns);
+  if (requiredRows > 200 || requiredColumns > 20) throw new TypeError("Office table paste exceeds grid limits");
+  const result = structuredClone(target);
+  const headerRow = result.content[0].content.every((cell) => cell.type === "tableHeader");
+  const headerColumn = result.content.every((row) => row.content[0].type === "tableHeader");
+  for (const row of result.content) while (row.content.length < requiredColumns) {
+    row.content.push(emptyCell(headerRow && result.content.indexOf(row) === 0 ? "tableHeader" : "tableCell"));
+  }
+  while (result.content.length < requiredRows) {
+    const rowIndex = result.content.length;
+    result.content.push({ type: "tableRow", content: Array.from({ length: requiredColumns }, (_entry, column) =>
+      emptyCell(headerColumn && column === 0 && rowIndex > 0 ? "tableHeader" : "tableCell")) });
+  }
+  for (let row = 0; row < pasteRows; row += 1) for (let column = 0; column < pasteColumns; column += 1) {
+    const sourceRow = sourceInfo.rows === 1 ? 0 : row;
+    const sourceColumn = sourceInfo.columns === 1 ? 0 : column;
+    const targetRow = options.top + row, targetColumn = options.left + column;
+    result.content[targetRow].content[targetColumn] = pastedCell(result.content[targetRow].content[targetColumn],
+      source.content[sourceRow].content[sourceColumn], targetRow - sourceRow, targetColumn - sourceColumn);
+  }
+  return recalculateOfficeTableFormulas(result);
+}

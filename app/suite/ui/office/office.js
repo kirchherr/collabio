@@ -32,7 +32,7 @@ import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor,
 import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
-import { clearOfficeTableFormula, officeTableFromTSV, recalculateOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
+import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, setOfficeTableFormula } from "./office-table-formulas.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
@@ -2822,13 +2822,31 @@ function clipboardCellParagraphs(element) {
   const copy = element.cloneNode(true);
   copy.querySelectorAll("script,style,link,meta,img,svg,math,object,embed,iframe,input,button,textarea,select,table")
     .forEach((entry) => entry.remove());
-  copy.querySelectorAll("br").forEach((entry) => entry.replaceWith("\n"));
-  copy.querySelectorAll("p,div,li").forEach((entry) => entry.append("\n"));
-  const text = (copy.textContent || "").replaceAll("\u00a0", " ").replaceAll("\r", "")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/gu, "").replace(/\n+$/u, "");
-  if (text.length > 10000) throw new TypeError("Office clipboard cell too large");
-  return text.split("\n").map((line) => ({ type: "paragraph",
-    ...(line ? { content: [{ type: "text", text: line }] } : {}) }));
+  const paragraphs = [[]]; let characters = 0; let nodes = 0;
+  const newParagraph = () => { if (paragraphs.at(-1).length) paragraphs.push([]); };
+  const addText = (value, marks) => {
+    const text = value.replaceAll("\u00a0", " ").replaceAll("\r", "")
+      .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f]/gu, "");
+    characters += Array.from(text).length;
+    if (characters > 10000) throw new TypeError("Office clipboard cell too large");
+    if (text) paragraphs.at(-1).push({ type: "text", text, ...(marks.length ? { marks } : {}) });
+  };
+  const visit = (entry, inherited = []) => {
+    nodes += 1; if (nodes > 2000) throw new TypeError("Office clipboard cell too complex");
+    if (entry.nodeType === 3) { addText(entry.nodeValue || "", inherited); return; }
+    if (entry.nodeType !== 1) return;
+    const name = entry.tagName.toLowerCase();
+    if (name === "br") { paragraphs.at(-1).push({ type: "hardBreak" }); return; }
+    const markType = ({ b: "bold", strong: "bold", i: "italic", em: "italic", u: "underline",
+      s: "strike", strike: "strike", del: "strike", code: "code" })[name];
+    const marks = markType && !inherited.some((mark) => mark.type === markType) ? [...inherited, { type: markType }] : inherited;
+    const block = ["p", "div", "li"].includes(name); if (block) newParagraph();
+    for (const child of entry.childNodes) visit(child, marks);
+    if (block) newParagraph();
+  };
+  for (const child of copy.childNodes) visit(child);
+  while (paragraphs.length > 1 && !paragraphs.at(-1).length) paragraphs.pop();
+  return paragraphs.map((content) => ({ type: "paragraph", ...(content.length ? { content } : {}) }));
 }
 
 function clipboardCellPresentation(element) {
@@ -2876,7 +2894,7 @@ function officeTableFromClipboardHTML(html) {
 }
 
 function insertClipboardTable(view, event) {
-  if (state.editor?.view !== view || !replacementAllowed() || !event.clipboardData || isInTable(view.state) ||
+  if (state.editor?.view !== view || !replacementAllowed() || !event.clipboardData ||
       view.state.selection instanceof AllSelection) return false;
   const html = event.clipboardData.getData("text/html") || ""; const text = event.clipboardData.getData("text/plain") || "";
   let table = null; const containsHTMLTable = /<table[\s>]/iu.test(html);
@@ -2889,6 +2907,22 @@ function insertClipboardTable(view, event) {
   if (!table) return false;
   event.preventDefault();
   try {
+    if (isInTable(view.state)) {
+      const rect = selectedRect(view.state); const current = currentTableNode(state.editor);
+      if (!current) throw new TypeError("Missing Office table paste target");
+      const pasted = pasteOfficeTableCells(current.entry.toJSON(), table,
+        { top: rect.top, left: rect.left, bottom: rect.bottom, right: rect.right });
+      const replacement = view.state.schema.nodeFromJSON(pasted); const map = TableMap.get(replacement);
+      const singleTarget = rect.bottom - rect.top === 1 && rect.right - rect.left === 1;
+      const lastRow = (singleTarget ? rect.top + table.content.length : rect.bottom) - 1;
+      const lastColumn = (singleTarget ? rect.left + table.content[0].content.length : rect.right) - 1;
+      const transaction = view.state.tr.replaceWith(current.position, current.position + current.entry.nodeSize, replacement);
+      transaction.setSelection(CellSelection.create(transaction.doc,
+        current.position + 1 + map.map[rect.top * map.width + rect.left],
+        current.position + 1 + map.map[lastRow * map.width + lastColumn]));
+      return commitTableTransaction(transaction,
+        "Word-/Excel-Zellen sicher eingefügt. Formeln wurden relativ angepasst; aktive Inhalte und externe Bezüge wurden nicht übernommen.");
+    }
     const node = view.state.schema.nodeFromJSON(table); const transaction = view.state.tr.replaceSelectionWith(node);
     return commitTableTransaction(transaction, "Word-/Excel-Tabelle sicher eingefügt. Aktive Inhalte und externe Bezüge wurden nicht übernommen.");
   } catch {

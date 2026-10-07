@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { clearOfficeTableFormula, officeTableFromTSV, recalculateOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { clearOfficeTableFormula, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const text = (cell) => cell.content[0].content?.[0]?.text || "";
 
@@ -34,4 +34,27 @@ test("Office formulas expose deterministic reference division cycle and syntax e
   expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1, formula: "=U1" })).toThrow();
   expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1,
     formula: "='[external.xlsx]Sheet1'!A1" })).toThrow();
+});
+
+test("Office table paste expands from one cell and shifts relative formulas", () => {
+  const target = officeTableFromTSV("Name\tQ1\tQ2\tTotal\nExisting\t1\t1\t2");
+  const source = officeTableFromTSV("Alpha\t2\t3\t=SUM(B1:C1)\nBravo\t4\t6\t=SUM(B2:C2)");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 0, bottom: 2, right: 1 });
+  expect(pasted.content.map((row) => row.content.map(text))).toEqual([
+    ["Name", "Q1", "Q2", "Total"], ["Alpha", "2", "3", "5"], ["Bravo", "4", "6", "10"],
+  ]);
+  expect(pasted.content[1].content[3].attrs.formula).toBe("=SUM(B2:C2)");
+  expect(pasted.content[2].content[3].attrs.formula).toBe("=SUM(B3:C3)");
+});
+
+test("Office table paste fills an exact selection and rejects ambiguous dimensions", () => {
+  const target = officeTableFromTSV("A\tB\nC\tD"); const source = officeTableFromTSV("7\t8");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 0, bottom: 2, right: 2 });
+  expect(pasted.content.map((row) => row.content.map(text))).toEqual([["A", "B"], ["7", "8"]]);
+  expect(() => pasteOfficeTableCells(target, source, { top: 0, left: 0, bottom: 2, right: 2 })).toThrow();
+  const single = { type: "table", content: [{ type: "tableRow", content: [
+    { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "9" }] }] },
+  ] }] };
+  const repeated = pasteOfficeTableCells(target, single, { top: 0, left: 0, bottom: 2, right: 2 });
+  expect(repeated.content.map((row) => row.content.map(text))).toEqual([["9", "9"], ["9", "9"]]);
 });
