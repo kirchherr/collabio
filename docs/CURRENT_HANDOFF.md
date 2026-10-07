@@ -2,6 +2,33 @@
 
 Updated: 2026-10-07
 
+Roadmap 377 through 382 / PLANS 238 through 243 are complete under ADR-0141. Local table formulas now follow the
+logical source cells through supported row and column insertion, deletion, direct movement and stable sorting. A
+deleted dependency is stored as the exact inert `#BEZUG!` token; browser and server parse and recalculate it
+independently, while malformed error tokens remain invalid.
+
+Row and column duplication now creates independent deep-cloned structures. Copied formulas receive relative-copy
+coordinates, while the original formula retains its original logical targets. The first browser run exposed the prior
+shared-node alias because adjusting the copy also changed the original; the corrected model now explicitly proves the
+original, copy and following cells stay independent. Every accepted structural change remains one validated undo step
+and preserves existing reader, history, session, grid, formula-count and document-size boundaries.
+
+Focused model plus desktop/mobile verification passed 16/16. The broad table, caption, span, layout, cell-presentation,
+sort, reorder, duplication, formula and comparison matrix passed 67/67. Desktop and mobile screenshot SHA-256 values
+are `db18a438b91af83d2174c41109e0ee4c6d76f5278d80ee696b4039787cddc568` and
+`9b4e1b754da5956797fb18b97e618067778449ef21d94645fd4154fbe56cbc59`; both passed visual review.
+
+Product implementation is published in `48256905`, with duplicate-node isolation in `4e8e39e6` and ADR/roadmap
+documentation in `5fc704e7`, on `kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery
+contracts are reused, so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing,
+cloud AI, workbook runtime, DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-structure-4e8e39e6`.
+
+Full quality on documented source `5fc704e7` passed Ruff, formatting for 853 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
 Roadmap 371 through 376 / PLANS 232 through 237 are complete under ADR-0140. Authors can paste a sanitized Word or
 Excel range directly into an existing simple native table. One selected cell is the range origin and grows the table
 within 200 x 20; an explicit rectangular selection requires matching dimensions or repeats one clipboard cell. Header
