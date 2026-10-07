@@ -25,6 +25,11 @@ ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or 
 The refreshed review UI is available at
 `http://192.168.0.108:42880/office?review=table-duplicate-1c3ef9e5`.
 
+Full quality on documented commit `b6ef05f0` passed Ruff, formatting for 850 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed
+6/6. Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E
+runner remains. Regular and review APIs both return `ok`.
+
 Roadmap 351 through 356 / PLANS 212 through 217 are complete under ADR-0137. Authors can move a contiguous selection
 of rows one position up or down and columns one position left or right from the existing table menus. The first
 all-header row and first all-header column remain fixed; boundary actions are disabled. Merged or non-rectangular
