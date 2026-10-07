@@ -194,7 +194,7 @@ def test_native_document_accepts_only_rectangular_bounded_table_spans() -> None:
 
 
 def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_results() -> None:
-    formula_cell = {
+    formula_cell: dict[str, Any] = {
         "type": "tableCell",
         "attrs": {"formula": "=SUM(A1:B1)", "formulaResult": "3"},
         "content": [{"type": "paragraph", "content": [{"type": "text", "text": "3"}]}],
@@ -206,8 +206,11 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
             "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
         }
 
-    table = {"type": "table", "content": [{"type": "tableRow", "content": [value("1"), value("2"), formula_cell]}]}
-    document = {"type": "doc", "content": [table]}
+    table: dict[str, Any] = {
+        "type": "table",
+        "content": [{"type": "tableRow", "content": [value("1"), value("2"), formula_cell]}],
+    }
+    document: dict[str, Any] = {"type": "doc", "content": [table]}
     assert validate_office_document(document) == document
     invalid = [
         {**formula_cell, "attrs": {"formula": "=A1", "formulaResult": "4"}},

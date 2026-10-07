@@ -292,7 +292,7 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
 
         def primary() -> float:
             if peek() == "number":
-                return take("number")
+                return float(take("number"))
             if peek() == "ref":
                 target = point(take("ref"))
                 return numeric(*target)
