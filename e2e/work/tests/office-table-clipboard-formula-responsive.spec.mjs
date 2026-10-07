@@ -157,7 +157,7 @@ test("Office absolute and mixed formulas copy and restructure by anchor axis", a
 
   await cell(page, 1, 1).click(); await page.locator("#table-column-action").selectOption("addColumnBefore");
   await expect(cell(page, 1, 4)).toHaveAttribute("data-office-cell-formula", "=SUM($C$2,D2)");
-  await expect(cell(page, 2, 4)).toHaveAttribute("data-office-cell-formula", "=SUM($C3,D$3)");
+  await expect(cell(page, 2, 4)).toHaveAttribute("data-office-cell-formula", "=SUM($C3:D$3)");
   await page.locator('[data-command="undo"]').click();
   await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C2)");
   await page.locator('[data-command="redo"]').click(); await expect(cell(page, 1, 4)).toHaveText("5");
@@ -168,7 +168,7 @@ test("Office absolute and mixed formulas copy and restructure by anchor axis", a
   await page.locator("#table-row-action").selectOption("duplicateRows");
   await expect(cell(page, 1, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C2)");
   await expect(cell(page, 2, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B$2,C3)");
-  await expect(cell(page, 3, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B4,C$4)");
+  await expect(cell(page, 3, 3)).toHaveAttribute("data-office-cell-formula", "=SUM($B4:C$4)");
   const saved = await saveOffice(page);
   await openOfficeDocument(page, saved.document.object_id);
   await expect(cell(page, 2, 3)).toHaveText("5");
