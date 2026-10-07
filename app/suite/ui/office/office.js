@@ -2901,13 +2901,27 @@ function refreshTableFormulaResults(editor) {
   const replacements = [];
   editor.state.doc.descendants((entry, position) => {
     if (entry.type.name !== "table" || !entry.toJSON().content.some((row) => row.content.some((cell) => cell.attrs?.formula))) return;
-    const calculated = recalculateOfficeTableFormulas(entry.toJSON()); const replacement = editor.schema.nodeFromJSON(calculated);
-    if (!replacement.eq(entry)) replacements.push({ position, entry, replacement });
+    let replacement;
+    try { replacement = editor.schema.nodeFromJSON(recalculateOfficeTableFormulas(entry.toJSON())); }
+    catch { return false; }
+    let rowPosition = position + 1;
+    for (let rowIndex = 0; rowIndex < entry.childCount; rowIndex += 1) {
+      const row = entry.child(rowIndex), calculatedRow = replacement.child(rowIndex); let cellPosition = rowPosition + 1;
+      for (let cellIndex = 0; cellIndex < row.childCount; cellIndex += 1) {
+        const cell = row.child(cellIndex), calculatedCell = calculatedRow.child(cellIndex);
+        if (cell.attrs.formula && !calculatedCell.eq(cell)) replacements.push({ position: cellPosition, entry: cell, replacement: calculatedCell });
+        cellPosition += cell.nodeSize;
+      }
+      rowPosition += row.nodeSize;
+    }
     return false;
   });
   if (!replacements.length) return false;
   let transaction = editor.state.tr;
-  for (const item of replacements.reverse()) transaction = transaction.replaceWith(item.position, item.position + item.entry.nodeSize, item.replacement);
+  for (const item of replacements.reverse()) {
+    transaction = transaction.setNodeMarkup(item.position, undefined, item.replacement.attrs)
+      .replaceWith(item.position + 1, item.position + 1 + item.entry.content.size, item.replacement.content);
+  }
   try { validateEditorDocument(transaction.doc); }
   catch { return false; }
   state.formulaRecalculating = true;
