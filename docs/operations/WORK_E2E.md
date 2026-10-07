@@ -557,6 +557,16 @@ span, layout, cell-presentation and comparison selection passes 44/44 cases. Evi
 `office-table-sort-desktop-chromium.png` and `office-table-sort-mobile-chromium.png`. Sorting writes no new attribute;
 it only reorders existing rows inside immutable Office version JSON, so no new numbered restore target is created.
 
+Roadmap 351 through 356 add direct native table reordering. The combined desktop/mobile proof independently verifies
+the protected first header row and first header column, moves one complete body row and one complete data column,
+checks isolated undo/redo, then proves confirmed save, immutable predecessor, reload, semantic headers and print order.
+Pure model coverage proves contiguous movement, full node and presentation preservation, protected boundaries and
+rejection of merged grids and unsupported options. The adjacent table, caption, span, layout, cell-presentation, sort
+and comparison selection passes 49/49 cases. Evidence is retained as
+`office-table-reorder-desktop-chromium.png` and `office-table-reorder-mobile-chromium.png`. Reordering writes no new
+attribute; it only reorders existing complete rows or cells inside immutable Office version JSON, so no new numbered
+restore target is created.
+
 ## Evidence
 
 The ignored directory `e2e/work/artifacts/` receives:

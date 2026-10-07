@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–350 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 350 / PLANS 211 native table sorting
+Status: Roadmap 252–356 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 356 / PLANS 217 native table reordering
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0136; current table sorting: `ARCHITECTURE_DECISIONS/ADR-0136-native-office-table-sorting.md`
+Decisions: ADR-0079 through ADR-0137; current table reordering: `ARCHITECTURE_DECISIONS/ADR-0137-native-office-table-reordering.md`
+
+## Direct native table reordering (Roadmap 351–356)
+
+Authors can move a contiguous row selection one position up or down and a contiguous column selection one position
+left or right from the existing table menus. Boundary actions are disabled. The first all-header row and first
+all-header column remain fixed, and selections that overlap either protected area cannot move.
+
+Each action moves complete row or cell nodes with their semantic type, content, marks and bounded presentation. The
+same rectangular selection follows the moved block, and one accepted movement is one validated undo transaction.
+Merged and non-rectangular grids, unsupported options, stale selections, readers and historical views fail closed.
+Confirmed save, immutable versions, reload, comparison and print consume the canonical result without a new stored
+attribute, drag-and-drop layer or spreadsheet runtime.
 
 ## Bounded native table sorting (Roadmap 345–350)
 

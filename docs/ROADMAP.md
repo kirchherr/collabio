@@ -2288,6 +2288,31 @@ visuelle Desktop-Pruefung. Sortieren veraendert ausschliesslich die Reihenfolge 
 Office-Versions-JSON; es gibt keine relationale Migration, automatische Typinferenz, Formel- oder
 Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
 
+351. [x] Direktes Verschieben einer zusammenhaengenden Zeilenauswahl um genau eine Position nach oben oder unten
+     umgesetzt. Randaktionen sind deaktiviert und abgelehnte Befehle lassen den Entwurf unveraendert.
+
+352. [x] Direktes Verschieben einer zusammenhaengenden Spaltenauswahl um genau eine Position nach links oder rechts
+     umgesetzt. Jede vollstaendige Zelle bleibt mit ihrem Inhalt und ihrer Darstellung erhalten.
+
+353. [x] Semantische Kopfzeile und Kopfspalte als feste Bereiche geschuetzt. Auswahlen, die einen geschuetzten Bereich
+     beruehren, sowie verbundene oder nicht rechteckige Tabellen werden fail-closed abgelehnt.
+
+354. [x] Komplette Zeilen-, Zell-, Markierungs- und Praesentationsdaten sowie die rechteckige Auswahl beim Umordnen
+     erhalten. Jede erfolgreiche Bewegung ist genau ein validierter Undo-Schritt.
+
+355. [x] Barrierearme Umordnungsaktionen in die bestehenden Zeilen- und Spaltenmenues integriert. Nicht verfuegbare
+     Richtungen sind sichtbar deaktiviert; veraltete Auswahlen, Leser und Historienansichten bleiben No-ops.
+
+356. [x] Vollstaendigen Umordnungslebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 351 bis 356 / PLANS 212 bis 217 sind gemeinsam unter ADR-0137 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 5/5; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat-, Sortier- und Vergleichsmatrix bestand 49/49. Die kompakte Live-Ansicht mit direkten Zeilen- und
+Spaltenaktionen bestand die visuelle Pruefung. Umordnen veraendert ausschliesslich die Reihenfolge bestehender kompletter
+Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration, Drag-and-drop-Schicht,
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
 ## Persistente Backend-Runtime: Stand und Nachweise
 
 - [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.

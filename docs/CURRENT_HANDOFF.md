@@ -2,6 +2,28 @@
 
 Updated: 2026-10-07
 
+Roadmap 351 through 356 / PLANS 212 through 217 are complete under ADR-0137. Authors can move a contiguous selection
+of rows one position up or down and columns one position left or right from the existing table menus. The first
+all-header row and first all-header column remain fixed; boundary actions are disabled. Merged or non-rectangular
+grids, protected overlaps, unsupported options, stale selections, readers and historical views fail closed.
+
+Each accepted action moves complete row or cell nodes with semantic type, content, marks and bounded presentation,
+restores the same rectangular selection at its new position and creates exactly one validated undo step. Confirmed
+save, immutable predecessor, reload, comparison and print consume the canonical result without a new stored field,
+drag-and-drop layer or spreadsheet runtime.
+
+The focused model plus desktop/mobile workflow passed 5/5. The broad table, caption, span, layout, cell-presentation,
+sort and comparison matrix passed 49/49. Desktop and mobile screenshot SHA-256 values are
+`825d4e1b4cbe549f149a31a455f5a710eee3c11b537c30fab05957573ce6f2fe` and
+`8cc5e101d6046d0f9f8b51c593358afdb709870ee07745c8cd0ac9d623a23bc1`; the compact live editor and its direct
+row/column actions passed visual review without horizontal clipping.
+
+Product implementation is published in `bcfaae94`, with strengthened browser assertions through `1d17414e`, on
+`kirchherr/kb-write-unit-of-work`. Reordering reuses existing immutable Office version JSON and recovery contracts,
+so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI,
+spreadsheet runtime, DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-reorder-bcfaae94`.
+
 Roadmap 345 through 350 / PLANS 206 through 211 are complete under ADR-0136. Simple rectangular native tables with at
 least two data rows now support deterministic stable sorting by normalized text, strict decimal number or strict ISO
 date. The first all-header row remains fixed, empty values remain last in either direction and equal values retain their
