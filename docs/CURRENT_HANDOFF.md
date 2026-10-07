@@ -19,11 +19,16 @@ cell-presentation, sort, reorder, duplication and comparison matrix passed 59/59
 SHA-256 values are `3e420da2294b1caf0470a4d84dfd98f4347f382cec99d4d5a1351710ca58e8de` and
 `b644dd5a6d7d462cbd3f6f373edf3763231b1f029070ff56de8a60dba0e38ded`; both passed visual review.
 
-Product implementation is published through `04d2ff2a` on `kirchherr/kb-write-unit-of-work`. The implementation uses
+Product implementation is published through `d9e22846` on `kirchherr/kb-write-unit-of-work`. The implementation uses
 existing immutable Office version JSON and recovery contracts, so there is no relational migration or new restore
 target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime, DOCX engine or production admission was
 activated. The refreshed review UI is available at
 `http://192.168.0.108:42880/office?review=table-clipboard-formula-28baad6d`.
+
+Full quality on documented source `d9e22846` passed Ruff, formatting for 851 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Exact temporary `postgres-test`
+and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner remains. Regular and review
+APIs both return `ok`.
 
 Roadmap 357 through 362 / PLANS 218 through 223 are complete under ADR-0138. Authors can duplicate a contiguous
 selection of data rows directly below its source or data columns directly to its right from the existing table menus.
@@ -3278,7 +3283,7 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 363 through 370 / PLANS 224 through 231 are complete; product implementation is published through `04d2ff2a`.
+Roadmap 363 through 370 / PLANS 224 through 231 are complete; product implementation is published through `d9e22846`.
 Preserve safe Word/Excel clipboard translation, bounded server-verified local table formulas, merged table grids,
 semantic row/column headers, protected row/column duplication, inert native
 charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
