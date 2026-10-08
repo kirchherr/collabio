@@ -74,7 +74,12 @@ test("Office mixed paragraph formatting changes only chosen fields and undoes in
   await page.keyboard.type(" BEFORE");
   await selectParagraphBlocks(page, 0, 1);
   await openParagraphDialog(page, 2);
-  for (const id of Object.values(FORMAT_IDS)) await expect(page.locator(`#${id}`)).toHaveValue("mixed");
+  for (const key of ["textAlign", "lineSpacing", "spacingBefore", "spacingAfter"]) {
+    await expect(page.locator(`#${FORMAT_IDS[key]}`)).toHaveValue("mixed");
+  }
+  for (const key of ["keepWithNext", "keepLines", "pageBreakBefore"]) {
+    await expect(page.locator(`#${FORMAT_IDS[key]}`)).toHaveValue("default");
+  }
   await chooseParagraphFormat(page, { lineSpacing: "1.15" });
   await page.locator("#paragraph-apply").click();
   await expect(page.locator("#paragraph-dialog")).toBeHidden();
@@ -373,7 +378,7 @@ test("Office prints exact saved paragraph alignment and spacing into a tagged mu
   const calls = await installPrintProbe(page, { pdfName: "office-paragraph-a4-portrait.pdf" });
   await page.exposeFunction("measureParagraphPrint", async () => {
     await page.emulateMedia({ media: "print" });
-    return page.evaluate(() => [...document.querySelectorAll("#office-print-root p,#office-print-root h2")].map((element) => {
+    return page.evaluate(() => [...document.querySelectorAll("#office-print-root .office-print-content p,#office-print-root .office-print-content h2")].map((element) => {
       const style = getComputedStyle(element);
       return { text: element.textContent, align: style.textAlign, line: parseFloat(style.lineHeight) / parseFloat(style.fontSize), before: parseFloat(style.marginTop), after: parseFloat(style.marginBottom) };
     }));
