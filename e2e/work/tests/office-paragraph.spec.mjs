@@ -392,7 +392,7 @@ test("Office prints exact saved paragraph alignment and spacing into a tagged mu
   });
   await openPrintPreview(page, first.document.object_id, first.version.version_id);
   await expectParagraphStyle(page.locator("#print-preview h2"), PARAGRAPH_FORMAT);
-  await expectParagraphStyle(page.locator("#print-preview p").first(), PARAGRAPH_ALTERNATE);
+  await expectParagraphStyle(page.locator("#print-preview .office-print-content p").first(), PARAGRAPH_ALTERNATE);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-paragraph-print-preview.png`, fullPage: true });
   await submitOfficePrint(page, first.document.object_id, first.version.version_id);
   await expect.poll(() => calls[0]?.pdf?.length || 0).toBeGreaterThan(1000);
