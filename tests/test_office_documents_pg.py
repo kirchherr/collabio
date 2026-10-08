@@ -267,7 +267,7 @@ def test_pg_role_admin_can_edit_but_cannot_manage_direct_user_shares(database: D
 
     content = service.read_content(user_context=role_actor, object_id=object_id, write_enabled=True)
     assert content.can_write is True
-    assert content.can_share is False
+    assert content.document.can_share is False
     with pytest.raises(OfficeDocumentPermissionError):
         service.share_state(user_context=role_actor, object_id=object_id)
 
