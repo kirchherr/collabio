@@ -2,6 +2,31 @@
 
 Updated: 2026-10-08
 
+Roadmap 402 through 409 / PLANS 263 through 270 are complete under ADR-0145. Native Office now provides a responsive
+direct-user sharing dialog. A current directly granted document administrator can inspect active same-tenant members,
+grant or change `read` and `write`, and revoke access. The owner grant is immutable. Role and group grants continue to
+authorize document use, but cannot mutate direct-user shares; disabled, unknown and cross-tenant principals fail closed.
+
+Migration 0087 adds append-only share-decision receipts and two security-definer mutation functions. The database
+revalidates the tenant, document, direct actor grant, target, owner boundary, expected ACL version and mutation
+reference. Every successful change replaces the active ACL set with a complete next snapshot at one monotonically
+increasing version. The application role has no direct mutation grant. Current ACLs authorize current and historical
+reads; immutable document versions retain the ACL snapshot number that applied when saved for audit and restore
+traceability.
+
+Grant, change and revoke require explicit human confirmation and emit content-free audit metadata. The browser validates
+responses fail closed, reports stale concurrent changes and supports desktop and mobile layouts. The dedicated
+desktop/mobile Playwright flow passed 2/2; screenshot SHA-256 values are
+`813998c9655cd8da6d5ab8d6f775c7f848fc4c8b22e35055d21955447cdd1afd` and
+`581e406100f8be70a3780da5ded77221dd3681bc9c1afd97993408955ceca15c`.
+
+Product implementation is published through `252d9a50` on `kirchherr/kb-write-unit-of-work`. The isolated review
+database has migration 0087 and the rebuilt review API is healthy at
+`http://192.168.0.108:42880/office?review=document-sharing-252d9a50`. Focused service, API, PostgreSQL, migration and
+restore coverage passed after correcting a test-field assertion; Ruff and formatting passed for the changed policy
+files. The full quality run and final transient-container cleanup are recorded below once complete. No ordinary tenant,
+external guest, public link, role/group administration, AI provider, DOCX engine or production admission changed.
+
 Roadmap 395 through 401 / PLANS 256 through 262 are complete under ADR-0144. Native Office documents now carry the
 versioned information classification Öffentlich (`public`), Intern (`internal`), Vertraulich (`confidential`) or
 Streng vertraulich (`restricted`). It is deliberately separate from canonical runtime `data_classification`, so ACL,

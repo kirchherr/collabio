@@ -2455,7 +2455,31 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 401. [x] Vollstaendigen Klassifizierungslebenszyklus ueber Rechte, Migration, Audit, History, Vergleich, Druck,
      PostgreSQL-Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 401 / PLANS 224 bis 262 sind unter ADR-0139 bis ADR-0144 implementiert.
+402. [x] Native direkte Dokumentfreigabe unter ADR-0145 eingefuehrt: aktuelle Benutzerfreigaben lesen, `read` oder
+     `write` vergeben und direkte Benutzerfreigaben widerrufen.
+
+403. [x] Freigabeverzeichnis auf aktive Principals mit aktiver Mitgliedschaft desselben Tenants begrenzt. Unbekannte,
+     deaktivierte und tenant-fremde Ziele scheitern geschlossen.
+
+404. [x] Freigabeverwaltung auf aktuelle direkte `admin`-Benutzerrechte begrenzt und den unveraenderlichen Owner-
+     Grant geschuetzt. Rollen und Gruppen vermitteln weiterhin Zugriff, aber keine direkten Freigabemutationen.
+
+405. [x] Jede Aenderung als vollstaendigen monoton versionierten ACL-Snapshot mit optimistischer
+     `expected_acl_version`-Pruefung gespeichert; veraltete Dialoge koennen keine neuere Freigabe ueberschreiben.
+
+406. [x] Explizite menschliche Bestaetigung, eindeutige Mutationsreferenz, inhaltsfreies Audit und append-only
+     Entscheidungsbelege fuer Vergabe, Aenderung und Widerruf geschlossen.
+
+407. [x] Responsive Freigabeoberflaeche mit aktueller Tenant-Benutzerauswahl, Rechtewahl, Owner-Schutz,
+     Widerrufsbestaetigung und fail-closed Antwortvalidierung in den Office-Editor integriert.
+
+408. [x] Aktuelle ACLs fuer aktuelle und historische Inhalte autoritativ gehalten und den beim Speichern aktuellen
+     ACL-Snapshot zur unveraenderlichen Versions-, Restore- und Audit-Nachverfolgung gebunden.
+
+409. [x] Vollstaendigen Freigabelebenszyklus ueber Service, API, PostgreSQL-Funktionen, Migration, Restore sowie
+     responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 409 / PLANS 224 bis 270 sind unter ADR-0139 bis ADR-0145 implementiert.
 Die fokussierten Serverpruefungen bestanden 35/35 und der Bereichsformel-Modell-/Browserlauf 22/22. HTML, TSV,
 Anker, Strukturabbildungen und Bereichsaktionen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
 es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder
