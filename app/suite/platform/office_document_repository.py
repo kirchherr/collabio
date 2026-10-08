@@ -347,9 +347,7 @@ class PgOfficeDocumentRepository:
             return self._share_state(connection, document)
 
     @staticmethod
-    def _share_state(
-        connection: psycopg.Connection[Any], document: OfficeDocumentRecord
-    ) -> OfficeDocumentShareState:
+    def _share_state(connection: psycopg.Connection[Any], document: OfficeDocumentRecord) -> OfficeDocumentShareState:
         acl_version_row = connection.execute(
             "SELECT COALESCE(MAX(acl_version), 1) FROM collabio.object_acl_entries "
             "WHERE tenant_id = %s AND object_id = %s AND object_type = %s",
@@ -778,20 +776,26 @@ class InMemoryOfficeDocumentRepository:
                 if tenant_id != user_context.tenant_id or doc_id != object_id:
                     continue
                 display_name, email = known[(tenant_id, principal_id)]
-                entries.append(OfficeDocumentShareEntry(
-                    principal_id=principal_id, display_name=display_name, email=email,
-                    permission=cast(Literal["read", "write", "admin"], permission),
-                    is_owner=principal_id == document.owner_principal_id,
-                ))
+                entries.append(
+                    OfficeDocumentShareEntry(
+                        principal_id=principal_id,
+                        display_name=display_name,
+                        email=email,
+                        permission=cast(Literal["read", "write", "admin"], permission),
+                        is_owner=principal_id == document.owner_principal_id,
+                    )
+                )
             available = [
                 OfficeDocumentSharePrincipal(principal_id=principal_id, display_name=value[0], email=value[1])
                 for (tenant_id, principal_id), value in sorted(known.items(), key=lambda item: item[1][0].lower())
                 if tenant_id == user_context.tenant_id
             ]
             return OfficeDocumentShareState(
-                tenant_id=user_context.tenant_id, object_id=object_id,
+                tenant_id=user_context.tenant_id,
+                object_id=object_id,
                 acl_version=self.share_versions.get((user_context.tenant_id, object_id), 1),
-                entries=entries, available_principals=available,
+                entries=entries,
+                available_principals=available,
             )
 
     def set_share(

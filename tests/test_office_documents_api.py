@@ -224,8 +224,7 @@ def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     assert granted.status_code == 200
     assert granted.json()["acl_version"] == 2
     assert any(
-        entry["principal_id"] == "api-reader" and entry["permission"] == "read"
-        for entry in granted.json()["entries"]
+        entry["principal_id"] == "api-reader" and entry["permission"] == "read" for entry in granted.json()["entries"]
     )
 
     stale = office_api.client.post(

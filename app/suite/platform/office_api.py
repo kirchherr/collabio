@@ -425,9 +425,7 @@ def register_office_routes(
             user_context=context.user_context, object_id=object_id
         )
 
-    @router.post(
-        "/{object_id}/shares", response_model=OfficeDocumentShareState, dependencies=[Depends(write_gate)]
-    )
+    @router.post("/{object_id}/shares", response_model=OfficeDocumentShareState, dependencies=[Depends(write_gate)])
     def set_document_share(
         object_id: str,
         command: OfficeDocumentShareCommand,
