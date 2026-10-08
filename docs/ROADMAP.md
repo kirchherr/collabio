@@ -2609,7 +2609,29 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 452. [x] Vollstaendigen Texthervorhebungs-Lebenszyklus unter ADR-0151 ohne Migration, Endpunkt, Abhaengigkeit,
      externen Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 452 / PLANS 224 bis 313 sind unter ADR-0139 bis ADR-0151 implementiert.
+453. [x] Begrenzte native Hoch-/Tiefstellung und Zeichenabstaende unter ADR-0152 eingefuehrt: direkte
+     Zeichenformatierung speichert optional `superscript` oder `subscript` sowie `tight` oder `wide`; Abwesenheit
+     bleibt der kanonische Standard.
+
+454. [x] Numerische Offsets, Masse, Prozentwerte, beliebiges CSS, URLs und unbekannte Tokens in Browser und Server
+     abgewiesen und akzeptierte Werte ausschliesslich auf festes druckfaehiges CSS abgebildet.
+
+455. [x] Responsiven Zeichendialog um Standard, Mischzustand, Hochgestellt, Tiefgestellt, Eng und Weit fuer Auswahl
+     und Cursorformat, kanonischen Reset und einen isolierten Undo-Schritt erweitert.
+
+456. [x] Baseline-Werte auf direkte Textbereiche begrenzt und aus Absatzvorlagen ausgeschlossen; den
+     Zeichenabstand sicher in Dokumentvorlagen zugelassen und direkte Zeichenwerte vorrangig gehalten.
+
+457. [x] Neue Typografie durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+458. [x] Identische inerte Darstellung in Editor und semantischem Druck/PDF sowie exakte Hoch-/Tiefstellungs- und
+     Abstandsprofile im vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+459. [x] Vollstaendigen Typografie-Lebenszyklus unter ADR-0152 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 459 / PLANS 224 bis 320 sind unter ADR-0139 bis ADR-0152 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

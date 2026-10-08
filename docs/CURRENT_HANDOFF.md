@@ -2,6 +2,26 @@
 
 Updated: 2026-10-08
 
+Roadmap 453 through 459 / PLANS 314 through 320 are complete under ADR-0152. Native Office direct character
+formatting now supports exact superscript/subscript baseline tokens and tight/wide character spacing. Absence remains
+the canonical default. Browser and server reject numeric offsets, dimensions, percentages, arbitrary CSS, URLs and
+unknown values; trusted static CSS renders the fixed values in editor and print.
+
+Baseline position remains direct-text-only because block-level paragraph styles cannot raise or lower their inline
+contents. Document-owned styles reject it. Tight/wide spacing is available directly and through document-owned
+styles, with direct marks retaining precedence. Selection, mixed state, pending caret input, canonical reset,
+isolated undo/redo, lists, tables, format transfer, text-type conversion, search/replacement, comparison, suggestions,
+confirmed CAS save, immutable history, reload, reuse and semantic PDF retain the exact values. Recovery versions two
+and three now bind superscript/wide and subscript/tight profiles without a migration or new store.
+
+The focused schema/API/PostgreSQL/recovery/style matrix passed 168/168. The pure model check passed 8/8 and the
+complete character plus adjacent responsive style matrix passed 18/18; after narrowing baseline effects to direct
+text, the exact affected Python suite passed 53/53 and browser suite passed 6/6. Desktop, tablet, mobile, style and
+print screenshots passed visual review. Product source through `8b4b5ee3` is published on
+`kirchherr/kb-write-unit-of-work`; review is healthy at
+`http://192.168.0.108:42880/office?review=typography-8b4b5ee3`. Full quality and scoped temporary-resource cleanup
+remain for closeout.
+
 Roadmap 446 through 452 / PLANS 307 through 313 are complete under ADR-0151. Native Office direct character
 formatting now supports six bounded text highlights: yellow, lime, cyan, pink, lavender and gray. The document stores
 only those canonical tokens; absence remains the default. Browser and server reject arbitrary colors, CSS, alpha,
