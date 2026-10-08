@@ -23,6 +23,7 @@ from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
     OfficeDocumentHistoryPage,
+    OfficeInformationClassification,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentRecord,
@@ -107,7 +108,9 @@ def _validated_history_page(
     )
 
 
-def _new_document(user: UserContext, title: str, information_classification: str) -> OfficeDocumentRecord:
+def _new_document(
+    user: UserContext, title: str, information_classification: OfficeInformationClassification
+) -> OfficeDocumentRecord:
     now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return OfficeDocumentRecord(
         tenant_id=user.tenant_id,
