@@ -262,7 +262,7 @@
     <dialog class="office-dialog paragraph-dialog" id="link-dialog" aria-labelledby="link-title">
       <form id="link-form"><header><h2 id="link-title">Link bearbeiten</h2><button class="icon-button" id="link-close" type="button" aria-label="Linkdialog schließen">×</button></header>
         <div class="dialog-body"><p>Ausgewählter Text: <q id="link-selection"></q></p><label>Adresse<input id="link-href" type="url" maxlength="2048" autocomplete="off" spellcheck="false" placeholder="https://example.org/ oder mailto:name@example.org" required /></label>
-          <p class="paragraph-help">Links werden nicht automatisch erkannt oder geöffnet. Zulässig sind vollständige HTTPS-Adressen und einfache E-Mail-Adressen ohne vorgefertigte Nachricht.</p><p id="link-status" role="status" aria-live="polite"></p>
+          <p class="paragraph-help">Vollständige HTTPS-Adressen und einfache E-Mail-Adressen werden beim Tippen oder Einfügen sicher erkannt. Links werden nie automatisch geöffnet.</p><p id="link-status" role="status" aria-live="polite"></p>
           <div class="review-actions"><button class="quiet-button" id="link-open" type="button">Link bewusst öffnen</button><button class="quiet-button" id="link-remove" type="button">Link entfernen</button></div>
         </div><footer><button class="button secondary" id="link-cancel" type="button">Abbrechen</button><button class="button primary" id="link-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>

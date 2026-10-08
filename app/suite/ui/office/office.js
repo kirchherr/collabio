@@ -29,7 +29,7 @@ import { officeShapeGroupExtension } from "./office-shape-group-extension.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
 import { OFFICE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
-import { officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
+import { OFFICE_LINK_MAX, officeAutomaticLinkContent, officeAutomaticLinks, officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
 import { clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas } from "./office-table-formulas.mjs";
@@ -193,6 +193,30 @@ const OfficeLink = Mark.create({
   },
   renderHTML({ mark }) { return ["a", officeLinkDOMAttributes(mark.attrs.href), 0]; },
 });
+
+function applyAutomaticLinkInput(view, from, to, text) {
+  if (from !== to || !/\s$/u.test(text)) return false;
+  const resolved = view.state.doc.resolve(from);
+  if (!resolved.parent.isTextblock || resolved.parent.type.name === "codeBlock") return false;
+  const startOffset = Math.max(0, resolved.parentOffset - OFFICE_LINK_MAX - 8);
+  const before = resolved.parent.textBetween(startOffset, resolved.parentOffset, "", "\ufffc");
+  const source = before + text, boundary = source.length - (source.match(/\s+$/u)?.[0].length || 0);
+  const link = officeAutomaticLinks(source.slice(0, boundary)).at(-1);
+  if (!link || !/^[\])}.,;:!?]*$/u.test(source.slice(link.to, boundary))) return false;
+  const markFrom = resolved.start() + startOffset + link.from, markTo = resolved.start() + startOffset + link.to;
+  let blocked = false;
+  view.state.doc.nodesBetween(markFrom, markTo, (node) => {
+    if (node.isText && node.marks.some((mark) => ["code", "link", "crossReference", "documentReference"].includes(mark.type.name))) {
+      blocked = true;
+    }
+  });
+  if (blocked) return false;
+  const type = view.state.schema.marks.link;
+  const transaction = view.state.tr.insertText(text, from, to).addMark(markFrom, markTo, type.create({ href: link.href }));
+  transaction.removeStoredMark(type);
+  view.dispatch(transaction.scrollIntoView());
+  return true;
+}
 const OfficeBookmark = Node.create({
   name: "bookmark", group: "inline", inline: true, atom: true, selectable: true,
   addAttributes() { return { id: { default: null, rendered: false }, label: { default: null, rendered: false } }; },
@@ -3190,7 +3214,9 @@ function prepareEditor(content, session) {
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
       handleKeyDown(view, event) { return handlePageBreakKey(view, event) || handleTableKey(view, event) || handleListKey(view, event); },
-      handleTextInput(view, _from, _to, text) { return replaceWholeDocument(view, text); },
+      handleTextInput(view, from, to, text) {
+        return replaceWholeDocument(view, text) || applyAutomaticLinkInput(view, from, to, text);
+      },
       handleDOMEvents: {
         // Android Chromium can bypass ProseMirror's ordinary Enter keymap.
         // Handle this explicit command before native paragraph insertion.
@@ -3221,7 +3247,7 @@ function prepareEditor(content, session) {
         if (replaceWholeDocument(view, text)) return true;
         if (text.length > 100000) { notice("Der eingefügte Text ist zu lang.", true); return true; }
         const paragraphs = text.replaceAll("\r", "").split("\n").map((line) => ({
-          type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}),
+          type: "paragraph", ...(line ? { content: officeAutomaticLinkContent(line) } : {}),
         }));
         state.editor?.commands.insertContent(paragraphs);
         return true;

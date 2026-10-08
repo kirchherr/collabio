@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { OFFICE_LINK_MAX, officeLinkDOMAttributes, officeLinkDescription, officeLinkHref } from "../office-links.mjs";
+import { OFFICE_LINK_MAX, officeAutomaticLinkContent, officeAutomaticLinks, officeLinkDOMAttributes, officeLinkDescription, officeLinkHref } from "../office-links.mjs";
 import { compareOfficeDocuments } from "../office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches } from "../office-search.mjs";
 
@@ -23,4 +23,27 @@ test("Office link targets remain exact through comparison and text replacement",
   const matches = findDocumentMatches(before, "Reference");
   const changed = replaceDocumentMatches(before, matches, "Source").document;
   expect(changed.content[0].content[0].marks).toEqual(before.content[0].content[0].marks);
+});
+
+test("Office automatic links recognize only complete safe HTTPS and mail tokens", () => {
+  const text = "Siehe (https://example.org/a_(b)). Mail name@example.org, aber nicht http://unsafe.invalid oder javascript:alert(1).";
+  expect(officeAutomaticLinks(text)).toEqual([
+    { from: 7, to: 32, href: "https://example.org/a_(b)" },
+    { from: 40, to: 56, href: "mailto:name@example.org" },
+  ]);
+  expect(officeAutomaticLinks("mailto:office@example.org https://user:secret@example.org x@y..example.org")).toEqual([
+    { from: 0, to: 25, href: "mailto:office@example.org" },
+  ]);
+  expect(() => officeAutomaticLinks(null)).toThrow();
+});
+
+test("Office automatic link content keeps every literal character and adds only canonical marks", () => {
+  expect(officeAutomaticLinkContent("A https://example.org/docs. B name@example.org! C")).toEqual([
+    { type: "text", text: "A " },
+    { type: "text", text: "https://example.org/docs", marks: [{ type: "link", attrs: { href: "https://example.org/docs" } }] },
+    { type: "text", text: ". B " },
+    { type: "text", text: "name@example.org", marks: [{ type: "link", attrs: { href: "mailto:name@example.org" } }] },
+    { type: "text", text: "! C" },
+  ]);
+  expect(officeAutomaticLinkContent("plain text")).toEqual([{ type: "text", text: "plain text" }]);
 });
