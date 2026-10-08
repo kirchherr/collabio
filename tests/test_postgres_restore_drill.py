@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from collections.abc import Callable
 from pathlib import Path
 from uuid import uuid4
@@ -83,7 +84,12 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
         for column in sorted({"tenant_id"} | OFFICE_UPDATE_COLUMNS.get(table, set()))
     ]
     for (table_name, trigger_name), (function_name, timing, security_definer) in OFFICE_TRIGGER_FUNCTIONS.items():
-        function_sql = migration_sql.split(f"CREATE FUNCTION office.{function_name}()", 1)[1]
+        definitions = re.findall(
+            rf"CREATE(?: OR REPLACE)? FUNCTION office\.{re.escape(function_name)}\(\).*?\$\$;",
+            migration_sql,
+            flags=re.DOTALL,
+        )
+        function_sql = definitions[-1]
         triggers.append(
             {
                 "schema_name": "office",
@@ -106,7 +112,7 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
                 "function_language": "plpgsql",
                 "function_identity_arguments": "",
                 "function_result": "trigger",
-                "function_definition": f"CREATE FUNCTION office.{function_name}(){function_sql.split('$$;', 1)[0]}$$;",
+                "function_definition": function_sql,
                 "function_body": function_sql.split("AS $$", 1)[1].split("$$;", 1)[0],
                 "function_public_execute": False,
                 "function_runtime_execute": False,
