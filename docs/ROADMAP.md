@@ -2567,7 +2567,28 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 438. [x] Vollstaendigen Auto-Link-Lebenszyklus unter ADR-0149 ohne Migration, neuen Endpunkt, Netzwerklookup,
      URL-Vorschau, Provider, Worker, Recovery-Speicher oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 438 / PLANS 224 bis 299 sind unter ADR-0139 bis ADR-0149 implementiert.
+439. [x] Begrenzte native Schriftfamilien unter ADR-0150 eingefuehrt: direkte Zeichenformatierung speichert optional
+     ausschliesslich `sans`, `serif` oder `mono`; Abwesenheit bleibt der kanonische Legacy-Standard.
+
+440. [x] Freie Fontnamen, CSS, URLs, Dateien, eingebettete Schriften und unbekannte Tokens in Browser und Server
+     abgewiesen und die drei Werte nur auf feste lokale, druckfaehige CSS-Fallbackstapel abgebildet.
+
+441. [x] Responsive Zeichenformatierung um Standard, Sans Serif, Serif und Monospace samt Mischzustand, Cursorformat,
+     kanonischem Reset und einem isolierten Undo-Schritt erweitert.
+
+442. [x] Dokumenteigene Formatvorlagen um denselben Schriftfamilienvertrag erweitert. Gebundene Absaetze und
+     Ueberschriften erben die Familie, waehrend direkte Zeichenmarken weiterhin Vorrang behalten.
+
+443. [x] Schriftfamilien durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+444. [x] Identische inerte Darstellung in Editor, Vorlagenvorschau und semantischem Druck/PDF sowie exakte
+     Einbindung in den vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+445. [x] Vollstaendigen Schriftfamilien-Lebenszyklus unter ADR-0150 ohne Migration, Endpunkt, Abhaengigkeit,
+     Fontdownload, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 445 / PLANS 224 bis 306 sind unter ADR-0139 bis ADR-0150 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
