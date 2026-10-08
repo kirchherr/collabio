@@ -8,7 +8,7 @@ const document = () => ({ type: "doc", attrs: { styles: [definition()] }, conten
 
 test("named styles reject malformed catalogs untrusted values and duplicate identities", () => {
   for (const value of [null, {}, [null], [{ ...definition(), name: "bad\n" }], [{ ...definition(), name: "bad\ud800" }],
-    [{ ...definition(), character: { fontFamily: "Arial" } }], [{ ...definition(), character: { fontSize: "18" } }], [{ ...definition(), paragraph: { url: "SECRET" } }],
+    [{ ...definition(), character: { fontFamily: "Arial" } }], [{ ...definition(), character: { fontSize: "18" } }], [{ ...definition(), character: { highlightColor: "yellow" } }], [{ ...definition(), paragraph: { url: "SECRET" } }],
     [definition(), definition()], Array.from({ length: 21 }, (_, n) => ({ ...definition(), id: `style-${n}`, name: `Style ${n}` }))]) {
     expect(() => officeStyles(value)).toThrow();
   }

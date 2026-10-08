@@ -7,13 +7,23 @@ export const OFFICE_TEXT_COLORS = Object.freeze({
   black: "Schwarz", slate: "Schiefergrau", red: "Rot", orange: "Dunkelorange",
   green: "Grün", teal: "Petrol", blue: "Blau", purple: "Violett",
 });
+export const OFFICE_HIGHLIGHT_COLORS = Object.freeze({
+  yellow: "Gelb", lime: "Hellgrün", cyan: "Hellblau", pink: "Rosa", lavender: "Lavendel", gray: "Grau",
+});
 export const OFFICE_CHARACTER_VALUES = Object.freeze({
   fontFamily: Object.freeze(Object.keys(OFFICE_FONT_FAMILIES)),
   fontSize: OFFICE_FONT_SIZES, textColor: Object.freeze(Object.keys(OFFICE_TEXT_COLORS)),
+  highlightColor: Object.freeze(Object.keys(OFFICE_HIGHLIGHT_COLORS)),
+});
+export const OFFICE_STYLE_CHARACTER_VALUES = Object.freeze({
+  fontFamily: OFFICE_CHARACTER_VALUES.fontFamily,
+  fontSize: OFFICE_CHARACTER_VALUES.fontSize,
+  textColor: OFFICE_CHARACTER_VALUES.textColor,
 });
 
 const domNames = Object.freeze({
   fontFamily: "data-office-font-family", fontSize: "data-office-font-size", textColor: "data-office-text-color",
+  highlightColor: "data-office-highlight-color",
 });
 
 export function officeCharacterAttributes(attrs) {
@@ -41,5 +51,6 @@ export function officeCharacterDescription(attrs) {
   const values = officeCharacterAttributes(attrs);
   return [values.fontFamily === undefined ? null : `Schriftart: ${OFFICE_FONT_FAMILIES[values.fontFamily]}`,
     values.fontSize === undefined ? null : `Schriftgröße: ${values.fontSize} pt`,
-    values.textColor === undefined ? null : `Textfarbe: ${OFFICE_TEXT_COLORS[values.textColor]}`].filter(Boolean).join("; ");
+    values.textColor === undefined ? null : `Textfarbe: ${OFFICE_TEXT_COLORS[values.textColor]}`,
+    values.highlightColor === undefined ? null : `Hervorhebung: ${OFFICE_HIGHLIGHT_COLORS[values.highlightColor]}`].filter(Boolean).join("; ");
 }

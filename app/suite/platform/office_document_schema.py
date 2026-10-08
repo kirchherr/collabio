@@ -55,6 +55,7 @@ MARKS = {
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 FONT_FAMILIES = {"sans", "serif", "mono"}
+HIGHLIGHT_COLORS = {"yellow", "lime", "cyan", "pink", "lavender", "gray"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {
     "textAlign",
     "lineSpacing",

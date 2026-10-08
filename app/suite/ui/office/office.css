@@ -83,6 +83,12 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="teal"]{color:#115e59;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="blue"]{color:#1d4ed8;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="purple"]{color:#7e22ce;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="yellow"]{background-color:#fef08a;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="lime"]{background-color:#d9f99d;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="cyan"]{background-color:#bae6fd;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="pink"]{background-color:#fbcfe8;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="lavender"]{background-color:#ddd6fe;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="gray"]{background-color:#e5e7eb;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 /* Mobile review drawers have their own close action and need room beyond the toolbar. */
 @media(max-width:760px){.document-inspector.comments-active,.document-inspector.suggestions-active{position:fixed;top:56px;bottom:34px}}
 /* One contextual entry owns all document-style creation, preview and update controls. */

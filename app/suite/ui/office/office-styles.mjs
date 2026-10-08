@@ -1,6 +1,6 @@
 // Document-owned, versioned paragraph styles. No CSS, HTML or external references.
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
-import { OFFICE_CHARACTER_VALUES, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
+import { OFFICE_STYLE_CHARACTER_VALUES, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 
 export const OFFICE_STYLE_LIMIT = 20;
 export const OFFICE_STYLE_PRESETS = Object.freeze([
@@ -19,7 +19,7 @@ export function officeStyles(value = []) {
         typeof style.id !== "string" || !/^[a-z][a-z0-9-]{0,47}$/.test(style.id) || ids.has(style.id) ||
         typeof style.name !== "string" || !style.name.length || [...style.name].length > 60 ||
         style.name.trim() !== style.name || /[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(style.name) || names.has(style.name)) reject();
-    for (const [key, values] of [["paragraph", OFFICE_PARAGRAPH_VALUES], ["character", OFFICE_CHARACTER_VALUES]]) {
+    for (const [key, values] of [["paragraph", OFFICE_PARAGRAPH_VALUES], ["character", OFFICE_STYLE_CHARACTER_VALUES]]) {
       const attrs = style[key];
       if (!attrs || typeof attrs !== "object" || Array.isArray(attrs) ||
           Object.entries(attrs).some(([name, entry]) => !Object.hasOwn(values, name) || !values[name].includes(entry))) reject();

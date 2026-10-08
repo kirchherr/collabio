@@ -27,7 +27,7 @@ import { officeChartAttributes } from "./office-charts.mjs";
 import { officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { officeShapeGroupExtension } from "./office-shape-group-extension.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
-import { OFFICE_CHARACTER_VALUES, OFFICE_FONT_FAMILIES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
+import { OFFICE_CHARACTER_VALUES, OFFICE_FONT_FAMILIES, OFFICE_HIGHLIGHT_COLORS, OFFICE_STYLE_CHARACTER_VALUES, OFFICE_TEXT_COLORS, officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacterDescription } from "./office-character.mjs";
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { OFFICE_LINK_MAX, officeAutomaticLinkContent, officeAutomaticLinks, officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
@@ -173,14 +173,14 @@ const OfficeCharacterFormat = Mark.create({
   name: "textStyle",
   addAttributes() {
     return Object.fromEntries(Object.entries(OFFICE_CHARACTER_VALUES).map(([key, values]) => {
-      const domName = { fontFamily: "data-office-font-family", fontSize: "data-office-font-size", textColor: "data-office-text-color" }[key];
+      const domName = { fontFamily: "data-office-font-family", fontSize: "data-office-font-size", textColor: "data-office-text-color", highlightColor: "data-office-highlight-color" }[key];
       return [key, { default: null, keepOnSplit: true,
         parseHTML: (element) => values.find((value) => String(value) === element.getAttribute(domName)) ?? null,
         renderHTML: (attrs) => officeCharacterDOMAttributes({ [key]: attrs[key] }),
       }];
     }));
   },
-  parseHTML() { return [{ tag: "span[data-office-font-family]" }, { tag: "span[data-office-font-size]" }, { tag: "span[data-office-text-color]" }]; },
+  parseHTML() { return [{ tag: "span[data-office-font-family]" }, { tag: "span[data-office-font-size]" }, { tag: "span[data-office-text-color]" }, { tag: "span[data-office-highlight-color]" }]; },
   renderHTML({ HTMLAttributes }) { return ["span", HTMLAttributes, 0]; },
 });
 const OfficeLink = Mark.create({
@@ -1188,7 +1188,7 @@ function applyParagraphFormat() {
   notice("Absatzformatierung angewendet. Änderungen bleiben bis zum Speichern im Entwurf.");
 }
 
-const characterFields = { fontFamily: "character-family", fontSize: "character-size", textColor: "character-color" };
+const characterFields = { fontFamily: "character-family", fontSize: "character-size", textColor: "character-color", highlightColor: "character-highlight" };
 const characterHelp = "Die Formatierung bleibt bis zum Speichern im Entwurf. Code wird nicht verändert.";
 
 function selectedCharacters(editor = state.editor) {
@@ -2026,7 +2026,7 @@ function changeTextStyle(value) {
 
 const styleFields = {
   ...Object.fromEntries(Object.keys(OFFICE_PARAGRAPH_VALUES).map((key) => [key, `style-${key}`])),
-  ...Object.fromEntries(Object.keys(OFFICE_CHARACTER_VALUES).map((key) => [key, `style-${key}`])),
+  ...Object.fromEntries(Object.keys(OFFICE_STYLE_CHARACTER_VALUES).map((key) => [key, `style-${key}`])),
 };
 
 function closeStyleDialog(restoreFocus = false) {
@@ -5898,7 +5898,8 @@ $("list-dialog").addEventListener("cancel", (event) => { event.preventDefault();
 $("list-dialog").addEventListener("close", () => { if (!$("list-dialog").open && state.listAction) closeListDialog(); });
 for (const [key, id] of Object.entries(characterFields)) {
   for (const value of OFFICE_CHARACTER_VALUES[key]) {
-    const option = node("option", key === "fontFamily" ? OFFICE_FONT_FAMILIES[value] : key === "fontSize" ? `${value} pt` : OFFICE_TEXT_COLORS[value]);
+    const option = node("option", key === "fontFamily" ? OFFICE_FONT_FAMILIES[value] : key === "fontSize" ? `${value} pt` :
+      key === "textColor" ? OFFICE_TEXT_COLORS[value] : OFFICE_HIGHLIGHT_COLORS[value]);
     option.value = String(value); $(id).append(option);
   }
   $(id).addEventListener("change", () => { $("character-status").textContent = characterHelp; $("character-status").classList.remove("error"); });

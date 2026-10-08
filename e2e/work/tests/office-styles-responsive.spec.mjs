@@ -10,7 +10,7 @@ test("Office named style controls preview and shared update are reachable on des
     expect(await page.locator("#style-dialog").evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.locator("#style-close")).toBeInViewport();
-    for (const id of ["style-choice", "style-name", "style-fontFamily", "style-fontSize", "style-textAlign", "style-spacingAfter", "style-update", "style-remove", "style-cancel", "style-apply"]) {
+    for (const id of ["style-choice", "style-name", "style-fontFamily", "style-fontSize", "style-textColor", "style-textAlign", "style-spacingAfter", "style-update", "style-remove", "style-cancel", "style-apply"]) {
       await page.locator(`#${id}`).scrollIntoViewIfNeeded(); await expect(page.locator(`#${id}`)).toBeInViewport();
     }
     await page.locator("#style-choice").scrollIntoViewIfNeeded();

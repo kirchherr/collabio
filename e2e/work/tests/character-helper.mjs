@@ -37,15 +37,20 @@ export async function applyCharacters(page, choices) {
   await expect(officeEditor(page)).toBeFocused();
 }
 
-export async function expectCharacterStyle(locator, size, color, family = null) {
+export async function expectCharacterStyle(locator, size, color, family = null, highlight = null) {
   await expect(locator).toHaveAttribute("data-office-font-size", String(size));
   await expect(locator).toHaveAttribute("data-office-text-color", color);
   if (family) await expect(locator).toHaveAttribute("data-office-font-family", family);
+  if (highlight) await expect(locator).toHaveAttribute("data-office-highlight-color", highlight);
   expect(await locator.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeCloseTo(size * 4 / 3, 1);
   const colors = { blue: "rgb(29, 78, 216)", red: "rgb(185, 28, 28)", purple: "rgb(126, 34, 206)", green: "rgb(22, 101, 52)" };
   if (colors[color]) await expect(locator).toHaveCSS("color", colors[color]);
   if (family) {
     const expected = { sans: "Arial", serif: "Georgia", mono: "Consolas" }[family];
     expect(await locator.evaluate((element) => getComputedStyle(element).fontFamily)).toContain(expected);
+  }
+  if (highlight) {
+    const expected = { yellow: "rgb(254, 240, 138)", lime: "rgb(217, 249, 157)", cyan: "rgb(186, 230, 253)", pink: "rgb(251, 207, 232)", lavender: "rgb(221, 214, 254)", gray: "rgb(229, 231, 235)" }[highlight];
+    await expect(locator).toHaveCSS("background-color", expected);
   }
 }

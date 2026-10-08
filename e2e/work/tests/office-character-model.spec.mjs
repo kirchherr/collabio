@@ -5,14 +5,14 @@ import { officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacte
 import { characterDocument, characterText } from "./character-helper.mjs";
 
 test("character attributes reject untrusted presentation and retain only browser null defaults", () => {
-  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { fontSize: true }, { style: "url(SECRET)" }]) {
+  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { highlightColor: "url(SECRET)" }, { fontSize: true }, { style: "url(SECRET)" }]) {
     expect(() => officeCharacterAttributes(value)).toThrow();
   }
   expect(officeCharacterAttributes({ fontFamily: null, fontSize: null, textColor: "blue" })).toEqual({ textColor: "blue" });
-  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue" })).toEqual({
-    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue",
+  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow" })).toEqual({
+    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-highlight-color": "yellow",
   });
-  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau");
+  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau; Hervorhebung: Gelb");
 });
 
 test("character comparison detects same-text size and color changes inside nested blocks", () => {

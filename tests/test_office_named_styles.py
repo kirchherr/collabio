@@ -87,6 +87,7 @@ def test_styles_reject_invalid_catalog_shapes(value: Any) -> None:
         ("character", {"fontFamily": None}),
         ("character", {"textColor": "#fff"}),
         ("character", {"textColor": None}),
+        ("character", {"highlightColor": "yellow"}),
         ("character", {"style": "SECRET"}),
         ("url", "SECRET"),
     ],
