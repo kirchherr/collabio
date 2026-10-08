@@ -1,6 +1,6 @@
 import { OFFICE_RUNNING_DEFAULT, officeRunningSettings, officeRunningNumber } from "./office-running.mjs";
 import { closeHistory } from "@tiptap/pm/history";
-import { OFFICE_PAGE_DEFAULT, OFFICE_PAGE_SIDES, officePageSettings, officePageDescription, officePagePreview } from "./office-page.mjs";
+import { OFFICE_PAGE_DEFAULT, OFFICE_PAGE_SIDES, officePageColumns, officePageSettings, officePageDescription, officePagePreview } from "./office-page.mjs";
 
 export function installOfficePageControls({ state, allowed, actionCurrent, sessionCurrent, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id);
@@ -14,7 +14,8 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     if (restoreFocus && previous?.editor === state.editor && sessionCurrent(previous.session)) focus();
   };
   const read = () => officePageSettings({ paper: $("page-paper").value, orientation: $("page-orientation").value,
-    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`page-${side}`).valueAsNumber])) });
+    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`page-${side}`).valueAsNumber])),
+    ...($("page-columns").value === "one" ? {} : { columns: $("page-columns").value }) });
   const readRunning = (page) => officeRunningSettings({ header: $("page-header").value, footer: $("page-footer").value,
     numbering: $("page-numbering").value, ...($("page-first-different").checked ? { firstPage: {
       header: $("page-first-header").value, footer: $("page-first-footer").value,
@@ -47,6 +48,7 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
   };
   const fill = (page) => {
     $("page-paper").value = page.paper; $("page-orientation").value = page.orientation;
+    $("page-columns").value = officePageColumns(page);
     for (const side of OFFICE_PAGE_SIDES) $(`page-${side}`).value = String(page.margins[side]);
     preview();
   };
@@ -57,7 +59,7 @@ export function installOfficePageControls({ state, allowed, actionCurrent, sessi
     const sheet = $("document-page");
     sheet.classList.toggle("has-page-settings", value != null);
     if (value != null) officePagePreview(sheet, value);
-    else sheet.removeAttribute("style");
+    else { sheet.removeAttribute("style"); delete sheet.dataset.officeColumns; }
     $("page-options").title = officePageDescription(value ?? undefined);
   };
   $("page-options").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });

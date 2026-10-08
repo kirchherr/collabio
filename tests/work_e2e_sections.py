@@ -17,11 +17,12 @@ from work_e2e_paragraph import paragraph_recovery_document
 SECTION_RECOVERY_TITLE = "Synthetic section recovery"
 
 
-def _section_profile(*, paper: str, orientation: str, header: str) -> dict[str, Any]:
+def _section_profile(*, paper: str, orientation: str, columns: str, header: str) -> dict[str, Any]:
     return {
         "page": {
             "paper": paper,
             "orientation": orientation,
+            "columns": columns,
             "margins": {"top": 20, "right": 16, "bottom": 22, "left": 18},
         },
         "running": {"header": header, "footer": "Internal", "numbering": "pageOfPages"},
@@ -37,7 +38,7 @@ def section_recovery_document(number: int) -> dict[str, Any]:
             1,
             {
                 "type": "sectionBreak",
-                "attrs": _section_profile(paper="letter", orientation="landscape", header="Appendix"),
+                "attrs": _section_profile(paper="letter", orientation="landscape", columns="two", header="Appendix"),
             },
         )
     if number == 3:
@@ -45,7 +46,7 @@ def section_recovery_document(number: int) -> dict[str, Any]:
             4,
             {
                 "type": "sectionBreak",
-                "attrs": _section_profile(paper="a4", orientation="portrait", header="Annex"),
+                "attrs": _section_profile(paper="a4", orientation="portrait", columns="three", header="Annex"),
             },
         )
     return document

@@ -7,10 +7,11 @@ import { installPrintProbe, pdfPageCount, expectPdfStructure } from "./office-pr
 import { openReuse, submitReuse, expectReuseDraft, openReuseHistory } from "./office-reuse-support.mjs";
 
 const p = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
-const profile = (paper = "letter", orientation = "landscape") => ({ paper, orientation, margins: { top: 12, right: 25, bottom: 30, left: 40 } });
+const profile = (paper = "letter", orientation = "landscape") => ({ paper, orientation, columns: "two", margins: { top: 12, right: 25, bottom: 30, left: 40 } });
 async function openSettings(page) { await page.locator("#page-options").click(); await expect(page.locator("#page-dialog")).toBeVisible(); }
 async function choose(page, value = profile()) {
   await page.locator("#page-paper").selectOption(value.paper); await page.locator("#page-orientation").selectOption(value.orientation);
+  await page.locator("#page-columns").selectOption(value.columns ?? "one");
   for (const [side, margin] of Object.entries(value.margins)) await page.locator(`#page-${side}`).fill(String(margin));
 }
 async function apply(page, value = profile()) {
@@ -28,6 +29,7 @@ test("Office page settings preview cancel no-op invalid values and isolated typi
   await page.locator("#page-left").fill("40.5"); await expect(page.locator("#page-apply")).toBeDisabled();
   await page.locator("#page-left").fill("40"); await expect(page.locator("#page-apply")).toBeEnabled();
   await expect(page.locator("#page-description")).toContainText("links 40 mm");
+  await expect(page.locator("#page-description")).toContainText("2 Spalten");
   expect(await page.locator("#page-dialog").evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-page-settings-${testInfo.project.name}.png`, fullPage: true });
   await page.locator("#page-apply").click(); await page.keyboard.type("X");
@@ -118,6 +120,8 @@ for (const paper of ["a4", "letter"]) for (const orientation of ["portrait", "la
     await readForPrint("#document-print"); await expect(page.locator("#print-submit")).toBeEnabled();
     await expect(page.locator("#print-paper")).toHaveValue(paper); await expect(page.locator("#print-orientation")).toHaveValue(orientation);
     await expect(page.locator("#print-page-description")).toContainText("links 40 mm");
+    await expect(page.locator("#print-page-description")).toContainText("2 Spalten");
+    await expect(page.locator('#print-preview .office-print-content[data-office-columns="two"]')).toHaveCount(2);
     await page.locator("#print-paper").selectOption(paper === "a4" ? "letter" : "a4");
     await page.locator("#print-document-settings").click(); await expect(page.locator("#print-paper")).toHaveValue(paper);
     await readForPrint("#print-submit"); await expect.poll(() => prints[0]?.pdf?.length || 0, { timeout: 20_000 }).toBeGreaterThan(0);

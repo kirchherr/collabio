@@ -40,11 +40,13 @@ test("Office sections insert edit undo save print and remove exact responsive pr
   await expect(page.locator("#section-dialog")).toBeVisible();
   await page.locator("#section-paper").selectOption("letter");
   await page.locator("#section-orientation").selectOption("landscape");
+  await page.locator("#section-columns").selectOption("three");
   await page.locator("#section-top").fill("20"); await page.locator("#section-right").fill("12");
   await page.locator("#section-bottom").fill("22"); await page.locator("#section-left").fill("14");
   await page.locator("#section-header").fill("Appendix"); await page.locator("#section-footer").fill("Internal");
   await page.locator("#section-numbering").selectOption("pageOfPages");
   await expect(page.locator("#section-description")).toContainText("Letter · Querformat");
+  await expect(page.locator("#section-description")).toContainText("3 Spalten");
   const dialog = page.locator("#section-dialog");
   const dialogBox = await dialog.boundingBox();
   expect(dialogBox).not.toBeNull();
@@ -65,13 +67,14 @@ test("Office sections insert edit undo save print and remove exact responsive pr
   const saved = await saveOffice(page, { objectId: baseline.document.object_id });
   expect(saved.content.content.map((node) => node.type)).toEqual(["paragraph", "sectionBreak", "paragraph", "paragraph"]);
   expect(saved.content.content[1].attrs).toEqual({ page: { paper: "letter", orientation: "landscape",
-    margins: { top: 20, right: 12, bottom: 22, left: 14 } },
+    columns: "three", margins: { top: 20, right: 12, bottom: 22, left: 14 } },
   running: { header: "Appendix revised", footer: "Internal", numbering: "pageOfPages" } });
   expect((await officeContent(page, baseline.document.object_id, { versionId: baseline.version.version_id })).content.content)
     .toEqual([p("BeforeAfter"), p("Following block")]);
   const prints = await installPrintProbe(page, { pdfName: `office-sections-${testInfo.project.name}.pdf` });
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await expect(page.locator("#print-preview .office-section-break")).toHaveCount(1);
+  await expect(page.locator('#print-preview .office-print-content[data-office-columns="three"]')).toHaveCount(1);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1); expect(prints[0].snapshot.ready).toBe(true);
   await expect.poll(() => prints[0].pdf).not.toBeNull();

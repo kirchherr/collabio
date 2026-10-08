@@ -13,7 +13,7 @@ import {
 import { compareOfficeDocuments, describeOfficeBlock } from "./office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches, OfficeSearchLimitError } from "./office-search.mjs";
 import { renderOfficePrintDocument } from "./office-print.mjs";
-import { OFFICE_PAGE_SIDES, officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
+import { OFFICE_PAGE_SIDES, officePageColumns, officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
 import { installOfficePageControls } from "./office-page-controls.mjs";
 import { OFFICE_SECTION_LIMIT, clearOfficeSectionPrint, configureOfficeSectionPrint, officeSectionDescription, officeSectionProfile } from "./office-sections.mjs";
 import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
@@ -1018,7 +1018,8 @@ function closeSectionDialog(restoreFocus = false) {
 
 function readSectionProfile() {
   const page = officePageSettings({ paper: $("section-paper").value, orientation: $("section-orientation").value,
-    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`section-${side}`).valueAsNumber])) });
+    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, $(`section-${side}`).valueAsNumber])),
+    ...($("section-columns").value === "one" ? {} : { columns: $("section-columns").value }) });
   return officeSectionProfile({ page, running: { header: $("section-header").value, footer: $("section-footer").value,
     numbering: $("section-numbering").value } });
 }
@@ -1052,6 +1053,7 @@ function openSectionDialog(edit = false) {
   $("section-title").textContent = selected ? "Abschnitt bearbeiten" : "Abschnitt einfügen";
   $("section-apply").textContent = selected ? "Änderungen übernehmen" : "Abschnitt einfügen";
   $("section-paper").value = profile.page.paper; $("section-orientation").value = profile.page.orientation;
+  $("section-columns").value = officePageColumns(profile.page);
   for (const side of OFFICE_PAGE_SIDES) $(`section-${side}`).value = String(profile.page.margins[side]);
   $("section-header").value = profile.running.header; $("section-footer").value = profile.running.footer;
   $("section-numbering").value = profile.running.numbering;
@@ -4161,7 +4163,8 @@ function printFormat() {
 
 function printPage() {
   return officePageSettings({ paper: $("print-paper").value, orientation: $("print-orientation").value,
-    margins: state.print?.margins || officePageSettings().margins });
+    margins: state.print?.margins || officePageSettings().margins,
+    ...(state.print?.columns && state.print.columns !== "one" ? { columns: state.print.columns } : {}) });
 }
 
 function updatePrintControls() {
@@ -4233,6 +4236,7 @@ async function loadPrintContent(print = state.print, finalAction = false) {
     print.content = content;
     const savedPage = officePageSettings(content.attrs?.page);
     print.margins = savedPage.margins;
+    print.columns = officePageColumns(savedPage);
     if (!print.settingsInitialized) {
       $("print-paper").value = savedPage.paper; $("print-orientation").value = savedPage.orientation;
       print.settingsInitialized = true;

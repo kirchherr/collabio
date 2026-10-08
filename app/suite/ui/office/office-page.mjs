@@ -2,17 +2,25 @@
 export const OFFICE_PAGE_DEFAULT = Object.freeze({ paper: "a4", orientation: "portrait",
   margins: Object.freeze({ top: 18, right: 18, bottom: 18, left: 18 }) });
 export const OFFICE_PAGE_SIDES = Object.freeze(["top", "right", "bottom", "left"]);
+export const OFFICE_PAGE_COLUMNS = Object.freeze(["one", "two", "three"]);
 
 export function officePageSettings(value = OFFICE_PAGE_DEFAULT) {
   const object = (entry) => entry && typeof entry === "object" && !Array.isArray(entry);
-  if (!object(value) || Object.keys(value).sort().join(",") !== "margins,orientation,paper" ||
+  const keys = object(value) ? Object.keys(value).sort().join(",") : "";
+  if (!object(value) || !["margins,orientation,paper", "columns,margins,orientation,paper"].includes(keys) ||
       !["a4", "letter"].includes(value.paper) || !["portrait", "landscape"].includes(value.orientation) ||
+      (Object.hasOwn(value, "columns") && !OFFICE_PAGE_COLUMNS.includes(value.columns)) ||
       !object(value.margins) || Object.keys(value.margins).sort().join(",") !== "bottom,left,right,top" ||
       OFFICE_PAGE_SIDES.some((side) => !Number.isInteger(value.margins[side]) || value.margins[side] < 5 || value.margins[side] > 50)) {
     throw new TypeError("Invalid document page settings");
   }
   return { paper: value.paper, orientation: value.orientation,
-    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, value.margins[side]])) };
+    margins: Object.fromEntries(OFFICE_PAGE_SIDES.map((side) => [side, value.margins[side]])),
+    ...(Object.hasOwn(value, "columns") ? { columns: value.columns } : {}) };
+}
+
+export function officePageColumns(value = OFFICE_PAGE_DEFAULT) {
+  return officePageSettings(value).columns ?? "one";
 }
 
 export function officePageDimensions(value) {
@@ -26,11 +34,13 @@ export function officePageDimensions(value) {
 export function officePageDescription(value) {
   const page = officePageSettings(value);
   return `${page.paper === "a4" ? "A4" : "Letter"} · ${page.orientation === "portrait" ? "Hochformat" : "Querformat"} · ` +
+    `${({ one: "1 Spalte", two: "2 Spalten", three: "3 Spalten" })[officePageColumns(page)]} · ` +
     `Ränder oben ${page.margins.top}, rechts ${page.margins.right}, unten ${page.margins.bottom}, links ${page.margins.left} mm`;
 }
 
 export function officePagePreview(element, value) {
   const page = officePageSettings(value), { width, height } = officePageDimensions(page);
+  element.dataset.officeColumns = officePageColumns(page);
   element.style.setProperty("--office-page-width", `${width}mm`);
   element.style.setProperty("--office-page-height", `${height}mm`);
   element.style.setProperty("--office-page-ratio", `${width} / ${height}`);

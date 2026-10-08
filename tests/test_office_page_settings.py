@@ -17,6 +17,7 @@ def page_settings() -> dict[str, Any]:
     return {
         "paper": "letter",
         "orientation": "landscape",
+        "columns": "two",
         "margins": {"top": 12, "right": 25, "bottom": 30, "left": 40},
     }
 
@@ -54,6 +55,21 @@ def test_page_settings_accept_bounded_geometry(paper: str, orientation: str, mar
         "margins": dict.fromkeys(("top", "right", "bottom", "left"), margin),
     }
     assert validate_office_document(document) == document
+
+
+@pytest.mark.parametrize("columns", ["one", "two", "three"])
+def test_page_settings_accept_bounded_column_counts(columns: str) -> None:
+    document = page_document()
+    document["attrs"]["page"]["columns"] = columns
+    assert validate_office_document(document) == document
+
+
+@pytest.mark.parametrize("columns", [None, True, 2, "four", "repeat(2,1fr)", "url(SECRET)", []])
+def test_page_settings_reject_unbounded_column_values(columns: Any) -> None:
+    document = page_document()
+    document["attrs"]["page"]["columns"] = columns
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(document)
 
 
 @pytest.mark.parametrize("value", [None, {}, [], True, "SECRET", {"paper": "a4"}])

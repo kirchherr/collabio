@@ -3,18 +3,20 @@ import { officePageSettings, officePageDimensions, officePageDescription } from 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches } from "../office-search.mjs";
 
-const profile = () => ({ paper: "letter", orientation: "landscape", margins: { top: 12, right: 25, bottom: 30, left: 40 } });
+const profile = () => ({ paper: "letter", orientation: "landscape", columns: "two", margins: { top: 12, right: 25, bottom: 30, left: 40 } });
 const doc = () => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Café 😀 text" }] }] });
 
 test("page settings validate complete inert geometry and isolate defaults", () => {
   for (const value of [null, {}, [], true, { ...profile(), paper: "url(SECRET)" }, { ...profile(), orientation: {} },
-    { ...profile(), margins: [] }, { ...profile(), extra: "SECRET" },
+    { ...profile(), margins: [] }, { ...profile(), columns: "repeat(2,1fr)" }, { ...profile(), extra: "SECRET" },
     ...[4, 51, 18.5, true, "18", null, Infinity].map((left) => ({ ...profile(), margins: { ...profile().margins, left } }))]) {
     expect(() => officePageSettings(value)).toThrow();
   }
   const defaults = officePageSettings(); defaults.margins.left = 50;
   expect(officePageSettings().margins.left).toBe(18);
   expect(officePageSettings(profile())).toEqual(profile());
+  expect(officePageSettings({ paper: "a4", orientation: "portrait", margins: { top: 18, right: 18, bottom: 18, left: 18 } }))
+    .not.toHaveProperty("columns");
 });
 
 test("page dimensions resolve all papers orientations and asymmetric margins", () => {
@@ -24,6 +26,7 @@ test("page dimensions resolve all papers orientations and asymmetric margins", (
     expect(size.contentWidth).toBeCloseTo(size.width - 65);
     expect(size.contentHeight).toBeCloseTo(size.height - 42);
     expect(officePageDescription(value)).toContain("links 40 mm");
+    expect(officePageDescription(value)).toContain("2 Spalten");
   }
 });
 

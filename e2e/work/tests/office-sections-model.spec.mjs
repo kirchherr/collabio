@@ -5,7 +5,7 @@ import { findDocumentMatches, replaceDocumentMatches } from "../office-search.mj
 
 const p = (text) => ({ type: "paragraph", content: [{ type: "text", text }] });
 const profile = () => ({ page: { paper: "letter", orientation: "landscape",
-  margins: { top: 20, right: 12, bottom: 22, left: 14 } },
+  columns: "three", margins: { top: 20, right: 12, bottom: 22, left: 14 } },
 running: { header: "Appendix", footer: "Internal", numbering: "pageOfPages" } });
 const marker = () => ({ type: "sectionBreak", attrs: profile() });
 
@@ -16,6 +16,7 @@ test("section profiles are exact bounded inert page and running settings", () =>
   for (const value of [null, {}, [], { ...profile(), extra: true },
     { ...profile(), running: { ...profile().running, firstPage: { header: "x", footer: "", showNumber: false } } },
     { ...profile(), running: { ...profile().running, header: "x".repeat(65) } },
+    { ...profile(), page: { ...profile().page, columns: "var(--secret)" } },
     { ...profile(), page: { ...profile().page, margins: { ...profile().page.margins, bottom: 15 } } }]) {
     expect(() => officeSectionProfile(value)).toThrow();
   }

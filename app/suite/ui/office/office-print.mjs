@@ -14,6 +14,7 @@ import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel,
 import { officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey } from "./office-document-references.mjs";
 import { officeDocumentCardAttributes, officeDocumentCardDescription, officeDocumentCardKey } from "./office-document-cards.mjs";
 import { officeChartElement } from "./office-charts.mjs";
+import { officePageColumns } from "./office-page.mjs";
 
 const blockTags = {
   paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li",
@@ -32,6 +33,10 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   const targets = officeReferenceInventory(content);
   const targetsById = new Map(targets.map((entry) => [entry.id, entry]));
   const semantics = officeSemanticInventory(content);
+  const sectionProfiles = content.content.filter((node) => node.type === "sectionBreak")
+    .map((node) => officeSectionProfile(node.attrs));
+  const columnsForSection = (section) => officePageColumns(section ? sectionProfiles[section - 1].page : content.attrs?.page);
+  const setColumns = (element, section) => { element.dataset.officeColumns = columnsForSection(section); };
   let footnote = 0, endnote = 0;
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
@@ -278,6 +283,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   classification.textContent = classifications[informationClassification];
   const heading = dom.createElement("h1"); heading.className = "office-print-title"; heading.textContent = title;
   let body = dom.createElement("div"); body.className = "office-print-content";
+  setColumns(body, 0);
   article.append(classification, heading, body);
   let boundary = false, section = 0;
   for (const child of content.content) {
@@ -285,6 +291,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       body = dom.createElement("div");
       body.className = `office-print-content office-print-page-start${section ? ` office-print-section-${String(section).padStart(2, "0")}` : ""}`;
       if (section) body.dataset.officeSection = String(section);
+      setColumns(body, section);
       article.append(body); boundary = false;
     }
     body.append(render(child, 1));

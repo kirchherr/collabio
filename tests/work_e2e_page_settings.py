@@ -25,6 +25,7 @@ def page_settings_recovery_document(number: int) -> dict[str, Any]:
             "page": {
                 "paper": "letter" if number == 2 else "a4",
                 "orientation": "landscape" if number == 2 else "portrait",
+                "columns": "two" if number == 2 else "three",
                 "margins": {"top": 12, "right": 25, "bottom": 30, "left": 40}
                 if number == 2
                 else {"top": 5, "right": 50, "bottom": 50, "left": 5},

@@ -409,7 +409,7 @@
     <dialog class="office-dialog page-dialog" id="page-dialog" aria-labelledby="page-title">
       <form id="page-form"><header><h2 id="page-title">Seite einrichten</h2><button class="icon-button" id="page-close" type="button" aria-label="Seiteneinstellungen schließen">×</button></header>
         <div class="dialog-body"><p>Diese Einstellungen gelten für das ganze Dokument. Sie werden mit der nächsten bestätigten Version gespeichert.</p>
-          <div class="page-fields"><label>Papierformat<select id="page-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="page-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label></div>
+          <div class="page-fields"><label>Papierformat<select id="page-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="page-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label><label>Textspalten<select id="page-columns"><option value="one">Eine Spalte</option><option value="two">Zwei Spalten</option><option value="three">Drei Spalten</option></select></label></div>
           <fieldset class="page-fields"><legend>Seitenränder in Millimetern</legend>
             <label>Oben<input id="page-top" type="number" min="5" max="50" step="1" required /></label><label>Rechts<input id="page-right" type="number" min="5" max="50" step="1" required /></label>
             <label>Unten<input id="page-bottom" type="number" min="5" max="50" step="1" required /></label><label>Links<input id="page-left" type="number" min="5" max="50" step="1" required /></label>
@@ -426,14 +426,14 @@
           </details>
           <div class="page-preview-canvas"><div id="page-preview" role="img" aria-label="Vorschau von Papierformat und Seitenrändern" aria-describedby="page-description"><div class="page-preview-content" aria-hidden="true"></div></div></div>
           <p id="page-description"></p><p class="muted">Die Vorschau zeigt die Proportionen. Der Editor bleibt fortlaufend; die endgültigen Seiten sehen Sie beim Drucken.</p>
-          <button class="quiet-button" id="page-reset" type="button">Standard: A4, Hochformat, 18 mm</button><p id="page-status" role="status" aria-live="polite"></p>
+          <button class="quiet-button" id="page-reset" type="button">Standard: A4, Hochformat, eine Spalte, 18 mm</button><p id="page-status" role="status" aria-live="polite"></p>
         </div><footer><button class="button secondary" id="page-cancel" type="button">Abbrechen</button><button class="button primary" id="page-apply" type="submit">Auf Dokument anwenden</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog page-dialog" id="section-dialog" aria-labelledby="section-title">
       <form id="section-form"><header><h2 id="section-title">Abschnitt einrichten</h2><button class="icon-button" id="section-close" type="button" aria-label="Abschnittseinstellungen schließen">×</button></header>
         <div class="dialog-body"><p>Der Abschnitt beginnt auf einer neuen Seite. Dieses vollständige Profil gilt bis zum nächsten Abschnittsumbruch.</p>
-          <div class="page-fields"><label>Papierformat<select id="section-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="section-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label></div>
+          <div class="page-fields"><label>Papierformat<select id="section-paper"><option value="a4">A4</option><option value="letter">Letter</option></select></label><label>Ausrichtung<select id="section-orientation"><option value="portrait">Hochformat</option><option value="landscape">Querformat</option></select></label><label>Textspalten<select id="section-columns"><option value="one">Eine Spalte</option><option value="two">Zwei Spalten</option><option value="three">Drei Spalten</option></select></label></div>
           <fieldset class="page-fields"><legend>Seitenränder in Millimetern</legend>
             <label>Oben<input id="section-top" type="number" min="5" max="50" step="1" required /></label><label>Rechts<input id="section-right" type="number" min="5" max="50" step="1" required /></label>
             <label>Unten<input id="section-bottom" type="number" min="5" max="50" step="1" required /></label><label>Links<input id="section-left" type="number" min="5" max="50" step="1" required /></label>

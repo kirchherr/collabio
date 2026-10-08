@@ -20,6 +20,7 @@ def profile() -> dict[str, Any]:
         "page": {
             "paper": "letter",
             "orientation": "landscape",
+            "columns": "three",
             "margins": {"top": 20, "right": 12, "bottom": 22, "left": 14},
         },
         "running": {"header": "Appendix", "footer": "Internal", "numbering": "pageOfPages"},
@@ -46,6 +47,7 @@ def test_section_break_preserves_legacy_bytes_and_exact_profile() -> None:
         lambda value: value.update(extra=True),
         lambda value: value.pop("page"),
         lambda value: value["page"].update(paper="SECRET"),
+        lambda value: value["page"].update(columns="repeat(3, 1fr)"),
         lambda value: value["page"]["margins"].update(left=4),
         lambda value: value["running"].update(numbering="counter(secret)"),
         lambda value: value["running"].update(header="x" * 65),

@@ -506,9 +506,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         page = root_attrs["page"]
         if (
             not isinstance(page, dict)
-            or set(page) != {"paper", "orientation", "margins"}
+            or set(page) not in ({"paper", "orientation", "margins"}, {"paper", "orientation", "margins", "columns"})
             or page["paper"] not in ("a4", "letter")
             or page["orientation"] not in ("portrait", "landscape")
+            or ("columns" in page and page["columns"] not in ("one", "two", "three"))
             or not isinstance(page["margins"], dict)
             or set(page["margins"]) != {"top", "right", "bottom", "left"}
             or any(type(value) is not int or not 5 <= value <= 50 for value in page["margins"].values())
@@ -604,9 +605,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         page = value["page"]
         if (
             not isinstance(page, dict)
-            or set(page) != {"paper", "orientation", "margins"}
+            or set(page) not in ({"paper", "orientation", "margins"}, {"paper", "orientation", "margins", "columns"})
             or page["paper"] not in ("a4", "letter")
             or page["orientation"] not in ("portrait", "landscape")
+            or ("columns" in page and page["columns"] not in ("one", "two", "three"))
             or not isinstance(page["margins"], dict)
             or set(page["margins"]) != {"top", "right", "bottom", "left"}
             or any(type(item) is not int or not 5 <= item <= 50 for item in page["margins"].values())
