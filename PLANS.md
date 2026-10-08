@@ -728,12 +728,33 @@ each immutable saved version for audit and recovery traceability.
 270. [x] Close the sharing lifecycle under ADR-0145 across service, API, PostgreSQL functions, migration, restore and
 responsive desktop/mobile browser evidence.
 
+271. [x] Add optional UTC expiration to direct Office document `read` and `write` grants under ADR-0146. Keep owner
+and administrative grants permanent.
+
+272. [x] Accept only timezone-aware future expirations within 366 days. Expose the bounded choices permanent, one day,
+seven days and 30 days in the responsive sharing dialog.
+
+273. [x] Persist the exact expiration in authoritative ACL rows and append-only share decisions through migration
+0088. Preserve every unaffected grant term when replacing the complete ACL snapshot.
+
+274. [x] Exclude expired grants at request time in both the central PostgreSQL principal directory and native Office
+repository for list, read, write, history and share authorization without relying on a scheduler.
+
+275. [x] Show permanent and expiring access clearly in the sharing dialog and allow a confirmed, conflict-protected
+grant mutation to change either permission or term.
+
+276. [x] Bind the expiration to content-free audit metadata, the monotonic ACL snapshot, immutable decision evidence,
+the migration catalog and PostgreSQL restore contracts.
+
+277. [x] Close the expiration lifecycle under ADR-0146 across model, API, principal resolution, PostgreSQL, migration,
+restore and responsive desktop/mobile browser evidence.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 409 / PLANS 270. Preserve tenant-safe direct-user sharing with explicit confirmation, immutable owner access, complete monotonic ACL snapshots, stale-write rejection, append-only decisions and authoritative current-ACL enforcement alongside the complete browser/model evidence, versioned four-level information classification with admin-only publication/downgrade, safe Word/Excel table and in-table range translation, bounded server-verified local formulas with relative, absolute and mixed references, atomic selection-wide formula fill/removal, anchor-aware range-paste and structural rewriting, canonical `#BEZUG!` for deleted dependencies, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell presentation and table layout tokens, deterministic stable text/number/ISO-date sorting, protected formula-aware row/column reordering and independent duplication, full Python quality, immutable versions/reviews/suggestions, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Public links, external guests, role/group share administration, share expiry, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 416 / PLANS 277. Preserve tenant-safe expiring direct-user shares with request-time enforcement in principal resolution and Office authorization, explicit confirmation, immutable owner access, complete monotonic ACL snapshots, stale-write rejection, append-only decisions and authoritative current-ACL enforcement alongside the complete browser/model evidence, versioned four-level information classification with admin-only publication/downgrade, safe Word/Excel table and in-table range translation, bounded server-verified local formulas with relative, absolute and mixed references, atomic selection-wide formula fill/removal, anchor-aware range-paste and structural rewriting, canonical `#BEZUG!` for deleted dependencies, bounded SVG/EPS normalization, vector active-content rejection, canonical RGBA image ownership, bounded logical table grids, semantic headers, fixed cell presentation and table layout tokens, deterministic stable text/number/ISO-date sorting, protected formula-aware row/column reordering and independent duplication, full Python quality, immutable versions/reviews/suggestions, confirmed CAS saves, schema/size guards, isolated undo and the fresh Roadmap-309 exact recovery. Continue with the next coherent native Office authoring loop. Public links, external guests, role/group share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, arbitrary-angle shape rotation, mixed/nested/free-positioned shape groups, arbitrary/per-edge connectors, arbitrary drag ordering, per-section first-page variants, number restarts, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

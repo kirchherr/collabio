@@ -2479,11 +2479,32 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 409. [x] Vollstaendigen Freigabelebenszyklus ueber Service, API, PostgreSQL-Funktionen, Migration, Restore sowie
      responsive Desktop-/Mobile-Browserpruefung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 409 / PLANS 224 bis 270 sind unter ADR-0139 bis ADR-0145 implementiert.
-Die fokussierten Serverpruefungen bestanden 35/35 und der Bereichsformel-Modell-/Browserlauf 22/22. HTML, TSV,
-Anker, Strukturabbildungen und Bereichsaktionen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
-es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder
-DOCX-Zulassung.
+410. [x] Befristete direkte Dokumentfreigaben unter ADR-0146 eingefuehrt. `read` und `write` koennen dauerhaft oder
+     mit einem exakten UTC-Ablauf erteilt werden; Owner- und Verwaltungsrechte bleiben unbefristet.
+
+411. [x] Ablaufwerte serverseitig auf zeitzonenbehaftete Zukunftswerte bis maximal 366 Tage begrenzt. Die Oberflaeche
+     bietet bewusst nur dauerhaft, einen, sieben oder 30 Tage an.
+
+412. [x] Ablaufzeit mit Migration 0088 in autoritativen ACL-Zeilen und append-only Freigabeentscheidungen gespeichert
+     und bei jeder Aenderung im vollstaendigen naechsten ACL-Snapshot fuer alle unveraenderten Grants erhalten.
+
+413. [x] Abgelaufene Grants sowohl im zentralen PostgreSQL-Principal-Verzeichnis als auch im Office-Repository bei
+     jeder Listen-, Lese-, Schreib-, History- und Freigabeautorisierung fail closed ausgeschlossen.
+
+414. [x] Responsive Gültigkeitsauswahl und sichtbare Ablaufanzeige in den Freigabedialog integriert. Permanente und
+     befristete Rechte koennen durch dieselbe bestaetigte, konfliktgeschuetzte Mutation gewechselt werden.
+
+415. [x] Exaktes Ablaufdatum in inhaltsfreies Audit, ACL-Snapshot, Entscheidungsbeleg, Migrationskatalog und
+     PostgreSQL-Restore-Vertrag aufgenommen; ein Scheduler ist fuer die Zugriffssperre nicht erforderlich.
+
+416. [x] Vollstaendigen Ablauflebenszyklus ueber Modell, API, zentrale Principal-Aufloesung, PostgreSQL, Migration,
+     Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 416 / PLANS 224 bis 277 sind unter ADR-0139 bis ADR-0146 implementiert.
+Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
+Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
+bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
+Tenant-Aktivierung und DOCX-Zulassung bleiben geschlossen.
 
 ## Persistente Backend-Runtime: Stand und Nachweise
 

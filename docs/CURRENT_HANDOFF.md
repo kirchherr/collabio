@@ -2,6 +2,26 @@
 
 Updated: 2026-10-08
 
+Roadmap 410 through 416 / PLANS 271 through 277 are complete under ADR-0146. Direct Office document `read` and
+`write` grants may now be permanent or expire at an exact UTC instant. The API accepts only timezone-aware future
+values no more than 366 days away; the responsive dialog offers permanent, one day, seven days and 30 days and shows
+the saved end time. Owner and direct administrative grants remain permanent.
+
+Migration 0088 stores `expires_at_utc` on authoritative object ACL entries and append-only Office share decisions.
+Every share mutation still replaces the complete active ACL snapshot and now carries the exact term of every copied
+grant. Both the central PostgreSQL principal directory and native Office repository compare the term with database time
+on every request, so an expired entry grants no readable object ID and cannot authorize current or historical content
+even when no cleanup worker runs.
+
+Focused service, API, PostgreSQL, principal-directory, migration and restore tests passed with Ruff and formatting.
+Migration 0088 is applied to the isolated review database. The exact desktop/mobile Playwright flow passed 2/2;
+screenshot SHA-256 values are `5ec3c0ba15db556bc8bef1654a6a5e50f8e6ab1df1bda75a9b9bf6a313187a51` and
+`990805710e2971c2c74775b18de1d6845a0339f641083060681e7fed41424474`. Product implementation is published in
+`e9c8760e` on `kirchherr/kb-write-unit-of-work`; the review API is healthy at
+`http://192.168.0.108:42880/office?review=share-expiration-e9c8760e`. The full quality run and final cleanup follow this
+documentation commit. No ordinary tenant, public link, external guest, scheduler, AI provider, DOCX engine or
+production admission changed.
+
 Roadmap 402 through 409 / PLANS 263 through 270 are complete under ADR-0145. Native Office now provides a responsive
 direct-user sharing dialog. A current directly granted document administrator can inspect active same-tenant members,
 grant or change `read` and `write`, and revoke access. The owner grant is immutable. Role and group grants continue to
