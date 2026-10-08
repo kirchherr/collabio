@@ -12,13 +12,16 @@ attributes mapped by trusted static CSS. Undo/redo, text-type conversion, format
 predecessors, reload and print retain the values. The recovery fixture now binds an exact version containing all three
 rules without a migration or new restore store.
 
-Full Python quality on product source `f7e7cab8` passed Ruff, formatting for 861 files, Mypy over 607 source files and
-the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact model plus responsive
-desktop/mobile browser and real-PDF flow passed 3/3 on `5697dd48`. Screenshot SHA-256 values are
+Full Python quality on recovery-complete documented source `45daf3e5` passed Ruff, formatting for 862 files, Mypy over
+607 source files and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact
+model plus responsive desktop/mobile browser and real-PDF flow passed 3/3 on `5697dd48`. The adjacent paragraph,
+style and format-transfer regression covered all 41 desktop/mobile scenarios; after scoping legacy mixed-value and
+print selectors to document content, the complete nine-case paragraph suite passed 9/9 on `a90b9312`. Screenshot SHA-256 values are
 `cb905210bf160c593e6baf713e855071309c81e2d001b42ed7e995c304204a92` and
 `131e0ac25010e785548ba1a446a2bda2648a079dca7160339c419f848fb5c535`; both passed visual review. The isolated review
-API is healthy at `http://192.168.0.108:42880/office?review=paragraph-pagination-5697dd48`. Final quality on the
-recovery-complete documented source and scoped cleanup remain.
+API is healthy at `http://192.168.0.108:42880/office?review=paragraph-pagination-5697dd48`. Exact temporary quality,
+blocked-API, migration and seed containers were removed; no transient runner remains. Regular and review APIs return
+`ok`, while the isolated review database, object store, decoder and API remain available.
 
 Roadmap 417 through 424 / PLANS 278 through 285 are complete under ADR-0147. Native Office sharing now addresses
 active same-tenant users, roles and groups explicitly by subject type. A current directly granted user administrator
