@@ -200,6 +200,67 @@ def test_office_create_version_read_history_and_exact_retry_are_bound_and_noncac
     assert SECRET not in caplog.text
 
 
+def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
+    office_api: OfficeApiHarness,
+) -> None:
+    created = create_document(office_api)
+    object_id = created["document"]["object_id"]
+    office_api.repository.principals[("tenant-demo", "api-reader")] = ("API Reader", "reader@example.test")
+
+    initial = office_api.client.get(f"{BASE}/{object_id}/shares", headers=office_api.headers)
+    assert initial.status_code == 200
+    assert initial.headers["Cache-Control"] == "no-store"
+    assert initial.json()["acl_version"] == 1
+    assert initial.json()["entries"][0]["is_owner"] is True
+
+    payload = {
+        "principal_id": "api-reader",
+        "permission": "read",
+        "expected_acl_version": 1,
+        "mutation_reference": "api-grant-reader",
+        "human_confirmation": True,
+    }
+    granted = office_api.client.post(f"{BASE}/{object_id}/shares", headers=office_api.headers, json=payload)
+    assert granted.status_code == 200
+    assert granted.json()["acl_version"] == 2
+    assert any(
+        entry["principal_id"] == "api-reader" and entry["permission"] == "read"
+        for entry in granted.json()["entries"]
+    )
+
+    stale = office_api.client.post(
+        f"{BASE}/{object_id}/shares",
+        headers=office_api.headers,
+        json={**payload, "permission": "write", "mutation_reference": "api-stale"},
+    )
+    assert stale.status_code == 409
+    unconfirmed = office_api.client.post(
+        f"{BASE}/{object_id}/shares/revoke",
+        headers=office_api.headers,
+        json={
+            "principal_id": "api-reader",
+            "expected_acl_version": 2,
+            "mutation_reference": "api-revoke-unconfirmed",
+            "human_confirmation": False,
+        },
+    )
+    assert unconfirmed.status_code == 422
+
+    revoked = office_api.client.post(
+        f"{BASE}/{object_id}/shares/revoke",
+        headers=office_api.headers,
+        json={
+            "principal_id": "api-reader",
+            "expected_acl_version": 2,
+            "mutation_reference": "api-revoke-reader",
+            "human_confirmation": True,
+        },
+    )
+    assert revoked.status_code == 200
+    assert revoked.json()["acl_version"] == 3
+    assert all(entry["principal_id"] != "api-reader" for entry in revoked.json()["entries"])
+
+
 def test_outbound_references_endpoint_rechecks_acl_without_title_or_status_oracle(
     office_api: OfficeApiHarness,
 ) -> None:

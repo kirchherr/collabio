@@ -92,6 +92,7 @@ KB_ACL_TRIGGER_FUNCTIONS = {
     ("knowledge_base.article_versions", KB_ACL_TRIGGER): "bind_version_acls",
 }
 OFFICE_DOCUMENT_TABLES = {
+    "office.document_share_decisions",
     "office.documents",
     "office.document_versions",
     "office.review_threads",
@@ -192,6 +193,26 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ),
     ("office.document_versions", "office_versions_no_update"): ("UPDATE", "false", None),
     ("office.document_versions", "office_versions_no_delete"): ("DELETE", "false", None),
+    ("office.document_share_decisions", "office_document_share_decisions_tenant_select"): (
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
+    ),
+    ("office.document_share_decisions", "office_document_share_decisions_no_insert"): (
+        "INSERT",
+        None,
+        "false",
+    ),
+    ("office.document_share_decisions", "office_document_share_decisions_no_update"): (
+        "UPDATE",
+        "false",
+        None,
+    ),
+    ("office.document_share_decisions", "office_document_share_decisions_no_delete"): (
+        "DELETE",
+        "false",
+        None,
+    ),
     ("office.review_threads", "office_review_threads_tenant_select"): (
         "SELECT",
         "(tenant_id = collabio.current_tenant_id())",
@@ -222,6 +243,10 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ("office.review_events", "office_review_events_no_delete"): ("DELETE", "false", None),
 }
 OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
+    "office.document_share_decisions": {
+        "PRIMARY KEY (tenant_id, object_id, mutation_reference)",
+        "FOREIGN KEY (tenant_id, object_id) REFERENCES office.documents(tenant_id, object_id)",
+    },
     "office.text_suggestions": {
         "PRIMARY KEY (tenant_id, suggestion_id)",
         "UNIQUE (tenant_id, object_id, suggestion_id)",

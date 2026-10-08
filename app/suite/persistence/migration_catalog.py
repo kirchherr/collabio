@@ -786,6 +786,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="office_documents",
         evidence_refs=("adr:office-document-information-classification", "test:office-document-classification"),
     ),
+    SqlMigration(
+        version="0087",
+        name="office_document_sharing",
+        resource_name="0087_office_document_sharing.sql",
+        module_id="office_documents",
+        evidence_refs=("adr:office-document-sharing", "test:office-document-sharing"),
+    ),
 )
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from threading import RLock
-from typing import Any
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 import psycopg
@@ -28,6 +28,12 @@ from suite.platform.office_documents import (
     OfficeDocumentRecord,
     OfficeDocumentSaveCommand,
     OfficeDocumentService,
+    OfficeDocumentShareCommand,
+    OfficeDocumentShareEntry,
+    OfficeDocumentSharePrincipal,
+    OfficeDocumentShareState,
+    OfficeDocumentShareRequestError,
+    OfficeDocumentUnshareCommand,
     OfficeDocumentVersion,
     OfficeInformationClassification,
     can_create_office_document,
@@ -327,6 +333,137 @@ class PgOfficeDocumentRepository:
             self._set_tenant(connection, user_context.tenant_id)
             return bool(self._permissions(connection, user_context, object_id) & {"write", "admin"})
 
+    def can_admin(self, *, user_context: UserContext, object_id: str) -> bool:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, user_context.tenant_id)
+            return "admin" in self._permissions(connection, user_context, object_id)
+
+    def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, user_context.tenant_id)
+            document = self._authorized_document(connection, user_context, object_id)
+            if "admin" not in self._permissions(connection, user_context, object_id):
+                raise OfficeDocumentPermissionError("Document sharing is not permitted")
+            return self._share_state(connection, document)
+
+    @staticmethod
+    def _share_state(
+        connection: psycopg.Connection[Any], document: OfficeDocumentRecord
+    ) -> OfficeDocumentShareState:
+        acl_version_row = connection.execute(
+            "SELECT COALESCE(MAX(acl_version), 1) FROM collabio.object_acl_entries "
+            "WHERE tenant_id = %s AND object_id = %s AND object_type = %s",
+            (document.tenant_id, document.object_id, OFFICE_DOCUMENT_OBJECT_TYPE),
+        ).fetchone()
+        rows = connection.execute(
+            """
+            SELECT principal.user_id, COALESCE(NULLIF(principal.display_name, ''), principal.user_id),
+                   principal.email, acl.permission
+            FROM collabio.object_acl_entries AS acl
+            JOIN collabio.tenant_principals AS principal
+              ON principal.tenant_id = acl.tenant_id AND principal.user_id = acl.acl_subject_id
+            JOIN collabio.tenant_principal_memberships AS membership
+              ON membership.tenant_id = principal.tenant_id
+             AND membership.issuer = principal.issuer AND membership.subject = principal.subject
+            WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
+              AND acl.acl_subject_type = 'user' AND acl.status = 'active'
+              AND principal.status = 'active' AND membership.status = 'active'
+            ORDER BY lower(COALESCE(NULLIF(principal.display_name, ''), principal.user_id)), principal.user_id
+            """,
+            (document.tenant_id, document.object_id, OFFICE_DOCUMENT_OBJECT_TYPE),
+        ).fetchall()
+        available = connection.execute(
+            """
+            SELECT principal.user_id, COALESCE(NULLIF(principal.display_name, ''), principal.user_id), principal.email
+            FROM collabio.tenant_principals AS principal
+            JOIN collabio.tenant_principal_memberships AS membership
+              ON membership.tenant_id = principal.tenant_id
+             AND membership.issuer = principal.issuer AND membership.subject = principal.subject
+            WHERE principal.tenant_id = %s AND principal.status = 'active' AND membership.status = 'active'
+            ORDER BY lower(COALESCE(NULLIF(principal.display_name, ''), principal.user_id)), principal.user_id
+            LIMIT 500
+            """,
+            (document.tenant_id,),
+        ).fetchall()
+        return OfficeDocumentShareState(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            acl_version=int(acl_version_row[0]) if acl_version_row else 1,
+            entries=[
+                OfficeDocumentShareEntry(
+                    principal_id=str(row[0]),
+                    display_name=str(row[1]),
+                    email=str(row[2]) if row[2] is not None else None,
+                    permission=cast(Literal["read", "write", "admin"], str(row[3])),
+                    is_owner=str(row[0]) == document.owner_principal_id,
+                )
+                for row in rows
+            ],
+            available_principals=[
+                OfficeDocumentSharePrincipal(
+                    principal_id=str(row[0]),
+                    display_name=str(row[1]),
+                    email=str(row[2]) if row[2] is not None else None,
+                )
+                for row in available
+            ],
+        )
+
+    def set_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentShareCommand
+    ) -> OfficeDocumentShareState:
+        return self._mutate_share(user_context=user_context, object_id=object_id, command=command, revoke=False)
+
+    def revoke_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentUnshareCommand
+    ) -> OfficeDocumentShareState:
+        return self._mutate_share(user_context=user_context, object_id=object_id, command=command, revoke=True)
+
+    def _mutate_share(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentShareCommand | OfficeDocumentUnshareCommand,
+        revoke: bool,
+    ) -> OfficeDocumentShareState:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, user_context.tenant_id)
+            document = self._authorized_document(connection, user_context, object_id)
+            if "admin" not in self._permissions(connection, user_context, object_id):
+                raise OfficeDocumentPermissionError("Document sharing is not permitted")
+            if command.principal_id == document.owner_principal_id:
+                raise OfficeDocumentShareRequestError("The document owner share cannot be changed")
+            function = "office.revoke_document_user_grant" if revoke else "office.set_document_user_grant"
+            parameters: tuple[Any, ...]
+            if revoke:
+                parameters = (
+                    user_context.tenant_id,
+                    object_id,
+                    user_context.user_id,
+                    command.principal_id,
+                    command.expected_acl_version,
+                    command.mutation_reference,
+                )
+            else:
+                assert isinstance(command, OfficeDocumentShareCommand)
+                parameters = (
+                    user_context.tenant_id,
+                    object_id,
+                    user_context.user_id,
+                    command.principal_id,
+                    command.permission,
+                    command.expected_acl_version,
+                    command.mutation_reference,
+                )
+            try:
+                connection.execute(f"SELECT {function}({', '.join(['%s'] * len(parameters))})", parameters).fetchone()
+            except psycopg.errors.SerializationFailure as exc:
+                raise OfficeDocumentConflictError("The document shares have changed") from exc
+            except psycopg.errors.CheckViolation as exc:
+                raise OfficeDocumentShareRequestError("The document share is invalid") from exc
+            return self._share_state(connection, document)
+
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]:
         return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
 
@@ -575,6 +712,8 @@ class InMemoryOfficeDocumentRepository:
         self.documents: dict[tuple[str, str], OfficeDocumentRecord] = {}
         self.saved_versions: dict[tuple[str, str, str], OfficeDocumentVersion] = {}
         self.grants: dict[tuple[str, str, str], str] = {}
+        self.share_versions: dict[tuple[str, str], int] = {}
+        self.principals: dict[tuple[str, str], tuple[str, str | None]] = {}
         self._lock = RLock()
 
     def _permission(self, user: UserContext, object_id: str) -> str | None:
@@ -620,6 +759,78 @@ class InMemoryOfficeDocumentRepository:
 
     def can_write(self, *, user_context: UserContext, object_id: str) -> bool:
         return self._permission(user_context, object_id) in {"write", "admin"}
+
+    def can_admin(self, *, user_context: UserContext, object_id: str) -> bool:
+        return self._permission(user_context, object_id) == "admin"
+
+    def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            if self._permission(user_context, object_id) != "admin":
+                raise OfficeDocumentPermissionError("Document sharing is not permitted")
+            known = dict(self.principals)
+            for (tenant_id, doc_id, principal_id), _permission in self.grants.items():
+                if tenant_id == user_context.tenant_id and doc_id == object_id:
+                    known.setdefault((tenant_id, principal_id), (principal_id, None))
+            known.setdefault((user_context.tenant_id, user_context.user_id), (user_context.user_id, None))
+            entries = []
+            for (tenant_id, doc_id, principal_id), permission in sorted(self.grants.items()):
+                if tenant_id != user_context.tenant_id or doc_id != object_id:
+                    continue
+                display_name, email = known[(tenant_id, principal_id)]
+                entries.append(OfficeDocumentShareEntry(
+                    principal_id=principal_id, display_name=display_name, email=email,
+                    permission=cast(Literal["read", "write", "admin"], permission),
+                    is_owner=principal_id == document.owner_principal_id,
+                ))
+            available = [
+                OfficeDocumentSharePrincipal(principal_id=principal_id, display_name=value[0], email=value[1])
+                for (tenant_id, principal_id), value in sorted(known.items(), key=lambda item: item[1][0].lower())
+                if tenant_id == user_context.tenant_id
+            ]
+            return OfficeDocumentShareState(
+                tenant_id=user_context.tenant_id, object_id=object_id,
+                acl_version=self.share_versions.get((user_context.tenant_id, object_id), 1),
+                entries=entries, available_principals=available,
+            )
+
+    def set_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentShareCommand
+    ) -> OfficeDocumentShareState:
+        return self._mutate_memory_share(user_context, object_id, command, revoke=False)
+
+    def revoke_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentUnshareCommand
+    ) -> OfficeDocumentShareState:
+        return self._mutate_memory_share(user_context, object_id, command, revoke=True)
+
+    def _mutate_memory_share(
+        self,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentShareCommand | OfficeDocumentUnshareCommand,
+        *,
+        revoke: bool,
+    ) -> OfficeDocumentShareState:
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            if self._permission(user_context, object_id) != "admin":
+                raise OfficeDocumentPermissionError("Document sharing is not permitted")
+            current = self.share_versions.get((user_context.tenant_id, object_id), 1)
+            if current != command.expected_acl_version:
+                raise OfficeDocumentConflictError("The document shares have changed")
+            if command.principal_id == document.owner_principal_id:
+                raise OfficeDocumentShareRequestError("The document owner share cannot be changed")
+            if (user_context.tenant_id, command.principal_id) not in self.principals:
+                raise OfficeDocumentShareRequestError("The principal is not an active tenant member")
+            key = (user_context.tenant_id, object_id, command.principal_id)
+            if revoke:
+                self.grants.pop(key, None)
+            else:
+                assert isinstance(command, OfficeDocumentShareCommand)
+                self.grants[key] = command.permission
+            self.share_versions[(user_context.tenant_id, object_id)] = current + 1
+            return self.share_state(user_context=user_context, object_id=object_id)
 
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]:
         return self.history_page(user_context=user_context, object_id=object_id, limit=201).versions[:200]
@@ -727,7 +938,12 @@ class InMemoryOfficeDocumentRepository:
                     old_version,
                 )
                 acl_rows = sorted(
-                    ("user", principal, permission, 1)
+                    (
+                        "user",
+                        principal,
+                        permission,
+                        self.share_versions.get((user_context.tenant_id, object_id), 1),
+                    )
                     for (tenant_id, doc_id, principal), permission in self.grants.items()
                     if tenant_id == user_context.tenant_id and doc_id == object_id
                 )
@@ -745,4 +961,6 @@ class InMemoryOfficeDocumentRepository:
             self.saved_versions[(document.tenant_id, document.object_id, version.version_id)] = version
             if object_id is None:
                 self.grants[(document.tenant_id, document.object_id, user_context.user_id)] = "admin"
+                self.share_versions[(document.tenant_id, document.object_id)] = 1
+                self.principals.setdefault((document.tenant_id, user_context.user_id), (user_context.user_id, None))
             return OfficeDocumentCommit(document=document, version=version)

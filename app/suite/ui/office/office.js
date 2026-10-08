@@ -59,7 +59,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null,
+  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null, share: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -615,6 +615,7 @@ function updateEditorState() {
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
   $("document-reload").textContent = session?.historical ? "Aktuelle Version" : "Neu laden";
   $("document-print").disabled = !printAllowed();
+  $("document-share").disabled = Boolean(!session?.objectId || !session?.canShare || session?.loading || session?.saving);
   $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring || session?.history.loading);
   $("history-more").disabled = $("history-refresh").disabled;
   $("history-retry").disabled = $("history-refresh").disabled;
@@ -3517,7 +3518,7 @@ function settleDiscard(confirmed) {
 }
 
 function freshSession(objectId = null) {
-  return { epoch: state.epoch, objectId, revision: 0, history: freshHistory(), canWrite: false,
+  return { epoch: state.epoch, objectId, revision: 0, history: freshHistory(), canWrite: false, canShare: false,
     loading: true, saving: false, historical: false, conflict: false, uncertain: false, restoring: false,
     version: null, metadata: null, baseline: "", attempt: null, versions: [] };
 }
@@ -3532,6 +3533,7 @@ function contentMatches(result, objectId, versionId = null) {
     (versionId ? result.version.version_id === versionId :
       result.is_current_version === true && result.version.version_id === result.document.current_version_id) &&
     typeof result.is_current_version === "boolean" && typeof result.can_write === "boolean" &&
+    typeof result.document.can_share === "boolean" &&
     result.rag_indexing_allowed === false && result.search_indexing_allowed === false && result.content?.type === "doc";
 }
 
@@ -3552,6 +3554,7 @@ function acceptContent(result, session) {
   session.version = result.version;
   session.objectId = result.document.object_id;
   session.canWrite = result.can_write === true;
+  session.canShare = result.document.can_share === true;
   session.historical = !result.is_current_version;
   session.conflict = false; session.uncertain = false; session.attempt = null;
   $("document-title").value = result.version.title || result.document.title;
@@ -5491,6 +5494,125 @@ function toggleFind(show, replacement = false) {
   updateTableControls();
 }
 
+function shareStateMatches(value, objectId) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === objectId &&
+    Number.isInteger(value.acl_version) && value.acl_version >= 1 && Array.isArray(value.entries) &&
+    Array.isArray(value.available_principals) && value.entries.every((entry) =>
+      typeof entry.principal_id === "string" && typeof entry.display_name === "string" &&
+      ["read", "write", "admin"].includes(entry.permission) && typeof entry.is_owner === "boolean") &&
+    value.available_principals.every((entry) =>
+      typeof entry.principal_id === "string" && typeof entry.display_name === "string");
+}
+
+function renderShares(share = state.share) {
+  if (!share) return;
+  const granted = new Map(share.data.entries.map((entry) => [entry.principal_id, entry]));
+  const select = $("share-principal");
+  const selected = select.value;
+  select.replaceChildren();
+  share.data.available_principals.forEach((principal) => {
+    if (principal.principal_id === state.context.userId) return;
+    const option = node("option", `${principal.display_name}${principal.email ? ` · ${principal.email}` : ""}`);
+    option.value = principal.principal_id;
+    const existing = granted.get(principal.principal_id);
+    if (existing?.is_owner) option.disabled = true;
+    select.append(option);
+  });
+  if (Array.from(select.options).some((option) => option.value === selected && !option.disabled)) select.value = selected;
+  const list = $("share-list"); list.replaceChildren();
+  share.data.entries.forEach((entry) => {
+    const row = node("div", undefined, "share-entry");
+    const identity = node("div"); identity.append(node("strong", entry.display_name));
+    if (entry.email) identity.append(node("small", entry.email));
+    const access = node("span", entry.is_owner ? "Eigentümer · Verwaltung" :
+      entry.permission === "write" ? "Kann bearbeiten" : entry.permission === "admin" ? "Verwaltung" : "Kann lesen", "share-access");
+    row.append(identity, access);
+    if (!entry.is_owner) {
+      const remove = node("button", "Entfernen", "quiet-button"); remove.type = "button";
+      remove.disabled = share.busy;
+      remove.addEventListener("click", () => revokeShare(entry)); row.append(remove);
+    }
+    list.append(row);
+  });
+  if (!share.data.entries.length) list.append(node("p", "Keine direkten Freigaben.", "paragraph-help"));
+  $("share-principal").disabled = share.busy || !select.options.length;
+  $("share-permission").disabled = share.busy;
+  $("share-confirm").disabled = share.busy;
+  $("share-submit").disabled = share.busy || !select.value || !$("share-confirm").checked;
+  $("share-refresh").disabled = share.busy;
+}
+
+async function loadShares() {
+  const session = state.session;
+  if (!sessionCurrent(session) || !session.objectId || !session.canShare) return;
+  const share = state.share || { session, request: 0, busy: false, data: null };
+  state.share = share; share.request += 1; const request = share.request; share.busy = true;
+  $("share-status").textContent = "Freigaben werden geladen …";
+  try {
+    const data = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/shares`);
+    if (state.share !== share || request !== share.request || !sessionCurrent(session)) return;
+    if (!shareStateMatches(data, session.objectId)) throw new ApiError(502, true);
+    share.data = data; $("share-status").textContent = "";
+  } catch (error) {
+    if (state.share !== share || request !== share.request) return;
+    $("share-status").textContent = denied(error) ? "Freigaben dürfen nicht verwaltet werden." : "Freigaben konnten nicht geladen werden.";
+  } finally {
+    if (state.share === share && request === share.request) { share.busy = false; if (share.data) renderShares(share); }
+  }
+}
+
+function openShares() {
+  if (!state.session?.canShare || !state.session.objectId) return;
+  state.share = { session: state.session, request: 0, busy: false, data: null };
+  $("share-confirm").checked = false; $("share-list").replaceChildren();
+  $("share-dialog").showModal(); void loadShares();
+}
+
+function closeShares() {
+  if ($("share-dialog").open) $("share-dialog").close();
+  state.share = null;
+}
+
+async function setShare() {
+  const share = state.share;
+  if (!share?.data || share.busy || !$("share-confirm").checked || !sessionCurrent(share.session)) return;
+  share.busy = true; renderShares(share); $("share-status").textContent = "Freigabe wird verbindlich gespeichert …";
+  try {
+    const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares`, {
+      method: "POST", body: { principal_id: $("share-principal").value, permission: $("share-permission").value,
+        expected_acl_version: share.data.acl_version, mutation_reference: `office-share-${crypto.randomUUID()}`,
+        human_confirmation: true },
+    });
+    if (state.share !== share || !shareStateMatches(data, share.session.objectId)) throw new ApiError(502, true);
+    share.data = data; $("share-confirm").checked = false; $("share-status").textContent = "Freigabe gespeichert.";
+  } catch (error) {
+    if (state.share !== share) return;
+    $("share-status").textContent = error instanceof ApiError && error.status === 409
+      ? "Freigaben wurden zwischenzeitlich geändert. Bitte aktualisieren."
+      : denied(error) ? "Freigabe wurde nicht erlaubt." : "Freigabe konnte nicht gespeichert werden.";
+  } finally { if (state.share === share) { share.busy = false; renderShares(share); } }
+}
+
+async function revokeShare(entry) {
+  const share = state.share;
+  if (!share?.data || share.busy || entry.is_owner || !sessionCurrent(share.session)) return;
+  if (!window.confirm(`Zugriff für „${entry.display_name}“ wirklich entziehen?`)) return;
+  share.busy = true; renderShares(share); $("share-status").textContent = "Zugriff wird entzogen …";
+  try {
+    const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares/revoke`, {
+      method: "POST", body: { principal_id: entry.principal_id, expected_acl_version: share.data.acl_version,
+        mutation_reference: `office-unshare-${crypto.randomUUID()}`, human_confirmation: true },
+    });
+    if (state.share !== share || !shareStateMatches(data, share.session.objectId)) throw new ApiError(502, true);
+    share.data = data; $("share-status").textContent = "Zugriff entzogen.";
+  } catch (error) {
+    if (state.share !== share) return;
+    $("share-status").textContent = error instanceof ApiError && error.status === 409
+      ? "Freigaben wurden zwischenzeitlich geändert. Bitte aktualisieren."
+      : denied(error) ? "Entzug wurde nicht erlaubt." : "Zugriff konnte nicht entzogen werden.";
+  } finally { if (state.share === share) { share.busy = false; renderShares(share); } }
+}
+
 $("document-new").addEventListener("click", showNewDocument);
 $("welcome-new").addEventListener("click", showNewDocument);
 $("new-document-form").addEventListener("submit", beginDraft);
@@ -5504,6 +5626,12 @@ $("document-classification").addEventListener("change", () => {
 });
 $("document-reload").addEventListener("click", () => { if (state.session?.objectId) openDocument(state.session.objectId); });
 $("document-print").addEventListener("click", openPrint);
+$("document-share").addEventListener("click", openShares);
+$("share-submit").addEventListener("click", setShare);
+$("share-refresh").addEventListener("click", loadShares);
+$("share-confirm").addEventListener("change", () => { if (state.share?.data) renderShares(); });
+[$("share-close"), $("share-done")].forEach((button) => button.addEventListener("click", closeShares));
+$("share-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeShares(); });
 $("document-reuse").addEventListener("click", openReuse);
 $("reuse-form").addEventListener("submit", submitReuse);
 $("reuse-title").addEventListener("input", () => {

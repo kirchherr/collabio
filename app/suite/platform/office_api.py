@@ -34,7 +34,11 @@ from suite.platform.office_documents import (
     OfficeDocumentOutboundReferencesResponse,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
+    OfficeDocumentShareCommand,
+    OfficeDocumentShareRequestError,
+    OfficeDocumentShareState,
     OfficeDocumentService,
+    OfficeDocumentUnshareCommand,
 )
 from suite.platform.office_image_codec import (
     MAX_IMAGE_INPUT,
@@ -149,6 +153,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Invalid document list request"}, status_code=400)
             except OfficeDocumentHistoryRequestError:
                 return JSONResponse({"detail": "Invalid version history request"}, status_code=400)
+            except OfficeDocumentShareRequestError:
+                return JSONResponse({"detail": "Invalid document share request"}, status_code=400)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
@@ -407,6 +413,48 @@ def register_office_routes(
             object_id=object_id,
             page_size=page_size,
             cursor=cursor,
+        )
+
+    @router.get("/{object_id}/shares", response_model=OfficeDocumentShareState)
+    def document_shares(
+        object_id: str,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.share_state(
+            user_context=context.user_context, object_id=object_id
+        )
+
+    @router.post(
+        "/{object_id}/shares", response_model=OfficeDocumentShareState, dependencies=[Depends(write_gate)]
+    )
+    def set_document_share(
+        object_id: str,
+        command: OfficeDocumentShareCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.set_share(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
+        )
+
+    @router.post(
+        "/{object_id}/shares/revoke", response_model=OfficeDocumentShareState, dependencies=[Depends(write_gate)]
+    )
+    def revoke_document_share(
+        object_id: str,
+        command: OfficeDocumentUnshareCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.revoke_share(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
         )
 
     @router.get("/{object_id}/outbound-references", response_model=OfficeDocumentOutboundReferencesResponse)

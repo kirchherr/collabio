@@ -43,6 +43,7 @@ OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
 OFFICE_BACKLINK_PAGE_MAX = 50
 OFFICE_BACKLINK_SCAN_LIMIT = 50
 OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
+OfficeSharePermission = Literal["read", "write"]
 OFFICE_INFORMATION_CLASSIFICATION_RANK = {
     "public": 0,
     "internal": 1,
@@ -69,6 +70,65 @@ class OfficeDocumentListRequestError(ValueError):
 
 class OfficeDocumentHistoryRequestError(ValueError):
     pass
+
+
+class OfficeDocumentShareRequestError(ValueError):
+    pass
+
+
+class OfficeDocumentSharePrincipal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    principal_id: str
+    display_name: str
+    email: str | None = None
+
+
+class OfficeDocumentShareEntry(OfficeDocumentSharePrincipal):
+    permission: Literal["read", "write", "admin"]
+    is_owner: bool = False
+
+
+class OfficeDocumentShareState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    acl_version: int = Field(ge=1)
+    entries: list[OfficeDocumentShareEntry]
+    available_principals: list[OfficeDocumentSharePrincipal]
+    audit_event_id: str = ""
+
+
+class OfficeDocumentShareCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    principal_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:@+-]*$")
+    permission: OfficeSharePermission
+    expected_acl_version: int = Field(ge=1)
+    mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+    human_confirmation: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def require_confirmation(self) -> OfficeDocumentShareCommand:
+        if not self.human_confirmation:
+            raise ValueError("Changing a document share requires explicit confirmation")
+        return self
+
+
+class OfficeDocumentUnshareCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    principal_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:@+-]*$")
+    expected_acl_version: int = Field(ge=1)
+    mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+    human_confirmation: bool = Field(strict=True)
+
+    @model_validator(mode="after")
+    def require_confirmation(self) -> OfficeDocumentUnshareCommand:
+        if not self.human_confirmation:
+            raise ValueError("Revoking a document share requires explicit confirmation")
+        return self
 
 
 def validate_office_document_query(query: str) -> str:
@@ -162,6 +222,7 @@ class OfficeDocumentView(BaseModel):
     created_at_utc: str
     updated_at_utc: str
     can_write: bool
+    can_share: bool = False
 
 
 class OfficeDocumentVersionView(BaseModel):
@@ -281,6 +342,18 @@ class OfficeDocumentRepository(Protocol):
     def get_document(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentRecord: ...
 
     def can_write(self, *, user_context: UserContext, object_id: str) -> bool: ...
+
+    def can_admin(self, *, user_context: UserContext, object_id: str) -> bool: ...
+
+    def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState: ...
+
+    def set_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentShareCommand
+    ) -> OfficeDocumentShareState: ...
+
+    def revoke_share(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentUnshareCommand
+    ) -> OfficeDocumentShareState: ...
 
     def versions(self, *, user_context: UserContext, object_id: str) -> tuple[OfficeDocumentVersion, ...]: ...
 
@@ -441,6 +514,9 @@ class OfficeDocumentService:
                     self.writes_available
                     and write_enabled
                     and self.repository.can_write(user_context=user_context, object_id=record.object_id),
+                    self.writes_available
+                    and write_enabled
+                    and self.repository.can_admin(user_context=user_context, object_id=record.object_id),
                 )
                 for record in records
             ],
@@ -469,6 +545,11 @@ class OfficeDocumentService:
             and write_enabled
             and self.repository.can_write(user_context=user_context, object_id=object_id)
         )
+        can_share = (
+            self.writes_available
+            and write_enabled
+            and self.repository.can_admin(user_context=user_context, object_id=object_id)
+        )
         event_id = self._audit(
             user_context,
             "office.documents.read",
@@ -476,7 +557,7 @@ class OfficeDocumentService:
             version_id=version.version_id,
             content_hash=version.content_hash,
         )
-        return self._content_response(document, version, content, can_write, event_id)
+        return self._content_response(document, version, content, can_write, event_id, can_share=can_share)
 
     def outbound_references(
         self,
@@ -800,6 +881,71 @@ class OfficeDocumentService:
             raise OfficeDocumentPermissionError("Document saving is not permitted")
         return self._save(user_context=user_context, object_id=object_id, command=command)
 
+    def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
+        state = self.repository.share_state(user_context=user_context, object_id=object_id)
+        return state.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.shares.read",
+                    object_id=object_id,
+                    acl_version=state.acl_version,
+                    share_count=len(state.entries),
+                )
+            }
+        )
+
+    def set_share(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentShareCommand,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentShareState:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document sharing is not permitted")
+        command = OfficeDocumentShareCommand.model_validate(command.model_dump(mode="python"))
+        state = self.repository.set_share(user_context=user_context, object_id=object_id, command=command)
+        return state.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.shares.changed",
+                    object_id=object_id,
+                    principal_id=command.principal_id,
+                    permission=command.permission,
+                    acl_version=state.acl_version,
+                    mutation_reference=command.mutation_reference,
+                )
+            }
+        )
+
+    def revoke_share(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentUnshareCommand,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentShareState:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document sharing is not permitted")
+        command = OfficeDocumentUnshareCommand.model_validate(command.model_dump(mode="python"))
+        state = self.repository.revoke_share(user_context=user_context, object_id=object_id, command=command)
+        return state.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.shares.revoked",
+                    object_id=object_id,
+                    principal_id=command.principal_id,
+                    acl_version=state.acl_version,
+                    mutation_reference=command.mutation_reference,
+                )
+            }
+        )
+
     def _save(
         self,
         *,
@@ -839,6 +985,9 @@ class OfficeDocumentService:
             True,
             event_id,
             replayed=result.replayed,
+            can_share=self.repository.can_admin(
+                user_context=user_context, object_id=result.document.object_id
+            ),
         )
 
     def _read_content(self, document: OfficeDocumentRecord, version: OfficeDocumentVersion) -> dict[str, Any]:
@@ -917,7 +1066,7 @@ class OfficeDocumentService:
             raise OfficeDocumentInvalidContentError("Document source is invalid")
 
     @staticmethod
-    def _view(record: OfficeDocumentRecord, can_write: bool) -> OfficeDocumentView:
+    def _view(record: OfficeDocumentRecord, can_write: bool, can_share: bool = False) -> OfficeDocumentView:
         return OfficeDocumentView(
             **record.model_dump(
                 include={
@@ -930,6 +1079,7 @@ class OfficeDocumentService:
                 }
             ),
             can_write=can_write,
+            can_share=can_share,
         )
 
     @staticmethod
@@ -945,10 +1095,11 @@ class OfficeDocumentService:
         event_id: str,
         *,
         replayed: bool = False,
+        can_share: bool | None = None,
     ) -> OfficeDocumentContentResponse:
         return OfficeDocumentContentResponse(
             tenant_id=document.tenant_id,
-            document=self._view(document, can_write),
+            document=self._view(document, can_write, can_write if can_share is None else can_share),
             version=self._version_view(version),
             content=content,
             is_current_version=document.current_version_id == version.version_id,
