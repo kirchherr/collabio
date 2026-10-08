@@ -3746,7 +3746,9 @@ async function saveDocument(event) {
     notice(result.replayed && !result.is_current_version
       ? "Diese Speicherung wurde bestätigt. Inzwischen gibt es eine neuere Version; öffnen Sie sie über „Aktuelle Version“."
       : "");
-    await loadDocuments();
+    // The confirmed version is already authoritative. Refreshing the independent
+    // document list must not keep the editor in its saving state.
+    void loadDocuments();
     if (sessionCurrent(session) && $("history-tab").getAttribute("aria-selected") === "true") loadHistory();
     if (sessionCurrent(session) && reviewPanelOpen()) loadReview();
     if (sessionCurrent(session) && suggestionPanelOpen()) loadSuggestions();
