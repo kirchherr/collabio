@@ -24,7 +24,10 @@ rights cases initially lacked their intentionally separate blocked API and the e
 existing scroll-reachability pattern. After starting only that test service and correcting the reachability test,
 all three affected scenarios passed in a 4/4 rerun including one desktop duplicate. Desktop, tablet, mobile,
 style and print artifacts passed visual review. Full quality on product source `c7529e2a` passed Ruff, formatting for
-867 files, Mypy over 607 source files and complete Pytest to 100% with only the known Starlette/AnyIO warning.
+867 files, Mypy over 607 source files and complete Pytest to 100% with only the known Starlette/AnyIO warning. The
+isolated review remains healthy at
+`http://192.168.0.108:42880/office?review=paragraph-indent-c7529e2a`; exact temporary services and local evidence
+copies were removed, and the regular API also returns `ok`.
 
 Roadmap 460 through 466 / PLANS 321 through 327 are complete under ADR-0153. Native Office direct character
 formatting and document-owned named styles now support the bounded presentation tokens `uppercase` and `smallCaps`.
