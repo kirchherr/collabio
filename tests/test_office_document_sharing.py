@@ -41,6 +41,8 @@ def sharing_service() -> tuple[OfficeDocumentService, InMemoryOfficeDocumentRepo
     owner.readable_object_ids.add(object_id)
     repository.principals[(owner.tenant_id, "reader")] = ("Leserin", "reader@example.test")
     repository.principals[(owner.tenant_id, "editor")] = ("Bearbeiter", None)
+    repository.roles[(owner.tenant_id, "reviewers")] = "Prüfende"
+    repository.groups[(owner.tenant_id, "finance")] = "Finanzen"
     return service, repository, owner, object_id
 
 
@@ -200,6 +202,72 @@ def test_share_expiration_is_bounded_and_expired_grants_fail_closed() -> None:
         service.read_content(user_context=reader, object_id=object_id)
 
 
+def test_owner_can_share_with_roles_and_groups_without_delegating_share_administration() -> None:
+    service, repository, owner, object_id = sharing_service()
+    initial = service.share_state(user_context=owner, object_id=object_id)
+    assert {(item.principal_type, item.principal_id) for item in initial.available_principals} >= {
+        ("role", "reviewers"),
+        ("group", "finance"),
+    }
+
+    role_state = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_type="role",
+            principal_id="reviewers",
+            permission="read",
+            expected_acl_version=1,
+            mutation_reference="grant-reviewers",
+            human_confirmation=True,
+        ),
+    )
+    assert role_state.acl_version == 2
+    role_reader = owner.model_copy(
+        update={"user_id": "role-reader", "role_ids": {"reviewers"}, "readable_object_ids": {object_id}}
+    )
+    assert service.read_content(user_context=role_reader, object_id=object_id).document.object_id == object_id
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.share_state(user_context=role_reader, object_id=object_id)
+
+    expires_at = datetime.now(UTC) + timedelta(days=1)
+    group_state = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_type="group",
+            principal_id="finance",
+            permission="write",
+            expires_at_utc=expires_at,
+            expected_acl_version=2,
+            mutation_reference="grant-finance",
+            human_confirmation=True,
+        ),
+    )
+    assert group_state.acl_version == 3
+    group_member = owner.model_copy(update={"user_id": "accountant", "readable_object_ids": {object_id}})
+    repository.group_memberships[(owner.tenant_id, "accountant")] = {"finance"}
+    assert repository.can_write(user_context=group_member, object_id=object_id)
+    assert repository.group_grant_expirations[(owner.tenant_id, object_id, "finance")] == expires_at
+
+    revoked = service.revoke_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentUnshareCommand(
+            principal_type="group",
+            principal_id="finance",
+            expected_acl_version=3,
+            mutation_reference="revoke-finance",
+            human_confirmation=True,
+        ),
+    )
+    assert revoked.acl_version == 4
+    assert not repository.can_write(user_context=group_member, object_id=object_id)
+
+
 def test_expiration_migration_versions_acl_terms_and_replaces_the_grant_function() -> None:
     migration = (
         Path(__file__).resolve().parents[1]
@@ -211,3 +279,19 @@ def test_expiration_migration_versions_acl_terms_and_replaces_the_grant_function
     assert "permission, expires_at_utc, acl_version" in normalized
     assert "drop function office.set_document_user_grant" in normalized
     assert "security definer set search_path = pg_catalog" in normalized
+
+
+def test_subject_share_migration_validates_tenant_roles_and_groups_and_records_type() -> None:
+    migration = (
+        Path(__file__).resolve().parents[1]
+        / "app/suite/persistence/migrations/0089_office_document_subject_sharing.sql"
+    )
+    normalized = " ".join(migration.read_text().lower().split())
+    assert "p_subject_type not in ('user', 'role', 'group')" in normalized
+    assert "from collabio.tenant_roles" in normalized
+    assert "from collabio.tenant_groups" in normalized
+    assert "add column subject_type text not null default 'user'" in normalized
+    assert "create function office.set_document_subject_grant" in normalized
+    assert "create function office.revoke_document_subject_grant" in normalized
+    assert "grant execute on function office.set_document_subject_grant" in normalized
+    assert "grant insert on collabio.object_acl_entries to collabio_app" not in normalized

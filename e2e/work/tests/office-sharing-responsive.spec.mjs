@@ -23,7 +23,7 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   expect((await initial).status()).toBe(200);
   await expect(page.locator("#share-dialog")).toBeVisible();
   await expect(page.locator("#share-list .share-entry")).toContainText("Eigentümer · Verwaltung");
-  await page.locator("#share-principal").selectOption("work-reader-e2e");
+  await page.locator("#share-principal").selectOption("user:work-reader-e2e");
   await page.locator("#share-permission").selectOption("read");
   await page.locator("#share-expiration").selectOption("7");
   await expect(page.locator("#share-submit")).toBeDisabled();
@@ -37,7 +37,9 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   const grantedBody = await grantedResponse.json();
   expect(grantedBody.tenant_id).toBe(TENANT_ID);
   expect(grantedBody.acl_version).toBe(2);
-  expect(grantedBody.entries.find((entry) => entry.principal_id === "work-reader-e2e").expires_at_utc).toBeTruthy();
+  const directEntry = grantedBody.entries.find((entry) => entry.principal_id === "work-reader-e2e");
+  expect(directEntry.principal_type).toBe("user");
+  expect(directEntry.expires_at_utc).toBeTruthy();
   await expect(page.locator("#share-list")).toContainText("Kann lesen");
   await expect(page.locator("#share-list")).toContainText("bis");
 
@@ -70,6 +72,59 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   await page.locator("#share-list .share-entry", { hasText: "Kann bearbeiten" }).locator("button").click();
   expect((await revoked).status()).toBe(200);
   await expect(page.locator("#share-list .share-entry", { hasText: "Kann bearbeiten" })).toHaveCount(0);
+  reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
+  expect(reader.status()).toBe(404);
+  verifyBrowser();
+});
+
+test("Office role and group sharing stays tenant scoped and authoritative", async ({ page }) => {
+  const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
+  await openOffice(page);
+  await newOfficeDraft(page, "Synthetic subject sharing", { text: "Role and group ACL proof" });
+  const saved = await saveOffice(page);
+  const objectId = saved.document.object_id;
+  const sharePath = `${OFFICE_PATH}/${objectId}/shares`;
+  const readerHeaders = { ...OFFICE_READER_HEADERS, "X-Readable-Object-Ids": objectId };
+
+  await page.locator("#document-share").click();
+  await expect(page.locator("#share-dialog")).toBeVisible();
+  await expect(page.locator("#share-principal option[value='role:office-reader']")).toHaveText(/Rolle/);
+  await expect(page.locator("#share-principal option[value='group:work-office-reviewers-e2e']")).toHaveText(/Gruppe/);
+
+  await page.locator("#share-principal").selectOption("role:office-reader");
+  await page.locator("#share-confirm").check();
+  let changed = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === sharePath && response.request().method() === "POST");
+  await page.locator("#share-submit").click();
+  expect((await changed).status()).toBe(200);
+  await expect(page.locator("#share-list")).toContainText("Rolle · Synthetic Office Readers");
+  let reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
+  expect(reader.status()).toBe(200);
+  expect((await reader.json()).can_write).toBe(false);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  let revoked = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === `${sharePath}/revoke` && response.request().method() === "POST");
+  await page.locator("#share-list .share-entry", { hasText: "Rolle · Synthetic Office Readers" }).locator("button").click();
+  expect((await revoked).status()).toBe(200);
+
+  await page.locator("#share-principal").selectOption("group:work-office-reviewers-e2e");
+  await page.locator("#share-permission").selectOption("write");
+  await page.locator("#share-confirm").check();
+  changed = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === sharePath && response.request().method() === "POST");
+  await page.locator("#share-submit").click();
+  expect((await changed).status()).toBe(200);
+  await expect(page.locator("#share-list")).toContainText("Gruppe · Synthetic Office Reviewers");
+  reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
+  expect(reader.status()).toBe(200);
+  expect((await reader.json()).can_write).toBe(true);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  revoked = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === `${sharePath}/revoke` && response.request().method() === "POST");
+  await page.locator("#share-list .share-entry", { hasText: "Gruppe · Synthetic Office Reviewers" }).locator("button").click();
+  expect((await revoked).status()).toBe(200);
   reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
   expect(reader.status()).toBe(404);
   verifyBrowser();

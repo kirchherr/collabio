@@ -79,6 +79,7 @@ class OfficeDocumentShareRequestError(ValueError):
 class OfficeDocumentSharePrincipal(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    principal_type: Literal["user", "role", "group"] = "user"
     principal_id: str
     display_name: str
     email: str | None = None
@@ -104,6 +105,7 @@ class OfficeDocumentShareState(BaseModel):
 class OfficeDocumentShareCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    principal_type: Literal["user", "role", "group"] = "user"
     principal_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:@+-]*$")
     permission: OfficeSharePermission
     expires_at_utc: datetime | None = None
@@ -134,6 +136,7 @@ class OfficeDocumentShareCommand(BaseModel):
 class OfficeDocumentUnshareCommand(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    principal_type: Literal["user", "role", "group"] = "user"
     principal_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:@+-]*$")
     expected_acl_version: int = Field(ge=1)
     mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")

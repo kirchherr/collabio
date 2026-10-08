@@ -374,34 +374,62 @@ class PgOfficeDocumentRepository:
         ).fetchone()
         rows = connection.execute(
             """
-            SELECT principal.user_id, COALESCE(NULLIF(principal.display_name, ''), principal.user_id),
+            WITH share_principals AS (
+                SELECT DISTINCT 'user'::text AS principal_type, principal.user_id AS principal_id,
+                       COALESCE(NULLIF(principal.display_name, ''), principal.user_id) AS display_name,
+                       principal.email
+                FROM collabio.tenant_principals AS principal
+                JOIN collabio.tenant_principal_memberships AS membership
+                  ON membership.tenant_id = principal.tenant_id
+                 AND membership.issuer = principal.issuer AND membership.subject = principal.subject
+                WHERE principal.tenant_id = %s AND principal.status = 'active' AND membership.status = 'active'
+                UNION ALL
+                SELECT 'role', role.role_id, COALESCE(NULLIF(role.display_name, ''), role.role_id), NULL
+                FROM collabio.tenant_roles AS role
+                WHERE role.tenant_id = %s AND role.status = 'active'
+                UNION ALL
+                SELECT 'group', tenant_group.group_id,
+                       COALESCE(NULLIF(tenant_group.display_name, ''), tenant_group.group_id), NULL
+                FROM collabio.tenant_groups AS tenant_group
+                WHERE tenant_group.tenant_id = %s AND tenant_group.status = 'active'
+            )
+            SELECT principal.principal_type, principal.principal_id, principal.display_name,
                    principal.email, acl.permission, acl.expires_at_utc
             FROM collabio.object_acl_entries AS acl
-            JOIN collabio.tenant_principals AS principal
-              ON principal.tenant_id = acl.tenant_id AND principal.user_id = acl.acl_subject_id
-            JOIN collabio.tenant_principal_memberships AS membership
-              ON membership.tenant_id = principal.tenant_id
-             AND membership.issuer = principal.issuer AND membership.subject = principal.subject
+            JOIN share_principals AS principal
+              ON principal.principal_type = acl.acl_subject_type
+             AND principal.principal_id = acl.acl_subject_id
             WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
-              AND acl.acl_subject_type = 'user' AND acl.status = 'active'
+              AND acl.acl_subject_type IN ('user', 'role', 'group') AND acl.status = 'active'
               AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
-              AND principal.status = 'active' AND membership.status = 'active'
-            ORDER BY lower(COALESCE(NULLIF(principal.display_name, ''), principal.user_id)), principal.user_id
+            ORDER BY principal.principal_type, lower(principal.display_name), principal.principal_id
             """,
-            (document.tenant_id, document.object_id, OFFICE_DOCUMENT_OBJECT_TYPE),
+            (document.tenant_id, document.tenant_id, document.tenant_id,
+             document.tenant_id, document.object_id, OFFICE_DOCUMENT_OBJECT_TYPE),
         ).fetchall()
         available = connection.execute(
             """
-            SELECT principal.user_id, COALESCE(NULLIF(principal.display_name, ''), principal.user_id), principal.email
+            SELECT * FROM (
+            SELECT DISTINCT 'user'::text AS principal_type, principal.user_id AS principal_id,
+                   COALESCE(NULLIF(principal.display_name, ''), principal.user_id) AS display_name, principal.email
             FROM collabio.tenant_principals AS principal
             JOIN collabio.tenant_principal_memberships AS membership
               ON membership.tenant_id = principal.tenant_id
              AND membership.issuer = principal.issuer AND membership.subject = principal.subject
             WHERE principal.tenant_id = %s AND principal.status = 'active' AND membership.status = 'active'
-            ORDER BY lower(COALESCE(NULLIF(principal.display_name, ''), principal.user_id)), principal.user_id
+            UNION ALL
+            SELECT 'role', role.role_id, COALESCE(NULLIF(role.display_name, ''), role.role_id), NULL
+            FROM collabio.tenant_roles AS role WHERE role.tenant_id = %s AND role.status = 'active'
+            UNION ALL
+            SELECT 'group', tenant_group.group_id,
+                   COALESCE(NULLIF(tenant_group.display_name, ''), tenant_group.group_id), NULL
+            FROM collabio.tenant_groups AS tenant_group
+            WHERE tenant_group.tenant_id = %s AND tenant_group.status = 'active'
+            ) AS available_principal
+            ORDER BY principal_type, lower(display_name), principal_id
             LIMIT 500
             """,
-            (document.tenant_id,),
+            (document.tenant_id, document.tenant_id, document.tenant_id),
         ).fetchall()
         return OfficeDocumentShareState(
             tenant_id=document.tenant_id,
@@ -409,20 +437,22 @@ class PgOfficeDocumentRepository:
             acl_version=int(acl_version_row[0]) if acl_version_row else 1,
             entries=[
                 OfficeDocumentShareEntry(
-                    principal_id=str(row[0]),
-                    display_name=str(row[1]),
-                    email=str(row[2]) if row[2] is not None else None,
-                    permission=cast(Literal["read", "write", "admin"], str(row[3])),
-                    is_owner=str(row[0]) == document.owner_principal_id,
-                    expires_at_utc=(row[4].astimezone(UTC).isoformat().replace("+00:00", "Z") if row[4] else None),
+                    principal_type=cast(Literal["user", "role", "group"], str(row[0])),
+                    principal_id=str(row[1]),
+                    display_name=str(row[2]),
+                    email=str(row[3]) if row[3] is not None else None,
+                    permission=cast(Literal["read", "write", "admin"], str(row[4])),
+                    is_owner=str(row[0]) == "user" and str(row[1]) == document.owner_principal_id,
+                    expires_at_utc=(row[5].astimezone(UTC).isoformat().replace("+00:00", "Z") if row[5] else None),
                 )
                 for row in rows
             ],
             available_principals=[
                 OfficeDocumentSharePrincipal(
-                    principal_id=str(row[0]),
-                    display_name=str(row[1]),
-                    email=str(row[2]) if row[2] is not None else None,
+                    principal_type=cast(Literal["user", "role", "group"], str(row[0])),
+                    principal_id=str(row[1]),
+                    display_name=str(row[2]),
+                    email=str(row[3]) if row[3] is not None else None,
                 )
                 for row in available
             ],
@@ -451,15 +481,16 @@ class PgOfficeDocumentRepository:
             document = self._authorized_document(connection, user_context, object_id)
             if not self._can_manage_shares(connection, user_context, object_id):
                 raise OfficeDocumentPermissionError("Document sharing is not permitted")
-            if command.principal_id == document.owner_principal_id:
+            if command.principal_type == "user" and command.principal_id == document.owner_principal_id:
                 raise OfficeDocumentShareRequestError("The document owner share cannot be changed")
-            function = "office.revoke_document_user_grant" if revoke else "office.set_document_user_grant"
+            function = "office.revoke_document_subject_grant" if revoke else "office.set_document_subject_grant"
             parameters: tuple[Any, ...]
             if revoke:
                 parameters = (
                     user_context.tenant_id,
                     object_id,
                     user_context.user_id,
+                    command.principal_type,
                     command.principal_id,
                     command.expected_acl_version,
                     command.mutation_reference,
@@ -470,6 +501,7 @@ class PgOfficeDocumentRepository:
                     user_context.tenant_id,
                     object_id,
                     user_context.user_id,
+                    command.principal_type,
                     command.principal_id,
                     command.permission,
                     command.expires_at_utc,
@@ -733,18 +765,49 @@ class InMemoryOfficeDocumentRepository:
         self.saved_versions: dict[tuple[str, str, str], OfficeDocumentVersion] = {}
         self.grants: dict[tuple[str, str, str], str] = {}
         self.grant_expirations: dict[tuple[str, str, str], datetime] = {}
+        self.role_grants: dict[tuple[str, str, str], str] = {}
+        self.role_grant_expirations: dict[tuple[str, str, str], datetime] = {}
+        self.group_grants: dict[tuple[str, str, str], str] = {}
+        self.group_grant_expirations: dict[tuple[str, str, str], datetime] = {}
         self.share_versions: dict[tuple[str, str], int] = {}
         self.principals: dict[tuple[str, str], tuple[str, str | None]] = {}
+        self.roles: dict[tuple[str, str], str] = {}
+        self.groups: dict[tuple[str, str], str] = {}
+        self.group_memberships: dict[tuple[str, str], set[str]] = {}
         self._lock = RLock()
+
+    @staticmethod
+    def _active_grant(
+        grants: dict[tuple[str, str, str], str],
+        expirations: dict[tuple[str, str, str], datetime],
+        key: tuple[str, str, str],
+    ) -> str | None:
+        expiration = expirations.get(key)
+        if expiration is not None and expiration <= datetime.now(UTC):
+            return None
+        return grants.get(key)
 
     def _permission(self, user: UserContext, object_id: str) -> str | None:
         if object_id not in user.readable_object_ids:
             return None
-        key = (user.tenant_id, object_id, user.user_id)
-        expiration = self.grant_expirations.get(key)
-        if expiration is not None and expiration <= datetime.now(UTC):
-            return None
-        return self.grants.get(key)
+        permissions = [
+            self._active_grant(
+                self.grants, self.grant_expirations, (user.tenant_id, object_id, user.user_id)
+            )
+        ]
+        permissions.extend(
+            self._active_grant(
+                self.role_grants, self.role_grant_expirations, (user.tenant_id, object_id, role_id)
+            )
+            for role_id in user.role_ids
+        )
+        permissions.extend(
+            self._active_grant(
+                self.group_grants, self.group_grant_expirations, (user.tenant_id, object_id, group_id)
+            )
+            for group_id in self.group_memberships.get((user.tenant_id, user.user_id), set())
+        )
+        return max((permission for permission in permissions if permission), key={"read": 1, "write": 2, "admin": 3}.get, default=None)
 
     def list_documents(
         self,
@@ -786,12 +849,16 @@ class InMemoryOfficeDocumentRepository:
         return self._permission(user_context, object_id) in {"write", "admin"}
 
     def can_admin(self, *, user_context: UserContext, object_id: str) -> bool:
-        return self._permission(user_context, object_id) == "admin"
+        return self._active_grant(
+            self.grants,
+            self.grant_expirations,
+            (user_context.tenant_id, object_id, user_context.user_id),
+        ) == "admin"
 
     def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
         with self._lock:
             document = self.get_document(user_context=user_context, object_id=object_id)
-            if self._permission(user_context, object_id) != "admin":
+            if not self.can_admin(user_context=user_context, object_id=object_id):
                 raise OfficeDocumentPermissionError("Document sharing is not permitted")
             known = dict(self.principals)
             for (tenant_id, doc_id, principal_id), _permission in self.grants.items():
@@ -799,30 +866,53 @@ class InMemoryOfficeDocumentRepository:
                     known.setdefault((tenant_id, principal_id), (principal_id, None))
             known.setdefault((user_context.tenant_id, user_context.user_id), (user_context.user_id, None))
             entries = []
-            for (tenant_id, doc_id, principal_id), permission in sorted(self.grants.items()):
-                if tenant_id != user_context.tenant_id or doc_id != object_id:
-                    continue
-                expiration = self.grant_expirations.get((tenant_id, doc_id, principal_id))
-                if expiration is not None and expiration <= datetime.now(UTC):
-                    continue
-                display_name, email = known[(tenant_id, principal_id)]
-                entries.append(
-                    OfficeDocumentShareEntry(
-                        principal_id=principal_id,
-                        display_name=display_name,
-                        email=email,
-                        permission=cast(Literal["read", "write", "admin"], permission),
-                        is_owner=principal_id == document.owner_principal_id,
-                        expires_at_utc=(
-                            expiration.astimezone(UTC).isoformat().replace("+00:00", "Z") if expiration else None
-                        ),
+            stores = (
+                ("user", self.grants, self.grant_expirations, known),
+                ("role", self.role_grants, self.role_grant_expirations, self.roles),
+                ("group", self.group_grants, self.group_grant_expirations, self.groups),
+            )
+            for principal_type, grants, expirations, directory in stores:
+                for (tenant_id, doc_id, principal_id), permission in sorted(grants.items()):
+                    if tenant_id != user_context.tenant_id or doc_id != object_id:
+                        continue
+                    expiration = expirations.get((tenant_id, doc_id, principal_id))
+                    if expiration is not None and expiration <= datetime.now(UTC):
+                        continue
+                    identity = directory[(tenant_id, principal_id)]
+                    display_name, email = identity if principal_type == "user" else (identity, None)
+                    entries.append(
+                        OfficeDocumentShareEntry(
+                            principal_type=cast(Literal["user", "role", "group"], principal_type),
+                            principal_id=principal_id,
+                            display_name=display_name,
+                            email=email,
+                            permission=cast(Literal["read", "write", "admin"], permission),
+                            is_owner=principal_type == "user" and principal_id == document.owner_principal_id,
+                            expires_at_utc=(
+                                expiration.astimezone(UTC).isoformat().replace("+00:00", "Z")
+                                if expiration
+                                else None
+                            ),
+                        )
                     )
-                )
+            entries.sort(key=lambda entry: (entry.principal_type, entry.display_name.lower(), entry.principal_id))
             available = [
-                OfficeDocumentSharePrincipal(principal_id=principal_id, display_name=value[0], email=value[1])
+                OfficeDocumentSharePrincipal(
+                    principal_type="user", principal_id=principal_id, display_name=value[0], email=value[1]
+                )
                 for (tenant_id, principal_id), value in sorted(known.items(), key=lambda item: item[1][0].lower())
                 if tenant_id == user_context.tenant_id
             ]
+            available.extend(
+                OfficeDocumentSharePrincipal(principal_type="role", principal_id=principal_id, display_name=name)
+                for (tenant_id, principal_id), name in sorted(self.roles.items(), key=lambda item: item[1].lower())
+                if tenant_id == user_context.tenant_id
+            )
+            available.extend(
+                OfficeDocumentSharePrincipal(principal_type="group", principal_id=principal_id, display_name=name)
+                for (tenant_id, principal_id), name in sorted(self.groups.items(), key=lambda item: item[1].lower())
+                if tenant_id == user_context.tenant_id
+            )
             return OfficeDocumentShareState(
                 tenant_id=user_context.tenant_id,
                 object_id=object_id,
@@ -851,26 +941,36 @@ class InMemoryOfficeDocumentRepository:
     ) -> OfficeDocumentShareState:
         with self._lock:
             document = self.get_document(user_context=user_context, object_id=object_id)
-            if self._permission(user_context, object_id) != "admin":
+            if not self.can_admin(user_context=user_context, object_id=object_id):
                 raise OfficeDocumentPermissionError("Document sharing is not permitted")
             current = self.share_versions.get((user_context.tenant_id, object_id), 1)
             if current != command.expected_acl_version:
                 raise OfficeDocumentConflictError("The document shares have changed")
-            if command.principal_id == document.owner_principal_id:
+            if command.principal_type == "user" and command.principal_id == document.owner_principal_id:
                 raise OfficeDocumentShareRequestError("The document owner share cannot be changed")
-            if (user_context.tenant_id, command.principal_id) not in self.principals:
-                raise OfficeDocumentShareRequestError("The principal is not an active tenant member")
+            directory = {
+                "user": self.principals,
+                "role": self.roles,
+                "group": self.groups,
+            }[command.principal_type]
+            if (user_context.tenant_id, command.principal_id) not in directory:
+                raise OfficeDocumentShareRequestError("The principal is not active in the tenant")
+            grants, expirations = {
+                "user": (self.grants, self.grant_expirations),
+                "role": (self.role_grants, self.role_grant_expirations),
+                "group": (self.group_grants, self.group_grant_expirations),
+            }[command.principal_type]
             key = (user_context.tenant_id, object_id, command.principal_id)
             if revoke:
-                self.grants.pop(key, None)
-                self.grant_expirations.pop(key, None)
+                grants.pop(key, None)
+                expirations.pop(key, None)
             else:
                 assert isinstance(command, OfficeDocumentShareCommand)
-                self.grants[key] = command.permission
+                grants[key] = command.permission
                 if command.expires_at_utc is None:
-                    self.grant_expirations.pop(key, None)
+                    expirations.pop(key, None)
                 else:
-                    self.grant_expirations[key] = command.expires_at_utc
+                    expirations[key] = command.expires_at_utc
             self.share_versions[(user_context.tenant_id, object_id)] = current + 1
             return self.share_state(user_context=user_context, object_id=object_id)
 

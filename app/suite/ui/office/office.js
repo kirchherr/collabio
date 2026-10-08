@@ -5498,25 +5498,36 @@ function shareStateMatches(value, objectId) {
   return value?.tenant_id === state.context.tenantId && value.object_id === objectId &&
     Number.isInteger(value.acl_version) && value.acl_version >= 1 && Array.isArray(value.entries) &&
     Array.isArray(value.available_principals) && value.entries.every((entry) =>
+      ["user", "role", "group"].includes(entry.principal_type) &&
       typeof entry.principal_id === "string" && typeof entry.display_name === "string" &&
       ["read", "write", "admin"].includes(entry.permission) && typeof entry.is_owner === "boolean" &&
       (entry.expires_at_utc === null || (typeof entry.expires_at_utc === "string" &&
         Number.isFinite(Date.parse(entry.expires_at_utc)) && Date.parse(entry.expires_at_utc) > Date.now()))) &&
     value.available_principals.every((entry) =>
+      ["user", "role", "group"].includes(entry.principal_type) &&
       typeof entry.principal_id === "string" && typeof entry.display_name === "string");
+}
+
+function sharePrincipalKey(principal) { return `${principal.principal_type}:${principal.principal_id}`; }
+
+function sharePrincipalLabel(principal) {
+  const type = principal.principal_type === "role" ? "Rolle" : principal.principal_type === "group" ? "Gruppe" : "Person";
+  return `${type} · ${principal.display_name}${principal.email ? ` · ${principal.email}` : ""}`;
 }
 
 function renderShares(share = state.share) {
   if (!share) return;
-  const granted = new Map(share.data.entries.map((entry) => [entry.principal_id, entry]));
+  const granted = new Map(share.data.entries.map((entry) => [sharePrincipalKey(entry), entry]));
   const select = $("share-principal");
   const selected = select.value;
   select.replaceChildren();
   share.data.available_principals.forEach((principal) => {
-    if (principal.principal_id === state.context.userId) return;
-    const option = node("option", `${principal.display_name}${principal.email ? ` · ${principal.email}` : ""}`);
-    option.value = principal.principal_id;
-    const existing = granted.get(principal.principal_id);
+    if (principal.principal_type === "user" && principal.principal_id === state.context.userId) return;
+    const option = node("option", sharePrincipalLabel(principal));
+    option.value = sharePrincipalKey(principal);
+    option.dataset.principalType = principal.principal_type;
+    option.dataset.principalId = principal.principal_id;
+    const existing = granted.get(sharePrincipalKey(principal));
     if (existing?.is_owner) option.disabled = true;
     select.append(option);
   });
@@ -5524,7 +5535,8 @@ function renderShares(share = state.share) {
   const list = $("share-list"); list.replaceChildren();
   share.data.entries.forEach((entry) => {
     const row = node("div", undefined, "share-entry");
-    const identity = node("div"); identity.append(node("strong", entry.display_name));
+    const type = entry.principal_type === "role" ? "Rolle" : entry.principal_type === "group" ? "Gruppe" : "Person";
+    const identity = node("div"); identity.append(node("strong", `${type} · ${entry.display_name}`));
     if (entry.email) identity.append(node("small", entry.email));
     const permission = entry.is_owner ? "Eigentümer · Verwaltung" :
       entry.permission === "write" ? "Kann bearbeiten" : entry.permission === "admin" ? "Verwaltung" : "Kann lesen";
@@ -5540,7 +5552,7 @@ function renderShares(share = state.share) {
     }
     list.append(row);
   });
-  if (!share.data.entries.length) list.append(node("p", "Keine direkten Freigaben.", "paragraph-help"));
+  if (!share.data.entries.length) list.append(node("p", "Keine Freigaben.", "paragraph-help"));
   $("share-principal").disabled = share.busy || !select.options.length;
   $("share-permission").disabled = share.busy;
   $("share-expiration").disabled = share.busy;
@@ -5593,8 +5605,11 @@ async function setShare() {
   if (!share?.data || share.busy || !$("share-confirm").checked || !sessionCurrent(share.session)) return;
   share.busy = true; renderShares(share); $("share-status").textContent = "Freigabe wird verbindlich gespeichert …";
   try {
+    const selected = $("share-principal").selectedOptions[0];
+    if (!selected?.dataset.principalType || !selected.dataset.principalId) throw new ApiError(400, true);
     const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares`, {
-      method: "POST", body: { principal_id: $("share-principal").value, permission: $("share-permission").value,
+      method: "POST", body: { principal_type: selected.dataset.principalType,
+        principal_id: selected.dataset.principalId, permission: $("share-permission").value,
         expires_at_utc: shareExpiration(),
         expected_acl_version: share.data.acl_version, mutation_reference: `office-share-${mutationReference()}`,
         human_confirmation: true },
@@ -5616,7 +5631,8 @@ async function revokeShare(entry) {
   share.busy = true; renderShares(share); $("share-status").textContent = "Zugriff wird entzogen …";
   try {
     const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares/revoke`, {
-      method: "POST", body: { principal_id: entry.principal_id, expected_acl_version: share.data.acl_version,
+      method: "POST", body: { principal_type: entry.principal_type, principal_id: entry.principal_id,
+        expected_acl_version: share.data.acl_version,
         mutation_reference: `office-unshare-${mutationReference()}`, human_confirmation: true },
     });
     if (state.share !== share || !shareStateMatches(data, share.session.objectId)) throw new ApiError(502, true);

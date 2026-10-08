@@ -6,6 +6,8 @@ from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID
 
 WORK_E2E_READER_ID = "work-reader-e2e"
 WORK_E2E_OFFICE_EDITOR_ID = "work-office-editor-e2e"
+WORK_E2E_OFFICE_READER_ROLE_ID = "office-reader"
+WORK_E2E_OFFICE_REVIEWER_GROUP_ID = "work-office-reviewers-e2e"
 WORK_E2E_CRM_OBJECT_TYPES = {
     "crm-account-work-e2e-main": "crm.account",
     "crm-account-work-e2e-other": "crm.account",

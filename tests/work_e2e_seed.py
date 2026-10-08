@@ -11,7 +11,12 @@ from suite.storage.s3_sdk_client import build_boto3_s3_compatible_client, wait_f
 from suite.testing.work_e2e_guard import WORK_E2E_TENANT_ID, require_isolated_work_e2e_environment
 from work_e2e_bookmarks import seed_synthetic_office_bookmarks
 from work_e2e_character import seed_synthetic_office_characters
-from work_e2e_controls import WORK_E2E_OFFICE_EDITOR_ID, WORK_E2E_READER_ID
+from work_e2e_controls import (
+    WORK_E2E_OFFICE_EDITOR_ID,
+    WORK_E2E_OFFICE_READER_ROLE_ID,
+    WORK_E2E_OFFICE_REVIEWER_GROUP_ID,
+    WORK_E2E_READER_ID,
+)
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 from work_e2e_document_references import seed_synthetic_office_document_references
@@ -85,6 +90,51 @@ def main() -> int:
                     f"audit:work-e2e-membership:{user_id}",
                 ),
             )
+
+        connection.execute(
+            "INSERT INTO collabio.tenant_roles (tenant_id, role_id, display_name, audit_chain_ref) "
+            "VALUES (%s, %s, %s, %s)",
+            (
+                WORK_E2E_TENANT_ID,
+                WORK_E2E_OFFICE_READER_ROLE_ID,
+                "Synthetic Office Readers",
+                "audit:work-e2e-role:office-reader",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO collabio.tenant_groups (tenant_id, group_id, display_name, audit_chain_ref) "
+            "VALUES (%s, %s, %s, %s)",
+            (
+                WORK_E2E_TENANT_ID,
+                WORK_E2E_OFFICE_REVIEWER_GROUP_ID,
+                "Synthetic Office Reviewers",
+                "audit:work-e2e-group:office-reviewers",
+            ),
+        )
+        reader_issuer = f"https://work-e2e.invalid/{WORK_E2E_READER_ID}"
+        reader_subject = f"subject-{WORK_E2E_READER_ID}"
+        connection.execute(
+            "INSERT INTO collabio.tenant_principal_role_assignments "
+            "(tenant_id, issuer, subject, role_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s)",
+            (
+                WORK_E2E_TENANT_ID,
+                reader_issuer,
+                reader_subject,
+                WORK_E2E_OFFICE_READER_ROLE_ID,
+                "audit:work-e2e-role-assignment:office-reader",
+            ),
+        )
+        connection.execute(
+            "INSERT INTO collabio.tenant_principal_group_memberships "
+            "(tenant_id, issuer, subject, group_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s)",
+            (
+                WORK_E2E_TENANT_ID,
+                reader_issuer,
+                reader_subject,
+                WORK_E2E_OFFICE_REVIEWER_GROUP_ID,
+                "audit:work-e2e-group-membership:office-reviewers",
+            ),
+        )
 
         crm_record_count = seed_synthetic_crm_records(connection)
 

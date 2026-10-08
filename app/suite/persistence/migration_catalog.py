@@ -800,6 +800,13 @@ MIGRATIONS: tuple[SqlMigration, ...] = (
         module_id="office_documents",
         evidence_refs=("adr:office-document-share-expiration", "test:office-document-share-expiration"),
     ),
+    SqlMigration(
+        version="0089",
+        name="office_document_subject_sharing",
+        resource_name="0089_office_document_subject_sharing.sql",
+        module_id="office_documents",
+        evidence_refs=("adr:office-document-subject-sharing", "test:office-document-subject-sharing"),
+    ),
 )
 
 
