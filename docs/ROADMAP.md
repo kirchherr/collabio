@@ -2631,7 +2631,29 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 459. [x] Vollstaendigen Typografie-Lebenszyklus unter ADR-0152 ohne Migration, Endpunkt, Abhaengigkeit, externen
      Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 459 / PLANS 224 bis 320 sind unter ADR-0139 bis ADR-0152 implementiert.
+460. [x] Begrenzte native Schreibweisen unter ADR-0153 eingefuehrt: direkte Zeichenformatierung und
+     Dokumentvorlagen speichern optional ausschliesslich `uppercase` oder `smallCaps`; Abwesenheit bleibt der
+     kanonische Standard und der literal gespeicherte Text bleibt unveraendert.
+
+461. [x] Kleinschreibung, Titelschreibung, Locale-/Scriptsteuerung, beliebiges CSS, URLs und unbekannte Tokens in
+     Browser und Server abgewiesen und akzeptierte Werte ausschliesslich auf festes druckfaehiges CSS abgebildet.
+
+462. [x] Responsiven Zeichendialog um Standard, Mischzustand, Grossbuchstaben und Kapitaelchen fuer Auswahl und
+     Cursorformat, kanonischen Reset und einen isolierten Undo-Schritt erweitert.
+
+463. [x] Beide Schreibweisen in Dokumentvorlagen zugelassen, direkte Zeichenwerte vorrangig gehalten und dabei die
+     jeweils andere geerbte CSS-Eigenschaft explizit neutralisiert.
+
+464. [x] Schreibweisen durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+465. [x] Identische inerte Darstellung in Editor und semantischem Druck/PDF sowie exakte Grossbuchstaben- und
+     Kapitaelchenprofile im vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+466. [x] Vollstaendigen Schreibweisen-Lebenszyklus unter ADR-0153 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, Textmutation oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 466 / PLANS 224 bis 327 sind unter ADR-0139 bis ADR-0153 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

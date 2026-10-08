@@ -2,6 +2,25 @@
 
 Updated: 2026-10-08
 
+Roadmap 460 through 466 / PLANS 321 through 327 are complete under ADR-0153. Native Office direct character
+formatting and document-owned named styles now support the bounded presentation tokens `uppercase` and `smallCaps`.
+Absence remains the canonical default. Browser and server reject lowercase, title case, locale or script controls,
+arbitrary CSS, URLs and unknown values. The stored literal text is never rewritten.
+
+The responsive character dialog supports Standard, mixed state, selection, pending caret input, canonical reset and
+isolated undo/redo. Direct values override named-style inheritance; each static CSS mapping neutralizes the other
+case property. Search/replacement, comparison, suggestions, confirmed CAS save, immutable history, reload,
+independent reuse and semantic print/PDF retain the original text and exact token. Recovery versions two and three
+bind uppercase and small-caps profiles without a migration or new store.
+
+The focused schema/API/PostgreSQL/recovery/style suite passed. Pure browser models passed 8/8. The complete
+character, named-style and responsive matrix covered 25 cases: 24 unaffected cases passed in the broad run, and the
+one newly added source-text assertion passed 1/1 after correcting its expected ProseMirror text-node split. Full
+quality on product source `fd128ddd` passed Ruff, formatting for 866 files, Mypy over 607 source files and complete
+Pytest to 100% with only the known Starlette/AnyIO deprecation warning. Product source is published on
+`kirchherr/kb-write-unit-of-work`; the isolated review API is healthy at
+`http://192.168.0.108:42880/office?review=text-case-fd128ddd`.
+
 Roadmap 453 through 459 / PLANS 314 through 320 are complete under ADR-0152. Native Office direct character
 formatting now supports exact superscript/subscript baseline tokens and tight/wide character spacing. Absence remains
 the canonical default. Browser and server reject numeric offsets, dimensions, percentages, arbitrary CSS, URLs and
