@@ -13,7 +13,16 @@ INVALID_FONT_SIZES: tuple[Any, ...] = (True, 12.0, "12", "12pt", None, 0, 13, 49
 INVALID_TEXT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ff0000", "RED", "default", "red;SECRET")
 INVALID_FONT_FAMILIES: tuple[Any, ...] = (None, True, [], {}, "Arial", "SERIF", "default", "serif;SECRET")
 INVALID_HIGHLIGHT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ffff00", "YELLOW", "default", "yellow;SECRET")
-INVALID_VERTICAL_POSITIONS: tuple[Any, ...] = (None, True, [], {}, "super", "SUPERSCRIPT", "default", "superscript;SECRET")
+INVALID_VERTICAL_POSITIONS: tuple[Any, ...] = (
+    None,
+    True,
+    [],
+    {},
+    "super",
+    "SUPERSCRIPT",
+    "default",
+    "superscript;SECRET",
+)
 INVALID_LETTER_SPACING: tuple[Any, ...] = (None, True, [], {}, "normal", "0.1em", "default", "wide;SECRET")
 
 
@@ -29,7 +38,15 @@ def formatted_document() -> dict[str, Any]:
     + [{"highlightColor": color} for color in ("yellow", "lime", "cyan", "pink", "lavender", "gray")]
     + [{"verticalPosition": value} for value in ("superscript", "subscript")]
     + [{"letterSpacing": value} for value in ("tight", "wide")]
-    + [{"fontSize": 48, "textColor": "purple", "highlightColor": "yellow", "verticalPosition": "superscript", "letterSpacing": "wide"}],
+    + [
+        {
+            "fontSize": 48,
+            "textColor": "purple",
+            "highlightColor": "yellow",
+            "verticalPosition": "superscript",
+            "letterSpacing": "wide",
+        }
+    ],
 )
 def test_character_values_preserve_exact_canonical_payload_without_mutation(attrs: dict[str, Any]) -> None:
     document = formatted_document()

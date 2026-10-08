@@ -22,8 +22,22 @@ def character_recovery_document(number: int) -> dict[str, Any]:
     document = paragraph_recovery_document(1)
     profiles: tuple[dict[str, int | str], ...] = (
         {},
-        {"fontFamily": "serif", "fontSize": 18, "textColor": "blue", "highlightColor": "yellow", "verticalPosition": "superscript", "letterSpacing": "wide"},
-        {"fontFamily": "mono", "fontSize": 24, "textColor": "red", "highlightColor": "cyan", "verticalPosition": "subscript", "letterSpacing": "tight"},
+        {
+            "fontFamily": "serif",
+            "fontSize": 18,
+            "textColor": "blue",
+            "highlightColor": "yellow",
+            "verticalPosition": "superscript",
+            "letterSpacing": "wide",
+        },
+        {
+            "fontFamily": "mono",
+            "fontSize": 24,
+            "textColor": "red",
+            "highlightColor": "cyan",
+            "verticalPosition": "subscript",
+            "letterSpacing": "tight",
+        },
     )
 
     def visit(node: dict[str, Any]) -> None:

@@ -41,7 +41,15 @@ def test_pg_character_versions_preserve_legacy_sources_receipts_cas_and_acl(data
         "spacingAfter": 24,
     }
     second_content["content"][0]["content"][0]["marks"] = [
-        {"type": "textStyle", "attrs": {"fontSize": 24, "textColor": "red", "verticalPosition": "subscript", "letterSpacing": "wide"}}
+        {
+            "type": "textStyle",
+            "attrs": {
+                "fontSize": 24,
+                "textColor": "red",
+                "verticalPosition": "subscript",
+                "letterSpacing": "wide",
+            },
+        }
     ]
     second_command = OfficeDocumentSaveCommand(
         **{**command("format-two").model_dump(), "document": second_content},
