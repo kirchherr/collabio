@@ -42,10 +42,11 @@ export async function openOffice(page, { baseUrl = BASE_URL, userId = OFFICE_EDI
   return response.json();
 }
 
-export async function newOfficeDraft(page, title, { text, template = "blank" } = {}) {
+export async function newOfficeDraft(page, title, { text, template = "blank", classification = "internal" } = {}) {
   const control = await page.locator("#welcome-new").isVisible() ? "#welcome-new" : "#document-new";
   await page.locator(control).click();
   await page.locator('#new-document-form input[name="title"]').fill(title);
+  await page.locator('#new-document-form select[name="information_classification"]').selectOption(classification);
   await page.locator(`#new-document-form input[value="${template}"]`).check();
   await page.locator('#new-document-form button[type="submit"]').click();
   await expect(officeEditor(page)).toHaveAttribute("contenteditable", "true");
