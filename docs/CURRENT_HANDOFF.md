@@ -24,7 +24,9 @@ Product and browser evidence are published through `ba3aec51` on `kirchherr/kb-w
 applied to the isolated review database and the rebuilt review API is healthy at
 `http://192.168.0.108:42880/office?review=document-classification-ba3aec51`. The repeated non-idempotent seed attempt
 stopped on an already existing synthetic principal without overwriting data; the API was then rebuilt and recreated
-without dependencies. No ordinary tenant, pilot, indexing, AI provider, DOCX engine or production admission changed.
+without dependencies. Documentation contracts passed 12/12; exact temporary PostgreSQL, interrupted Playwright and
+completed migration containers were removed, and regular plus review APIs return `ok`. No ordinary tenant, pilot,
+indexing, AI provider, DOCX engine or production admission changed.
 
 Roadmap 389 through 394 / PLANS 250 through 255 are complete under ADR-0143. Authors can select an ordinary data-cell
 row, column or rectangle in a simple native table, open the existing formula dialog once and fill the complete range.
