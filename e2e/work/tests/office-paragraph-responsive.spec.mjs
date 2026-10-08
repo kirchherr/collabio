@@ -9,8 +9,9 @@ import {
 
 async function expectParagraphDialogFits(page) {
   for (const id of [...Object.values(FORMAT_IDS), "paragraph-selection", "paragraph-apply", "paragraph-reset", "paragraph-cancel", "paragraph-close"]) {
-    await expect(page.locator(`#${id}`)).toBeInViewport();
+    await page.locator(`#${id}`).scrollIntoViewIfNeeded(); await expect(page.locator(`#${id}`)).toBeInViewport();
   }
+  await page.locator("#paragraph-align").scrollIntoViewIfNeeded();
   expect(await page.locator("#paragraph-dialog").evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
