@@ -2,6 +2,27 @@
 
 Updated: 2026-10-08
 
+Roadmap 446 through 452 / PLANS 307 through 313 are complete under ADR-0151. Native Office direct character
+formatting now supports six bounded text highlights: yellow, lime, cyan, pink, lavender and gray. The document stores
+only those canonical tokens; absence remains the default. Browser and server reject arbitrary colors, CSS, alpha,
+gradients, URLs, files and unknown values. Trusted static CSS supplies fixed opaque colors for editor and print.
+
+Highlights work for selections and pending caret input with mixed-state handling, canonical reset and isolated
+undo/redo. They survive format transfer, text-type conversion, lists, tables, search/replacement, comparison,
+suggestions, confirmed CAS save, immutable history, reload, independent reuse and semantic PDF output. Paragraph
+styles reject highlight values, preventing a character highlight from becoming full-width paragraph shading. The
+existing character recovery fixture now binds exact yellow and cyan versions without a migration or new store.
+
+The focused schema, API, PostgreSQL, recovery and style-boundary matrix passed after correcting one server allowlist
+that initially failed closed before writes. The complete character and adjacent named-style browser matrices passed
+32/32; the final dialog-only responsive rerun passed 2/2. Desktop/mobile screenshot SHA-256 values are
+`a8a9cc7160b34a4a8c54a6458827cbdbb51cef368d5ef2583a8d58620c607465` and
+`f4e4a667c1c9e475821385224c436ab639b4460d3da91c631a37f8b3a09be898`; the print-preview value is
+`b93bfd42673b0604bae1964b4fa4b08f7993bd79ccbc76440731b08d7a15e1f3`. All passed visual review. Product and roadmap
+source through `fefe9ef0` is published on `kirchherr/kb-write-unit-of-work`; review is healthy at
+`http://192.168.0.108:42880/office?review=text-highlights-fefe9ef0`. Full quality and scoped temporary-resource cleanup
+remain for closeout.
+
 Roadmap 439 through 445 / PLANS 300 through 306 are complete under ADR-0150. Native Office character formatting
 and document-owned named styles now expose three bounded font-family choices: Sans Serif, Serif and Monospace. The
 saved document carries only the canonical tokens `sans`, `serif` and `mono`; an absent value keeps the inherited
