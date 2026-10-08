@@ -5,7 +5,7 @@ import hmac
 import json
 import re
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Literal, Protocol
 
@@ -87,6 +87,7 @@ class OfficeDocumentSharePrincipal(BaseModel):
 class OfficeDocumentShareEntry(OfficeDocumentSharePrincipal):
     permission: Literal["read", "write", "admin"]
     is_owner: bool = False
+    expires_at_utc: str | None = None
 
 
 class OfficeDocumentShareState(BaseModel):
@@ -105,9 +106,23 @@ class OfficeDocumentShareCommand(BaseModel):
 
     principal_id: str = Field(min_length=1, max_length=200, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:@+-]*$")
     permission: OfficeSharePermission
+    expires_at_utc: datetime | None = None
     expected_acl_version: int = Field(ge=1)
     mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
     human_confirmation: bool = Field(strict=True)
+
+    @field_validator("expires_at_utc")
+    @classmethod
+    def validate_expiration(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Document share expiration requires a timezone")
+        value = value.astimezone(UTC)
+        now = datetime.now(UTC)
+        if value <= now or value > now + timedelta(days=366):
+            raise ValueError("Document share expiration must be within 366 days")
+        return value
 
     @model_validator(mode="after")
     def require_confirmation(self) -> OfficeDocumentShareCommand:
@@ -915,6 +930,7 @@ class OfficeDocumentService:
                     object_id=object_id,
                     principal_id=command.principal_id,
                     permission=command.permission,
+                    expires_at_utc=command.expires_at_utc.isoformat() if command.expires_at_utc else None,
                     acl_version=state.acl_version,
                     mutation_reference=command.mutation_reference,
                 )

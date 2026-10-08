@@ -5499,7 +5499,9 @@ function shareStateMatches(value, objectId) {
     Number.isInteger(value.acl_version) && value.acl_version >= 1 && Array.isArray(value.entries) &&
     Array.isArray(value.available_principals) && value.entries.every((entry) =>
       typeof entry.principal_id === "string" && typeof entry.display_name === "string" &&
-      ["read", "write", "admin"].includes(entry.permission) && typeof entry.is_owner === "boolean") &&
+      ["read", "write", "admin"].includes(entry.permission) && typeof entry.is_owner === "boolean" &&
+      (entry.expires_at_utc === null || (typeof entry.expires_at_utc === "string" &&
+        Number.isFinite(Date.parse(entry.expires_at_utc)) && Date.parse(entry.expires_at_utc) > Date.now()))) &&
     value.available_principals.every((entry) =>
       typeof entry.principal_id === "string" && typeof entry.display_name === "string");
 }
@@ -5524,8 +5526,12 @@ function renderShares(share = state.share) {
     const row = node("div", undefined, "share-entry");
     const identity = node("div"); identity.append(node("strong", entry.display_name));
     if (entry.email) identity.append(node("small", entry.email));
-    const access = node("span", entry.is_owner ? "Eigentümer · Verwaltung" :
-      entry.permission === "write" ? "Kann bearbeiten" : entry.permission === "admin" ? "Verwaltung" : "Kann lesen", "share-access");
+    const permission = entry.is_owner ? "Eigentümer · Verwaltung" :
+      entry.permission === "write" ? "Kann bearbeiten" : entry.permission === "admin" ? "Verwaltung" : "Kann lesen";
+    const expiry = entry.expires_at_utc
+      ? ` · bis ${new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(entry.expires_at_utc))}`
+      : " · dauerhaft";
+    const access = node("span", `${permission}${entry.is_owner ? "" : expiry}`, "share-access");
     row.append(identity, access);
     if (!entry.is_owner) {
       const remove = node("button", "Entfernen", "quiet-button"); remove.type = "button";
@@ -5537,6 +5543,7 @@ function renderShares(share = state.share) {
   if (!share.data.entries.length) list.append(node("p", "Keine direkten Freigaben.", "paragraph-help"));
   $("share-principal").disabled = share.busy || !select.options.length;
   $("share-permission").disabled = share.busy;
+  $("share-expiration").disabled = share.busy;
   $("share-confirm").disabled = share.busy;
   $("share-submit").disabled = share.busy || !select.value || !$("share-confirm").checked;
   $("share-refresh").disabled = share.busy;
@@ -5573,6 +5580,14 @@ function closeShares() {
   state.share = null;
 }
 
+function shareExpiration() {
+  const value = $("share-expiration").value;
+  if (value === "permanent") return null;
+  const days = Number(value);
+  return Number.isInteger(days) && [1, 7, 30].includes(days)
+    ? new Date(Date.now() + days * 86400000).toISOString() : null;
+}
+
 async function setShare() {
   const share = state.share;
   if (!share?.data || share.busy || !$("share-confirm").checked || !sessionCurrent(share.session)) return;
@@ -5580,6 +5595,7 @@ async function setShare() {
   try {
     const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares`, {
       method: "POST", body: { principal_id: $("share-principal").value, permission: $("share-permission").value,
+        expires_at_utc: shareExpiration(),
         expected_acl_version: share.data.acl_version, mutation_reference: `office-share-${mutationReference()}`,
         human_confirmation: true },
     });

@@ -1,6 +1,7 @@
 import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Barrier
 from typing import Any
@@ -188,6 +189,7 @@ def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(dat
     initial = service.share_state(user_context=owner, object_id=object_id)
     assert initial.acl_version == 1
     assert {principal.principal_id for principal in initial.available_principals} == {owner.user_id, "shared-user"}
+    expires_at = datetime.now(UTC) + timedelta(days=7)
     granted = service.set_share(
         user_context=owner,
         object_id=object_id,
@@ -195,12 +197,14 @@ def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(dat
         command=OfficeDocumentShareCommand(
             principal_id="shared-user",
             permission="read",
+            expires_at_utc=expires_at,
             expected_acl_version=1,
             mutation_reference="share-reader",
             human_confirmation=True,
         ),
     )
     assert granted.acl_version == 2
+    assert next(entry for entry in granted.entries if entry.principal_id == "shared-user").expires_at_utc is not None
     reader = owner.model_copy(update={"user_id": "shared-user", "readable_object_ids": {object_id}})
     assert service.read_content(user_context=reader, object_id=object_id, write_enabled=True).can_write is False
 
@@ -236,12 +240,34 @@ def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(dat
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, owner.tenant_id)
         decisions = connection.execute(
-            "SELECT action, permission, previous_acl_version, resulting_acl_version "
+            "SELECT action, permission, expires_at_utc, previous_acl_version, resulting_acl_version "
             "FROM office.document_share_decisions WHERE tenant_id = %s AND object_id = %s "
             "ORDER BY resulting_acl_version",
             (owner.tenant_id, object_id),
         ).fetchall()
-    assert decisions == [("grant", "read", 1, 2), ("grant", "write", 2, 3), ("revoke", None, 3, 4)]
+    assert decisions[0] == ("grant", "read", expires_at, 1, 2)
+    assert decisions[1:] == [("grant", "write", None, 2, 3), ("revoke", None, None, 3, 4)]
+
+
+def test_pg_expired_direct_user_grant_is_not_authoritative(database: Database) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    owner = editor()
+    created = service.create(user_context=owner, command=command("expired-share-create"), write_enabled=True)
+    object_id = created.document.object_id
+    expired_reader = owner.model_copy(update={"user_id": "expired-reader", "readable_object_ids": {object_id}})
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, owner.tenant_id)
+        connection.execute(
+            "INSERT INTO collabio.object_acl_entries "
+            "(tenant_id, object_id, object_type, acl_subject_type, acl_subject_id, permission, acl_version, status, "
+            "created_at_utc, expires_at_utc, audit_chain_ref) "
+            "VALUES (%s, %s, 'office.document', 'user', %s, 'read', 1, 'active', now() - interval '2 days', "
+            "now() - interval '1 day', 'audit:office-expired-reader')",
+            (owner.tenant_id, object_id, expired_reader.user_id),
+        )
+    with pytest.raises(OfficeDocumentNotFoundError):
+        service.read_content(user_context=expired_reader, object_id=object_id)
 
 
 def test_pg_role_admin_can_edit_but_cannot_manage_direct_user_shares(database: Database) -> None:

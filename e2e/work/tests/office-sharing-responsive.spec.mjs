@@ -25,6 +25,7 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   await expect(page.locator("#share-list .share-entry")).toContainText("Eigentümer · Verwaltung");
   await page.locator("#share-principal").selectOption("work-reader-e2e");
   await page.locator("#share-permission").selectOption("read");
+  await page.locator("#share-expiration").selectOption("7");
   await expect(page.locator("#share-submit")).toBeDisabled();
   await page.locator("#share-confirm").check();
 
@@ -36,7 +37,9 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   const grantedBody = await grantedResponse.json();
   expect(grantedBody.tenant_id).toBe(TENANT_ID);
   expect(grantedBody.acl_version).toBe(2);
+  expect(grantedBody.entries.find((entry) => entry.principal_id === "work-reader-e2e").expires_at_utc).toBeTruthy();
   await expect(page.locator("#share-list")).toContainText("Kann lesen");
+  await expect(page.locator("#share-list")).toContainText("bis");
 
   const readerHeaders = { ...OFFICE_READER_HEADERS, "X-Readable-Object-Ids": objectId };
   let reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });

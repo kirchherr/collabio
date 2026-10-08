@@ -246,6 +246,7 @@ class PgOfficeDocumentRepository:
             FROM collabio.object_acl_entries AS acl
             WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
               AND acl.status = 'active'
+              AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
               AND ({_ACL_SUBJECT_SQL})
             """,
             (user.tenant_id, object_id, OFFICE_DOCUMENT_OBJECT_TYPE, user.user_id, sorted(user.role_ids), user.user_id),
@@ -314,6 +315,7 @@ class PgOfficeDocumentRepository:
                         SELECT 1 FROM collabio.object_acl_entries AS acl
                         WHERE acl.tenant_id = document.tenant_id AND acl.object_id = document.object_id
                           AND acl.object_type = %s AND acl.status = 'active'
+                          AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
                           AND ({_ACL_SUBJECT_SQL})
                       )
                       {boundary}
@@ -373,7 +375,7 @@ class PgOfficeDocumentRepository:
         rows = connection.execute(
             """
             SELECT principal.user_id, COALESCE(NULLIF(principal.display_name, ''), principal.user_id),
-                   principal.email, acl.permission
+                   principal.email, acl.permission, acl.expires_at_utc
             FROM collabio.object_acl_entries AS acl
             JOIN collabio.tenant_principals AS principal
               ON principal.tenant_id = acl.tenant_id AND principal.user_id = acl.acl_subject_id
@@ -382,6 +384,7 @@ class PgOfficeDocumentRepository:
              AND membership.issuer = principal.issuer AND membership.subject = principal.subject
             WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
               AND acl.acl_subject_type = 'user' AND acl.status = 'active'
+              AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
               AND principal.status = 'active' AND membership.status = 'active'
             ORDER BY lower(COALESCE(NULLIF(principal.display_name, ''), principal.user_id)), principal.user_id
             """,
@@ -411,6 +414,7 @@ class PgOfficeDocumentRepository:
                     email=str(row[2]) if row[2] is not None else None,
                     permission=cast(Literal["read", "write", "admin"], str(row[3])),
                     is_owner=str(row[0]) == document.owner_principal_id,
+                    expires_at_utc=(row[4].astimezone(UTC).isoformat().replace("+00:00", "Z") if row[4] else None),
                 )
                 for row in rows
             ],
@@ -468,6 +472,7 @@ class PgOfficeDocumentRepository:
                     user_context.user_id,
                     command.principal_id,
                     command.permission,
+                    command.expires_at_utc,
                     command.expected_acl_version,
                     command.mutation_reference,
                 )
@@ -727,6 +732,7 @@ class InMemoryOfficeDocumentRepository:
         self.documents: dict[tuple[str, str], OfficeDocumentRecord] = {}
         self.saved_versions: dict[tuple[str, str, str], OfficeDocumentVersion] = {}
         self.grants: dict[tuple[str, str, str], str] = {}
+        self.grant_expirations: dict[tuple[str, str, str], datetime] = {}
         self.share_versions: dict[tuple[str, str], int] = {}
         self.principals: dict[tuple[str, str], tuple[str, str | None]] = {}
         self._lock = RLock()
@@ -734,7 +740,11 @@ class InMemoryOfficeDocumentRepository:
     def _permission(self, user: UserContext, object_id: str) -> str | None:
         if object_id not in user.readable_object_ids:
             return None
-        return self.grants.get((user.tenant_id, object_id, user.user_id))
+        key = (user.tenant_id, object_id, user.user_id)
+        expiration = self.grant_expirations.get(key)
+        if expiration is not None and expiration <= datetime.now(UTC):
+            return None
+        return self.grants.get(key)
 
     def list_documents(
         self,
@@ -792,6 +802,9 @@ class InMemoryOfficeDocumentRepository:
             for (tenant_id, doc_id, principal_id), permission in sorted(self.grants.items()):
                 if tenant_id != user_context.tenant_id or doc_id != object_id:
                     continue
+                expiration = self.grant_expirations.get((tenant_id, doc_id, principal_id))
+                if expiration is not None and expiration <= datetime.now(UTC):
+                    continue
                 display_name, email = known[(tenant_id, principal_id)]
                 entries.append(
                     OfficeDocumentShareEntry(
@@ -800,6 +813,9 @@ class InMemoryOfficeDocumentRepository:
                         email=email,
                         permission=cast(Literal["read", "write", "admin"], permission),
                         is_owner=principal_id == document.owner_principal_id,
+                        expires_at_utc=(
+                            expiration.astimezone(UTC).isoformat().replace("+00:00", "Z") if expiration else None
+                        ),
                     )
                 )
             available = [
@@ -847,9 +863,14 @@ class InMemoryOfficeDocumentRepository:
             key = (user_context.tenant_id, object_id, command.principal_id)
             if revoke:
                 self.grants.pop(key, None)
+                self.grant_expirations.pop(key, None)
             else:
                 assert isinstance(command, OfficeDocumentShareCommand)
                 self.grants[key] = command.permission
+                if command.expires_at_utc is None:
+                    self.grant_expirations.pop(key, None)
+                else:
+                    self.grant_expirations[key] = command.expires_at_utc
             self.share_versions[(user_context.tenant_id, object_id)] = current + 1
             return self.share_state(user_context=user_context, object_id=object_id)
 
