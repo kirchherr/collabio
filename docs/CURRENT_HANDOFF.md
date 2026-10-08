@@ -2,6 +2,24 @@
 
 Updated: 2026-10-08
 
+Roadmap 425 through 431 / PLANS 286 through 292 are complete under ADR-0148. Paragraphs and headings now support the
+strict optional pagination rules keep with next, keep lines together and page break before. The responsive
+multi-paragraph dialog retains default, explicit on/off and mixed states; document-owned named styles expose the same
+fixed controls while direct values keep precedence.
+
+The server accepts only real booleans, and the editor plus inert print renderer emit only fixed `data-office-*`
+attributes mapped by trusted static CSS. Undo/redo, text-type conversion, format transfer, confirmed save, immutable
+predecessors, reload and print retain the values. The recovery fixture now binds an exact version containing all three
+rules without a migration or new restore store.
+
+Full Python quality on product source `f7e7cab8` passed Ruff, formatting for 861 files, Mypy over 607 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact model plus responsive
+desktop/mobile browser and real-PDF flow passed 3/3 on `5697dd48`. Screenshot SHA-256 values are
+`cb905210bf160c593e6baf713e855071309c81e2d001b42ed7e995c304204a92` and
+`131e0ac25010e785548ba1a446a2bda2648a079dca7160339c419f848fb5c535`; both passed visual review. The isolated review
+API is healthy at `http://192.168.0.108:42880/office?review=paragraph-pagination-5697dd48`. Final quality on the
+recovery-complete documented source and scoped cleanup remain.
+
 Roadmap 417 through 424 / PLANS 278 through 285 are complete under ADR-0147. Native Office sharing now addresses
 active same-tenant users, roles and groups explicitly by subject type. A current directly granted user administrator
 can grant, change or revoke `read` and `write`, permanently or with the existing bounded expiration. Role claims and

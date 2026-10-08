@@ -2523,7 +2523,30 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 424. [x] Vollstaendigen Rollen-/Gruppenfreigabelebenszyklus ueber Modell, API, PostgreSQL, Migration, Restore und
      responsive Desktop-/Mobile-Browserpruefung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 424 / PLANS 224 bis 285 sind unter ADR-0139 bis ADR-0147 implementiert.
+425. [x] Native Absatzpaginierung unter ADR-0148 mit den drei festen booleschen Regeln „mit nächstem Absatz
+     zusammenhalten“, „Zeilen zusammenhalten“ und „Seitenumbruch davor“ eingefuehrt. Fehlende Werte bewahren die
+     exakten Legacy-Bytes; explizites `false` kann eine geerbte Formatvorlage aufheben.
+
+426. [x] Server- und Browservalidierung auf echte boolesche Werte begrenzt. Zahlen, Strings, Nullwerte im gespeicherten
+     JSON, freie CSS-Ausdruecke und unbekannte Attribute scheitern vor Persistenz oder Darstellung.
+
+427. [x] Bestehenden responsiven Mehrfachauswahl-Dialog um Standard-, Aktiv- und Inaktiv-Zustaende samt gemischter
+     Auswahl erweitert und dieselben festen Werte in dokumenteigene Formatvorlagen integriert.
+
+428. [x] Paginierungswerte durch Texttypwechsel, Absatzteilung, Formatuebertragung, Undo/Redo, Vergleich, Reviews,
+     Vorschlaege, bestaetigtes CAS-Speichern, History und unveraenderliche Vorgaengerversionen erhalten.
+
+429. [x] Editor und inerten Druckrenderer auf feste `data-office-*`-Attribute gebunden. Statisches vertrauenswuerdiges
+     CSS setzt `break-after`, `break-inside` und `break-before` samt Legacy-Druckaliasen um, ohne Seitensimulation oder
+     Inhaltsmutation.
+
+430. [x] Absatz- und Named-Style-Recovery um eine exakte Version mit allen drei Paginierungsregeln erweitert; keine
+     SQL-Migration, kein neuer Endpunkt und kein neuer Restore-Speicher wurden benoetigt.
+
+431. [x] Vollstaendigen Absatzpaginierungszyklus ueber Schema, Editor, Formatvorlagen, Druck, Recovery sowie responsive
+     Desktop-/Mobile-Browser- und reale PDF-Evidence geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 431 / PLANS 224 bis 292 sind unter ADR-0139 bis ADR-0148 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
