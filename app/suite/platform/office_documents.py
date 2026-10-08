@@ -921,8 +921,12 @@ class OfficeDocumentService:
         return OfficeDocumentView(
             **record.model_dump(
                 include={
-                    "object_id", "title", "information_classification", "current_version_id",
-                    "created_at_utc", "updated_at_utc",
+                    "object_id",
+                    "title",
+                    "information_classification",
+                    "current_version_id",
+                    "created_at_utc",
+                    "updated_at_utc",
                 }
             ),
             can_write=can_write,

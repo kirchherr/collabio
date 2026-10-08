@@ -10,4 +10,4 @@ def test_office_information_classification_is_versioned_bounded_and_head_bound()
     assert "'public', 'internal', 'confidential', 'restricted'" in sql
     assert "information_classification = NEW.information_classification" in sql
     assert "GRANT UPDATE (information_classification) ON office.documents TO collabio_app" in sql
-    assert "required_migration_versions = '[\"0083\", \"0084\", \"0085\", \"0086\"]'::jsonb" in sql
+    assert 'required_migration_versions = \'["0083", "0084", "0085", "0086"]\'::jsonb' in sql
