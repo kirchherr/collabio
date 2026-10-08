@@ -1734,9 +1734,7 @@ def _office_function_body(function_name: str, security_definer: bool) -> str:
     security_clause = r"SECURITY DEFINER\s+" if security_definer else ""
     pattern = (
         rf"\bCREATE(?: OR REPLACE)? FUNCTION office\.{re.escape(function_name)}\(\)\s+"
-        r"RETURNS trigger\s+LANGUAGE plpgsql\s+"
-        + security_clause
-        + r"SET search_path = pg_catalog\s+"
+        r"RETURNS trigger\s+LANGUAGE plpgsql\s+" + security_clause + r"SET search_path = pg_catalog\s+"
         r"AS (?P<tag>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)(?P<body>.*?)(?P=tag);"
     )
     matches = list(re.finditer(pattern, migration_sql, flags=re.DOTALL))
