@@ -2434,7 +2434,28 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 394. [x] Vollstaendigen Bereichsformel-Lebenszyklus ueber Undo/Redo, gemeinsames Entfernen, bestaetigtes Speichern,
      Reload, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 394 / PLANS 224 bis 255 sind unter ADR-0139 bis ADR-0143 implementiert.
+395. [x] Vierstufige native Dokumentklassifizierung unter ADR-0144 eingefuehrt: Oeffentlich, Intern, Vertraulich und
+     Streng vertraulich als eigener Office-Vertrag getrennt von regulatorischen Runtime-Datenklassen.
+
+396. [x] Schutzstufe auf Dokumentkopf und jeder unveraenderlichen Version mit Migration 0086 gespeichert. Datenbank-
+     Trigger bindet den Kopf an die aktuelle Version; Restore-Kontrollen pruefen Spalte, Grant und ersetzte Funktion.
+
+397. [x] Klassifizierung in Create/Save-Kommandos, actor-bound Idempotenzhash, Listen-, Content- und History-Views sowie
+     inhaltsfreies Audit-Metadatum aufgenommen. SourceObject-Klasse, Retention, Legal Hold und KMS bleiben getrennt.
+
+398. [x] Rollenregeln geschlossen: autorisierte Schreiber duerfen Schutz beibehalten oder erhoehen; Oeffentlich und jede
+     Herabstufung verlangen Tenant-Administration. Keine Schutzstufe gewaehrt selbst ACL-Rechte.
+
+399. [x] Responsive Auswahl beim Anlegen und Bearbeiten integriert. Historische Fassungen, Wiederverwendung und
+     Wiederherstellung behalten die jeweilige versionierte Schutzstufe; Speichern bleibt explizit bestaetigt und CAS-gebunden.
+
+400. [x] Schutzstufenwechsel im Versionsvergleich sichtbar gemacht und die gespeicherte Stufe in Druck- und PDF-
+     Oberflaechen gekennzeichnet. Unbekannte Serverwerte scheitern im Browser fail closed.
+
+401. [x] Vollstaendigen Klassifizierungslebenszyklus ueber Rechte, Migration, Audit, History, Vergleich, Druck,
+     PostgreSQL-Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 401 / PLANS 224 bis 262 sind unter ADR-0139 bis ADR-0144 implementiert.
 Die fokussierten Serverpruefungen bestanden 35/35 und der Bereichsformel-Modell-/Browserlauf 22/22. HTML, TSV,
 Anker, Strukturabbildungen und Bereichsaktionen werden nur in das bestehende immutable Office-Versions-JSON uebersetzt;
 es gibt keine relationale Migration, Arbeitsmappen-Runtime, externe Formelreferenz, Tenant-Aktivierung oder

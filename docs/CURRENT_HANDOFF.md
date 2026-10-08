@@ -1,6 +1,30 @@
 # Current Project Handoff
 
-Updated: 2026-10-07
+Updated: 2026-10-08
+
+Roadmap 395 through 401 / PLANS 256 through 262 are complete under ADR-0144. Native Office documents now carry the
+versioned information classification Öffentlich (`public`), Intern (`internal`), Vertraulich (`confidential`) or
+Streng vertraulich (`restricted`). It is deliberately separate from canonical runtime `data_classification`, so ACL,
+retention, legal hold, KMS and SourceObject controls remain unchanged and authoritative.
+
+Migration 0086 stores the value on the Office document head and every immutable version and binds both through the
+head trigger. Create/save command hashes, API views, history and content-free audit metadata include it. Authorized
+writers may retain or raise protection; public creation/publication and every downgrade require `tenant-admin`.
+The responsive editor supports selection during creation and editing, historical values, reuse, restore, comparison
+and a visible saved-version label in print/PDF.
+
+Focused classification/service/migration checks passed 93/93, all Office Python tests passed, Office-specific
+PostgreSQL restore checks passed, and the final complete quality run passed Ruff, formatting for 856 files, Mypy over
+606 source files and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The dedicated
+desktop/mobile browser flow passed 2/2; screenshot SHA-256 values are
+`3d529df210b6a7fdef6d9c7abc31052e9808d67fb1047d41a3462a576e5a0502` and
+`9944b6612481d9939bfec0037ca6d53f40a0b4369fb96dc37d5946829cd2b057`.
+
+Product and browser evidence are published through `ba3aec51` on `kirchherr/kb-write-unit-of-work`. Migration 0086 is
+applied to the isolated review database and the rebuilt review API is healthy at
+`http://192.168.0.108:42880/office?review=document-classification-ba3aec51`. The repeated non-idempotent seed attempt
+stopped on an already existing synthetic principal without overwriting data; the API was then rebuilt and recreated
+without dependencies. No ordinary tenant, pilot, indexing, AI provider, DOCX engine or production admission changed.
 
 Roadmap 389 through 394 / PLANS 250 through 255 are complete under ADR-0143. Authors can select an ordinary data-cell
 row, column or rectangle in a simple native table, open the existing formula dialog once and fill the complete range.
