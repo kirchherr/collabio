@@ -22,8 +22,10 @@ responsive desktop/mobile browser suites passed 32/32. Desktop/mobile character 
 `6e0f720043b40db6c73353199fa687987d04a2cd85e15a804b75bf68b61d695e`. All four passed visual review. Product source
 through `254c7f86`, inheritance proof through `2d2dd92f` and roadmap/recovery documentation through `13715646` are
 published on `kirchherr/kb-write-unit-of-work`. The review API is healthy at
-`http://192.168.0.108:42880/office?review=font-families-254c7f86`. Full quality and scoped temporary-resource cleanup
-are the remaining closeout steps for this completed block.
+`http://192.168.0.108:42880/office?review=font-families-254c7f86`. Full quality on documented source `d7be9af8`
+passed Ruff, formatting for 864 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` and blocked API services plus the six local
+review screenshots were removed. No transient runner remains, and regular plus review APIs return `ok`.
 
 Roadmap 432 through 438 / PLANS 293 through 299 are complete under ADR-0149. Native Office now recognizes complete
 HTTPS addresses, explicit `mailto:` targets and simple email addresses when an editor completes a token or pastes
