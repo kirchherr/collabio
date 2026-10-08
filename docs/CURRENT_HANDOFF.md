@@ -19,8 +19,9 @@ review database, and the rebuilt review API is healthy. The exact desktop/mobile
 group screenshot SHA-256 values are `e3d9674628c0537c5ec66c2feb35281b2169e5c681cf6d72d2ab578bc35d8bf5` and
 `0480f38ed968cfb628cc79f46623e72da1f8a5581583a19ba02ac9d822d8ebff`. Product commits through `07ec2804` are
 published on `kirchherr/kb-write-unit-of-work`; review remains available at
-`http://192.168.0.108:42880/office?review=subject-sharing-07ec2804`. Final full quality and scoped cleanup are the
-remaining closeout steps for this block.
+`http://192.168.0.108:42880/office?review=subject-sharing-07ec2804`. Full quality on documented source `392dae60`
+passed Ruff, formatting for 861 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning.
 
 Roadmap 410 through 416 / PLANS 271 through 277 are complete under ADR-0146. Direct Office document `read` and
 `write` grants may now be permanent or expire at an exact UTC instant. The API accepts only timezone-aware future
