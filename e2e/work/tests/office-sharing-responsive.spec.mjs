@@ -77,7 +77,7 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   verifyBrowser();
 });
 
-test("Office role and group sharing stays tenant scoped and authoritative", async ({ page }) => {
+test("Office role and group sharing stays tenant scoped and authoritative", async ({ page }, testInfo) => {
   const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
   await openOffice(page);
   await newOfficeDraft(page, "Synthetic subject sharing", { text: "Role and group ACL proof" });
@@ -119,6 +119,7 @@ test("Office role and group sharing stays tenant scoped and authoritative", asyn
   reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
   expect(reader.status()).toBe(200);
   expect((await reader.json()).can_write).toBe(true);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-subject-sharing-${testInfo.project.name}.png`, fullPage: true });
 
   page.once("dialog", (dialog) => dialog.accept());
   revoked = page.waitForResponse((response) =>
