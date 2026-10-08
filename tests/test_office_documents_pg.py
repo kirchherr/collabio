@@ -110,6 +110,37 @@ def add_principal(database: Database, user: UserContext, principal_id: str, disp
         )
 
 
+def add_role_and_group(database: Database, user: UserContext, principal_id: str) -> tuple[str, str]:
+    role_id = "document-reviewers"
+    group_id = "document-finance"
+    issuer = f"https://issuer.example/{user.tenant_id}"
+    subject = f"subject-{principal_id}"
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "INSERT INTO collabio.tenant_roles "
+            "(tenant_id, role_id, display_name, audit_chain_ref) VALUES (%s, %s, %s, %s)",
+            (user.tenant_id, role_id, "Document Reviewers", "audit:office-share-role-reviewers"),
+        )
+        connection.execute(
+            "INSERT INTO collabio.tenant_groups "
+            "(tenant_id, group_id, display_name, audit_chain_ref) VALUES (%s, %s, %s, %s)",
+            (user.tenant_id, group_id, "Document Finance", "audit:office-share-group-finance"),
+        )
+        connection.execute(
+            "INSERT INTO collabio.tenant_principal_group_memberships "
+            "(tenant_id, issuer, subject, group_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s)",
+            (
+                user.tenant_id,
+                issuer,
+                subject,
+                group_id,
+                "audit:office-share-group-membership-finance",
+            ),
+        )
+    return role_id, group_id
+
+
 def counts(database: Database, user: UserContext) -> tuple[int, ...]:
     tables = (
         "office.documents",
@@ -247,6 +278,85 @@ def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(dat
         ).fetchall()
     assert decisions[0] == ("grant", "read", expires_at, 1, 2)
     assert decisions[1:] == [("grant", "write", None, 2, 3), ("revoke", None, None, 3, 4)]
+
+
+def test_pg_document_role_and_group_shares_are_authoritative_and_typed(database: Database) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    owner = editor()
+    created = service.create(user_context=owner, command=command("subject-share-create"), write_enabled=True)
+    object_id = created.document.object_id
+    owner.readable_object_ids.add(object_id)
+    add_principal(database, owner, owner.user_id, "Document Owner")
+    add_principal(database, owner, "subject-reader", "Subject Reader")
+    role_id, group_id = add_role_and_group(database, owner, "subject-reader")
+
+    initial = service.share_state(user_context=owner, object_id=object_id)
+    assert {(principal.principal_type, principal.principal_id) for principal in initial.available_principals} == {
+        ("user", owner.user_id),
+        ("user", "subject-reader"),
+        ("role", role_id),
+        ("group", group_id),
+    }
+    role_state = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_type="role",
+            principal_id=role_id,
+            permission="read",
+            expected_acl_version=1,
+            mutation_reference="share-role",
+            human_confirmation=True,
+        ),
+    )
+    assert role_state.acl_version == 2
+    role_reader = owner.model_copy(
+        update={"user_id": "subject-reader", "role_ids": {role_id}, "readable_object_ids": {object_id}}
+    )
+    assert service.read_content(user_context=role_reader, object_id=object_id).can_write is False
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.share_state(user_context=role_reader, object_id=object_id)
+
+    revoked = service.revoke_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentUnshareCommand(
+            principal_type="role",
+            principal_id=role_id,
+            expected_acl_version=2,
+            mutation_reference="revoke-role",
+            human_confirmation=True,
+        ),
+    )
+    assert revoked.acl_version == 3
+    group_state = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_type="group",
+            principal_id=group_id,
+            permission="write",
+            expected_acl_version=3,
+            mutation_reference="share-group",
+            human_confirmation=True,
+        ),
+    )
+    assert group_state.acl_version == 4
+    group_reader = role_reader.model_copy(update={"role_ids": set()})
+    assert service.read_content(user_context=group_reader, object_id=object_id).can_write is True
+
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, owner.tenant_id)
+        decisions = connection.execute(
+            "SELECT subject_type, action FROM office.document_share_decisions "
+            "WHERE tenant_id = %s AND object_id = %s ORDER BY resulting_acl_version",
+            (owner.tenant_id, object_id),
+        ).fetchall()
+    assert decisions == [("role", "grant"), ("role", "revoke"), ("group", "grant")]
 
 
 def test_pg_expired_direct_user_grant_is_not_authoritative(database: Database) -> None:
