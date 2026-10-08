@@ -985,7 +985,10 @@ class OfficeDocumentService:
             True,
             event_id,
             replayed=result.replayed,
-            can_share=self.repository.can_admin(user_context=user_context, object_id=result.document.object_id),
+            can_share=(
+                result.document.owner_principal_id == user_context.user_id
+                or self.repository.can_admin(user_context=user_context, object_id=result.document.object_id)
+            ),
         )
 
     def _read_content(self, document: OfficeDocumentRecord, version: OfficeDocumentVersion) -> dict[str, Any]:
