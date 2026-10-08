@@ -18,7 +18,7 @@ def styled_document() -> dict[str, Any]:
                     "id": "body",
                     "name": "Fließtext 😀",
                     "paragraph": {"lineSpacing": "1.5", "keepWithNext": True, "keepLines": True},
-                    "character": {"fontFamily": "serif", "fontSize": 18, "textColor": "blue", "verticalPosition": "superscript", "letterSpacing": "wide"},
+                    "character": {"fontFamily": "serif", "fontSize": 18, "textColor": "blue", "letterSpacing": "wide"},
                 }
             ]
         },
@@ -88,6 +88,7 @@ def test_styles_reject_invalid_catalog_shapes(value: Any) -> None:
         ("character", {"textColor": "#fff"}),
         ("character", {"textColor": None}),
         ("character", {"highlightColor": "yellow"}),
+        ("character", {"verticalPosition": "superscript"}),
         ("character", {"verticalPosition": "super"}),
         ("character", {"letterSpacing": "0.1em"}),
         ("character", {"style": "SECRET"}),

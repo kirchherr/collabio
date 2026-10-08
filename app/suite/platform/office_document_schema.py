@@ -80,7 +80,6 @@ STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {
     "fontFamily": FONT_FAMILIES,
     "fontSize": FONT_SIZES,
     "textColor": TEXT_COLORS,
-    "verticalPosition": VERTICAL_POSITIONS,
     "letterSpacing": LETTER_SPACING,
 }
 

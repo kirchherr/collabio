@@ -23,7 +23,6 @@ export const OFFICE_STYLE_CHARACTER_VALUES = Object.freeze({
   fontFamily: OFFICE_CHARACTER_VALUES.fontFamily,
   fontSize: OFFICE_CHARACTER_VALUES.fontSize,
   textColor: OFFICE_CHARACTER_VALUES.textColor,
-  verticalPosition: OFFICE_CHARACTER_VALUES.verticalPosition,
   letterSpacing: OFFICE_CHARACTER_VALUES.letterSpacing,
 });
 
