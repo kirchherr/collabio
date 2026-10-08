@@ -64,6 +64,9 @@ PARAGRAPH_FORMAT_ATTRIBUTES = {
     "lineSpacing",
     "spacingBefore",
     "spacingAfter",
+    "indentLeft",
+    "indentRight",
+    "specialIndent",
     "keepWithNext",
     "keepLines",
     "pageBreakBefore",
@@ -73,6 +76,9 @@ PARAGRAPH_VALUES: dict[str, set[Any]] = {
     "lineSpacing": {"1", "1.15", "1.5", "2"},
     "spacingBefore": {0, 6, 12, 18, 24},
     "spacingAfter": {0, 6, 12, 18, 24},
+    "indentLeft": {0, 18, 36, 54, 72},
+    "indentRight": {0, 18, 36, 54, 72},
+    "specialIndent": {"none", "firstLine18", "firstLine36", "hanging18", "hanging36"},
     "keepWithNext": {False, True},
     "keepLines": {False, True},
     "pageBreakBefore": {False, True},
@@ -586,7 +592,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     bool
                     if attribute in {"keepWithNext", "keepLines", "pageBreakBefore"}
                     else int
-                    if attribute in {"fontSize", "spacingBefore", "spacingAfter"}
+                    if attribute in {"fontSize", "spacingBefore", "spacingAfter", "indentLeft", "indentRight"}
                     else str
                 )
                 if type(value) is not expected_type or value not in values[attribute]:
@@ -688,6 +694,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             for key in ("spacingBefore", "spacingAfter"):
                 if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
                     reject()
+            for key in ("indentLeft", "indentRight"):
+                if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 18, 36, 54, 72}):
+                    reject()
+            if "specialIndent" in attrs and (
+                not isinstance(attrs["specialIndent"], str)
+                or attrs["specialIndent"] not in {"none", "firstLine18", "firstLine36", "hanging18", "hanging36"}
+            ):
+                reject()
             for key in ("keepWithNext", "keepLines", "pageBreakBefore"):
                 if key in attrs and type(attrs[key]) is not bool:
                     reject()

@@ -14,14 +14,25 @@ from work_e2e_office import build_synthetic_office_service
 
 PARAGRAPH_RECOVERY_TITLE = "Synthetic paragraph recovery"
 PARAGRAPH_RECOVERY_VERSION_COUNT = 3
-PARAGRAPH_RECOVERY_PROFILES: tuple[dict[str, str | int], ...] = (
+PARAGRAPH_RECOVERY_PROFILES: tuple[dict[str, str | int | bool], ...] = (
     {},
-    {"textAlign": "center", "lineSpacing": "1.5", "spacingBefore": 6, "spacingAfter": 12},
+    {
+        "textAlign": "center",
+        "lineSpacing": "1.5",
+        "spacingBefore": 6,
+        "spacingAfter": 12,
+        "indentLeft": 36,
+        "indentRight": 18,
+        "specialIndent": "firstLine18",
+    },
     {
         "textAlign": "justify",
         "lineSpacing": "2",
         "spacingBefore": 18,
         "spacingAfter": 24,
+        "indentLeft": 54,
+        "indentRight": 36,
+        "specialIndent": "hanging18",
         "keepWithNext": True,
         "keepLines": True,
         "pageBreakBefore": True,

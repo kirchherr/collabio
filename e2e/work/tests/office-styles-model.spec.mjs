@@ -3,12 +3,12 @@ import { officeStyles, officeStyledDOMAttributes, officeStyleComparisonDocument 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { findDocumentMatches, replaceDocumentMatches } from "../office-search.mjs";
 
-const definition = () => ({ id: "body", name: "Fließtext 😀", paragraph: { textAlign: "center", spacingAfter: 12 }, character: { fontFamily: "serif", fontSize: 18, textColor: "blue", letterSpacing: "wide", textCase: "smallCaps" } });
-const document = () => ({ type: "doc", attrs: { styles: [definition()] }, content: [{ type: "paragraph", attrs: { styleId: "body", textAlign: "right" }, content: [{ type: "text", text: "Café 😀 text" }] }] });
+const definition = () => ({ id: "body", name: "Fließtext 😀", paragraph: { textAlign: "center", spacingAfter: 12, indentLeft: 36, indentRight: 18, specialIndent: "hanging18" }, character: { fontFamily: "serif", fontSize: 18, textColor: "blue", letterSpacing: "wide", textCase: "smallCaps" } });
+const document = () => ({ type: "doc", attrs: { styles: [definition()] }, content: [{ type: "paragraph", attrs: { styleId: "body", textAlign: "right", indentLeft: 54, specialIndent: "firstLine18" }, content: [{ type: "text", text: "Café 😀 text" }] }] });
 
 test("named styles reject malformed catalogs untrusted values and duplicate identities", () => {
   for (const value of [null, {}, [null], [{ ...definition(), name: "bad\n" }], [{ ...definition(), name: "bad\ud800" }],
-    [{ ...definition(), character: { fontFamily: "Arial" } }], [{ ...definition(), character: { fontSize: "18" } }], [{ ...definition(), character: { highlightColor: "yellow" } }], [{ ...definition(), character: { verticalPosition: "superscript" } }], [{ ...definition(), character: { verticalPosition: "super" } }], [{ ...definition(), character: { letterSpacing: "0.1em" } }], [{ ...definition(), character: { textCase: "lowercase" } }], [{ ...definition(), paragraph: { url: "SECRET" } }],
+    [{ ...definition(), character: { fontFamily: "Arial" } }], [{ ...definition(), character: { fontSize: "18" } }], [{ ...definition(), character: { highlightColor: "yellow" } }], [{ ...definition(), character: { verticalPosition: "superscript" } }], [{ ...definition(), character: { verticalPosition: "super" } }], [{ ...definition(), character: { letterSpacing: "0.1em" } }], [{ ...definition(), character: { textCase: "lowercase" } }], [{ ...definition(), paragraph: { indentLeft: "36" } }], [{ ...definition(), paragraph: { specialIndent: "18pt" } }], [{ ...definition(), paragraph: { url: "SECRET" } }],
     [definition(), definition()], Array.from({ length: 21 }, (_, n) => ({ ...definition(), id: `style-${n}`, name: `Style ${n}` }))]) {
     expect(() => officeStyles(value)).toThrow();
   }
@@ -17,7 +17,7 @@ test("named styles reject malformed catalogs untrusted values and duplicate iden
 
 test("named styles resolve fixed presentation with explicit paragraph overrides", () => {
   expect(officeStyledDOMAttributes(document().content[0].attrs, officeStyles([definition()]))).toEqual({
-    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-letter-spacing": "wide", "data-office-text-case": "smallCaps", "data-office-align": "right", "data-office-spacing-after": "12",
+    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-letter-spacing": "wide", "data-office-text-case": "smallCaps", "data-office-align": "right", "data-office-spacing-after": "12", "data-office-indent-left": "54", "data-office-indent-right": "18", "data-office-special-indent": "firstLine18",
   });
   expect(() => officeStyledDOMAttributes({ styleId: "missing" }, [definition()])).toThrow();
 });

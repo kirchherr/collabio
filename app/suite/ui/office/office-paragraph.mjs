@@ -5,6 +5,9 @@ export const OFFICE_PARAGRAPH_VALUES = Object.freeze({
   lineSpacing: Object.freeze(["1", "1.15", "1.5", "2"]),
   spacingBefore: Object.freeze([0, 6, 12, 18, 24]),
   spacingAfter: Object.freeze([0, 6, 12, 18, 24]),
+  indentLeft: Object.freeze([0, 18, 36, 54, 72]),
+  indentRight: Object.freeze([0, 18, 36, 54, 72]),
+  specialIndent: Object.freeze(["none", "firstLine18", "firstLine36", "hanging18", "hanging36"]),
   keepWithNext: Object.freeze([false, true]),
   keepLines: Object.freeze([false, true]),
   pageBreakBefore: Object.freeze([false, true]),
@@ -15,6 +18,9 @@ const domAttributes = Object.freeze({
   lineSpacing: "data-office-line-spacing",
   spacingBefore: "data-office-spacing-before",
   spacingAfter: "data-office-spacing-after",
+  indentLeft: "data-office-indent-left",
+  indentRight: "data-office-indent-right",
+  specialIndent: "data-office-special-indent",
   keepWithNext: "data-office-keep-with-next",
   keepLines: "data-office-keep-lines",
   pageBreakBefore: "data-office-page-break-before",
@@ -45,6 +51,12 @@ export function officeParagraphDescription(attrs = {}) {
   if (values.lineSpacing !== undefined) descriptions.push(`Zeilenabstand: ${values.lineSpacing.replace(".", ",")}`);
   if (values.spacingBefore !== undefined) descriptions.push(`Abstand davor: ${values.spacingBefore} pt`);
   if (values.spacingAfter !== undefined) descriptions.push(`Abstand danach: ${values.spacingAfter} pt`);
+  if (values.indentLeft !== undefined) descriptions.push(`Einzug links: ${values.indentLeft} pt`);
+  if (values.indentRight !== undefined) descriptions.push(`Einzug rechts: ${values.indentRight} pt`);
+  if (values.specialIndent !== undefined) descriptions.push(`Sondereinzug: ${{
+    none: "keiner", firstLine18: "Erste Zeile 18 pt", firstLine36: "Erste Zeile 36 pt",
+    hanging18: "Hängend 18 pt", hanging36: "Hängend 36 pt",
+  }[values.specialIndent]}`);
   if (values.keepWithNext !== undefined) descriptions.push(`Mit nächstem Absatz: ${values.keepWithNext ? "zusammenhalten" : "nicht zusammenhalten"}`);
   if (values.keepLines !== undefined) descriptions.push(`Zeilen: ${values.keepLines ? "zusammenhalten" : "trennbar"}`);
   if (values.pageBreakBefore !== undefined) descriptions.push(`Seitenumbruch davor: ${values.pageBreakBefore ? "ja" : "nein"}`);

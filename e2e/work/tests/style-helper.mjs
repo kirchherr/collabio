@@ -2,7 +2,7 @@ import { expect } from "@playwright/test";
 import { officeEditor, openOffice, openOfficeDocument } from "./office-support.mjs";
 import { createParagraphFixture, paragraph } from "./paragraph-helper.mjs";
 
-export const styleDefinition = () => ({ id: "body", name: "Fließtext", paragraph: { textAlign: "center", lineSpacing: "1.5", spacingAfter: 12 }, character: { fontFamily: "serif", fontSize: 18, textColor: "blue" } });
+export const styleDefinition = () => ({ id: "body", name: "Fließtext", paragraph: { textAlign: "center", lineSpacing: "1.5", spacingAfter: 12, indentLeft: 36, indentRight: 18, specialIndent: "hanging18" }, character: { fontFamily: "serif", fontSize: 18, textColor: "blue" } });
 export function styleDocument({ linked = true } = {}) {
   const attrs = linked ? { styleId: "body" } : {};
   const cell = (text) => ({ type: "tableCell", attrs: { colspan: 1, rowspan: 1 }, content: [paragraph(text, attrs)] });

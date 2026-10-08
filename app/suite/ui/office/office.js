@@ -869,6 +869,8 @@ function formatEditor(command, preserveParagraphs = false) {
 const paragraphFields = {
   textAlign: "paragraph-align", lineSpacing: "paragraph-line-spacing",
   spacingBefore: "paragraph-spacing-before", spacingAfter: "paragraph-spacing-after",
+  indentLeft: "paragraph-indent-left", indentRight: "paragraph-indent-right",
+  specialIndent: "paragraph-special-indent",
   keepWithNext: "paragraph-keep-with-next", keepLines: "paragraph-keep-lines",
   pageBreakBefore: "paragraph-page-break-before",
 };

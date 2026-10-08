@@ -17,7 +17,14 @@ def styled_document() -> dict[str, Any]:
                 {
                     "id": "body",
                     "name": "Fließtext 😀",
-                    "paragraph": {"lineSpacing": "1.5", "keepWithNext": True, "keepLines": True},
+                    "paragraph": {
+                        "lineSpacing": "1.5",
+                        "indentLeft": 36,
+                        "indentRight": 18,
+                        "specialIndent": "hanging18",
+                        "keepWithNext": True,
+                        "keepLines": True,
+                    },
                     "character": {
                         "fontFamily": "serif",
                         "fontSize": 18,
@@ -86,6 +93,9 @@ def test_styles_reject_invalid_catalog_shapes(value: Any) -> None:
         ("paragraph", {"keepWithNext": 1}),
         ("paragraph", {"keepLines": "true"}),
         ("paragraph", {"pageBreakBefore": None}),
+        ("paragraph", {"indentLeft": "36"}),
+        ("paragraph", {"indentRight": 18.0}),
+        ("paragraph", {"specialIndent": "hanging"}),
         ("character", {"fontSize": "18"}),
         ("character", {"fontSize": 18.0}),
         ("character", {"fontSize": True}),

@@ -18,7 +18,15 @@ from suite.platform.office_suggestions import (
 )
 from suite.storage.source_objects import InMemorySourceObjectRepository, source_object_content_bytes
 
-FORMAT: dict[str, Any] = {"textAlign": "justify", "lineSpacing": "1.5", "spacingBefore": 6, "spacingAfter": 12}
+FORMAT: dict[str, Any] = {
+    "textAlign": "justify",
+    "lineSpacing": "1.5",
+    "spacingBefore": 6,
+    "spacingAfter": 12,
+    "indentLeft": 36,
+    "indentRight": 18,
+    "specialIndent": "firstLine18",
+}
 
 
 def formatted_document() -> dict[str, Any]:
@@ -43,6 +51,8 @@ def formatted_document() -> dict[str, Any]:
     [("textAlign", value) for value in ("left", "center", "right", "justify")]
     + [("lineSpacing", value) for value in ("1", "1.15", "1.5", "2")]
     + [(key, value) for key in ("spacingBefore", "spacingAfter") for value in (0, 6, 12, 18, 24)]
+    + [(key, value) for key in ("indentLeft", "indentRight") for value in (0, 18, 36, 54, 72)]
+    + [("specialIndent", value) for value in ("none", "firstLine18", "firstLine36", "hanging18", "hanging36")]
     + [(key, value) for key in ("keepWithNext", "keepLines", "pageBreakBefore") for value in (False, True)],
 )
 @pytest.mark.parametrize("kind", ["paragraph", "heading"])
@@ -79,6 +89,14 @@ def test_paragraph_formatting_accepts_only_declared_values_without_normalization
         {"spacingBefore": -6},
         {"spacingAfter": 25},
         {"spacingBefore": {}},
+        {"indentLeft": True},
+        {"indentRight": 18.0},
+        {"indentLeft": "36"},
+        {"indentRight": -18},
+        {"indentLeft": 90},
+        {"specialIndent": None},
+        {"specialIndent": "hanging"},
+        {"specialIndent": "18pt; color:red"},
         {"keepWithNext": 1},
         {"keepLines": "true"},
         {"pageBreakBefore": None},

@@ -74,7 +74,7 @@ test("Office mixed paragraph formatting changes only chosen fields and undoes in
   await page.keyboard.type(" BEFORE");
   await selectParagraphBlocks(page, 0, 1);
   await openParagraphDialog(page, 2);
-  for (const key of ["textAlign", "lineSpacing", "spacingBefore", "spacingAfter"]) {
+  for (const key of ["textAlign", "lineSpacing", "spacingBefore", "spacingAfter", "indentLeft", "indentRight", "specialIndent"]) {
     await expect(page.locator(`#${FORMAT_IDS[key]}`)).toHaveValue("mixed");
   }
   for (const key of ["keepWithNext", "keepLines", "pageBreakBefore"]) {
@@ -226,7 +226,7 @@ test("Office compares format-only versions and restores exact paragraph attribut
   await expect(page.locator("#compare-summary")).toContainText("1 geändert");
   await expect(page.locator('#compare-results [data-change-kind="changed"]')).toHaveCount(1);
   await expect(page.locator("#compare-results")).toContainText("Same saved wording");
-  for (const label of ["Ausrichtung: Zentriert", "Ausrichtung: Rechtsbündig", "Zeilenabstand: 1,5", "Zeilenabstand: 2", "Abstand davor: 6 pt", "Abstand danach: 24 pt"]) {
+  for (const label of ["Ausrichtung: Zentriert", "Ausrichtung: Rechtsbündig", "Zeilenabstand: 1,5", "Zeilenabstand: 2", "Abstand davor: 6 pt", "Abstand danach: 24 pt", "Einzug links: 36 pt", "Einzug rechts: 36 pt", "Sondereinzug: Erste Zeile 18 pt", "Sondereinzug: Hängend 18 pt"]) {
     await expect(page.locator("#compare-results")).toContainText(label);
   }
   await page.locator("#compare-restore").click();
@@ -380,7 +380,7 @@ test("Office prints exact saved paragraph alignment and spacing into a tagged mu
     await page.emulateMedia({ media: "print" });
     return page.evaluate(() => [...document.querySelectorAll("#office-print-root .office-print-content p,#office-print-root .office-print-content h2")].map((element) => {
       const style = getComputedStyle(element);
-      return { text: element.textContent, align: style.textAlign, line: parseFloat(style.lineHeight) / parseFloat(style.fontSize), before: parseFloat(style.marginTop), after: parseFloat(style.marginBottom) };
+      return { text: element.textContent, align: style.textAlign, line: parseFloat(style.lineHeight) / parseFloat(style.fontSize), before: parseFloat(style.marginTop), after: parseFloat(style.marginBottom), left: parseFloat(style.marginLeft), right: parseFloat(style.marginRight), textIndent: parseFloat(style.textIndent), paddingLeft: parseFloat(style.paddingLeft) };
     }));
   });
   await page.evaluate(() => {
@@ -404,9 +404,9 @@ test("Office prints exact saved paragraph alignment and spacing into a tagged mu
   expect(calls[0].snapshot.unsafeElements).toBe(0);
   expect(calls[0].layout).toMatchObject({ rootVisible: true, shellVisible: false, dialogVisible: false });
   const styles = await page.evaluate(() => window.paragraphPrintStyles);
-  expect(styles[0]).toMatchObject({ align: "center", before: 8, after: 16 });
+  expect(styles[0]).toMatchObject({ align: "center", before: 8, after: 16, left: 48, right: 24, textIndent: 24, paddingLeft: 0 });
   expect(styles[0].line).toBeCloseTo(1.5, 2);
-  expect(styles[1]).toMatchObject({ align: "right", before: 24, after: 32 });
+  expect(styles[1]).toMatchObject({ align: "right", before: 24, after: 32, left: 72, right: 48, textIndent: -24, paddingLeft: 24 });
   expect(styles[1].line).toBeCloseTo(2, 2);
   await expectPrintCleared(page);
   expect(await officeVersions(page, first.document.object_id)).toHaveLength(1);

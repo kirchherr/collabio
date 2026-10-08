@@ -38,6 +38,19 @@ def test_final_recovery_version_contains_exact_pagination_controls() -> None:
     assert {key: document["content"][1]["attrs"][key] for key in expected} == expected
 
 
+def test_formatted_recovery_versions_contain_exact_indentation_controls() -> None:
+    first_line = paragraph_recovery_document(2)
+    hanging = paragraph_recovery_document(3)
+    assert {
+        key: first_line["content"][0]["attrs"][key]
+        for key in ("indentLeft", "indentRight", "specialIndent")
+    } == {"indentLeft": 36, "indentRight": 18, "specialIndent": "firstLine18"}
+    assert {
+        key: hanging["content"][1]["attrs"][key]
+        for key in ("indentLeft", "indentRight", "specialIndent")
+    } == {"indentLeft": 54, "indentRight": 36, "specialIndent": "hanging18"}
+
+
 @dataclass
 class RecoveryDocuments:
     service: OfficeDocumentService
