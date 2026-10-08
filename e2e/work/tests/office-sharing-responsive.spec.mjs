@@ -22,7 +22,7 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   await page.locator("#document-share").click();
   expect((await initial).status()).toBe(200);
   await expect(page.locator("#share-dialog")).toBeVisible();
-  await expect(page.locator("#share-list .share-entry")).toContainText("work-office-editor-e2e");
+  await expect(page.locator("#share-list .share-entry")).toContainText("Eigentümer · Verwaltung");
   await page.locator("#share-principal").selectOption("work-reader-e2e");
   await page.locator("#share-permission").selectOption("read");
   await expect(page.locator("#share-submit")).toBeDisabled();
@@ -64,9 +64,9 @@ test("Office document sharing is confirmed, responsive and immediately authorita
   page.once("dialog", (dialog) => dialog.accept());
   const revoked = page.waitForResponse((response) =>
     new URL(response.url()).pathname === `${sharePath}/revoke` && response.request().method() === "POST");
-  await page.locator("#share-list .share-entry", { hasText: "work-reader-e2e" }).locator("button").click();
+  await page.locator("#share-list .share-entry", { hasText: "Kann bearbeiten" }).locator("button").click();
   expect((await revoked).status()).toBe(200);
-  await expect(page.locator("#share-list .share-entry", { hasText: "work-reader-e2e" })).toHaveCount(0);
+  await expect(page.locator("#share-list .share-entry", { hasText: "Kann bearbeiten" })).toHaveCount(0);
   reader = await page.request.get(`${BASE_URL}${OFFICE_PATH}/${objectId}/content`, { headers: readerHeaders });
   expect(reader.status()).toBe(404);
   verifyBrowser();
