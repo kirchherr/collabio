@@ -17,7 +17,7 @@ def styled_document() -> dict[str, Any]:
                 {
                     "id": "body",
                     "name": "Fließtext 😀",
-                    "paragraph": {"lineSpacing": "1.5"},
+                    "paragraph": {"lineSpacing": "1.5", "keepWithNext": True, "keepLines": True},
                     "character": {"fontSize": 18, "textColor": "blue"},
                 }
             ]
@@ -77,6 +77,9 @@ def test_styles_reject_invalid_catalog_shapes(value: Any) -> None:
         ("paragraph", {"spacingAfter": True}),
         ("paragraph", {"spacingAfter": 6.0}),
         ("paragraph", {"lineSpacing": 1.5}),
+        ("paragraph", {"keepWithNext": 1}),
+        ("paragraph", {"keepLines": "true"}),
+        ("paragraph", {"pageBreakBefore": None}),
         ("character", {"fontSize": "18"}),
         ("character", {"fontSize": 18.0}),
         ("character", {"fontSize": True}),

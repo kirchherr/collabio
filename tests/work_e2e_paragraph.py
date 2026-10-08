@@ -17,7 +17,15 @@ PARAGRAPH_RECOVERY_VERSION_COUNT = 3
 PARAGRAPH_RECOVERY_PROFILES: tuple[dict[str, str | int], ...] = (
     {},
     {"textAlign": "center", "lineSpacing": "1.5", "spacingBefore": 6, "spacingAfter": 12},
-    {"textAlign": "justify", "lineSpacing": "2", "spacingBefore": 18, "spacingAfter": 24},
+    {
+        "textAlign": "justify",
+        "lineSpacing": "2",
+        "spacingBefore": 18,
+        "spacingAfter": 24,
+        "keepWithNext": True,
+        "keepLines": True,
+        "pageBreakBefore": True,
+    },
 )
 
 

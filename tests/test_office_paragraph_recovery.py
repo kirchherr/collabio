@@ -24,7 +24,18 @@ from suite.platform.office_documents import (
 from suite.storage.source_objects import InMemorySourceObjectRepository
 from test_office_recovery_proof import recovery_environment, review_recovery_fixture
 from test_office_suggestion_recovery import suggestion_recovery_fixture
-from work_e2e_paragraph import PARAGRAPH_RECOVERY_TITLE, paragraph_recovery_document
+from work_e2e_paragraph import (
+    PARAGRAPH_RECOVERY_TITLE,
+    PARAGRAPH_RECOVERY_VERSION_COUNT,
+    paragraph_recovery_document,
+)
+
+
+def test_final_recovery_version_contains_exact_pagination_controls() -> None:
+    document = paragraph_recovery_document(PARAGRAPH_RECOVERY_VERSION_COUNT)
+    expected = {"keepWithNext": True, "keepLines": True, "pageBreakBefore": True}
+    assert {key: document["content"][0]["attrs"][key] for key in expected} == expected
+    assert {key: document["content"][1]["attrs"][key] for key in expected} == expected
 
 
 @dataclass
