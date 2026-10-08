@@ -525,7 +525,8 @@ class PgOfficeDocumentRepository:
         )
         self._insert_version(connection, version)
         connection.execute(
-            "UPDATE office.documents SET title = %s, information_classification = %s, current_version_id = %s, updated_at_utc = %s "
+            "UPDATE office.documents SET title = %s, information_classification = %s, "
+            "current_version_id = %s, updated_at_utc = %s "
             "WHERE tenant_id = %s AND object_id = %s",
             (
                 document.title,

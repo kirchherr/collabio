@@ -322,7 +322,10 @@ def can_create_office_document(user_context: UserContext) -> bool:
 
 
 def validate_office_classification_change(
-    *, user_context: UserContext, current: OfficeInformationClassification | None, target: OfficeInformationClassification
+    *,
+    user_context: UserContext,
+    current: OfficeInformationClassification | None,
+    target: OfficeInformationClassification,
 ) -> None:
     """Keep protective upgrades easy while reserving publication and downgrades for tenant admins."""
     if "tenant-admin" in user_context.role_ids:
@@ -333,7 +336,10 @@ def validate_office_classification_change(
         return
     if target == current:
         return
-    if target == "public" or OFFICE_INFORMATION_CLASSIFICATION_RANK[target] < OFFICE_INFORMATION_CLASSIFICATION_RANK[current]:
+    if (
+        target == "public"
+        or OFFICE_INFORMATION_CLASSIFICATION_RANK[target] < OFFICE_INFORMATION_CLASSIFICATION_RANK[current]
+    ):
         raise OfficeDocumentPermissionError("Lowering document classification requires tenant administration")
 
 
