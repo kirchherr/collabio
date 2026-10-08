@@ -160,7 +160,10 @@ def test_sharing_rejects_non_admin_cross_tenant_unknown_owner_and_stale_changes(
 
 
 def test_migration_uses_definer_functions_append_only_receipts_and_no_direct_app_acl_write() -> None:
-    migration = Path(__file__).resolve().parents[1] / "app/suite/persistence/migrations/0087_office_document_sharing.sql"
+    migration = (
+        Path(__file__).resolve().parents[1]
+        / "app/suite/persistence/migrations/0087_office_document_sharing.sql"
+    )
     sql = migration.read_text()
     normalized = " ".join(sql.lower().split())
     assert "create table office.document_share_decisions" in normalized
