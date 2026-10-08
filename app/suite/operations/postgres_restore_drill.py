@@ -115,6 +115,7 @@ OFFICE_UPDATE_COLUMNS = {
     "office.documents": {"title", "information_classification", "current_version_id", "updated_at_utc"},
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
 }
+OFFICE_APP_READ_ONLY_TABLES = {"office.document_share_decisions"}
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
     ("office.text_suggestions", "office_text_suggestions_bind_source"): (
         "enforce_text_suggestion_source",
@@ -1704,6 +1705,8 @@ def _office_document_controls_verified(
             expected_privileges = (
                 OFFICE_OWNER_TABLE_PRIVILEGES
                 if grantee == "collabio_owner"
+                else {"SELECT"}
+                if grantee == "collabio_app" and table_name in OFFICE_APP_READ_ONLY_TABLES
                 else {"SELECT", "INSERT"}
                 if grantee == "collabio_app"
                 else {"SELECT"}
