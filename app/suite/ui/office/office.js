@@ -3249,7 +3249,9 @@ function prepareEditor(content, session) {
         const paragraphs = text.replaceAll("\r", "").split("\n").map((line) => ({
           type: "paragraph", ...(line ? { content: officeAutomaticLinkContent(line) } : {}),
         }));
+        state.editor.view.dispatch(closeHistory(state.editor.state.tr));
         state.editor?.commands.insertContent(paragraphs);
+        state.editor.view.dispatch(closeHistory(state.editor.state.tr));
         return true;
       },
       handleDrop() { notice("Dateien werden hier nicht eingefügt. Text lässt sich über die Zwischenablage übernehmen."); return true; },
