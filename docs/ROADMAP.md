@@ -2683,7 +2683,29 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abruf, Provider, Worker, neuen Recovery-Speicher, freie Masse, Seitennummern-Neustart oder DOCX-Zulassung
      geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 474 / PLANS 224 bis 335 sind unter ADR-0139 bis ADR-0154 implementiert.
+475. [x] Begrenzte native Textspalten unter ADR-0155 eingefuehrt: Dokument- und vollstaendige Abschnittsprofile
+     unterstuetzen exakt eine, zwei oder drei Spalten; Abwesenheit bleibt der kanonische einspaltige Standard.
+
+476. [x] Andere Zahlen, Tokens, Masse, CSS, URLs und unerwartete Objektschluessel unabhaengig in Browser und Server
+     abgewiesen; akzeptierte Werte werden ausschliesslich auf feste lokale CSS-Regeln abgebildet.
+
+477. [x] Responsive Seiten- und Abschnittsdialoge um eine verstaendliche Spaltenwahl und proportionale Vorschau
+     erweitert; kompaktes Editieren bleibt einspaltig erreichbar, waehrend die Druckausgabe exakt bleibt.
+
+478. [x] Dokumentweiten Editorfluss ohne Abschnittsmarker fuer zwei und drei Spalten umgesetzt und Tabellen, Bilder,
+     Code, Zitate, Karten und Objektgruppen vor unkontrollierten Spaltenumbruechen geschuetzt.
+
+479. [x] Drucksegmente an Seiten- und Abschnittsumbruechen mit dem jeweils aktiven exakten Spaltenprofil verbunden;
+     manuelle Seitenumbrueche behalten die Abschnittsspalten und Abschnittsmarker wechseln deterministisch.
+
+480. [x] Spalten durch bestaetigten CAS-Save, immutable Historie, Vergleich, Reload, unabhaengige Wiederverwendung
+     und Recovery erhalten sowie zwei- und dreispaltige Dokument-/Abschnittsprofile in Version zwei und drei gebunden.
+
+481. [x] Vollstaendigen Textspalten-Lebenszyklus unter ADR-0155 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, freie Spaltenbreiten, kontinuierliche Abschnittspaginierung
+     oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 481 / PLANS 224 bis 342 sind unter ADR-0139 bis ADR-0155 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

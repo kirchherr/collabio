@@ -408,8 +408,8 @@ both release gates, API-only rollout and live verification passed. See CURRENT_H
 ## General sections and section-owned page profiles (Roadmap 275)
 
 **Abschnitt einfuegen** starts a new printed page at the current valid root boundary. Its responsive dialog captures
-the complete following-section profile: A4 or Letter, orientation, four margins, literal header/footer and page-number
-mode. Selecting the visible marker enables editing or removal. Apply, edit and removal each form one isolated undo
+the complete following-section profile: A4 or Letter, orientation, one/two/three text columns, four margins, literal
+header/footer and page-number mode. Selecting the visible marker enables editing or removal. Apply, edit and removal each form one isolated undo
 step; only confirmed CAS Save persists the change. A document supports at most twelve markers. Leading, trailing,
 nested, adjacent and page-break-adjacent markers are rejected.
 
@@ -418,8 +418,9 @@ Profiles are complete rather than inherited, which keeps history, comparison, in
 deterministic. Page numbering continues across the whole document. The root first-page profile remains limited to the
 document's first page. Per-section first pages and number restarts are separate contracts.
 
-Printing assigns fixed ordinal wrappers to twelve trusted static named-page rules. Only validated enum/dimension
-values, escaped literal text and fixed page counters enter CSSOM. No arbitrary CSS, HTML, URL or field expression is
+Printing assigns fixed ordinal wrappers to twelve trusted static named-page rules. Each segment also receives exactly
+one validated column token; manual page breaks retain the active section count and section markers switch to their
+complete profile. Only validated enum/dimension values, escaped literal text and fixed page counters enter CSSOM. No arbitrary CSS, HTML, URL or field expression is
 accepted. Desktop/mobile tests verify responsive controls and exact save/history behavior. Real PDFs verify an A4
 portrait first page followed by a Letter landscape page with the section header/footer and `Seite 2 von 2`.
 Fresh recovery binds legacy, one-section, two-section and reset versions. See ADR-0098 and CURRENT_HANDOFF.md.
@@ -460,8 +461,8 @@ general section variants remain separate work. See ADR-0096 and CURRENT_HANDOFF.
 
 ## Document-owned page settings (Roadmap 272)
 
-**Seite ...** opens paper, orientation and four margin fields with a proportionate preview.
-Supported values are A4/Letter, portrait/landscape and integer margins from 5 to 50 mm.
+**Seite ...** opens paper, orientation, one/two/three text columns and four margin fields with a proportionate preview.
+Supported values are A4/Letter, portrait/landscape, the three fixed column counts and integer margins from 5 to 50 mm.
 Cancel and unchanged values leave the draft clean. Apply retains the current selection and
 pending character formatting, validates the complete document and creates one isolated undo
 action. Reset removes optional metadata and restores A4 portrait with 18 mm margins.
@@ -469,17 +470,21 @@ Read-only/history, pending or uncertain saves and changed identity contexts stay
 
 Optional root `attrs.page` belongs to the exact document version, alongside any named styles.
 Legacy documents remain byte-for-byte unchanged; history, comparisons and owned copies retain
-the settings. Only the existing confirmed CAS Save makes them durable. The continuous editor
-shows the geometry with responsive padding; it does not promise exact on-screen pagination.
+the settings. Only the existing confirmed CAS Save makes them durable. The continuous editor shows the geometry with
+responsive padding and renders the document-wide two-/three-column flow when no section marker is present. Compact
+editing collapses to one column for usability; saved print output retains the exact count. Independent section flows
+remain exact in print and visible in their marker/dialog because the continuous editor does not promise exact
+on-screen pagination.
 
 Print starts from the freshly authorized saved settings. Paper/orientation overrides apply
 only to that print session; **Dokumenteinstellungen** restores the saved choices. The four saved
 margins feed a named page rule through the trusted local stylesheet's CSSOM, using only validated
 enums and numbers. Final printing reauthorizes content and images. CSP remains unchanged.
-Actual PDF geometry and a separate four-version legacy/custom/second-profile/reset recovery
+Actual PDF geometry, exact document/section columns and a separate four-version legacy/custom/second-profile/reset recovery
 fixture passed acceptance, together with full quality and one complete 345-case run on 800a3a5.
 Eight PDFs/16 pages, both release gates, API-only rollout and live checks passed. See [ADR-0095](../../ARCHITECTURE_DECISIONS/ADR-0095-native-office-page-settings.md)
-and CURRENT_HANDOFF.md. Section layouts, headers/footers and continuous pagination remain separate.
+and CURRENT_HANDOFF.md. Headers/footers and continuous pagination remain separate. See ADR-0155 for the bounded
+column contract and its current validation evidence.
 
 ## Document-owned images (Roadmap 268)
 
