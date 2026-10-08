@@ -111,7 +111,7 @@ OFFICE_OWNER_TABLE_PRIVILEGES = {
 }
 OFFICE_OWNER_COLUMN_PRIVILEGES = {"SELECT", "INSERT", "UPDATE", "REFERENCES"}
 OFFICE_UPDATE_COLUMNS = {
-    "office.documents": {"title", "current_version_id", "updated_at_utc"},
+    "office.documents": {"title", "information_classification", "current_version_id", "updated_at_utc"},
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
 }
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
@@ -1733,15 +1733,17 @@ def _office_function_body(function_name: str, security_definer: bool) -> str:
     )
     security_clause = r"SECURITY DEFINER\s+" if security_definer else ""
     pattern = (
-        rf"\bCREATE FUNCTION office\.{re.escape(function_name)}\(\)\s+RETURNS trigger\s+LANGUAGE plpgsql\s+"
+        rf"\bCREATE(?: OR REPLACE)? FUNCTION office\.{re.escape(function_name)}\(\)\s+"
+        r"RETURNS trigger\s+LANGUAGE plpgsql\s+"
         + security_clause
         + r"SET search_path = pg_catalog\s+"
         r"AS (?P<tag>\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$)(?P<body>.*?)(?P=tag);"
     )
     matches = list(re.finditer(pattern, migration_sql, flags=re.DOTALL))
-    if len(matches) != 1:
+    if not matches:
         raise ValueError("Office migration function cannot be verified")
-    return _normalized_function_body(matches[0].group("body"))
+    # Later migrations may replace a trigger function; PostgreSQL retains the last definition.
+    return _normalized_function_body(matches[-1].group("body"))
 
 
 def _knowledge_base_acl_controls_verified(triggers: Sequence[Mapping[str, object]]) -> bool:
