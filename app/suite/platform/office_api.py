@@ -34,10 +34,10 @@ from suite.platform.office_documents import (
     OfficeDocumentOutboundReferencesResponse,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
+    OfficeDocumentService,
     OfficeDocumentShareCommand,
     OfficeDocumentShareRequestError,
     OfficeDocumentShareState,
-    OfficeDocumentService,
     OfficeDocumentUnshareCommand,
 )
 from suite.platform.office_image_codec import (
