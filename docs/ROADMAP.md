@@ -2546,7 +2546,28 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 431. [x] Vollstaendigen Absatzpaginierungszyklus ueber Schema, Editor, Formatvorlagen, Druck, Recovery sowie responsive
      Desktop-/Mobile-Browser- und reale PDF-Evidence geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 431 / PLANS 224 bis 292 sind unter ADR-0139 bis ADR-0148 implementiert.
+432. [x] Sichere native automatische Linkerkennung unter ADR-0149 fuer vollstaendige HTTPS-Adressen, explizite
+     `mailto:`-Ziele und einfache E-Mail-Adressen beim Tippen und Einfuegen eingefuehrt.
+
+433. [x] Satzzeichen und nicht ausgeglichene schliessende Klammern vom Ziel getrennt, ausgeglichene URL-Klammern
+     erhalten und jedes Zeichen des sichtbaren Textes unveraendert bewahrt.
+
+434. [x] Ausschliesslich Kandidaten des bestehenden strikten Linkvalidators markiert. HTTP, Zugangsdaten, aktive und
+     lokale Schemata, vorbereitete Mailnachrichten, Steuerzeichen, fehlerhafte Domains und Ueberlaengen bleiben Text.
+
+435. [x] Automatische Erkennung fuer Code, bestehende Links, Querverweise und Dokumentverweise gesperrt. Dokumentladen
+     scannt oder veraendert bestehende Inhalte nicht; kein Ziel wird aufgeloest, abgerufen oder automatisch geoeffnet.
+
+436. [x] Mehrfach-Link-Paste als eigenen Undo-Schritt von vorherigem Tippen getrennt und exaktes Undo/Redo sowie den
+     bestehenden bestaetigten CAS-Save-, History-, Vergleichs-, Wiederverwendungs- und Druckvertrag erhalten.
+
+437. [x] Reine Modelltests sowie responsive Desktop-/Mobile-Browserpruefung fuer Tippen, Paste, Satzzeichen, unsicheren
+     Text, Undo/Redo, unveraenderliche Vorgaengerversion, Reload und semantischen PDF-Link ergaenzt.
+
+438. [x] Vollstaendigen Auto-Link-Lebenszyklus unter ADR-0149 ohne Migration, neuen Endpunkt, Netzwerklookup,
+     URL-Vorschau, Provider, Worker, Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 438 / PLANS 224 bis 299 sind unter ADR-0139 bis ADR-0149 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

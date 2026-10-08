@@ -2,6 +2,26 @@
 
 Updated: 2026-10-08
 
+Roadmap 432 through 438 / PLANS 293 through 299 are complete under ADR-0149. Native Office now recognizes complete
+HTTPS addresses, explicit `mailto:` targets and simple email addresses when an editor completes a token or pastes
+plain text. It preserves the literal text, removes sentence punctuation and unmatched closing brackets from the
+target, retains balanced URL brackets and delegates every candidate to the existing strict link validator. HTTP,
+credentials, active or local schemes, prepared mail messages, malformed domains, controls and overlong values remain
+inert.
+
+Typing waits for a delimiter. Multi-link paste is one isolated undo step separate from preceding typing. Code,
+existing links, cross-references and document references are excluded, and loading a document performs no scan or
+mutation. Recognition never fetches, resolves or automatically opens a target. The canonical link mark preserves the
+existing confirmed CAS save, immutable history, comparison, reuse and print/PDF behavior.
+
+The exact pure-model and responsive desktop/mobile browser matrix passed 10/10 on `97d33afa`, including punctuation,
+balanced delimiters, unsafe inert text, isolated undo/redo, confirmed save, immutable predecessor, reload, semantic
+PDF output and zero target requests. Desktop/mobile screenshot SHA-256 values are
+`d1bc2e8e242e9e8558d6202a236ad519065efe5773d5adf93b9f7c7df47f6ed8` and
+`ce0315d2aa3b5938cdb2566b52ef28dc39a098f061c96d5167009ea867274b6c`; both passed visual review. The isolated review
+API is healthy at `http://192.168.0.108:42880/office?review=auto-links-97d33afa`. Full quality and final scoped cleanup
+remain to be recorded on the documented source.
+
 Roadmap 425 through 431 / PLANS 286 through 292 are complete under ADR-0148. Paragraphs and headings now support the
 strict optional pagination rules keep with next, keep lines together and page break before. The responsive
 multi-paragraph dialog retains default, explicit on/off and mixed states; document-owned named styles expose the same
