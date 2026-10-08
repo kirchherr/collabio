@@ -333,16 +333,33 @@ class PgOfficeDocumentRepository:
             self._set_tenant(connection, user_context.tenant_id)
             return bool(self._permissions(connection, user_context, object_id) & {"write", "admin"})
 
+    @staticmethod
+    def _can_manage_shares(connection: psycopg.Connection[Any], user: UserContext, object_id: str) -> bool:
+        if object_id not in user.readable_object_ids:
+            return False
+        row = connection.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM collabio.object_acl_entries AS acl
+                WHERE acl.tenant_id = %s AND acl.object_id = %s AND acl.object_type = %s
+                  AND acl.acl_subject_type = 'user' AND acl.acl_subject_id = %s
+                  AND acl.permission = 'admin' AND acl.status = 'active'
+            )
+            """,
+            (user.tenant_id, object_id, OFFICE_DOCUMENT_OBJECT_TYPE, user.user_id),
+        ).fetchone()
+        return bool(row and row[0])
+
     def can_admin(self, *, user_context: UserContext, object_id: str) -> bool:
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, user_context.tenant_id)
-            return "admin" in self._permissions(connection, user_context, object_id)
+            return self._can_manage_shares(connection, user_context, object_id)
 
     def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, user_context.tenant_id)
             document = self._authorized_document(connection, user_context, object_id)
-            if "admin" not in self._permissions(connection, user_context, object_id):
+            if not self._can_manage_shares(connection, user_context, object_id):
                 raise OfficeDocumentPermissionError("Document sharing is not permitted")
             return self._share_state(connection, document)
 
@@ -428,7 +445,7 @@ class PgOfficeDocumentRepository:
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, user_context.tenant_id)
             document = self._authorized_document(connection, user_context, object_id)
-            if "admin" not in self._permissions(connection, user_context, object_id):
+            if not self._can_manage_shares(connection, user_context, object_id):
                 raise OfficeDocumentPermissionError("Document sharing is not permitted")
             if command.principal_id == document.owner_principal_id:
                 raise OfficeDocumentShareRequestError("The document owner share cannot be changed")

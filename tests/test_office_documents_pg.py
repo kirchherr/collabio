@@ -244,6 +244,34 @@ def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(dat
     assert decisions == [("grant", "read", 1, 2), ("grant", "write", 2, 3), ("revoke", None, 3, 4)]
 
 
+def test_pg_role_admin_can_edit_but_cannot_manage_direct_user_shares(database: Database) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    owner = editor()
+    created = service.create(user_context=owner, command=command("role-admin-create"), write_enabled=True)
+    object_id = created.document.object_id
+    owner.readable_object_ids.add(object_id)
+    role_actor = owner.model_copy(
+        update={"user_id": "role-admin", "role_ids": {"document-role-admin"}, "readable_object_ids": {object_id}}
+    )
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, owner.tenant_id)
+        connection.execute(
+            "INSERT INTO collabio.object_acl_entries "
+            "(tenant_id, object_id, object_type, acl_subject_type, acl_subject_id, "
+            "permission, acl_version, status, audit_chain_ref) "
+            "VALUES (%s, %s, 'office.document', 'role', %s, 'admin', 1, 'active', "
+            "'audit:office-role-admin')",
+            (owner.tenant_id, object_id, "document-role-admin"),
+        )
+
+    content = service.read_content(user_context=role_actor, object_id=object_id, write_enabled=True)
+    assert content.can_write is True
+    assert content.can_share is False
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.share_state(user_context=role_actor, object_id=object_id)
+
+
 def test_pg_explicit_read_acl_never_grants_write_and_revocation_blocks_history(database: Database) -> None:
     store = InMemorySourceObjectContentStore()
     service = service_for(database, store)
