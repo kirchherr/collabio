@@ -60,7 +60,7 @@ test("Office direct text case overrides inherited named style case without chang
   await expect(direct).toHaveCSS("text-transform", "uppercase");
   await expect(direct).toHaveCSS("font-variant-caps", "normal");
   const saved = await saveOffice(page, { objectId: first.document.object_id });
-  expect(saved.content.content[1].content[0].text).toBe("First paragraph");
+  expect(saved.content.content[1].content.map((node) => node.text).join("")).toBe("First paragraph");
   expect(saved.content.content[1].content[0].marks).toContainEqual({ type: "textStyle", attrs: { textCase: "uppercase" } });
 });
 
