@@ -21,7 +21,8 @@ group screenshot SHA-256 values are `e3d9674628c0537c5ec66c2feb35281b2169e5c681c
 published on `kirchherr/kb-write-unit-of-work`; review remains available at
 `http://192.168.0.108:42880/office?review=subject-sharing-07ec2804`. Full quality on documented source `392dae60`
 passed Ruff, formatting for 861 files, Mypy over 607 source files and the complete Pytest matrix with only the known
-Starlette/AnyIO deprecation warning.
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container and diagnostic SQL files were
+removed, no transient runner remains, and regular plus review APIs return `ok`.
 
 Roadmap 410 through 416 / PLANS 271 through 277 are complete under ADR-0146. Direct Office document `read` and
 `write` grants may now be permanent or expire at an exact UTC instant. The API accepts only timezone-aware future
