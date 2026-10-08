@@ -2588,7 +2588,28 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 445. [x] Vollstaendigen Schriftfamilien-Lebenszyklus unter ADR-0150 ohne Migration, Endpunkt, Abhaengigkeit,
      Fontdownload, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 445 / PLANS 224 bis 306 sind unter ADR-0139 bis ADR-0150 implementiert.
+446. [x] Begrenzte native Texthervorhebung unter ADR-0151 eingefuehrt: direkte Zeichenformatierung speichert optional
+     ausschliesslich `yellow`, `lime`, `cyan`, `pink`, `lavender` oder `gray`; Abwesenheit bleibt der Standard.
+
+447. [x] Freie Farben, CSS, Alpha, Verlaeufe, URLs, Dateien und unbekannte Tokens in Browser und Server abgewiesen und
+     die sechs Werte nur auf feste deckende, druckfaehige CSS-Farben abgebildet.
+
+448. [x] Responsive Zeichenformatierung um Standard, sechs Hervorhebungen, Mischzustand, Cursorformat, kanonischen
+     Reset und einen isolierten Undo-Schritt erweitert.
+
+449. [x] Hervorhebung als direkte Zeichenformatierung von Absatzvorlagen getrennt, damit sie nicht als vollbreite
+     Absatzschattierung erscheint; Vorlagen lehnen den Wert in Browser und Server ab.
+
+450. [x] Hervorhebung durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+451. [x] Identische inerte Darstellung im Editor und semantischen Druck/PDF sowie exakte Einbindung in den vorhandenen
+     Zeichenformat-Recovery-Fixture nachgewiesen.
+
+452. [x] Vollstaendigen Texthervorhebungs-Lebenszyklus unter ADR-0151 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 452 / PLANS 224 bis 313 sind unter ADR-0139 bis ADR-0151 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
