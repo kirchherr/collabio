@@ -18,9 +18,11 @@ Migration 0088 is applied to the isolated review database. The exact desktop/mob
 screenshot SHA-256 values are `5ec3c0ba15db556bc8bef1654a6a5e50f8e6ab1df1bda75a9b9bf6a313187a51` and
 `990805710e2971c2c74775b18de1d6845a0339f641083060681e7fed41424474`. Product implementation is published in
 `e9c8760e` on `kirchherr/kb-write-unit-of-work`; the review API is healthy at
-`http://192.168.0.108:42880/office?review=share-expiration-e9c8760e`. The full quality run and final cleanup follow this
-documentation commit. No ordinary tenant, public link, external guest, scheduler, AI provider, DOCX engine or
-production admission changed.
+`http://192.168.0.108:42880/office?review=share-expiration-e9c8760e`. Full quality on documented source `b557c019`
+passed Ruff, formatting for 860 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container was removed, no transient runner
+remains, and regular plus review APIs return `ok`. No ordinary tenant, public link, external guest, scheduler, AI
+provider, DOCX engine or production admission changed.
 
 Roadmap 402 through 409 / PLANS 263 through 270 are complete under ADR-0145. Native Office now provides a responsive
 direct-user sharing dialog. A current directly granted document administrator can inspect active same-tenant members,
