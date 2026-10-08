@@ -24,8 +24,11 @@ Product implementation is published through `252d9a50` on `kirchherr/kb-write-un
 database has migration 0087 and the rebuilt review API is healthy at
 `http://192.168.0.108:42880/office?review=document-sharing-252d9a50`. Focused service, API, PostgreSQL, migration and
 restore coverage passed after correcting a test-field assertion; Ruff and formatting passed for the changed policy
-files. The full quality run and final transient-container cleanup are recorded below once complete. No ordinary tenant,
-external guest, public link, role/group administration, AI provider, DOCX engine or production admission changed.
+files. Full quality on documented source `d4aff2ac` passed Ruff, formatting for 863 files, Mypy over 607 source files
+and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The final review image was
+rebuilt from that source; regular and review APIs return `ok`. The stale Playwright runner and exact temporary
+`postgres-test` container were removed, and no transient runner remains. No ordinary tenant, external guest, public
+link, role/group administration, AI provider, DOCX engine or production admission changed.
 
 Roadmap 395 through 401 / PLANS 256 through 262 are complete under ADR-0144. Native Office documents now carry the
 versioned information classification Öffentlich (`public`), Intern (`internal`), Vertraulich (`confidential`) or
