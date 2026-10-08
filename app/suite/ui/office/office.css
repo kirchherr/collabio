@@ -52,6 +52,9 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="12"]{margin-bottom:12pt}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="18"]{margin-bottom:18pt}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-spacing-after="24"]{margin-bottom:24pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-keep-with-next="true"]{break-after:avoid-page;page-break-after:avoid}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-keep-lines="true"]{break-inside:avoid-page;page-break-inside:avoid}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-page-break-before="true"]{break-before:page;page-break-before:always}
 @media(max-width:760px){.paragraph-dialog h2{font-size:19px}.paragraph-fields{grid-template-columns:minmax(0,1fr);gap:11px;margin-top:14px}.paragraph-fields label{font-size:11px;gap:4px}.paragraph-fields select{min-height:36px}.paragraph-dialog .dialog-body{padding-bottom:16px}.paragraph-dialog footer{gap:8px}.paragraph-dialog footer .button{flex:1;font-size:12px}.paragraph-help,#paragraph-status{font-size:10px}}
 
 /* Character formatting: only enumerated native values, shared by editor and print. */

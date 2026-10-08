@@ -5,6 +5,9 @@ export const OFFICE_PARAGRAPH_VALUES = Object.freeze({
   lineSpacing: Object.freeze(["1", "1.15", "1.5", "2"]),
   spacingBefore: Object.freeze([0, 6, 12, 18, 24]),
   spacingAfter: Object.freeze([0, 6, 12, 18, 24]),
+  keepWithNext: Object.freeze([false, true]),
+  keepLines: Object.freeze([false, true]),
+  pageBreakBefore: Object.freeze([false, true]),
 });
 
 const domAttributes = Object.freeze({
@@ -12,6 +15,9 @@ const domAttributes = Object.freeze({
   lineSpacing: "data-office-line-spacing",
   spacingBefore: "data-office-spacing-before",
   spacingAfter: "data-office-spacing-after",
+  keepWithNext: "data-office-keep-with-next",
+  keepLines: "data-office-keep-lines",
+  pageBreakBefore: "data-office-page-break-before",
 });
 
 export function officeParagraphAttributes(attrs = {}) {
@@ -39,5 +45,8 @@ export function officeParagraphDescription(attrs = {}) {
   if (values.lineSpacing !== undefined) descriptions.push(`Zeilenabstand: ${values.lineSpacing.replace(".", ",")}`);
   if (values.spacingBefore !== undefined) descriptions.push(`Abstand davor: ${values.spacingBefore} pt`);
   if (values.spacingAfter !== undefined) descriptions.push(`Abstand danach: ${values.spacingAfter} pt`);
+  if (values.keepWithNext !== undefined) descriptions.push(`Mit nächstem Absatz: ${values.keepWithNext ? "zusammenhalten" : "nicht zusammenhalten"}`);
+  if (values.keepLines !== undefined) descriptions.push(`Zeilen: ${values.keepLines ? "zusammenhalten" : "trennbar"}`);
+  if (values.pageBreakBefore !== undefined) descriptions.push(`Seitenumbruch davor: ${values.pageBreakBefore ? "ja" : "nein"}`);
   return descriptions;
 }

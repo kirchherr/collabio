@@ -845,6 +845,8 @@ function formatEditor(command, preserveParagraphs = false) {
 const paragraphFields = {
   textAlign: "paragraph-align", lineSpacing: "paragraph-line-spacing",
   spacingBefore: "paragraph-spacing-before", spacingAfter: "paragraph-spacing-after",
+  keepWithNext: "paragraph-keep-with-next", keepLines: "paragraph-keep-lines",
+  pageBreakBefore: "paragraph-page-break-before",
 };
 const paragraphHelp = "Die Änderungen gelten für die ausgewählten Absätze und bleiben bis zum Speichern im Entwurf.";
 const paragraphLimitMessage = "Die Absatzformatierung überschreitet die unterstützte Dokumentgröße oder Struktur. Ihr Entwurf bleibt unverändert.";

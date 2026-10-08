@@ -8,6 +8,8 @@ export const PARAGRAPH_ALTERNATE = { textAlign: "right", lineSpacing: "2", spaci
 export const FORMAT_IDS = {
   textAlign: "paragraph-align", lineSpacing: "paragraph-line-spacing",
   spacingBefore: "paragraph-spacing-before", spacingAfter: "paragraph-spacing-after",
+  keepWithNext: "paragraph-keep-with-next", keepLines: "paragraph-keep-lines",
+  pageBreakBefore: "paragraph-page-break-before",
 };
 
 export const paragraph = (text, attrs = {}, marks = []) => ({
@@ -97,12 +99,17 @@ export async function applyParagraphFormat(page, attrs, { count = null } = {}) {
 export async function expectParagraphStyle(block, attrs) {
   const style = await block.evaluate((element) => {
     const computed = getComputedStyle(element);
-    return { align: computed.textAlign, line: parseFloat(computed.lineHeight) / parseFloat(computed.fontSize), before: parseFloat(computed.marginTop), after: parseFloat(computed.marginBottom) };
+    return { align: computed.textAlign, line: parseFloat(computed.lineHeight) / parseFloat(computed.fontSize),
+      before: parseFloat(computed.marginTop), after: parseFloat(computed.marginBottom),
+      breakAfter: computed.breakAfter, breakInside: computed.breakInside, breakBefore: computed.breakBefore };
   });
   if (attrs.textAlign !== undefined) expect(style.align).toBe(attrs.textAlign);
   if (attrs.lineSpacing !== undefined) expect(style.line).toBeCloseTo(Number(attrs.lineSpacing), 2);
   if (attrs.spacingBefore !== undefined) expect(style.before).toBeCloseTo(attrs.spacingBefore * 4 / 3, 1);
   if (attrs.spacingAfter !== undefined) expect(style.after).toBeCloseTo(attrs.spacingAfter * 4 / 3, 1);
+  if (attrs.keepWithNext === true) expect(["avoid", "avoid-page"]).toContain(style.breakAfter);
+  if (attrs.keepLines === true) expect(["avoid", "avoid-page"]).toContain(style.breakInside);
+  if (attrs.pageBreakBefore === true) expect(style.breakBefore).toBe("page");
 }
 
 export function paragraphWrites(page, objectId = null) {

@@ -54,12 +54,23 @@ MARKS = {
 }
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
-PARAGRAPH_FORMAT_ATTRIBUTES = {"textAlign", "lineSpacing", "spacingBefore", "spacingAfter"}
+PARAGRAPH_FORMAT_ATTRIBUTES = {
+    "textAlign",
+    "lineSpacing",
+    "spacingBefore",
+    "spacingAfter",
+    "keepWithNext",
+    "keepLines",
+    "pageBreakBefore",
+}
 PARAGRAPH_VALUES: dict[str, set[Any]] = {
     "textAlign": {"left", "center", "right", "justify"},
     "lineSpacing": {"1", "1.15", "1.5", "2"},
     "spacingBefore": {0, 6, 12, 18, 24},
     "spacingAfter": {0, 6, 12, 18, 24},
+    "keepWithNext": {False, True},
+    "keepLines": {False, True},
+    "pageBreakBefore": {False, True},
 }
 STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS}
 
@@ -560,7 +571,13 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(attributes, dict) or set(attributes) - set(values):
                 reject()
             for attribute, value in attributes.items():
-                expected_type = int if attribute in {"fontSize", "spacingBefore", "spacingAfter"} else str
+                expected_type = (
+                    bool
+                    if attribute in {"keepWithNext", "keepLines", "pageBreakBefore"}
+                    else int
+                    if attribute in {"fontSize", "spacingBefore", "spacingAfter"}
+                    else str
+                )
                 if type(value) is not expected_type or value not in values[attribute]:
                     reject()
 
@@ -659,6 +676,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             for key in ("spacingBefore", "spacingAfter"):
                 if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
+                    reject()
+            for key in ("keepWithNext", "keepLines", "pageBreakBefore"):
+                if key in attrs and type(attrs[key]) is not bool:
                     reject()
         elif kind == "pageBreak":
             page_breaks += 1

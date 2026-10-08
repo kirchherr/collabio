@@ -42,7 +42,8 @@ def formatted_document() -> dict[str, Any]:
     "key,value",
     [("textAlign", value) for value in ("left", "center", "right", "justify")]
     + [("lineSpacing", value) for value in ("1", "1.15", "1.5", "2")]
-    + [(key, value) for key in ("spacingBefore", "spacingAfter") for value in (0, 6, 12, 18, 24)],
+    + [(key, value) for key in ("spacingBefore", "spacingAfter") for value in (0, 6, 12, 18, 24)]
+    + [(key, value) for key in ("keepWithNext", "keepLines", "pageBreakBefore") for value in (False, True)],
 )
 @pytest.mark.parametrize("kind", ["paragraph", "heading"])
 def test_paragraph_formatting_accepts_only_declared_values_without_normalization(
@@ -78,6 +79,9 @@ def test_paragraph_formatting_accepts_only_declared_values_without_normalization
         {"spacingBefore": -6},
         {"spacingAfter": 25},
         {"spacingBefore": {}},
+        {"keepWithNext": 1},
+        {"keepLines": "true"},
+        {"pageBreakBefore": None},
         {"style": "text-align:center"},
         {"alignment": "left"},
     ],
