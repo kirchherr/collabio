@@ -56,6 +56,8 @@ FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
 FONT_FAMILIES = {"sans", "serif", "mono"}
 HIGHLIGHT_COLORS = {"yellow", "lime", "cyan", "pink", "lavender", "gray"}
+VERTICAL_POSITIONS = {"superscript", "subscript"}
+LETTER_SPACING = {"tight", "wide"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {
     "textAlign",
     "lineSpacing",
@@ -78,6 +80,8 @@ STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {
     "fontFamily": FONT_FAMILIES,
     "fontSize": FONT_SIZES,
     "textColor": TEXT_COLORS,
+    "verticalPosition": VERTICAL_POSITIONS,
+    "letterSpacing": LETTER_SPACING,
 }
 
 
@@ -1150,7 +1154,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     set(mark) != {"type", "attrs"}
                     or not isinstance(style, dict)
                     or not style
-                    or set(style) - {"fontFamily", "fontSize", "textColor", "highlightColor"}
+                    or set(style) - {
+                        "fontFamily",
+                        "fontSize",
+                        "textColor",
+                        "highlightColor",
+                        "verticalPosition",
+                        "letterSpacing",
+                    }
                 ):
                     reject()
                 if "fontSize" in style and (type(style["fontSize"]) is not int or style["fontSize"] not in FONT_SIZES):
@@ -1165,6 +1176,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
                 if "highlightColor" in style and (
                     not isinstance(style["highlightColor"], str) or style["highlightColor"] not in HIGHLIGHT_COLORS
+                ):
+                    reject()
+                if "verticalPosition" in style and (
+                    not isinstance(style["verticalPosition"], str)
+                    or style["verticalPosition"] not in VERTICAL_POSITIONS
+                ):
+                    reject()
+                if "letterSpacing" in style and (
+                    not isinstance(style["letterSpacing"], str) or style["letterSpacing"] not in LETTER_SPACING
                 ):
                     reject()
             elif name == "link":

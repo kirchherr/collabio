@@ -89,6 +89,10 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="pink"]{background-color:#fbcfe8;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="lavender"]{background-color:#ddd6fe;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-highlight-color="gray"]{background-color:#e5e7eb;box-decoration-break:clone;-webkit-box-decoration-break:clone;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-vertical-position="superscript"]{vertical-align:super}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-vertical-position="subscript"]{vertical-align:sub}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-letter-spacing="tight"]{letter-spacing:-.02em}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-letter-spacing="wide"]{letter-spacing:.08em}
 /* Mobile review drawers have their own close action and need room beyond the toolbar. */
 @media(max-width:760px){.document-inspector.comments-active,.document-inspector.suggestions-active{position:fixed;top:56px;bottom:34px}}
 /* One contextual entry owns all document-style creation, preview and update controls. */

@@ -10,20 +10,27 @@ export const OFFICE_TEXT_COLORS = Object.freeze({
 export const OFFICE_HIGHLIGHT_COLORS = Object.freeze({
   yellow: "Gelb", lime: "Hellgrün", cyan: "Hellblau", pink: "Rosa", lavender: "Lavendel", gray: "Grau",
 });
+export const OFFICE_VERTICAL_POSITIONS = Object.freeze({ superscript: "Hochgestellt", subscript: "Tiefgestellt" });
+export const OFFICE_LETTER_SPACING = Object.freeze({ tight: "Eng", wide: "Weit" });
 export const OFFICE_CHARACTER_VALUES = Object.freeze({
   fontFamily: Object.freeze(Object.keys(OFFICE_FONT_FAMILIES)),
   fontSize: OFFICE_FONT_SIZES, textColor: Object.freeze(Object.keys(OFFICE_TEXT_COLORS)),
   highlightColor: Object.freeze(Object.keys(OFFICE_HIGHLIGHT_COLORS)),
+  verticalPosition: Object.freeze(Object.keys(OFFICE_VERTICAL_POSITIONS)),
+  letterSpacing: Object.freeze(Object.keys(OFFICE_LETTER_SPACING)),
 });
 export const OFFICE_STYLE_CHARACTER_VALUES = Object.freeze({
   fontFamily: OFFICE_CHARACTER_VALUES.fontFamily,
   fontSize: OFFICE_CHARACTER_VALUES.fontSize,
   textColor: OFFICE_CHARACTER_VALUES.textColor,
+  verticalPosition: OFFICE_CHARACTER_VALUES.verticalPosition,
+  letterSpacing: OFFICE_CHARACTER_VALUES.letterSpacing,
 });
 
 const domNames = Object.freeze({
   fontFamily: "data-office-font-family", fontSize: "data-office-font-size", textColor: "data-office-text-color",
   highlightColor: "data-office-highlight-color",
+  verticalPosition: "data-office-vertical-position", letterSpacing: "data-office-letter-spacing",
 });
 
 export function officeCharacterAttributes(attrs) {
@@ -52,5 +59,7 @@ export function officeCharacterDescription(attrs) {
   return [values.fontFamily === undefined ? null : `Schriftart: ${OFFICE_FONT_FAMILIES[values.fontFamily]}`,
     values.fontSize === undefined ? null : `Schriftgröße: ${values.fontSize} pt`,
     values.textColor === undefined ? null : `Textfarbe: ${OFFICE_TEXT_COLORS[values.textColor]}`,
-    values.highlightColor === undefined ? null : `Hervorhebung: ${OFFICE_HIGHLIGHT_COLORS[values.highlightColor]}`].filter(Boolean).join("; ");
+    values.highlightColor === undefined ? null : `Hervorhebung: ${OFFICE_HIGHLIGHT_COLORS[values.highlightColor]}`,
+    values.verticalPosition === undefined ? null : `Position: ${OFFICE_VERTICAL_POSITIONS[values.verticalPosition]}`,
+    values.letterSpacing === undefined ? null : `Zeichenabstand: ${OFFICE_LETTER_SPACING[values.letterSpacing]}`].filter(Boolean).join("; ");
 }

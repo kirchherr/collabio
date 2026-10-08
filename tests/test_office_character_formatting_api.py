@@ -48,6 +48,8 @@ def test_api_character_versions_exact_retry_legacy_reads_and_feature_denial(offi
         {"fontSize": 18.0},
         {"textColor": "SECRET"},
         {"highlightColor": "url(https://example.invalid/font)"},
+        {"verticalPosition": "super"},
+        {"letterSpacing": "0.1em"},
         {"fontSize": 12, "style": "SECRET"},
         {"textColor": None},
     ],

@@ -13,6 +13,8 @@ INVALID_FONT_SIZES: tuple[Any, ...] = (True, 12.0, "12", "12pt", None, 0, 13, 49
 INVALID_TEXT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ff0000", "RED", "default", "red;SECRET")
 INVALID_FONT_FAMILIES: tuple[Any, ...] = (None, True, [], {}, "Arial", "SERIF", "default", "serif;SECRET")
 INVALID_HIGHLIGHT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ffff00", "YELLOW", "default", "yellow;SECRET")
+INVALID_VERTICAL_POSITIONS: tuple[Any, ...] = (None, True, [], {}, "super", "SUPERSCRIPT", "default", "superscript;SECRET")
+INVALID_LETTER_SPACING: tuple[Any, ...] = (None, True, [], {}, "normal", "0.1em", "default", "wide;SECRET")
 
 
 def formatted_document() -> dict[str, Any]:
@@ -25,7 +27,9 @@ def formatted_document() -> dict[str, Any]:
     + [{"fontSize": size} for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)]
     + [{"textColor": color} for color in ("black", "slate", "red", "orange", "green", "teal", "blue", "purple")]
     + [{"highlightColor": color} for color in ("yellow", "lime", "cyan", "pink", "lavender", "gray")]
-    + [{"fontSize": 48, "textColor": "purple", "highlightColor": "yellow"}],
+    + [{"verticalPosition": value} for value in ("superscript", "subscript")]
+    + [{"letterSpacing": value} for value in ("tight", "wide")]
+    + [{"fontSize": 48, "textColor": "purple", "highlightColor": "yellow", "verticalPosition": "superscript", "letterSpacing": "wide"}],
 )
 def test_character_values_preserve_exact_canonical_payload_without_mutation(attrs: dict[str, Any]) -> None:
     document = formatted_document()
@@ -45,6 +49,8 @@ def test_character_values_preserve_exact_canonical_payload_without_mutation(attr
         *[{"type": "textStyle", "attrs": {"fontSize": size}} for size in INVALID_FONT_SIZES],
         *[{"type": "textStyle", "attrs": {"textColor": color}} for color in INVALID_TEXT_COLORS],
         *[{"type": "textStyle", "attrs": {"highlightColor": color}} for color in INVALID_HIGHLIGHT_COLORS],
+        *[{"type": "textStyle", "attrs": {"verticalPosition": value}} for value in INVALID_VERTICAL_POSITIONS],
+        *[{"type": "textStyle", "attrs": {"letterSpacing": value}} for value in INVALID_LETTER_SPACING],
         {"type": "textStyle", "attrs": {"fontSize": 12, "style": "SECRET"}},
         {"type": "textStyle", "attrs": {"textColor": "red"}, "extra": "SECRET"},
         {"type": "bold", "attrs": {"fontSize": 12}},

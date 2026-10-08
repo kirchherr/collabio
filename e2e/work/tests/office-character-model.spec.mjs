@@ -5,14 +5,14 @@ import { officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacte
 import { characterDocument, characterText } from "./character-helper.mjs";
 
 test("character attributes reject untrusted presentation and retain only browser null defaults", () => {
-  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { highlightColor: "url(SECRET)" }, { fontSize: true }, { style: "url(SECRET)" }]) {
+  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { highlightColor: "url(SECRET)" }, { verticalPosition: "super" }, { letterSpacing: "0.1em" }, { fontSize: true }, { style: "url(SECRET)" }]) {
     expect(() => officeCharacterAttributes(value)).toThrow();
   }
   expect(officeCharacterAttributes({ fontFamily: null, fontSize: null, textColor: "blue" })).toEqual({ textColor: "blue" });
-  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow" })).toEqual({
-    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-highlight-color": "yellow",
+  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide" })).toEqual({
+    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-highlight-color": "yellow", "data-office-vertical-position": "superscript", "data-office-letter-spacing": "wide",
   });
-  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau; Hervorhebung: Gelb");
+  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau; Hervorhebung: Gelb; Position: Hochgestellt; Zeichenabstand: Weit");
 });
 
 test("character comparison detects same-text size and color changes inside nested blocks", () => {
