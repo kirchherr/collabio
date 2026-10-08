@@ -26,6 +26,7 @@ from suite.operations.postgres_restore_drill import (
     KB_ACL_TRIGGER,
     KB_ARTICLE_ACL_TRIGGER,
     MODULE_REGISTRY_TABLES,
+    OFFICE_APP_READ_ONLY_TABLES,
     OFFICE_DOCUMENT_TABLES,
     OFFICE_OWNER_COLUMN_PRIVILEGES,
     OFFICE_OWNER_TABLE_PRIVILEGES,
@@ -166,7 +167,10 @@ def _office_fixture() -> dict[str, list[dict[str, object]]]:
             }
             for table_name in sorted(OFFICE_DOCUMENT_TABLES)
             for grantee, privileges in (
-                ("collabio_app", ("SELECT", "INSERT")),
+                (
+                    "collabio_app",
+                    ("SELECT",) if table_name in OFFICE_APP_READ_ONLY_TABLES else ("SELECT", "INSERT"),
+                ),
                 ("collabio_worker", ("SELECT",)),
                 ("collabio_owner", sorted(OFFICE_OWNER_TABLE_PRIVILEGES)),
             )
