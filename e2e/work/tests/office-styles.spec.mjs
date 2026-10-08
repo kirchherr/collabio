@@ -14,8 +14,8 @@ test("Office creates a reusable named style for selected paragraphs with isolate
   const original = await officeEditor(page).innerHTML();
   const writes = paragraphWrites(page, first.document.object_id);
   await selectParagraphBlocks(page, 1, 2);
-  await applyStyle(page, { choice: "new", values: { name: "Literal <b>style</b> 😀", fontSize: 24, textColor: "purple", textAlign: "right" } });
-  await expectCharacterStyle(officeEditor(page).locator("p").nth(0), 24, "purple");
+  await applyStyle(page, { choice: "new", values: { name: "Literal <b>style</b> 😀", fontFamily: "mono", fontSize: 24, textColor: "purple", textAlign: "right" } });
+  await expectCharacterStyle(officeEditor(page).locator("p").nth(0), 24, "purple", "mono");
   await expect(officeEditor(page).locator("strong")).toHaveText("First paragraph");
   await officeEditor(page).press("Control+z");
   expect(await officeEditor(page).innerHTML()).toBe(original);
@@ -36,15 +36,15 @@ test("Office updates all style-bound blocks without changing text structures dir
   content.content[2].content[0].marks = [{ type: "textStyle", attrs: { fontSize: 12, textColor: "red" } }];
   const first = await styleFixture(page, content);
   await selectCharacters(page, 1, 2);
-  await applyStyle(page, { values: { fontSize: 24, textColor: "purple", textAlign: "left", name: "Shared body" }, update: true });
-  for (const element of await officeEditor(page).locator("[data-office-style-id]").all()) await expectCharacterStyle(element, 24, "purple");
+  await applyStyle(page, { values: { fontFamily: "sans", fontSize: 24, textColor: "purple", textAlign: "left", name: "Shared body" }, update: true });
+  for (const element of await officeEditor(page).locator("[data-office-style-id]").all()) await expectCharacterStyle(element, 24, "purple", "sans");
   await expect(officeEditor(page).locator("p").nth(1)).toHaveCSS("text-align", "right");
   await expectCharacterStyle(officeEditor(page).locator("p").nth(1).locator("span"), 12, "red");
   const saved = await saveOffice(page, { objectId: first.document.object_id });
   expect(saved.content.content).toEqual(first.content.content);
-  expect(saved.content.attrs.styles[0].character).toEqual({ fontSize: 24, textColor: "purple" });
+  expect(saved.content.attrs.styles[0].character).toEqual({ fontFamily: "sans", fontSize: 24, textColor: "purple" });
   await page.locator("#document-reload").click();
-  await expectCharacterStyle(officeEditor(page).locator("h2"), 24, "purple");
+  await expectCharacterStyle(officeEditor(page).locator("h2"), 24, "purple", "sans");
   expect((await officeContent(page, first.document.object_id, { versionId: first.version.version_id })).content).toEqual(first.content);
 });
 
