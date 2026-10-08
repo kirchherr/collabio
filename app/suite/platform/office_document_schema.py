@@ -1153,7 +1153,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     set(mark) != {"type", "attrs"}
                     or not isinstance(style, dict)
                     or not style
-                    or set(style) - {
+                    or set(style)
+                    - {
                         "fontFamily",
                         "fontSize",
                         "textColor",
