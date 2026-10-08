@@ -2,6 +2,29 @@
 
 Updated: 2026-10-08
 
+Roadmap 439 through 445 / PLANS 300 through 306 are complete under ADR-0150. Native Office character formatting
+and document-owned named styles now expose three bounded font-family choices: Sans Serif, Serif and Monospace. The
+saved document carries only the canonical tokens `sans`, `serif` and `mono`; an absent value keeps the inherited
+default. The editor and print renderer map those tokens to fixed local font stacks. Arbitrary family names, CSS,
+URLs, font files and downloads are rejected, so documents cannot introduce external font requests or active style
+content.
+
+Direct formatting, mixed selections, caret state, reset, undo/redo, confirmed CAS save, immutable history, reload and
+print retain the family. Named styles carry the same bounded value, inheritance remains visible, and a direct family
+continues to override its named style. The recovery fixture binds exact serif and monospace versions without adding a
+migration or restore store.
+
+The focused server, API, PostgreSQL and recovery matrix passed 136/136. Character and named-style model plus
+responsive desktop/mobile browser suites passed 32/32. Desktop/mobile character screenshot SHA-256 values are
+`5eabb374acab256f9a966ab44dc054ad348aa1ef303d3c9b411cb2782306b2c0` and
+`b1eb3c344849753ad790adece7bb2319cb2e1f5b004c74dfeb3765045896407a`; final named-style values are
+`1a768df02f23337415d50a78fa9875ca7b030b259187ebb8d21f248f38826fbe` and
+`6e0f720043b40db6c73353199fa687987d04a2cd85e15a804b75bf68b61d695e`. All four passed visual review. Product source
+through `254c7f86`, inheritance proof through `2d2dd92f` and roadmap/recovery documentation through `13715646` are
+published on `kirchherr/kb-write-unit-of-work`. The review API is healthy at
+`http://192.168.0.108:42880/office?review=font-families-254c7f86`. Full quality and scoped temporary-resource cleanup
+are the remaining closeout steps for this completed block.
+
 Roadmap 432 through 438 / PLANS 293 through 299 are complete under ADR-0149. Native Office now recognizes complete
 HTTPS addresses, explicit `mailto:` targets and simple email addresses when an editor completes a token or pastes
 plain text. It preserves the literal text, removes sentence punctuation and unmatched closing brackets from the
