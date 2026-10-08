@@ -19,8 +19,10 @@ complete character plus adjacent responsive style matrix passed 18/18; after nar
 text, the exact affected Python suite passed 53/53 and browser suite passed 6/6. Desktop, tablet, mobile, style and
 print screenshots passed visual review. Product source through `8b4b5ee3` is published on
 `kirchherr/kb-write-unit-of-work`; review is healthy at
-`http://192.168.0.108:42880/office?review=typography-8b4b5ee3`. Full quality and scoped temporary-resource cleanup
-remain for closeout.
+`http://192.168.0.108:42880/office?review=typography-8b4b5ee3`. Full quality on documented source `f29c29da`
+passed Ruff, formatting for 866 files, Mypy over 607 source files and complete Pytest to 100% with only the known
+Starlette/AnyIO deprecation warning. The exact temporary test services and seven reviewed local evidence files were
+removed; regular and review APIs remain healthy.
 
 Roadmap 446 through 452 / PLANS 307 through 313 are complete under ADR-0151. Native Office direct character
 formatting now supports six bounded text highlights: yellow, lime, cyan, pink, lavender and gray. The document stores
