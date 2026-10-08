@@ -42,6 +42,13 @@ OFFICE_DOCUMENT_OBJECT_TYPE = "office.document"
 OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
 OFFICE_BACKLINK_PAGE_MAX = 50
 OFFICE_BACKLINK_SCAN_LIMIT = 50
+OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
+OFFICE_INFORMATION_CLASSIFICATION_RANK = {
+    "public": 0,
+    "internal": 1,
+    "confidential": 2,
+    "restricted": 3,
+}
 
 
 class OfficeDocumentNotFoundError(KeyError):
@@ -82,6 +89,7 @@ class OfficeDocumentCreateCommand(BaseModel):
 
     title: str = Field(min_length=1, max_length=200)
     document: dict[str, Any]
+    information_classification: OfficeInformationClassification = "internal"
     mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
     human_confirmation: bool = Field(strict=True)
 
@@ -115,6 +123,7 @@ class OfficeDocumentRecord(BaseModel):
     tenant_id: str
     object_id: str
     title: str
+    information_classification: OfficeInformationClassification = "internal"
     current_version_id: str
     owner_principal_id: str
     created_by: str
@@ -131,6 +140,7 @@ class OfficeDocumentVersion(BaseModel):
     version_id: str
     previous_version_id: str | None
     title: str
+    information_classification: OfficeInformationClassification = "internal"
     created_at_utc: str
     created_by: str
     content_hash: str
@@ -147,6 +157,7 @@ class OfficeDocumentVersion(BaseModel):
 class OfficeDocumentView(BaseModel):
     object_id: str
     title: str
+    information_classification: OfficeInformationClassification
     current_version_id: str
     created_at_utc: str
     updated_at_utc: str
@@ -157,6 +168,7 @@ class OfficeDocumentVersionView(BaseModel):
     version_id: str
     previous_version_id: str | None
     title: str
+    information_classification: OfficeInformationClassification
     created_at_utc: str
     created_by: str
     content_hash: str
@@ -307,6 +319,22 @@ def office_document_command_hash(
 
 def can_create_office_document(user_context: UserContext) -> bool:
     return bool(user_context.role_ids & {"tenant-admin", "office-editor"})
+
+
+def validate_office_classification_change(
+    *, user_context: UserContext, current: OfficeInformationClassification | None, target: OfficeInformationClassification
+) -> None:
+    """Keep protective upgrades easy while reserving publication and downgrades for tenant admins."""
+    if "tenant-admin" in user_context.role_ids:
+        return
+    if current is None:
+        if target == "public":
+            raise OfficeDocumentPermissionError("Public document classification requires tenant administration")
+        return
+    if target == current:
+        return
+    if target == "public" or OFFICE_INFORMATION_CLASSIFICATION_RANK[target] < OFFICE_INFORMATION_CLASSIFICATION_RANK[current]:
+        raise OfficeDocumentPermissionError("Lowering document classification requires tenant administration")
 
 
 class OfficeDocumentService:
@@ -776,6 +804,13 @@ class OfficeDocumentService:
         # Revalidate even commands constructed internally without Pydantic validation.
         command = type(command).model_validate(command.model_dump(mode="python"))
         result = self.repository.commit(user_context=user_context, object_id=object_id, command=command)
+        previous_classification = None
+        if result.version.previous_version_id is not None:
+            previous_classification = self.repository.get_version(
+                user_context=user_context,
+                object_id=result.document.object_id,
+                version_id=result.version.previous_version_id,
+            ).information_classification
         event_id = self._audit(
             user_context,
             "office.documents.saved",
@@ -785,6 +820,10 @@ class OfficeDocumentService:
             source_write_receipt_hash=result.version.source_write_receipt_hash,
             command_hash=result.version.command_hash,
             replayed=result.replayed,
+            information_classification=result.version.information_classification,
+            previous_information_classification=previous_classification,
+            classification_changed=previous_classification is not None
+            and previous_classification != result.version.information_classification,
         )
         # Return the committed transaction snapshot: a later save cannot invalidate this success.
         return self._content_response(
@@ -875,7 +914,10 @@ class OfficeDocumentService:
     def _view(record: OfficeDocumentRecord, can_write: bool) -> OfficeDocumentView:
         return OfficeDocumentView(
             **record.model_dump(
-                include={"object_id", "title", "current_version_id", "created_at_utc", "updated_at_utc"}
+                include={
+                    "object_id", "title", "information_classification", "current_version_id",
+                    "created_at_utc", "updated_at_utc",
+                }
             ),
             can_write=can_write,
         )

@@ -31,6 +31,7 @@ from suite.platform.office_documents import (
     OfficeDocumentVersion,
     can_create_office_document,
     office_document_command_hash,
+    validate_office_classification_change,
 )
 from suite.storage.source_object_storage import PgSourceObjectRepository
 from suite.storage.source_objects import (
@@ -106,12 +107,13 @@ def _validated_history_page(
     )
 
 
-def _new_document(user: UserContext, title: str) -> OfficeDocumentRecord:
+def _new_document(user: UserContext, title: str, information_classification: str) -> OfficeDocumentRecord:
     now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     return OfficeDocumentRecord(
         tenant_id=user.tenant_id,
         object_id=f"office-doc-{uuid4().hex}",
         title=title,
+        information_classification=information_classification,
         current_version_id=f"office-version-{uuid4().hex}",
         owner_principal_id=user.user_id,
         created_by=user.user_id,
@@ -136,6 +138,7 @@ def _prepare_version(
     document = document.model_copy(
         update={
             "title": command.title,
+            "information_classification": command.information_classification,
             "current_version_id": version_id,
             "updated_at_utc": now,
         }
@@ -180,6 +183,7 @@ def _prepare_version(
         version_id=version_id,
         previous_version_id=previous_version_id,
         title=command.title,
+        information_classification=command.information_classification,
         created_at_utc=now,
         created_by=user.user_id,
         content_hash=metadata.content_hash,
@@ -454,7 +458,10 @@ class PgOfficeDocumentRepository:
                     )
                 previous_version_id: str | None = None
                 if object_id is None:
-                    document = _new_document(user_context, command.title)
+                    validate_office_classification_change(
+                        user_context=user_context, current=None, target=command.information_classification
+                    )
+                    document = _new_document(user_context, command.title, command.information_classification)
                     # Creator ACL and identity collision checks run atomically in the insert trigger.
                     self._insert_document(connection, document)
                 else:
@@ -465,6 +472,11 @@ class PgOfficeDocumentRepository:
                     ):
                         raise OfficeDocumentConflictError("The document has a newer saved version")
                     previous_version_id = document.current_version_id
+                    validate_office_classification_change(
+                        user_context=user_context,
+                        current=document.information_classification,
+                        target=command.information_classification,
+                    )
                     previous = self._version(
                         connection,
                         tenant_id=user_context.tenant_id,
@@ -513,10 +525,11 @@ class PgOfficeDocumentRepository:
         )
         self._insert_version(connection, version)
         connection.execute(
-            "UPDATE office.documents SET title = %s, current_version_id = %s, updated_at_utc = %s "
+            "UPDATE office.documents SET title = %s, information_classification = %s, current_version_id = %s, updated_at_utc = %s "
             "WHERE tenant_id = %s AND object_id = %s",
             (
                 document.title,
+                document.information_classification,
                 document.current_version_id,
                 document.updated_at_utc,
                 document.tenant_id,
@@ -681,7 +694,10 @@ class InMemoryOfficeDocumentRepository:
                     return OfficeDocumentCommit(document=document, version=version, replayed=True)
             previous: str | None = None
             if object_id is None:
-                document = _new_document(user_context, command.title)
+                validate_office_classification_change(
+                    user_context=user_context, current=None, target=command.information_classification
+                )
+                document = _new_document(user_context, command.title, command.information_classification)
                 acl_rows = [("user", user_context.user_id, "admin", 1)]
             else:
                 document = self.get_document(user_context=user_context, object_id=object_id)
@@ -693,6 +709,11 @@ class InMemoryOfficeDocumentRepository:
                 ):
                     raise OfficeDocumentConflictError("The document has a newer saved version")
                 previous = document.current_version_id
+                validate_office_classification_change(
+                    user_context=user_context,
+                    current=document.information_classification,
+                    target=command.information_classification,
+                )
                 old_version = self.get_version(user_context=user_context, object_id=object_id, version_id=previous)
                 OfficeDocumentService._validate_source(
                     self.source_repository.get_metadata(

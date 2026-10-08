@@ -552,6 +552,72 @@ def test_native_create_save_history_and_actor_bound_idempotency(office: Any) -> 
     assert all(event.metadata["surface"] == "api" for event in service.audit.events)
 
 
+def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
+    office: Any,
+) -> None:
+    service, repository, editor = office
+    with pytest.raises(ValidationError):
+        OfficeDocumentCreateCommand.model_validate(
+            {**create_command().model_dump(), "information_classification": "secret"}
+        )
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.create(
+            user_context=editor,
+            command=create_command("public-create").model_copy(update={"information_classification": "public"}),
+            write_enabled=True,
+        )
+
+    created = service.create(user_context=editor, command=create_command(), write_enabled=True)
+    object_id = created.document.object_id
+    editor.readable_object_ids.add(object_id)
+    protected = service.save(
+        user_context=editor,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **{**create_command("protect").model_dump(), "information_classification": "restricted"},
+            expected_current_version_id=created.version.version_id,
+        ),
+    )
+    assert created.document.information_classification == "internal"
+    assert created.version.information_classification == "internal"
+    assert protected.document.information_classification == "restricted"
+    assert protected.version.information_classification == "restricted"
+    historical = service.read_content(user_context=editor, object_id=object_id, version_id=created.version.version_id)
+    assert historical.document.information_classification == "restricted"
+    assert historical.version.information_classification == "internal"
+    metadata = repository.source_repository.get_metadata(
+        tenant_id=editor.tenant_id, object_id=object_id, version_id=protected.version.version_id
+    )
+    assert metadata.classification.value == "internal"
+
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.save(
+            user_context=editor,
+            object_id=object_id,
+            write_enabled=True,
+            command=OfficeDocumentSaveCommand(
+                **{**create_command("downgrade-denied").model_dump(), "information_classification": "confidential"},
+                expected_current_version_id=protected.version.version_id,
+            ),
+        )
+    admin = editor.model_copy(update={"role_ids": {"tenant-admin"}})
+    downgraded = service.save(
+        user_context=admin,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentSaveCommand(
+            **{**create_command("downgrade-admin").model_dump(), "information_classification": "confidential"},
+            expected_current_version_id=protected.version.version_id,
+        ),
+    )
+    assert downgraded.version.information_classification == "confidential"
+    saved_event = [event for event in service.audit.events if event.event_type == "office.documents.saved"][-1]
+    assert saved_event.metadata["information_classification"] == "confidential"
+    assert saved_event.metadata["previous_information_classification"] == "restricted"
+    assert saved_event.metadata["classification_changed"] is True
+
+
 def test_native_write_gates_readonly_acl_revoke_and_foreign_tenant(office: Any) -> None:
     service, repository, user = office
     with pytest.raises(OfficeDocumentPermissionError):

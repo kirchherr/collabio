@@ -466,6 +466,7 @@ class OfficeSuggestionRepositoryAdapter:
                 )
                 save = OfficeDocumentSaveCommand(
                     title=document.title,
+                    information_classification=document.information_classification,
                     document=result_content,
                     expected_current_version_id=document.current_version_id,
                     mutation_reference=f"office-suggestion-accept:{decision_id}",

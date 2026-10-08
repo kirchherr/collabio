@@ -21,10 +21,12 @@ const blockTags = {
 };
 const markTags = { bold: "strong", italic: "em", underline: "u", strike: "s", code: "code" };
 
-export function renderOfficePrintDocument(content, title, dom = document, images = new Map(), documentReferences = new Map()) {
+export function renderOfficePrintDocument(content, title, dom = document, images = new Map(), documentReferences = new Map(), informationClassification = "internal") {
   if (content?.type !== "doc" || !Array.isArray(content.content) || typeof title !== "string") {
     throw new Error("Invalid print document");
   }
+  const classifications = { public: "Öffentlich", internal: "Intern", confidential: "Vertraulich", restricted: "Streng vertraulich" };
+  if (!Object.hasOwn(classifications, informationClassification)) throw new Error("Invalid document classification");
   let count = 0;
   const styles = officeStyles(content.attrs?.styles || []);
   const targets = officeReferenceInventory(content);
@@ -271,9 +273,12 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     return element;
   };
   const article = dom.createElement("article"); article.className = "office-print-document";
+  const classification = dom.createElement("p"); classification.className = "office-print-classification";
+  classification.dataset.classification = informationClassification;
+  classification.textContent = classifications[informationClassification];
   const heading = dom.createElement("h1"); heading.className = "office-print-title"; heading.textContent = title;
   let body = dom.createElement("div"); body.className = "office-print-content";
-  article.append(heading, body);
+  article.append(classification, heading, body);
   let boundary = false, section = 0;
   for (const child of content.content) {
     if (!["pageBreak", "sectionBreak"].includes(child.type) && boundary) {

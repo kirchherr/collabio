@@ -41,6 +41,20 @@ import { OFFICE_BACKLINK_PAGE_MAX, officeBacklinkPage } from "./office-backlinks
 
 const $ = (id) => document.getElementById(id);
 const storageKey = "collabio.workspace.context";
+const officeClassificationLabels = new Map([
+  ["public", "Öffentlich"], ["internal", "Intern"], ["confidential", "Vertraulich"],
+  ["restricted", "Streng vertraulich"],
+]);
+function officeInformationClassification(value) {
+  if (!officeClassificationLabels.has(value)) throw new Error("document-classification");
+  return value;
+}
+function setDocumentClassification(value) {
+  const classification = officeInformationClassification(value);
+  $("document-classification").value = classification;
+  $("document-classification-field").dataset.classification = classification;
+  return classification;
+}
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
@@ -551,7 +565,9 @@ function normalizedDocument(document) {
 }
 
 function draftSnapshot() {
-  return { title: $("document-title").value.trim(), document: normalizedDocument(state.editor.getJSON()) };
+  return { title: $("document-title").value.trim(),
+    information_classification: officeInformationClassification($("document-classification").value),
+    document: normalizedDocument(state.editor.getJSON()) };
 }
 
 function isDirty() {
@@ -591,6 +607,7 @@ function updateEditorState() {
     !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
+  $("document-classification").disabled = !editable;
   $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
     !session.canWrite || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || suggestionLocksDocument() || (!session.uncertain && !isDirty());
   $("document-save").textContent = session?.uncertain ? "Speicherung prüfen" : "Version speichern";
@@ -3269,6 +3286,7 @@ function clearWorkspace() {
   resetSearch();
   $("office-editor").replaceChildren();
   $("document-title").value = "";
+  setDocumentClassification("internal");
   $("document-history").replaceChildren();
   $("document-outline").replaceChildren();
   $("history-status").textContent = "";
@@ -3507,6 +3525,8 @@ function freshSession(objectId = null) {
 function contentMatches(result, objectId, versionId = null) {
   return result?.tenant_id === state.context.tenantId && result.document?.object_id === objectId &&
     typeof result.document.title === "string" && typeof result.document.current_version_id === "string" &&
+    officeClassificationLabels.has(result.document.information_classification) &&
+    officeClassificationLabels.has(result.version?.information_classification) &&
     typeof result.version?.version_id === "string" &&
     (!result.is_current_version || result.version.version_id === result.document.current_version_id) &&
     (versionId ? result.version.version_id === versionId :
@@ -3535,6 +3555,7 @@ function acceptContent(result, session) {
   session.historical = !result.is_current_version;
   session.conflict = false; session.uncertain = false; session.attempt = null;
   $("document-title").value = result.version.title || result.document.title;
+  setDocumentClassification(result.version.information_classification);
   session.loading = false;
   session.baseline = JSON.stringify(draftSnapshot());
   $("document-mode").textContent = session.historical ? "Frühere Fassung" : "Collabio-Dokument";
@@ -3615,6 +3636,7 @@ function beginDraft(event) {
   $("office-welcome").hidden = true;
   $("document-workspace").hidden = false;
   $("document-title").value = title;
+  setDocumentClassification(form.elements.information_classification.value);
   $("document-mode").textContent = "Neuer Entwurf";
   $("document-version").textContent = "Noch nicht gespeichert";
   $("history-status").textContent = "Mit dem ersten Speichern beginnt die Versionsgeschichte.";
@@ -3658,7 +3680,7 @@ async function showSave() {
   }
   $("save-summary").textContent = session.uncertain
     ? `Die Speicherung von „${snapshot.title}“ wird mit derselben Vorgangskennung erneut geprüft.`
-    : `„${snapshot.title}“ wird ${session.objectId ? "als neue Version" : "als neues Dokument"} gespeichert.`;
+    : `„${snapshot.title}“ wird ${session.objectId ? "als neue Version" : "als neues Dokument"} mit der Schutzstufe „${officeClassificationLabels.get(snapshot.information_classification)}“ gespeichert.`;
   $("save-confirm").checked = false;
   $("save-submit").disabled = true;
   $("save-message").textContent = "";
@@ -3859,6 +3881,7 @@ function validatedHistory(result, objectId, owner, append) {
     if (!version || typeof version.version_id !== "string" || !version.version_id || typeof version.title !== "string" ||
         typeof version.created_at_utc !== "string" || !Number.isFinite(Date.parse(version.created_at_utc)) || typeof version.created_by !== "string" ||
         typeof version.content_hash !== "string" || typeof version.source_write_receipt_hash !== "string" ||
+        !officeClassificationLabels.has(version.information_classification) ||
         !(version.previous_version_id === null || (typeof version.previous_version_id === "string" && version.previous_version_id)) ||
         ids.has(version.version_id) || (index > 0 && result.versions[index - 1].previous_version_id !== version.version_id)) throw new ApiError(502, true);
     ids.add(version.version_id);
@@ -4028,6 +4051,7 @@ async function submitReuse(event) {
     $("office-welcome").hidden = true;
     $("document-workspace").hidden = false;
     $("document-title").value = title;
+    setDocumentClassification(result.version.information_classification);
     $("document-mode").textContent = "Neuer Entwurf";
     $("document-version").textContent = "Noch nicht gespeichert";
     $("document-version").title = "";
@@ -4168,7 +4192,8 @@ async function loadPrintContent(print = state.print, finalAction = false) {
     const images = await loadOfficePrintImages(content, print.context, print.controller.signal);
     if (!current()) { for (const url of images.values()) URL.revokeObjectURL(url); return; }
     print.images = images;
-    const preview = renderOfficePrintDocument(content, result.version.title, document, images, documentReferences);
+    const preview = renderOfficePrintDocument(content, result.version.title, document, images, documentReferences,
+      result.version.information_classification);
     if (!current()) return;
     print.content = content;
     const savedPage = officePageSettings(content.attrs?.page);
@@ -4178,14 +4203,15 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       print.settingsInitialized = true;
     }
     $("print-preview").replaceChildren(preview);
-    $("print-version").textContent = `${result.version.title} · ${dateLabel(result.version.created_at_utc)} · Version ${print.versionId}`;
+    $("print-version").textContent = `${result.version.title} · ${officeClassificationLabels.get(result.version.information_classification)} · ${dateLabel(result.version.created_at_utc)} · Version ${print.versionId}`;
     $("print-status").textContent = "Druckansicht bereit. Vor dem Drucken wird diese Fassung erneut geprüft.";
     if (finalAction) {
       // The print surface is made from this fresh response, never from the live
       // editor, the preview DOM, or an older cached authorization result.
       const root = $("office-print-root");
       state.preparedPrint = print;
-      root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images, documentReferences));
+      root.replaceChildren(renderOfficePrintDocument(content, result.version.title, document, images, documentReferences,
+        result.version.information_classification));
       await Promise.all([...root.querySelectorAll("img")].map((image) => image.decode()));
       if (!current()) return;
       root.className = printFormat();
@@ -4419,7 +4445,8 @@ function renderComparison(comparison) {
   if (!comparisonCurrent(comparison) || !comparison.result) return;
   const { rows, counts, simplified } = comparison.result;
   const titleChanged = comparison.left.version.title !== comparison.right.version.title;
-  $("compare-summary").textContent = `${counts.changed} geändert · ${counts.added} hinzugefügt · ${counts.removed} entfernt · ${counts.equal} unverändert.${titleChanged ? " Titel geändert." : " Titel unverändert."}${simplified ? " Große Fassung: vereinfachter Blockvergleich; alle Inhalte sind enthalten." : ""} ${historyCoverage(comparison.versions, comparison.history)}`.trim();
+  const classificationChanged = comparison.left.version.information_classification !== comparison.right.version.information_classification;
+  $("compare-summary").textContent = `${counts.changed} geändert · ${counts.added} hinzugefügt · ${counts.removed} entfernt · ${counts.equal} unverändert.${titleChanged ? " Titel geändert." : " Titel unverändert."}${classificationChanged ? " Schutzstufe geändert." : " Schutzstufe unverändert."}${simplified ? " Große Fassung: vereinfachter Blockvergleich; alle Inhalte sind enthalten." : ""} ${historyCoverage(comparison.versions, comparison.history)}`.trim();
   $("compare-results").replaceChildren();
   const titleRow = node("section", undefined, `compare-row ${titleChanged ? "changed" : "equal"}`);
   titleRow.append(node("h3", titleChanged ? "Titel geändert" : "Titel unverändert"));
@@ -4432,6 +4459,16 @@ function renderComparison(comparison) {
   });
   titleRow.append(titles);
   $("compare-results").append(titleRow);
+  const classificationRow = node("section", undefined, `compare-row ${classificationChanged ? "changed" : "equal"}`);
+  classificationRow.append(node("h3", classificationChanged ? "Schutzstufe geändert" : "Schutzstufe unverändert"));
+  const classifications = node("div", undefined, "compare-columns");
+  [comparison.left, comparison.right].forEach((entry, index) => {
+    const side = node("div", undefined, "compare-side");
+    side.append(node("h4", index ? "Rechts" : "Links"),
+      node("p", officeClassificationLabels.get(entry.version.information_classification), "compare-text"));
+    classifications.append(side);
+  });
+  classificationRow.append(classifications); $("compare-results").append(classificationRow);
   const pageSize = 40;
   const pages = Math.max(1, Math.ceil(rows.length / pageSize));
   comparison.page = Math.min(Math.max(comparison.page, 0), pages - 1);
@@ -4491,7 +4528,8 @@ async function restoreVersion(versionId, comparison = null) {
     if (head.can_write !== true || head.document.can_write !== true) throw new ApiError(403);
     if (historical.version.version_id === head.version.version_id) throw new ApiError(409);
     const nativeCurrentContent = normalizedDocument(state.editor.schema.nodeFromJSON(currentContent).toJSON());
-    const baseline = JSON.stringify({ title: head.version.title, document: nativeCurrentContent });
+    const baseline = JSON.stringify({ title: head.version.title,
+      information_classification: head.version.information_classification, document: nativeCurrentContent });
     const replacement = freshSession(session.objectId);
     replacement.metadata = head.document; replacement.version = head.version; replacement.canWrite = true;
     replacement.baseline = baseline;
@@ -4502,6 +4540,7 @@ async function restoreVersion(versionId, comparison = null) {
     cancelRestore();
     state.session = replacement;
     $("document-title").value = historical.version.title;
+    setDocumentClassification(historical.version.information_classification);
     replacement.loading = false;
     $("document-mode").textContent = "Entwurf aus früherer Fassung";
     $("document-version").textContent = `Basis · ${dateLabel(head.version.created_at_utc)}`;
@@ -5459,6 +5498,10 @@ $("document-save").addEventListener("click", showSave);
 $("save-form").addEventListener("submit", saveDocument);
 $("save-confirm").addEventListener("change", () => { $("save-submit").disabled = !$("save-confirm").checked; });
 $("document-title").addEventListener("input", () => { if (state.session) contentChanged(state.session); });
+$("document-classification").addEventListener("change", () => {
+  setDocumentClassification($("document-classification").value);
+  if (state.session) contentChanged(state.session);
+});
 $("document-reload").addEventListener("click", () => { if (state.session?.objectId) openDocument(state.session.objectId); });
 $("document-print").addEventListener("click", openPrint);
 $("document-reuse").addEventListener("click", openReuse);

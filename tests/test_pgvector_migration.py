@@ -117,6 +117,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0083",
         "0084",
         "0085",
+        "0086",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -191,7 +192,7 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0074",
     ]
     assert [migration.version for migration in time_tracking_migrations] == ["0060", "0078", "0080"]
-    assert [migration.version for migration in office_documents_migrations] == ["0083", "0084", "0085"]
+    assert [migration.version for migration in office_documents_migrations] == ["0083", "0084", "0085", "0086"]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "office_documents"
     assert manifest[-1].name == "office_native_suggestions"
