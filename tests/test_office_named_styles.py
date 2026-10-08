@@ -18,7 +18,13 @@ def styled_document() -> dict[str, Any]:
                     "id": "body",
                     "name": "Fließtext 😀",
                     "paragraph": {"lineSpacing": "1.5", "keepWithNext": True, "keepLines": True},
-                    "character": {"fontFamily": "serif", "fontSize": 18, "textColor": "blue", "letterSpacing": "wide", "textCase": "smallCaps"},
+                    "character": {
+                        "fontFamily": "serif",
+                        "fontSize": 18,
+                        "textColor": "blue",
+                        "letterSpacing": "wide",
+                        "textCase": "smallCaps",
+                    },
                 }
             ]
         },
