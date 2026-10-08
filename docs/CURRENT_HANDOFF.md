@@ -2,6 +2,42 @@
 
 Updated: 2026-10-08
 
+Roadmap 475 through 481 / PLANS 336 through 342 are complete under ADR-0155. Native Office document and complete
+section page profiles now support exactly one, two or three text columns. Absence remains the canonical one-column
+default, so existing version bytes remain unchanged. Browser and server reject every other number, token, dimension,
+CSS value, URL and unexpected shape.
+
+The responsive page and section dialogs expose the bounded choices with proportionate guides. A document without
+section markers shows its two-/three-column flow in the desktop editor; compact editing stays one column for usable
+text entry. Section markers retain their complete profile in the continuous editor, while print/PDF segments render
+the exact active count. Manual page breaks preserve the section count, and static CSS protects tables, figures, code,
+quotations, cards and object groups from uncontrolled splits. Confirmed CAS save, immutable history, comparison,
+reload, independent reuse and recovery retain exact two-/three-column document and section profiles.
+
+Focused schema/API/recovery coverage passed 112 cases. The initial 27-case page/section matrix passed after rebuilding
+the baked editor bundle. The final adjacent page, section, running-text and print matrix passed 62/62 on desktop and
+mobile in 5.9 minutes. During the broad check, an existing save path exposed a real UX issue: a confirmed version kept
+showing "Version wird gespeichert" while the independent document-list refresh was pending. Commit `c8d6004d`
+decouples that refresh; the exact failing case and the final 62-case matrix now pass.
+
+Final screenshots for page settings, section dialogs and section editing passed visual review without clipping,
+horizontal overflow or unreachable controls. Browser report SHA-256 is
+`727c613c91d5bc899870dfe57d2eb99ae035db7e25776adae138dc7ae748c7f7`. Page-setting screenshots are
+`7fac2e3f05ea5a7ab8d108c9d20a6685f092f0d35e37ab92a332a56190aaca35` and
+`2d8d1fddbf6120bb78a1adec76fc78f99f625916791ad3144a6b272c97ef01db`; section-dialog screenshots are
+`b815839fa34fcc2ba1cb9f4efaf660110105f45666c488a71e6e77689bd50a79` and
+`63b9fca99ab11819bf2409eadbd1ccd4377907bd13e9e3123da6d1dd73846d5a`; section-editor screenshots are
+`e5b16cb1e2fd1a8dbcb30de67b0aaa13caf9a7bca6b5ab6937f7486a81d1c5fc` and
+`5dcca58218346394c1b89ca7c3767a4f08d621dd96497daebff9be1910c32d09`. Representative document and section PDF
+hashes are `ecd1cd86b8316c7820de8a0aea9fc42c0fa8e16bed785ead47ae762361bf8c66` and
+`a517ea039707c209d5379461f32eaa9dc60e7186bd10f070143f3ecaa4b2737f`.
+
+Full quality on documented source `e2234a3d` passed Ruff, formatting for 869 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The isolated review is healthy at
+`http://192.168.0.108:42880/office?review=text-columns-c8d6004d`; regular API health is also `ok`. Exact temporary
+PostgreSQL, blocked API, failed seed/migration and test-result resources were removed. No migration, endpoint,
+dependency, external request, provider, worker, ordinary tenant, DOCX engine or runtime admission changed.
+
 Roadmap 467 through 474 / PLANS 328 through 335 are complete under ADR-0154. A real four-page Chromium PDF
 probe first closed the unsafe section-number-restart path: resetting the built-in page counter in the named page
 rule produced `1, 2, 4, 4`; resetting it on the section element retained `1, 2, 3, 4`. The schema therefore still
