@@ -347,7 +347,7 @@ def test_pg_document_role_and_group_shares_are_authoritative_and_typed(database:
     )
     assert group_state.acl_version == 4
     group_reader = role_reader.model_copy(update={"role_ids": set()})
-    assert service.read_content(user_context=group_reader, object_id=object_id).can_write is True
+    assert service.read_content(user_context=group_reader, object_id=object_id, write_enabled=True).can_write is True
 
     with psycopg.connect(database.admin_dsn) as connection:
         set_tenant(connection, owner.tenant_id)
