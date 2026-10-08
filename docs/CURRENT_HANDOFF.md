@@ -19,8 +19,10 @@ balanced delimiters, unsafe inert text, isolated undo/redo, confirmed save, immu
 PDF output and zero target requests. Desktop/mobile screenshot SHA-256 values are
 `d1bc2e8e242e9e8558d6202a236ad519065efe5773d5adf93b9f7c7df47f6ed8` and
 `ce0315d2aa3b5938cdb2566b52ef28dc39a098f061c96d5167009ea867274b6c`; both passed visual review. The isolated review
-API is healthy at `http://192.168.0.108:42880/office?review=auto-links-97d33afa`. Full quality and final scoped cleanup
-remain to be recorded on the documented source.
+API is healthy at `http://192.168.0.108:42880/office?review=auto-links-97d33afa`. Full Python quality on documented
+source `a31e2211` passed Ruff, formatting for 863 files, Mypy over 607 source files and the complete Pytest matrix with
+only the known Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container and reviewed local
+screenshot copies were removed; no transient runner remains, and regular plus review APIs return `ok`.
 
 Roadmap 425 through 431 / PLANS 286 through 292 are complete under ADR-0148. Paragraphs and headings now support the
 strict optional pagination rules keep with next, keep lines together and page break before. The responsive
