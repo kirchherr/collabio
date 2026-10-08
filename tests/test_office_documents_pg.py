@@ -20,6 +20,8 @@ from suite.platform.office_documents import (
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
     OfficeDocumentService,
+    OfficeDocumentShareCommand,
+    OfficeDocumentUnshareCommand,
 )
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
@@ -89,6 +91,24 @@ def set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
     connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
 
 
+def add_principal(database: Database, user: UserContext, principal_id: str, display_name: str) -> None:
+    issuer = f"https://issuer.example/{user.tenant_id}"
+    subject = f"subject-{principal_id}"
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "INSERT INTO collabio.tenant_principals "
+            "(tenant_id, issuer, subject, user_id, display_name, status, audit_chain_ref) "
+            "VALUES (%s, %s, %s, %s, %s, 'active', %s)",
+            (user.tenant_id, issuer, subject, principal_id, display_name, f"audit:office-share-{principal_id}"),
+        )
+        connection.execute(
+            "INSERT INTO collabio.tenant_principal_memberships "
+            "(tenant_id, issuer, subject, status, audit_chain_ref) VALUES (%s, %s, %s, 'active', %s)",
+            (user.tenant_id, issuer, subject, f"audit:office-share-membership-{principal_id}"),
+        )
+
+
 def counts(database: Database, user: UserContext) -> tuple[int, ...]:
     tables = (
         "office.documents",
@@ -153,6 +173,75 @@ def test_pg_create_save_read_history_receipts_and_creator_acl_are_atomic(databas
     )
     assert receipt.created_by == second_actor.user_id and receipt.owner_principal_id == user.user_id
     assert receipt.content_hash == saved.version.content_hash
+
+
+def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(database: Database) -> None:
+    store = InMemorySourceObjectContentStore()
+    service = service_for(database, store)
+    owner = editor()
+    created = service.create(user_context=owner, command=command("share-create"), write_enabled=True)
+    object_id = created.document.object_id
+    owner.readable_object_ids.add(object_id)
+    add_principal(database, owner, owner.user_id, "Document Owner")
+    add_principal(database, owner, "shared-user", "Shared User")
+
+    initial = service.share_state(user_context=owner, object_id=object_id)
+    assert initial.acl_version == 1
+    assert {principal.principal_id for principal in initial.available_principals} == {owner.user_id, "shared-user"}
+    granted = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_id="shared-user",
+            permission="read",
+            expected_acl_version=1,
+            mutation_reference="share-reader",
+            human_confirmation=True,
+        ),
+    )
+    assert granted.acl_version == 2
+    reader = owner.model_copy(update={"user_id": "shared-user", "readable_object_ids": {object_id}})
+    assert service.read_content(user_context=reader, object_id=object_id, write_enabled=True).can_write is False
+
+    changed = service.set_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentShareCommand(
+            principal_id="shared-user",
+            permission="write",
+            expected_acl_version=2,
+            mutation_reference="share-writer",
+            human_confirmation=True,
+        ),
+    )
+    assert changed.acl_version == 3
+    assert service.read_content(user_context=reader, object_id=object_id, write_enabled=True).can_write is True
+
+    revoked = service.revoke_share(
+        user_context=owner,
+        object_id=object_id,
+        write_enabled=True,
+        command=OfficeDocumentUnshareCommand(
+            principal_id="shared-user",
+            expected_acl_version=3,
+            mutation_reference="share-revoke",
+            human_confirmation=True,
+        ),
+    )
+    assert revoked.acl_version == 4
+    with pytest.raises(OfficeDocumentNotFoundError):
+        service.read_content(user_context=reader, object_id=object_id)
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, owner.tenant_id)
+        decisions = connection.execute(
+            "SELECT action, permission, previous_acl_version, resulting_acl_version "
+            "FROM office.document_share_decisions WHERE tenant_id = %s AND object_id = %s "
+            "ORDER BY resulting_acl_version",
+            (owner.tenant_id, object_id),
+        ).fetchall()
+    assert decisions == [("grant", "read", 1, 2), ("grant", "write", 2, 3), ("revoke", None, 3, 4)]
 
 
 def test_pg_explicit_read_acl_never_grants_write_and_revocation_blocks_history(database: Database) -> None:
