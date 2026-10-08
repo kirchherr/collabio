@@ -2500,7 +2500,30 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 416. [x] Vollstaendigen Ablauflebenszyklus ueber Modell, API, zentrale Principal-Aufloesung, PostgreSQL, Migration,
      Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 416 / PLANS 224 bis 277 sind unter ADR-0139 bis ADR-0146 implementiert.
+417. [x] Typisierte Office-Freigabeziele unter ADR-0147 auf aktive Tenant-Benutzer, Rollen und Gruppen erweitert.
+
+418. [x] Zieltyp in API-Vertrag, Freigabezustand und append-only Entscheidungsbeleg aufgenommen, sodass gleiche IDs
+     verschiedener Subjektnamensraeume nicht kollidieren.
+
+419. [x] Migration 0089 mit subject-aware Security-Definer-Funktionen eingefuehrt. PostgreSQL validiert Tenant,
+     direkten Admin-Akteur, aktives Ziel, Owner-Grenze, ACL-Version, Mutation und optionalen Ablauf erneut.
+
+420. [x] Vollstaendige monotone ACL-Snapshots fuer Benutzer-, Rollen- und Gruppengrants samt unveraenderten
+     Ablaufzeiten erhalten; die Anwendung besitzt weiterhin kein direktes ACL-Schreibrecht.
+
+421. [x] Rollen- und Gruppenrechte an die vorhandene autoritative Request-Time-Aufloesung gebunden. Aktive
+     Mitgliedschaften koennen lesen oder schreiben, aber keine Dokumentfreigaben verwalten.
+
+422. [x] Responsive Zielauswahl und Freigabeliste mit eindeutigen Kennzeichnungen fuer Person, Rolle und Gruppe,
+     Bestaetigung, Ablaufwahl, Widerruf und fail-closed Antwortvalidierung umgesetzt.
+
+423. [x] In-Memory-, API-, PostgreSQL-, Migrations- und E2E-Vertraege um typisierte Ziele, direkte Admin-Grenze,
+     Gruppenmitgliedschaft, Rollenauflösung und tenant-sichere Ablehnung erweitert.
+
+424. [x] Vollstaendigen Rollen-/Gruppenfreigabelebenszyklus ueber Modell, API, PostgreSQL, Migration, Restore und
+     responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 424 / PLANS 224 bis 285 sind unter ADR-0139 bis ADR-0147 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

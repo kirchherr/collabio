@@ -2,6 +2,26 @@
 
 Updated: 2026-10-08
 
+Roadmap 417 through 424 / PLANS 278 through 285 are complete under ADR-0147. Native Office sharing now addresses
+active same-tenant users, roles and groups explicitly by subject type. A current directly granted user administrator
+can grant, change or revoke `read` and `write`, permanently or with the existing bounded expiration. Role claims and
+active group membership authorize document use, while share management still requires the direct user `admin` grant
+and the user owner entry remains immutable.
+
+Migration 0089 replaces the user-specific mutation functions with subject-aware security-definer functions and adds
+the target type to append-only decisions. PostgreSQL revalidates tenant, direct actor authority, active target,
+permission, expiration, owner boundary, expected ACL version and unique mutation before replacing the complete active
+ACL snapshot. The responsive dialog labels people, roles and groups separately and keys targets by type plus ID.
+
+Focused Ruff, formatting, Mypy, service, API, migration and PostgreSQL tests pass on `dev001`, including authoritative
+role reads, group writes, membership behavior and the direct-admin boundary. Migration 0089 is applied to the isolated
+review database, and the rebuilt review API is healthy. The exact desktop/mobile Playwright flow passed 4/4; the role/
+group screenshot SHA-256 values are `e3d9674628c0537c5ec66c2feb35281b2169e5c681cf6d72d2ab578bc35d8bf5` and
+`0480f38ed968cfb628cc79f46623e72da1f8a5581583a19ba02ac9d822d8ebff`. Product commits through `07ec2804` are
+published on `kirchherr/kb-write-unit-of-work`; review remains available at
+`http://192.168.0.108:42880/office?review=subject-sharing-07ec2804`. Final full quality and scoped cleanup are the
+remaining closeout steps for this block.
+
 Roadmap 410 through 416 / PLANS 271 through 277 are complete under ADR-0146. Direct Office document `read` and
 `write` grants may now be permanent or expire at an exact UTC instant. The API accepts only timezone-aware future
 values no more than 366 days away; the responsive dialog offers permanent, one day, seven days and 30 days and shows
