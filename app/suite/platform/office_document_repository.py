@@ -807,7 +807,12 @@ class InMemoryOfficeDocumentRepository:
             )
             for group_id in self.group_memberships.get((user.tenant_id, user.user_id), set())
         )
-        return max((permission for permission in permissions if permission), key={"read": 1, "write": 2, "admin": 3}.get, default=None)
+        ranking = {"read": 1, "write": 2, "admin": 3}
+        return max(
+            (permission for permission in permissions if permission),
+            key=lambda permission: ranking[permission],
+            default=None,
+        )
 
     def list_documents(
         self,
