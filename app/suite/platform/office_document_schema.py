@@ -1150,7 +1150,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     set(mark) != {"type", "attrs"}
                     or not isinstance(style, dict)
                     or not style
-                    or set(style) - {"fontFamily", "fontSize", "textColor"}
+                    or set(style) - {"fontFamily", "fontSize", "textColor", "highlightColor"}
                 ):
                     reject()
                 if "fontSize" in style and (type(style["fontSize"]) is not int or style["fontSize"] not in FONT_SIZES):
@@ -1161,6 +1161,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
                 if "textColor" in style and (
                     not isinstance(style["textColor"], str) or style["textColor"] not in TEXT_COLORS
+                ):
+                    reject()
+                if "highlightColor" in style and (
+                    not isinstance(style["highlightColor"], str) or style["highlightColor"] not in HIGHLIGHT_COLORS
                 ):
                     reject()
             elif name == "link":
