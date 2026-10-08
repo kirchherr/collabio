@@ -5580,7 +5580,7 @@ async function setShare() {
   try {
     const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares`, {
       method: "POST", body: { principal_id: $("share-principal").value, permission: $("share-permission").value,
-        expected_acl_version: share.data.acl_version, mutation_reference: `office-share-${crypto.randomUUID()}`,
+        expected_acl_version: share.data.acl_version, mutation_reference: `office-share-${mutationReference()}`,
         human_confirmation: true },
     });
     if (state.share !== share || !shareStateMatches(data, share.session.objectId)) throw new ApiError(502, true);
@@ -5601,7 +5601,7 @@ async function revokeShare(entry) {
   try {
     const data = await api(`/v1/office/documents/${encodeURIComponent(share.session.objectId)}/shares/revoke`, {
       method: "POST", body: { principal_id: entry.principal_id, expected_acl_version: share.data.acl_version,
-        mutation_reference: `office-unshare-${crypto.randomUUID()}`, human_confirmation: true },
+        mutation_reference: `office-unshare-${mutationReference()}`, human_confirmation: true },
     });
     if (state.share !== share || !shareStateMatches(data, share.session.objectId)) throw new ApiError(502, true);
     share.data = data; $("share-status").textContent = "Zugriff entzogen.";
