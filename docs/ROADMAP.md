@@ -2653,7 +2653,37 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 466. [x] Vollstaendigen Schreibweisen-Lebenszyklus unter ADR-0153 ohne Migration, Endpunkt, Abhaengigkeit, externen
      Abruf, Provider, Worker, neuen Recovery-Speicher, Textmutation oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 466 / PLANS 224 bis 327 sind unter ADR-0139 bis ADR-0153 implementiert.
+467. [x] Machbarkeit eines abschnittsweisen Seitennummern-Neustarts im echten Chromium-Druckpfad fail-closed
+     geprueft. `@page`-Reset erzeugt innerhalb des Abschnitts konstant `4, 4`, Element-Reset behaelt global `3, 4`.
+     Kein unzuverlaessiges Restart-Attribut wurde geoeffnet; ein segmentierter PDF-Render-/Merge-Pfad bleibt
+     Voraussetzung fuer die getrennte spaetere Funktion.
+
+468. [x] Begrenzte native Absatzeinzuege unter ADR-0154 eingefuehrt: linke und rechte Einzuege speichern optional
+     ausschliesslich 0, 18, 36, 54 oder 72 pt; Sondereinzug speichert `none`, Erstzeile 18/36 pt oder haengend
+     18/36 pt. Abwesenheit bleibt kanonischer Standard.
+
+469. [x] Andere Zahlen, Bruchteile, negative Werte, freie Masse, Prozente, CSS, URLs und unbekannte Tokens in Browser
+     und Server abgewiesen und akzeptierte Werte ausschliesslich auf feste logische Rand-, Padding- und
+     Text-Indent-Regeln abgebildet.
+
+470. [x] Responsiven Absatzdialog um Standard, Mischzustand, explizite Nullwerte und alle festen Einzuege erweitert;
+     Mobile bleibt einspaltig vollstaendig scrollbar, Desktop und Tablet bleiben kompakt zweispaltig.
+
+471. [x] Dokumenteigene Formatvorlagen um dieselben Einzuege erweitert. Direkte Absatzwerte behalten Vorrang;
+     Standard kehrt zur verbundenen Vorlage oder zum Texttyp-Grundformat zurueck.
+
+472. [x] Einzuege durch Texttypwechsel, Absatzteilung, Listen, Zitate, ausgewaehlte Tabellenzellen,
+     Formatuebertragung, Suche/Ersetzung, Vergleich, Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload
+     und unabhaengige Wiederverwendung erhalten.
+
+473. [x] Identische inerte Darstellung in Editor, Vorlagenvorschau und semantischem Druck/PDF sowie exakte
+     Erstzeilen- und Haengeprofile im vorhandenen Absatz-Recovery-Fixture nachgewiesen.
+
+474. [x] Vollstaendigen Absatzeinzugs-Lebenszyklus unter ADR-0154 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, freie Masse, Seitennummern-Neustart oder DOCX-Zulassung
+     geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 474 / PLANS 224 bis 335 sind unter ADR-0139 bis ADR-0154 implementiert.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,

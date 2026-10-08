@@ -2,6 +2,30 @@
 
 Updated: 2026-10-08
 
+Roadmap 467 through 474 / PLANS 328 through 335 are complete under ADR-0154. A real four-page Chromium PDF
+probe first closed the unsafe section-number-restart path: resetting the built-in page counter in the named page
+rule produced `1, 2, 4, 4`; resetting it on the section element retained `1, 2, 3, 4`. The schema therefore still
+rejects restart metadata. A later restart feature requires a separately proven segmented PDF render and merge path.
+
+Native Office paragraph and heading formatting now supports bounded left and right indents of 0, 18, 36, 54 or
+72 pt plus no special indent, first-line 18/36 pt and hanging 18/36 pt. Static trusted CSS renders the same exact
+values in the editor, document-owned style preview and semantic print/PDF. Browser and server reject fractional,
+negative and arbitrary lengths, percentages, CSS, URLs and unknown values.
+
+The responsive paragraph dialog retains Standard, mixed values, explicit zero, reset and isolated undo. Direct
+values override a named style; Standard returns to the style or text-type default. Text-type conversion, paragraph
+splitting, lists, quotations, selected table cells, format transfer, search/replacement, comparison, suggestions,
+confirmed CAS save, immutable history, reload and independent reuse preserve the exact values. Recovery versions
+two and three now bind exact first-line and hanging profiles without a migration or new store.
+
+Focused Ruff/format plus schema, API, recovery and style tests passed 217 cases. Pure browser models passed 6/6.
+The complete paragraph/style/responsive browser matrix covered 30 scenarios: 27 passed in the broad run, while two
+rights cases initially lacked their intentionally separate blocked API and the enlarged mobile dialog needed the
+existing scroll-reachability pattern. After starting only that test service and correcting the reachability test,
+all three affected scenarios passed in a 4/4 rerun including one desktop duplicate. Desktop, tablet, mobile,
+style and print artifacts passed visual review. Full quality on product source `c7529e2a` passed Ruff, formatting for
+867 files, Mypy over 607 source files and complete Pytest to 100% with only the known Starlette/AnyIO warning.
+
 Roadmap 460 through 466 / PLANS 321 through 327 are complete under ADR-0153. Native Office direct character
 formatting and document-owned named styles now support the bounded presentation tokens `uppercase` and `smallCaps`.
 Absence remains the canonical default. Browser and server reject lowercase, title case, locale or script controls,
