@@ -16,7 +16,8 @@ test("paragraph pagination accepts only explicit boolean values and inert DOM at
   expect(officeParagraphDescription(attrs)).toEqual([
     "Mit nächstem Absatz: zusammenhalten", "Zeilen: zusammenhalten", "Seitenumbruch davor: nein",
   ]);
-  for (const [key, value] of [["keepWithNext", 1], ["keepLines", "true"], ["pageBreakBefore", null]]) {
+  expect(officeParagraphAttributes({ pageBreakBefore: null })).toEqual({});
+  for (const [key, value] of [["keepWithNext", 1], ["keepLines", "true"]]) {
     expect(() => officeParagraphAttributes({ [key]: value })).toThrow();
   }
 });

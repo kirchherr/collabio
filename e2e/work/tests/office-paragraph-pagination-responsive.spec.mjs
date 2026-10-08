@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-import { ARTIFACT_DIR, monitorPage } from "./support.mjs";
+import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
 import { officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice } from "./office-support.mjs";
 import {
   applyParagraphFormat, createParagraphFixture, expectParagraphStyle, paragraph, paragraphBlocks, selectParagraphBlocks,
@@ -8,7 +8,7 @@ import {
 import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 test("Office paragraph pagination remains exact through undo save reload and print", async ({ page }, testInfo) => {
-  const verifyBrowser = monitorPage(page);
+  const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
   const content = { type: "doc", content: [
     { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Zusammengehörige Überschrift" }] },
     paragraph("Dieser Absatz bleibt als vollständiger Block bei seiner Überschrift."),
