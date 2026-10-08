@@ -874,10 +874,12 @@ class InMemoryOfficeDocumentRepository:
                     known.setdefault((tenant_id, principal_id), (principal_id, None))
             known.setdefault((user_context.tenant_id, user_context.user_id), (user_context.user_id, None))
             entries = []
+            role_directory = {key: (name, None) for key, name in self.roles.items()}
+            group_directory = {key: (name, None) for key, name in self.groups.items()}
             stores = (
                 ("user", self.grants, self.grant_expirations, known),
-                ("role", self.role_grants, self.role_grant_expirations, self.roles),
-                ("group", self.group_grants, self.group_grant_expirations, self.groups),
+                ("role", self.role_grants, self.role_grant_expirations, role_directory),
+                ("group", self.group_grants, self.group_grant_expirations, group_directory),
             )
             for principal_type, grants, expirations, directory in stores:
                 for (tenant_id, doc_id, principal_id), permission in sorted(grants.items()):
@@ -886,8 +888,7 @@ class InMemoryOfficeDocumentRepository:
                     expiration = expirations.get((tenant_id, doc_id, principal_id))
                     if expiration is not None and expiration <= datetime.now(UTC):
                         continue
-                    identity = directory[(tenant_id, principal_id)]
-                    display_name, email = identity if principal_type == "user" else (identity, None)
+                    display_name, email = directory[(tenant_id, principal_id)]
                     entries.append(
                         OfficeDocumentShareEntry(
                             principal_type=cast(Literal["user", "role", "group"], principal_type),
@@ -954,12 +955,15 @@ class InMemoryOfficeDocumentRepository:
                 raise OfficeDocumentConflictError("The document shares have changed")
             if command.principal_type == "user" and command.principal_id == document.owner_principal_id:
                 raise OfficeDocumentShareRequestError("The document owner share cannot be changed")
-            directory = {
-                "user": self.principals,
-                "role": self.roles,
-                "group": self.groups,
-            }[command.principal_type]
-            if (user_context.tenant_id, command.principal_id) not in directory:
+            principal_key = (user_context.tenant_id, command.principal_id)
+            target_known = (
+                principal_key in self.principals
+                if command.principal_type == "user"
+                else principal_key in self.roles
+                if command.principal_type == "role"
+                else principal_key in self.groups
+            )
+            if not target_known:
                 raise OfficeDocumentShareRequestError("The principal is not active in the tenant")
             grants, expirations = {
                 "user": (self.grants, self.grant_expirations),
