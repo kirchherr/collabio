@@ -20,7 +20,7 @@ from suite.platform.authz_admin import (
     ObjectAclEntryUpsertCommand,
     PgAuthzAdminStore,
 )
-from suite.platform.context import TenantRequestContext
+from suite.platform.context import PrincipalResolutionError, TenantRequestContext, VerifiedJwtClaims
 from suite.platform.crm_accounts import CrmAccountRecord
 from suite.platform.crm_erp_subfeatures import default_crm_erp_subfeature_enabled_features
 from suite.platform.crm_runtime import PgCrmRepository
@@ -313,11 +313,24 @@ def _synthetic_authorized_context(request: Request) -> TenantRequestContext:
         return context
     # KB, CRM and Office visibility comes from fresh database ACLs, never browser-supplied IDs.
     directory = PgPrincipalDirectory(database_dsn=os.environ["SUITE_DATABASE_DSN"])
+    group_ids: set[str] = set()
+    try:
+        principal = directory.principal_for_claims(
+            VerifiedJwtClaims(
+                issuer=f"https://work-e2e.invalid/{context.user_context.user_id}",
+                subject=f"subject-{context.user_context.user_id}",
+                tenant_id=context.user_context.tenant_id,
+                expires_at_epoch=int((datetime.now(UTC) + timedelta(minutes=5)).timestamp()),
+            )
+        )
+        group_ids = directory.tenant_membership(principal, context.user_context.tenant_id).group_ids
+    except PrincipalResolutionError:
+        pass
     readable = directory.readable_object_ids(
         tenant_id=context.user_context.tenant_id,
         user_id=context.user_context.user_id,
         role_ids=context.user_context.role_ids,
-        group_ids=set(),
+        group_ids=group_ids,
     )
     return context.model_copy(
         update={"user_context": context.user_context.model_copy(update={"readable_object_ids": readable})}
