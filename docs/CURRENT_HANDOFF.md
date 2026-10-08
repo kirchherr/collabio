@@ -20,8 +20,10 @@ that initially failed closed before writes. The complete character and adjacent 
 `f4e4a667c1c9e475821385224c436ab639b4460d3da91c631a37f8b3a09be898`; the print-preview value is
 `b93bfd42673b0604bae1964b4fa4b08f7993bd79ccbc76440731b08d7a15e1f3`. All passed visual review. Product and roadmap
 source through `fefe9ef0` is published on `kirchherr/kb-write-unit-of-work`; review is healthy at
-`http://192.168.0.108:42880/office?review=text-highlights-fefe9ef0`. Full quality and scoped temporary-resource cleanup
-remain for closeout.
+`http://192.168.0.108:42880/office?review=text-highlights-fefe9ef0`. Full quality on documented source `3d62d971`
+passed Ruff, formatting for 865 files, Mypy over 607 source files and complete Pytest to 100% with only the known
+Starlette/AnyIO deprecation warning. The exact temporary services and reviewed local evidence files were removed;
+regular and review APIs remain healthy.
 
 Roadmap 439 through 445 / PLANS 300 through 306 are complete under ADR-0150. Native Office character formatting
 and document-owned named styles now expose three bounded font-family choices: Sans Serif, Serif and Monospace. The
