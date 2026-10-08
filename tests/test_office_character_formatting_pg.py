@@ -48,6 +48,7 @@ def test_pg_character_versions_preserve_legacy_sources_receipts_cas_and_acl(data
                 "textColor": "red",
                 "verticalPosition": "subscript",
                 "letterSpacing": "wide",
+                "textCase": "smallCaps",
             },
         }
     ]

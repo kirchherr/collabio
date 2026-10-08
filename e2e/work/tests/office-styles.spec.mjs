@@ -48,6 +48,22 @@ test("Office updates all style-bound blocks without changing text structures dir
   expect((await officeContent(page, first.document.object_id, { versionId: first.version.version_id })).content).toEqual(first.content);
 });
 
+test("Office direct text case overrides inherited named style case without changing source text", async ({ page }) => {
+  const first = await styleFixture(page);
+  await selectCharacters(page, 1, 0, 5);
+  await applyStyle(page, { values: { textCase: "smallCaps" }, update: true });
+  await expect(officeEditor(page).locator("p").first()).toHaveAttribute("data-office-text-case", "smallCaps");
+  await selectCharacters(page, 1, 0, 5);
+  await applyCharacters(page, { case: "uppercase" });
+  const direct = officeEditor(page).locator('p').first().locator('[data-office-text-case="uppercase"]');
+  await expect(direct).toHaveText("First");
+  await expect(direct).toHaveCSS("text-transform", "uppercase");
+  await expect(direct).toHaveCSS("font-variant-caps", "normal");
+  const saved = await saveOffice(page, { objectId: first.document.object_id });
+  expect(saved.content.content[1].content[0].text).toBe("First paragraph");
+  expect(saved.content.content[1].content[0].marks).toContainEqual({ type: "textStyle", attrs: { textCase: "uppercase" } });
+});
+
 test("Office style updates retain pending typing marks and are undone separately from text", async ({ page }) => {
   await styleFixture(page);
   await selectCharacters(page, 1, 0); await applyCharacters(page, { size: 12, color: "red" });

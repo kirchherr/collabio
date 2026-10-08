@@ -58,6 +58,7 @@ FONT_FAMILIES = {"sans", "serif", "mono"}
 HIGHLIGHT_COLORS = {"yellow", "lime", "cyan", "pink", "lavender", "gray"}
 VERTICAL_POSITIONS = {"superscript", "subscript"}
 LETTER_SPACING = {"tight", "wide"}
+TEXT_CASES = {"uppercase", "smallCaps"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {
     "textAlign",
     "lineSpacing",
@@ -81,6 +82,7 @@ STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {
     "fontSize": FONT_SIZES,
     "textColor": TEXT_COLORS,
     "letterSpacing": LETTER_SPACING,
+    "textCase": TEXT_CASES,
 }
 
 
@@ -1161,6 +1163,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                         "highlightColor",
                         "verticalPosition",
                         "letterSpacing",
+                        "textCase",
                     }
                 ):
                     reject()
@@ -1185,6 +1188,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     reject()
                 if "letterSpacing" in style and (
                     not isinstance(style["letterSpacing"], str) or style["letterSpacing"] not in LETTER_SPACING
+                ):
+                    reject()
+                if "textCase" in style and (
+                    not isinstance(style["textCase"], str) or style["textCase"] not in TEXT_CASES
                 ):
                     reject()
             elif name == "link":

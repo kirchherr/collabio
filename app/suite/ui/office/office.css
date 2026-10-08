@@ -93,6 +93,8 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-vertical-position="subscript"]{vertical-align:sub}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-letter-spacing="tight"]{letter-spacing:-.02em}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-letter-spacing="wide"]{letter-spacing:.08em}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-case="uppercase"]{text-transform:uppercase;font-variant-caps:normal}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-case="smallCaps"]{text-transform:none;font-variant-caps:small-caps}
 /* Mobile review drawers have their own close action and need room beyond the toolbar. */
 @media(max-width:760px){.document-inspector.comments-active,.document-inspector.suggestions-active{position:fixed;top:56px;bottom:34px}}
 /* One contextual entry owns all document-style creation, preview and update controls. */

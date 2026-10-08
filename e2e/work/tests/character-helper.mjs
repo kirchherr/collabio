@@ -37,13 +37,14 @@ export async function applyCharacters(page, choices) {
   await expect(officeEditor(page)).toBeFocused();
 }
 
-export async function expectCharacterStyle(locator, size, color, family = null, highlight = null, position = null, spacing = null) {
+export async function expectCharacterStyle(locator, size, color, family = null, highlight = null, position = null, spacing = null, textCase = null) {
   await expect(locator).toHaveAttribute("data-office-font-size", String(size));
   await expect(locator).toHaveAttribute("data-office-text-color", color);
   if (family) await expect(locator).toHaveAttribute("data-office-font-family", family);
   if (highlight) await expect(locator).toHaveAttribute("data-office-highlight-color", highlight);
   if (position) await expect(locator).toHaveAttribute("data-office-vertical-position", position);
   if (spacing) await expect(locator).toHaveAttribute("data-office-letter-spacing", spacing);
+  if (textCase) await expect(locator).toHaveAttribute("data-office-text-case", textCase);
   expect(await locator.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeCloseTo(size * 4 / 3, 1);
   const colors = { blue: "rgb(29, 78, 216)", red: "rgb(185, 28, 28)", purple: "rgb(126, 34, 206)", green: "rgb(22, 101, 52)" };
   if (colors[color]) await expect(locator).toHaveCSS("color", colors[color]);
@@ -60,4 +61,6 @@ export async function expectCharacterStyle(locator, size, color, family = null, 
     const actual = await locator.evaluate((element) => parseFloat(getComputedStyle(element).letterSpacing));
     expect(actual).toBeCloseTo((spacing === "wide" ? .08 : -.02) * size * 4 / 3, 1);
   }
+  if (textCase === "uppercase") await expect(locator).toHaveCSS("text-transform", "uppercase");
+  if (textCase === "smallCaps") await expect(locator).toHaveCSS("font-variant-caps", "small-caps");
 }

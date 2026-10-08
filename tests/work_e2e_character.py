@@ -29,6 +29,7 @@ def character_recovery_document(number: int) -> dict[str, Any]:
             "highlightColor": "yellow",
             "verticalPosition": "superscript",
             "letterSpacing": "wide",
+            "textCase": "uppercase",
         },
         {
             "fontFamily": "mono",
@@ -37,6 +38,7 @@ def character_recovery_document(number: int) -> dict[str, Any]:
             "highlightColor": "cyan",
             "verticalPosition": "subscript",
             "letterSpacing": "tight",
+            "textCase": "smallCaps",
         },
     )
 

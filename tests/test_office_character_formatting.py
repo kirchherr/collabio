@@ -24,6 +24,7 @@ INVALID_VERTICAL_POSITIONS: tuple[Any, ...] = (
     "superscript;SECRET",
 )
 INVALID_LETTER_SPACING: tuple[Any, ...] = (None, True, [], {}, "normal", "0.1em", "default", "wide;SECRET")
+INVALID_TEXT_CASES: tuple[Any, ...] = (None, True, [], {}, "lowercase", "capitalize", "default", "uppercase;SECRET")
 
 
 def formatted_document() -> dict[str, Any]:
@@ -38,6 +39,7 @@ def formatted_document() -> dict[str, Any]:
     + [{"highlightColor": color} for color in ("yellow", "lime", "cyan", "pink", "lavender", "gray")]
     + [{"verticalPosition": value} for value in ("superscript", "subscript")]
     + [{"letterSpacing": value} for value in ("tight", "wide")]
+    + [{"textCase": value} for value in ("uppercase", "smallCaps")]
     + [
         {
             "fontSize": 48,
@@ -45,6 +47,7 @@ def formatted_document() -> dict[str, Any]:
             "highlightColor": "yellow",
             "verticalPosition": "superscript",
             "letterSpacing": "wide",
+            "textCase": "smallCaps",
         }
     ],
 )
@@ -68,6 +71,7 @@ def test_character_values_preserve_exact_canonical_payload_without_mutation(attr
         *[{"type": "textStyle", "attrs": {"highlightColor": color}} for color in INVALID_HIGHLIGHT_COLORS],
         *[{"type": "textStyle", "attrs": {"verticalPosition": value}} for value in INVALID_VERTICAL_POSITIONS],
         *[{"type": "textStyle", "attrs": {"letterSpacing": value}} for value in INVALID_LETTER_SPACING],
+        *[{"type": "textStyle", "attrs": {"textCase": value}} for value in INVALID_TEXT_CASES],
         {"type": "textStyle", "attrs": {"fontSize": 12, "style": "SECRET"}},
         {"type": "textStyle", "attrs": {"textColor": "red"}, "extra": "SECRET"},
         {"type": "bold", "attrs": {"fontSize": 12}},

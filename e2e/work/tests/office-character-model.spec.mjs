@@ -5,22 +5,22 @@ import { officeCharacterAttributes, officeCharacterDOMAttributes, officeCharacte
 import { characterDocument, characterText } from "./character-helper.mjs";
 
 test("character attributes reject untrusted presentation and retain only browser null defaults", () => {
-  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { highlightColor: "url(SECRET)" }, { verticalPosition: "super" }, { letterSpacing: "0.1em" }, { fontSize: true }, { style: "url(SECRET)" }]) {
+  for (const value of [{ fontFamily: "Arial" }, { fontSize: "12" }, { textColor: "#ff0000" }, { highlightColor: "url(SECRET)" }, { verticalPosition: "super" }, { letterSpacing: "0.1em" }, { textCase: "lowercase" }, { fontSize: true }, { style: "url(SECRET)" }]) {
     expect(() => officeCharacterAttributes(value)).toThrow();
   }
   expect(officeCharacterAttributes({ fontFamily: null, fontSize: null, textColor: "blue" })).toEqual({ textColor: "blue" });
-  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide" })).toEqual({
-    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-highlight-color": "yellow", "data-office-vertical-position": "superscript", "data-office-letter-spacing": "wide",
+  expect(officeCharacterDOMAttributes({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide", textCase: "smallCaps" })).toEqual({
+    "data-office-font-family": "serif", "data-office-font-size": "18", "data-office-text-color": "blue", "data-office-highlight-color": "yellow", "data-office-vertical-position": "superscript", "data-office-letter-spacing": "wide", "data-office-text-case": "smallCaps",
   });
-  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau; Hervorhebung: Gelb; Position: Hochgestellt; Zeichenabstand: Weit");
+  expect(officeCharacterDescription({ fontFamily: "serif", fontSize: 18, textColor: "blue", highlightColor: "yellow", verticalPosition: "superscript", letterSpacing: "wide", textCase: "smallCaps" })).toBe("Schriftart: Serif; Schriftgröße: 18 pt; Textfarbe: Blau; Hervorhebung: Gelb; Position: Hochgestellt; Zeichenabstand: Weit; Schreibweise: Kapitälchen");
 });
 
 test("character comparison detects same-text size and color changes inside nested blocks", () => {
   const before = { type: "doc", content: [{ type: "blockquote", content: characterDocument().content }] };
   const after = structuredClone(before);
-  after.content[0].content[0].content[0].marks[0].attrs = { fontFamily: "serif", fontSize: 24, textColor: "purple" };
+  after.content[0].content[0].content[0].marks[0].attrs = { fontFamily: "serif", fontSize: 24, textColor: "purple", textCase: "uppercase" };
   expect(compareOfficeDocuments(before, after).counts.changed).toBe(1);
-  expect(describeOfficeBlock(after.content[0]).text).toContain("Schriftart: Serif; Schriftgröße: 24 pt; Textfarbe: Violett");
+  expect(describeOfficeBlock(after.content[0]).text).toContain("Schriftart: Serif; Schriftgröße: 24 pt; Textfarbe: Violett; Schreibweise: Großbuchstaben");
   expect(describeOfficeBlock(after.content[0]).text).toContain("Schriftgröße: 12 pt; Textfarbe: Rot");
 });
 
