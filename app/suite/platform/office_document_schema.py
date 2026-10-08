@@ -54,6 +54,7 @@ MARKS = {
 }
 FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
 TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
+FONT_FAMILIES = {"sans", "serif", "mono"}
 PARAGRAPH_FORMAT_ATTRIBUTES = {
     "textAlign",
     "lineSpacing",
@@ -72,7 +73,11 @@ PARAGRAPH_VALUES: dict[str, set[Any]] = {
     "keepLines": {False, True},
     "pageBreakBefore": {False, True},
 }
-STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {"fontSize": FONT_SIZES, "textColor": TEXT_COLORS}
+STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {
+    "fontFamily": FONT_FAMILIES,
+    "fontSize": FONT_SIZES,
+    "textColor": TEXT_COLORS,
+}
 
 
 class OfficeDocumentInvalidContentError(ValueError):
@@ -1144,10 +1149,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     set(mark) != {"type", "attrs"}
                     or not isinstance(style, dict)
                     or not style
-                    or set(style) - {"fontSize", "textColor"}
+                    or set(style) - {"fontFamily", "fontSize", "textColor"}
                 ):
                     reject()
                 if "fontSize" in style and (type(style["fontSize"]) is not int or style["fontSize"] not in FONT_SIZES):
+                    reject()
+                if "fontFamily" in style and (
+                    not isinstance(style["fontFamily"], str) or style["fontFamily"] not in FONT_FAMILIES
+                ):
                     reject()
                 if "textColor" in style and (
                     not isinstance(style["textColor"], str) or style["textColor"] not in TEXT_COLORS

@@ -11,6 +11,7 @@ from work_e2e_character import character_recovery_document
 
 INVALID_FONT_SIZES: tuple[Any, ...] = (True, 12.0, "12", "12pt", None, 0, 13, 49, [], {})
 INVALID_TEXT_COLORS: tuple[Any, ...] = (None, True, [], {}, "#ff0000", "RED", "default", "red;SECRET")
+INVALID_FONT_FAMILIES: tuple[Any, ...] = (None, True, [], {}, "Arial", "SERIF", "default", "serif;SECRET")
 
 
 def formatted_document() -> dict[str, Any]:
@@ -19,7 +20,8 @@ def formatted_document() -> dict[str, Any]:
 
 @pytest.mark.parametrize(
     "attrs",
-    [{"fontSize": size} for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)]
+    [{"fontFamily": family} for family in ("sans", "serif", "mono")]
+    + [{"fontSize": size} for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)]
     + [{"textColor": color} for color in ("black", "slate", "red", "orange", "green", "teal", "blue", "purple")]
     + [{"fontSize": 48, "textColor": "purple"}],
 )
@@ -37,6 +39,7 @@ def test_character_values_preserve_exact_canonical_payload_without_mutation(attr
         {"type": "textStyle"},
         {"type": "textStyle", "attrs": {}},
         {"type": "textStyle", "attrs": None},
+        *[{"type": "textStyle", "attrs": {"fontFamily": family}} for family in INVALID_FONT_FAMILIES],
         *[{"type": "textStyle", "attrs": {"fontSize": size}} for size in INVALID_FONT_SIZES],
         *[{"type": "textStyle", "attrs": {"textColor": color}} for color in INVALID_TEXT_COLORS],
         {"type": "textStyle", "attrs": {"fontSize": 12, "style": "SECRET"}},

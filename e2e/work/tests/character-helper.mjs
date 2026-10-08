@@ -37,10 +37,15 @@ export async function applyCharacters(page, choices) {
   await expect(officeEditor(page)).toBeFocused();
 }
 
-export async function expectCharacterStyle(locator, size, color) {
+export async function expectCharacterStyle(locator, size, color, family = null) {
   await expect(locator).toHaveAttribute("data-office-font-size", String(size));
   await expect(locator).toHaveAttribute("data-office-text-color", color);
+  if (family) await expect(locator).toHaveAttribute("data-office-font-family", family);
   expect(await locator.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeCloseTo(size * 4 / 3, 1);
   const colors = { blue: "rgb(29, 78, 216)", red: "rgb(185, 28, 28)", purple: "rgb(126, 34, 206)", green: "rgb(22, 101, 52)" };
   if (colors[color]) await expect(locator).toHaveCSS("color", colors[color]);
+  if (family) {
+    const expected = { sans: "Arial", serif: "Georgia", mono: "Consolas" }[family];
+    expect(await locator.evaluate((element) => getComputedStyle(element).fontFamily)).toContain(expected);
+  }
 }

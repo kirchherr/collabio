@@ -1,11 +1,19 @@
 // Inert native mark attributes. Presentation is a fixed CSS allowlist.
 export const OFFICE_FONT_SIZES = Object.freeze([8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48]);
+export const OFFICE_FONT_FAMILIES = Object.freeze({
+  sans: "Sans Serif", serif: "Serif", mono: "Monospace",
+});
 export const OFFICE_TEXT_COLORS = Object.freeze({
   black: "Schwarz", slate: "Schiefergrau", red: "Rot", orange: "Dunkelorange",
   green: "Grün", teal: "Petrol", blue: "Blau", purple: "Violett",
 });
 export const OFFICE_CHARACTER_VALUES = Object.freeze({
+  fontFamily: Object.freeze(Object.keys(OFFICE_FONT_FAMILIES)),
   fontSize: OFFICE_FONT_SIZES, textColor: Object.freeze(Object.keys(OFFICE_TEXT_COLORS)),
+});
+
+const domNames = Object.freeze({
+  fontFamily: "data-office-font-family", fontSize: "data-office-font-size", textColor: "data-office-text-color",
 });
 
 export function officeCharacterAttributes(attrs) {
@@ -24,13 +32,14 @@ export function officeCharacterAttributes(attrs) {
 export function officeCharacterDOMAttributes(attrs) {
   const result = {};
   for (const [key, value] of Object.entries(officeCharacterAttributes(attrs))) {
-    result[key === "fontSize" ? "data-office-font-size" : "data-office-text-color"] = String(value);
+    result[domNames[key]] = String(value);
   }
   return result;
 }
 
 export function officeCharacterDescription(attrs) {
   const values = officeCharacterAttributes(attrs);
-  return [values.fontSize === undefined ? null : `Schriftgröße: ${values.fontSize} pt`,
+  return [values.fontFamily === undefined ? null : `Schriftart: ${OFFICE_FONT_FAMILIES[values.fontFamily]}`,
+    values.fontSize === undefined ? null : `Schriftgröße: ${values.fontSize} pt`,
     values.textColor === undefined ? null : `Textfarbe: ${OFFICE_TEXT_COLORS[values.textColor]}`].filter(Boolean).join("; ");
 }

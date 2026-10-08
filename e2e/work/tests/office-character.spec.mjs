@@ -12,10 +12,10 @@ test("Office changes only selected Unicode text and persists exact character for
   const first = await createParagraphFixture(page, "Character partial selection", characterDocument());
   await openOffice(page); await openOfficeDocument(page, first.document.object_id);
   await selectCharacters(page, 0, 6, 13); // café plus emoji, complete UTF-16 boundaries
-  await applyCharacters(page, { size: 24, color: "purple" });
+  await applyCharacters(page, { family: "serif", size: 24, color: "purple" });
   const spans = officeEditor(page).locator("span[data-office-font-size]");
   await expect(spans).toHaveCount(4);
-  await expectCharacterStyle(spans.nth(1), 24, "purple");
+  await expectCharacterStyle(spans.nth(1), 24, "purple", "serif");
   await expect(spans.nth(1)).toHaveText("café 😀");
   await officeEditor(page).press("Control+z");
   await expect(page.locator("#document-save")).toBeDisabled();
@@ -23,11 +23,11 @@ test("Office changes only selected Unicode text and persists exact character for
   await officeEditor(page).press("Control+Shift+z");
   const second = await saveOffice(page, { objectId: first.document.object_id });
   expect(second.content.content[0].content).toEqual([
-    characterText("Alpha "), characterText("café 😀", { fontSize: 24, textColor: "purple" }), characterText(" "), characterText("Beta END", { fontSize: 12, textColor: "red" }),
+    characterText("Alpha "), characterText("café 😀", { fontFamily: "serif", fontSize: 24, textColor: "purple" }), characterText(" "), characterText("Beta END", { fontSize: 12, textColor: "red" }),
   ]);
   expect((await officeContent(page, first.document.object_id, { versionId: first.version.version_id })).content).toEqual(first.content);
   await page.locator("#document-close").click(); await openOfficeDocument(page, first.document.object_id);
-  await expectCharacterStyle(spans.nth(1), 24, "purple");
+  await expectCharacterStyle(spans.nth(1), 24, "purple", "serif");
   verify();
 });
 
@@ -36,6 +36,7 @@ test("Office mixed character selection retains unchanged colors and supports exp
   await openOffice(page); await openOfficeDocument(page, first.document.object_id);
   await selectParagraphBlocks(page, 0);
   await openCharacters(page);
+  await expect(page.locator("#character-family")).toHaveValue("default");
   await expect(page.locator("#character-size")).toHaveValue("mixed");
   await expect(page.locator("#character-color")).toHaveValue("mixed");
   await page.locator("#character-apply").click();
@@ -47,8 +48,8 @@ test("Office mixed character selection retains unchanged colors and supports exp
   await expectCharacterStyle(spans.first(), 24, "blue"); await expectCharacterStyle(spans.last(), 24, "red");
   await openCharacters(page); await page.locator("#character-reset").click(); await page.keyboard.press("Escape");
   await expectCharacterStyle(spans.first(), 24, "blue");
-  await applyCharacters(page, { size: "default", color: "default" });
-  await expect(officeEditor(page).locator("[data-office-font-size],[data-office-text-color]")).toHaveCount(0);
+  await applyCharacters(page, { family: "default", size: "default", color: "default" });
+  await expect(officeEditor(page).locator("[data-office-font-family],[data-office-font-size],[data-office-text-color]")).toHaveCount(0);
   const saved = await saveOffice(page, { objectId: first.document.object_id });
   expect(saved.content).toEqual({ type: "doc", content: [paragraph("Alpha café 😀 Beta END")] });
   await openCharacters(page); await page.locator("#character-apply").click();
@@ -197,19 +198,19 @@ test("Office character edits undo separately from typing and coexist with headin
 
 test("Office prints exact saved character sizes and colors in a real multipage PDF", async ({ page }) => {
   const first = await createParagraphFixture(page, "Character PDF", { type: "doc", content: [
-    { type: "heading", attrs: { level: 2 }, content: [characterText("CHARACTER_PDF_HEAD", { fontSize: 28, textColor: "purple" })] },
-    ...Array.from({ length: 24 }, (_, index) => ({ type: "paragraph", content: [characterText(`CHARACTER_${String(index).padStart(2, "0")} Café. ${"Saved size and color. ".repeat(3)}`, { fontSize: index % 2 ? 12 : 18, textColor: index % 2 ? "red" : "blue" })] })),
-    { type: "paragraph", content: [characterText("CHARACTER_PDF_LAST", { fontSize: 18, textColor: "green" })] },
+    { type: "heading", attrs: { level: 2 }, content: [characterText("CHARACTER_PDF_HEAD", { fontFamily: "serif", fontSize: 28, textColor: "purple" })] },
+    ...Array.from({ length: 24 }, (_, index) => ({ type: "paragraph", content: [characterText(`CHARACTER_${String(index).padStart(2, "0")} Café. ${"Saved size, family and color. ".repeat(3)}`, { fontFamily: index % 2 ? "sans" : "mono", fontSize: index % 2 ? 12 : 18, textColor: index % 2 ? "red" : "blue" })] })),
+    { type: "paragraph", content: [characterText("CHARACTER_PDF_LAST", { fontFamily: "sans", fontSize: 18, textColor: "green" })] },
   ] });
   await openOffice(page); await openOfficeDocument(page, first.document.object_id);
   const calls = await installPrintProbe(page, { pdfName: "office-character-a4-portrait.pdf" });
   await page.exposeFunction("measureCharacterPrint", async () => {
     await page.emulateMedia({ media: "print" });
-    return page.locator("#office-print-root h2 span").evaluate((element) => ({ size: parseFloat(getComputedStyle(element).fontSize), color: getComputedStyle(element).color }));
+    return page.locator("#office-print-root h2 span").evaluate((element) => ({ size: parseFloat(getComputedStyle(element).fontSize), color: getComputedStyle(element).color, family: getComputedStyle(element).fontFamily }));
   });
   await page.evaluate(() => { const print = window.print; window.print = async () => { window.characterPrintStyle = await window.measureCharacterPrint(); return print(); }; });
   await openPrintPreview(page, first.document.object_id, first.version.version_id);
-  await expectCharacterStyle(page.locator("#print-preview h2 span"), 28, "purple");
+  await expectCharacterStyle(page.locator("#print-preview h2 span"), 28, "purple", "serif");
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-character-print-preview.png`, fullPage: true });
   await submitOfficePrint(page, first.document.object_id, first.version.version_id);
   await expect.poll(() => calls[0]?.pdf?.length || 0).toBeGreaterThan(1000);
@@ -217,6 +218,7 @@ test("Office prints exact saved character sizes and colors in a real multipage P
   expect(pdfPageCount(calls[0].pdf, 594.96, 841.92)).toBeGreaterThan(1);
   const style = await page.evaluate(() => window.characterPrintStyle);
   expect(style.size).toBeCloseTo(28 * 4 / 3, 1); expect(style.color).toBe("rgb(126, 34, 206)");
+  expect(style.family).toContain("Georgia");
   expect(calls[0].snapshot.text).toContain("CHARACTER_PDF_LAST"); expect(calls[0].snapshot.unsafeElements).toBe(0);
   await expectPrintCleared(page); expect(await officeVersions(page, first.document.object_id)).toHaveLength(1);
 });

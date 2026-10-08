@@ -72,6 +72,9 @@
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="32"]{font-size:32pt}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="36"]{font-size:36pt}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-size="48"]{font-size:48pt}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-family="sans"]{font-family:Arial,Helvetica,sans-serif}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-family="serif"]{font-family:Georgia,"Times New Roman",serif}
+:is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-font-family="mono"]{font-family:Consolas,"Courier New",monospace}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="black"]{color:#111827;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="slate"]{color:#475569;print-color-adjust:exact;-webkit-print-color-adjust:exact}
 :is(.document-page .tiptap,.office-print-document .office-print-content) [data-office-text-color="red"]{color:#b91c1c;print-color-adjust:exact;-webkit-print-color-adjust:exact}
