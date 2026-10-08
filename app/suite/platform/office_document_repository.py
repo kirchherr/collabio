@@ -404,8 +404,14 @@ class PgOfficeDocumentRepository:
               AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
             ORDER BY principal.principal_type, lower(principal.display_name), principal.principal_id
             """,
-            (document.tenant_id, document.tenant_id, document.tenant_id,
-             document.tenant_id, document.object_id, OFFICE_DOCUMENT_OBJECT_TYPE),
+            (
+                document.tenant_id,
+                document.tenant_id,
+                document.tenant_id,
+                document.tenant_id,
+                document.object_id,
+                OFFICE_DOCUMENT_OBJECT_TYPE,
+            ),
         ).fetchall()
         available = connection.execute(
             """
@@ -791,20 +797,14 @@ class InMemoryOfficeDocumentRepository:
         if object_id not in user.readable_object_ids:
             return None
         permissions = [
-            self._active_grant(
-                self.grants, self.grant_expirations, (user.tenant_id, object_id, user.user_id)
-            )
+            self._active_grant(self.grants, self.grant_expirations, (user.tenant_id, object_id, user.user_id))
         ]
         permissions.extend(
-            self._active_grant(
-                self.role_grants, self.role_grant_expirations, (user.tenant_id, object_id, role_id)
-            )
+            self._active_grant(self.role_grants, self.role_grant_expirations, (user.tenant_id, object_id, role_id))
             for role_id in user.role_ids
         )
         permissions.extend(
-            self._active_grant(
-                self.group_grants, self.group_grant_expirations, (user.tenant_id, object_id, group_id)
-            )
+            self._active_grant(self.group_grants, self.group_grant_expirations, (user.tenant_id, object_id, group_id))
             for group_id in self.group_memberships.get((user.tenant_id, user.user_id), set())
         )
         ranking = {"read": 1, "write": 2, "admin": 3}
@@ -854,11 +854,14 @@ class InMemoryOfficeDocumentRepository:
         return self._permission(user_context, object_id) in {"write", "admin"}
 
     def can_admin(self, *, user_context: UserContext, object_id: str) -> bool:
-        return self._active_grant(
-            self.grants,
-            self.grant_expirations,
-            (user_context.tenant_id, object_id, user_context.user_id),
-        ) == "admin"
+        return (
+            self._active_grant(
+                self.grants,
+                self.grant_expirations,
+                (user_context.tenant_id, object_id, user_context.user_id),
+            )
+            == "admin"
+        )
 
     def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
         with self._lock:
@@ -894,9 +897,7 @@ class InMemoryOfficeDocumentRepository:
                             permission=cast(Literal["read", "write", "admin"], permission),
                             is_owner=principal_type == "user" and principal_id == document.owner_principal_id,
                             expires_at_utc=(
-                                expiration.astimezone(UTC).isoformat().replace("+00:00", "Z")
-                                if expiration
-                                else None
+                                expiration.astimezone(UTC).isoformat().replace("+00:00", "Z") if expiration else None
                             ),
                         )
                     )
