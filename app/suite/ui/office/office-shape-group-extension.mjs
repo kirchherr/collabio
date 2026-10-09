@@ -135,7 +135,10 @@ export function officeShapeGroupExtension() {
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
           stopEvent(event) { return event.target === control || control.contains(event.target) || event.target === anchor || anchor.contains(event.target); },
-          ignoreMutation(mutation) { return eventTarget(control, mutation.target) || eventTarget(anchor, mutation.target); },
+          ignoreMutation(mutation) {
+            return eventTarget(control, mutation.target) || eventTarget(anchor, mutation.target)
+              || (mutation.type === "attributes" && mutation.target === dom);
+          },
           destroy() { removeDragListeners(); drag = null; },
         };
       };
