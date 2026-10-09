@@ -92,6 +92,7 @@ export function officeShapeGroupExtension() {
         const finish = (event, cancel = false) => {
           if (!drag || (event.pointerId != null && drag.id !== event.pointerId)) return;
           removeDragListeners();
+          delete anchor.dataset.shapeGroupDragging;
           if (drag.id != null && anchor.hasPointerCapture(drag.id)) anchor.releasePointerCapture(drag.id);
           const { next, start } = drag; drag = null;
           if (cancel) { paint(node); return; }
@@ -103,6 +104,7 @@ export function officeShapeGroupExtension() {
           const bounds = editor.view.dom.getBoundingClientRect();
           drag = { id, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
             start: node.attrs.position, next: node.attrs.position };
+          anchor.dataset.shapeGroupDragging = "";
           dragTarget?.addEventListener("pointermove", move);
           dragTarget?.addEventListener("pointerup", finish);
           dragTarget?.addEventListener("pointercancel", cancel);

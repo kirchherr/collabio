@@ -254,8 +254,10 @@ test("Office shape groups move freely as one object with history print and offse
   await editor.press("Control+Shift+z"); await expect(anchor).toHaveAttribute("aria-label", /X 410; Y 81 Pixel/);
   const handle = await anchor.boundingBox(); expect(handle).not.toBeNull();
   await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2); await page.mouse.down();
-  await page.mouse.move(handle.x + handle.width / 2 + 24, handle.y + handle.height / 2 + 12); await page.mouse.up();
-  await expect(anchor).toHaveAttribute("aria-label", /Y 93 Pixel/);
+  await expect(anchor).toHaveAttribute("data-shape-group-dragging", "");
+  await page.mouse.move(handle.x + handle.width / 2 + 24, handle.y + handle.height / 2 + 12);
+  await expect(anchor).toHaveAttribute("aria-label", /Y 93 Pixel/); await page.mouse.up();
+  await expect(anchor).not.toHaveAttribute("data-shape-group-dragging", "");
 
   await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-duplicate").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(2);
