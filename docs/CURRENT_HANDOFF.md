@@ -21,7 +21,13 @@ healthy on port 42880 and the live review is available at
 
 Only existing bounded logical positions enter immutable Office JSON. The change adds no migration, endpoint,
 dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX engine or
-production admission. Full repository quality and final documentation-contract evidence follow in this closure pass.
+production admission.
+
+The complete repository quality gate passed on documentation commit `b7b3f0fa`: Ruff passed, all 891 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality or Work-E2E runner remains, and regular plus
+review APIs both return `ok`.
 
 Roadmap 518 through 524 / PLANS 379 through 385 are complete under ADR-0161. Native Office can align selected
 positioned root shapes and complete groups to their minimum, rounded midpoint or maximum horizontal or vertical
