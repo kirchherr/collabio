@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–356 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 356 / PLANS 217 native table reordering
+Status: Roadmap 252–517 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 517 / PLANS 378 native shape multi-selection
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0137; current table reordering: `ARCHITECTURE_DECISIONS/ADR-0137-native-office-table-reordering.md`
+Decisions: ADR-0079 through ADR-0160; current multi-selection: `ARCHITECTURE_DECISIONS/ADR-0160-bounded-native-office-shape-multi-selection.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -100,6 +100,22 @@ left/middle/right. An optional 160 through 2400 pixel extent derives one determi
 member bounds while retaining the existing gap as a minimum. Editor and semantic print/PDF use the same layout
 function, including compact-row fallback and uniform or per-edge connections. Browser and server reject arbitrary
 values, CSS and non-integer extents; existing documents remain byte-compatible.
+
+Roadmap 511 through 517 adds bounded transient root-object multi-selection under
+[ADR-0160](../../ARCHITECTURE_DECISIONS/ADR-0160-bounded-native-office-shape-multi-selection.md).
+Authors can select up to 20 standalone shapes or complete shape groups with an explicit mouse/touch mode,
+Ctrl/Cmd-click or Shift range selection. Stable IDs keep markers attached across editor DOM updates, while document,
+version and session changes clear all transient selection state.
+
+Two or more selected roots can be duplicated or removed as one validated undo unit. Copies receive fresh group and
+member IDs and positioned roots use the existing bounded visible offset. Two through eight adjacent standalone
+normal-flow shapes can become one canonical row group; wrapped or positioned shapes, existing groups, intervening
+blocks and nesting remain rejected. Existing shape and group limits are checked before dispatch.
+
+Only resulting established shape/group nodes enter the immutable Office JSON. Confirmed CAS save, predecessor
+history, reload, semantic print/PDF and independent reuse retain those nodes, while selection markers and anchors are
+never persisted. The change adds no schema migration, endpoint, dependency, external request, provider, worker,
+recovery store or engine admission.
 
 The responsive group dialog exposes layer and coordinates. A focusable direct anchor moves the complete group by
 pointer/touch, one-pixel arrows, ten-pixel Shift steps or Home reset. Live movement changes only editor-owned DOM

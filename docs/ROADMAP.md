@@ -2814,7 +2814,32 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie CSS-Geometrie,
      Mehrfachauswahl, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 510 / PLANS 224 bis 371 sind unter ADR-0139 bis ADR-0159 implementiert
+511. [x] Transiente native Mehrfachauswahl fuer bis zu 20 eigenstaendige Formen und ganze Formgruppen auf der
+     Dokumentwurzel unter ADR-0160 eingefuehrt. Stabile Objekt-IDs halten die Auswahl ueber DOM-Neuaufbau fest;
+     Gruppenmitglieder waehlen immer ihre besitzende Gruppe.
+
+512. [x] Expliziten Maus-/Touch-Auswahlmodus sowie Strg-/Cmd-Klick, Umschalt-Bereichsauswahl, sichtbare Markierungen,
+     Live-Status und Escape zum Aufheben umgesetzt. Dokument-, Fassungs- und Sitzungswechsel verwerfen die Auswahl.
+
+513. [x] Zwei oder mehr ausgewaehlte Formen und Gruppen atomar duplizierbar gemacht. Jede Kopie erhaelt frische
+     Gruppen- und Mitglieds-IDs, frei positionierte Objekte einen begrenzten sichtbaren Versatz und der gesamte
+     Vorgang genau einen Rueckgaengig-Schritt; Dokument- und Gruppenlimits werden vorher geprueft.
+
+514. [x] Zwei oder mehr ausgewaehlte Wurzelobjekte atomar aus dem Entwurf entfernbar gemacht, mit genau einem
+     Rueckgaengig-Schritt und ohne Speicherung vor dem bestehenden bestaetigten CAS-Save.
+
+515. [x] Zwei bis acht benachbarte eigenstaendige Formen im normalen Textfluss aus der Mehrfachauswahl atomar
+     gruppierbar gemacht. Positionierte oder umflossene Formen, bestehende Gruppen, Zwischenbloecke und
+     Verschachtelungen bleiben abgewiesen.
+
+516. [x] Resultierende Formen und Gruppen durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion,
+     Reload, semantischen Druck und unabhaengige Wiederverwendung erhalten. Die Auswahl selbst bleibt ungespeichert.
+
+517. [x] Vollstaendigen Mehrfachauswahl-Lebenszyklus unter ADR-0160 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, verschachtelte Gruppen, persistierte UI-Auswahl oder
+     DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 517 / PLANS 224 bis 378 sind unter ADR-0139 bis ADR-0160 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

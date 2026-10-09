@@ -2,6 +2,24 @@
 
 Updated: 2026-10-09
 
+Roadmap 511 through 517 / PLANS 372 through 378 are complete under ADR-0160. Native Office now supports transient
+multi-selection of up to 20 root-level standalone shapes and complete shape groups. Authors can use an explicit
+mouse/touch mode, Ctrl/Cmd-click and Shift range selection; stable object IDs preserve the selection across editor
+DOM updates, while document/session changes and reload clear it.
+
+Two or more selected roots can be duplicated or removed atomically in one undo unit. Copies receive fresh group and
+member IDs, and positioned roots retain the existing bounded 25/24 offset. Two through eight adjacent standalone
+normal-flow shapes can be grouped atomically; positioned or wrapped shapes, existing groups, intervening blocks and
+nesting remain rejected. Existing limits of 100 shapes, 20 groups and eight members are checked before dispatch.
+
+The focused model check passed and the exact responsive workflow passed 2/2 across desktop and mobile after the
+review API was rebuilt with the new Office bundle. It covers explicit and modifier selection, visible markers,
+atomic duplicate/group/remove, isolated undo/redo, confirmed CAS save, immutable predecessor history, semantic
+print, reload clearing and independent reuse. Product and focused-test commits through `ba6b7d21` are published and
+synchronized to `dev001`; the review API is healthy on port 42880. Only resulting existing shape/group JSON is
+persisted. No migration, endpoint, dependency, external request, provider, worker, ordinary tenant, indexing, AI,
+DOCX engine or production admission changed.
+
 Roadmap 504 through 510 / PLANS 365 through 371 are complete under ADR-0159. Native Office shape groups now support
 bounded cross-axis alignment and equal distribution across an optional 160 through 2400 pixel extent. Canonical start
 alignment remains omitted; center/end map rows to top/middle/bottom and stacks to left/middle/right. The existing gap
