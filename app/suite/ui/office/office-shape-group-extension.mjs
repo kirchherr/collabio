@@ -116,6 +116,9 @@ export function officeShapeGroupExtension() {
           startDrag(event, event.pointerId);
           if (drag?.id === event.pointerId) anchor.setPointerCapture(event.pointerId);
         });
+        anchor.addEventListener("pointermove", move);
+        anchor.addEventListener("pointerup", finish);
+        anchor.addEventListener("pointercancel", cancel);
         anchor.addEventListener("mousedown", (event) => startDrag(event));
         anchor.addEventListener("keydown", (event) => {
           if (event.key === "Home" && node.attrs.position != null) {
