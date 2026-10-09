@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–552 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 552 / PLANS 413 native shape multi-object rotation
+Status: Roadmap 252–566 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 566 / PLANS 427 native shape multi-object appearance
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0165; current movement: `ARCHITECTURE_DECISIONS/ADR-0165-bounded-native-office-shape-multi-object-rotation.md`
+Decisions: ADR-0079 through ADR-0167; current movement: `ARCHITECTURE_DECISIONS/ADR-0167-bounded-native-office-shape-multi-object-appearance.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -100,6 +100,25 @@ left/middle/right. An optional 160 through 2400 pixel extent derives one determi
 member bounds while retaining the existing gap as a minimum. Editor and semantic print/PDF use the same layout
 function, including compact-row fallback and uniform or per-edge connections. Browser and server reject arbitrary
 values, CSS and non-integer extents; existing documents remain byte-compatible.
+
+Roadmap 560 through 566 adds bounded common shape appearance under
+[ADR-0167](../../ARCHITECTURE_DECISIONS/ADR-0167-bounded-native-office-shape-multi-object-appearance.md).
+Two through twenty selected root standalone shapes or complete shape groups can receive one common fill, stroke,
+zero-through-eight stroke width, 10-through-72 font size, automatic or established text color, established text style
+and left/center/right alignment. Positioned and normal-flow anchors remain unchanged. Null leaves a field untouched,
+mixed values remain explicit, and canonical defaults are omitted.
+
+The accessible seven-field dialog previews only editor-owned DOM. Invalid input restores the source and disables
+application. Cancel, Escape, close, document/session changes, read-only state and stale selection restore all source
+attributes without history. Apply rebuilds and validates every standalone root and every member of a complete group,
+then writes exactly one transaction and undo unit while preserving IDs, group structure, order and geometry.
+
+Direct mouse selection now runs on capture-phase `mousedown` before ProseMirror can retarget or rerender the clicked
+shape. Touch and pen retain `pointerdown`; active drag, resize and rotate handlers still win. Confirmed CAS save,
+immutable predecessor history, undo/redo, reload, semantic print/PDF and independent reuse preserve only established
+canonical appearance. The complete native-shape model and responsive matrix passes 37/37. This adds no migration,
+endpoint, dependency, external request, provider, worker, recovery store, arbitrary color/CSS/font value, physical
+page anchor, nested group or DOCX DrawingML admission.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).

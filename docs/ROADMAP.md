@@ -3000,7 +3000,35 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Transformations-/CSS-Werte, physische
      Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 559 / PLANS 224 bis 420 sind unter ADR-0139 bis ADR-0166 implementiert
+560. [x] Einen begrenzten gemeinsamen Darstellungsinspektor fuer zwei bis zwanzig ausgewaehlte Wurzelformen oder
+     vollstaendige Formgruppen unter ADR-0167 umgesetzt. Positionierte und normal fliessende Formen bleiben in ihrer
+     bestehenden Verankerung; gemischte, unvollstaendige oder verschachtelte Gruppen werden abgewiesen.
+
+561. [x] Gemeinsame Fuellung, Rahmenfarbe und ganzzahlige Rahmenbreite null bis acht auf Einzelobjekte und jedes
+     Mitglied vollstaendiger Gruppen angewendet. `null` bedeutet unveraendert; ausschliesslich die etablierten
+     Farbwerte gelangen in das kanonische Dokumentmodell.
+
+562. [x] Gemeinsame Schriftgroesse 10 bis 72, automatische oder etablierte Textfarbe, normal/fett/kursiv/
+     fett-kursiv sowie Links-/Mitte-/Rechtsausrichtung auf alle betroffenen Formen angewendet. Standardwerte werden
+     kanonisch ausgelassen, freie Fonts, CSS- und Stilzeichenketten bleiben ausgeschlossen.
+
+563. [x] Einen zugaenglichen responsiven Sieben-Feld-Dialog mit gemeinsamen und gemischten Ausgangswerten,
+     DOM-exklusiver Live-Vorschau, strikter Validierung und atomarem Anwenden bereitgestellt. Abbrechen, Escape,
+     Dokument-/Sitzungswechsel, Schreibschutz und veraltete Auswahl stellen die Quelle ohne Historie wieder her.
+
+564. [x] Direkte Maus-, Touch- und Stiftauswahl gegen Editor-Retargeting gehaertet: Mausauswahl erfolgt vor der
+     ProseMirror-Verarbeitung auf `mousedown`, Touch/Stift auf `pointerdown`; Ziehen, Skalieren und Drehen behalten
+     Vorrang. Ctrl/Cmd- und Umschalt-Auswahl bleiben exakt und erzeugen keine Dokumenttransaktion.
+
+565. [x] Gemeinsame Darstellung durch einen Rueckgaengig-Schritt, Redo, bestaetigten CAS-Save, immutable
+     Vorgaengerversion, Reload, semantischen Druck und unabhaengige Wiederverwendung erhalten. Modell-, echte
+     Mausauswahl- und responsive Desktop-/Mobile-Vertraege sowie die komplette 37-Faelle-Formmatrix bestanden.
+
+566. [x] Vollstaendigen gemeinsamen Darstellungslebenszyklus unter ADR-0167 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Farben/CSS-/Schriftwerte, physische
+     Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 566 / PLANS 224 bis 427 sind unter ADR-0139 bis ADR-0167 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

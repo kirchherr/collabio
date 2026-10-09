@@ -2,6 +2,37 @@
 
 Updated: 2026-10-09
 
+Roadmap 560 through 566 / PLANS 421 through 427 are complete under ADR-0167. Two through twenty selected root
+standalone shapes or complete shape groups can now receive one common bounded appearance in a single accessible
+inspector and one undo unit. Fill, stroke, stroke width, font size, text color, text style and alignment use only the
+established canonical values; null leaves a dimension unchanged, mixed values remain visible and defaults are
+canonically omitted. Positioned and normal-flow anchors, IDs, group membership, order and geometry remain intact.
+
+The responsive seven-field dialog previews every affected standalone shape and group member in editor-owned DOM.
+Invalid values restore the source and disable application. Close, Cancel, Escape, document/session changes,
+read-only state and stale selection restore every source attribute without history. Apply rebuilds and validates the
+complete selection before one transaction. Undo/redo, confirmed CAS save, immutable predecessor history, reload,
+semantic print and independent reuse preserve the result while selection, dialog and preview remain transient.
+
+Live review exposed and closed a real pointer-routing defect: ProseMirror could retarget a visible positioned-shape
+click before the click handler ran. Capture-phase `mousedown` now selects mouse targets exactly once before editor
+processing, while touch/pen use `pointerdown`; drag, resize and rotate handlers retain priority. Actual visible anchor
+clicks now advance from one to two selected objects. The focused responsive workflow passed desktop and mobile 2/2,
+the focused selection contract passed 2/2 and the final complete native-shape matrix passed 37/37 in 4.5 minutes.
+Product commit `15e1c9da` is active in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-appearance`; its seven common appearance values and DOM-only
+preview passed visual review without saving a new content version.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+color/CSS/font value, physical page geometry, nested group, DOCX engine or production admission. Final repository
+quality passed with Ruff, 896 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known
+Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts passed. The
+exact `collabio-postgres-test-1` container and all exact local/remote transfer files were removed; no transient
+quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 553 through 559 / PLANS 414 through 420 are complete under ADR-0166. At least two selected positioned root
 shapes or complete groups can now combine exact relative X/Y movement, independent or aspect-locked scaling,
 whole-degree relative rotation and an optional common front/behind-text layer in one accessible inspector and one

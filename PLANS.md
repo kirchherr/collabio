@@ -1201,12 +1201,39 @@ URL to `v=2` so long-lived sessions receive the accepted layout.
 external request, provider, worker, recovery store, arbitrary transform/CSS values, physical page anchor, nested
 group or DOCX DrawingML admission.
 
+421. [x] Add a bounded common appearance inspector for two through twenty selected root shapes or complete shape
+groups under ADR-0167, retaining each established positioned or normal-flow anchor and rejecting mixed, incomplete
+or nested groups.
+
+422. [x] Apply common fill, stroke and integer zero-through-eight stroke width to standalone roots and every member
+of complete groups. Treat null as unchanged and admit only established canonical color values.
+
+423. [x] Apply common 10-through-72 font size, automatic or established text color, normal/bold/italic/bold-italic
+style and left/center/right alignment to every affected shape, canonically omitting defaults and rejecting arbitrary
+fonts, CSS and style strings.
+
+424. [x] Provide an accessible responsive seven-field dialog with common/mixed source values, DOM-only live preview,
+strict validation and atomic apply. Restore the complete source without history on Cancel, Escape, document/session
+change, read-only state or stale selection.
+
+425. [x] Harden direct mouse, touch and pen selection against editor retargeting by selecting mouse targets before
+ProseMirror on `mousedown` and touch/pen targets on `pointerdown`, while preserving drag, resize and rotate priority
+plus exact Ctrl/Cmd and Shift selection behavior.
+
+426. [x] Preserve common appearance through one undo unit, redo, confirmed CAS save, immutable predecessor history,
+reload, semantic print and independent reuse, with model, real-mouse and responsive desktop/mobile coverage plus the
+complete 37-case native-shape matrix.
+
+427. [x] Close the common appearance lifecycle under ADR-0167 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, arbitrary colors/CSS/font values, physical page anchor, nested group or
+DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 559 / PLANS 420. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation and the exact numeric transform inspector with stable IDs, retained group structure, one-step history and no implicit positioning. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with a bounded multi-object appearance inspector for established shape fill, stroke and typography values as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 566 / PLANS 427. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector and the bounded common appearance inspector with stable IDs, retained group structure, one-step history and no implicit positioning. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded multi-object copy/paste of established shape appearance as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
