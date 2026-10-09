@@ -4,7 +4,8 @@ import { OFFICE_SHAPE_LIMIT, officeShapeAttributes } from "./office-shapes.mjs";
 import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiSelection } from "./office-shape-multi-selection.mjs";
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiSelection,
+  officeShapeMultiTranslate } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
   const bytes = new Uint8Array(12); crypto.getRandomValues(bytes);
@@ -36,7 +37,7 @@ function groupCount(doc) {
 
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
-  let mode = false, anchorId = null, session = null, bound = null;
+  let mode = false, anchorId = null, session = null, bound = null, drag = null, suppressedClick = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -44,11 +45,22 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (editor) editor.view.dom.querySelectorAll("[data-office-multi-selected]").forEach((element) => {
       element.removeAttribute("data-office-multi-selected"); element.removeAttribute("aria-selected");
     });
+    if (editor) editor.view.dom.querySelectorAll("[data-office-multi-anchor-label]").forEach((element) => {
+      element.setAttribute("aria-label", element.dataset.officeMultiAnchorLabel);
+      delete element.dataset.officeMultiAnchorLabel;
+    });
     for (const entry of selectedEntries()) {
       const selector = entry.type === "shapeGroup" ? `.office-shape-group[data-shape-group="${entry.id}"]` :
         `.office-shape-node:has(>.office-shape[data-office-shape="${entry.id}"])`;
       const element = editor?.view.dom.querySelector(selector);
-      if (element) { element.toggleAttribute("data-office-multi-selected", true); element.setAttribute("aria-selected", "true"); }
+      if (element) {
+        element.toggleAttribute("data-office-multi-selected", true); element.setAttribute("aria-selected", "true");
+        const handle = element.querySelector(":scope > .office-shape-anchor, :scope > .office-shape-group-anchor");
+        if (handle && selectedIds.size >= 2) {
+          handle.dataset.officeMultiAnchorLabel = handle.getAttribute("aria-label") || "Objektanker";
+          handle.setAttribute("aria-label", `${selectedIds.size} ausgewählte Objekte gemeinsam ziehen; Maus oder Touch`);
+        }
+      }
     }
     const count = selectedIds.size;
     $("shape-multi-toggle").setAttribute("aria-pressed", String(mode));
@@ -85,8 +97,90 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     const node = target.closest?.(".office-shape-node"), shape = node?.querySelector(":scope > .office-shape[data-office-shape]");
     return node?.parentElement === state.editor?.view.dom ? shape?.dataset.officeShape ?? null : null;
   };
+  const rootElement = (entry) => entry.type === "shapeGroup" ?
+    state.editor?.view.dom.querySelector(`.office-shape-group[data-shape-group="${entry.id}"]`) :
+    state.editor?.view.dom.querySelector(`.office-shape-node:has(>.office-shape[data-office-shape="${entry.id}"])`);
+  const previewPosition = (entry, position, dragging = true) => {
+    const root = rootElement(entry); if (!root) return;
+    root.toggleAttribute("data-office-multi-dragging", dragging);
+    if (entry.type === "shapeGroup") {
+      root.style.setProperty("--shape-group-position-x", `${position.x / 10}%`);
+      root.style.setProperty("--shape-group-position-shift", `${-position.x / 10}%`);
+      root.style.setProperty("--shape-group-position-y", `${position.y}px`);
+      return;
+    }
+    const targets = root.querySelectorAll(":scope > .office-shape, :scope > .office-shape-anchor, :scope > .office-shape-resize, :scope > .office-shape-rotate");
+    for (const element of targets) {
+      element.style.setProperty("--office-shape-position-x", `${position.x / 10}%`);
+      element.style.setProperty("--office-shape-position-shift", `${-position.x / 10}%`);
+      element.style.setProperty("--office-shape-position-y", `${position.y}px`);
+    }
+  };
+  const restorePreview = (entriesToRestore) => {
+    for (const entry of entriesToRestore) previewPosition(entry, entry.node.attrs.position, false);
+  };
+  const sameDragSource = (active) => {
+    const current = selectedEntries();
+    return active.session === state.session && active.doc === state.editor?.state.doc && allowed() &&
+      current.length === active.entries.length && current.every((entry, index) => entry.id === active.entries[index].id &&
+        entry.node.attrs.position.x === active.entries[index].node.attrs.position.x &&
+        entry.node.attrs.position.y === active.entries[index].node.attrs.position.y &&
+        entry.node.attrs.position.layer === active.entries[index].node.attrs.position.layer);
+  };
+  const finishDrag = (event, cancel = false) => {
+    if (!drag || (event?.pointerId != null && drag.pointerId !== event.pointerId)) return;
+    const active = drag; drag = null;
+    try { if (bound?.hasPointerCapture?.(active.pointerId)) bound.releasePointerCapture(active.pointerId); } catch { /* capture may be synthetic */ }
+    event?.preventDefault?.(); event?.stopImmediatePropagation?.();
+    suppressedClick = { id: active.sourceId, until: performance.now() + 500 };
+    const changed = active.changes.some((change, index) => change.position.x !== active.entries[index].node.attrs.position.x ||
+      change.position.y !== active.entries[index].node.attrs.position.y);
+    if (cancel || !changed || !sameDragSource(active)) {
+      restorePreview(active.entries); paint();
+      if (!cancel && changed) notice("Die gemeinsame Bewegung wurde wegen eines geänderten Dokumentzustands verworfen.", true);
+      return;
+    }
+    for (const entry of active.entries) rootElement(entry)?.removeAttribute("data-office-multi-dragging");
+    const dx = active.changes[0].position.x - active.entries[0].node.attrs.position.x;
+    const dy = active.changes[0].position.y - active.entries[0].node.attrs.position.y;
+    commitArrangement(active.changes,
+      `${active.entries.length} positionierte Objekte atomar um X ${dx} und Y ${dy} gezogen. Rückgängig ist möglich.`);
+  };
+  const cancelDrag = (event) => finishDrag(event, true);
+  const startDrag = (event) => {
+    const handle = event.target.closest?.(".office-shape-anchor, .office-shape-group-anchor");
+    const sourceId = targetId(event.target), current = selectedEntries();
+    if (!handle || !sourceId || !selectedIds.has(sourceId) || event.button !== 0 || event.isPrimary === false ||
+        event.ctrlKey || event.metaKey || event.altKey || drag || !allowed() || document.querySelector("dialog[open]") ||
+        !officeShapeMultiCanArrange(current)) return;
+    const bounds = state.editor.view.dom.getBoundingClientRect();
+    drag = { pointerId: event.pointerId, sourceId, clientX: event.clientX, clientY: event.clientY,
+      width: Math.max(1, bounds.width), entries: current, changes: current.map((entry) => ({ id: entry.id,
+        position: entry.node.attrs.position })), session: state.session, doc: state.editor.state.doc };
+    for (const entry of current) rootElement(entry)?.toggleAttribute("data-office-multi-dragging", true);
+    try { bound?.setPointerCapture?.(event.pointerId); } catch { /* synthetic pointer events cannot capture */ }
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  const moveDrag = (event) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    try {
+      const deltaX = Math.round((event.clientX - drag.clientX) / drag.width * 1000);
+      const deltaY = Math.round(event.clientY - drag.clientY);
+      drag.changes = officeShapeMultiTranslate(drag.entries, deltaX, deltaY);
+      const byId = new Map(drag.changes.map((change) => [change.id, change.position]));
+      for (const entry of drag.entries) previewPosition(entry, byId.get(entry.id));
+      const actualX = drag.changes[0].position.x - drag.entries[0].node.attrs.position.x;
+      const actualY = drag.changes[0].position.y - drag.entries[0].node.attrs.position.y;
+      $("shape-multi-status").textContent = `${drag.entries.length} Objekte · X ${actualX >= 0 ? "+" : ""}${actualX} · Y ${actualY >= 0 ? "+" : ""}${actualY}`;
+    } catch { finishDrag(event, true); }
+  };
   const selectTarget = (event) => {
     const id = targetId(event.target), additive = event.ctrlKey || event.metaKey, ranged = event.shiftKey;
+    if (id && suppressedClick?.id === id && performance.now() <= suppressedClick.until) {
+      suppressedClick = null; event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    suppressedClick = null;
     if (!id) { if (!additive && !ranged && !mode && selectedIds.size) clear(); return; }
     if (!mode && !additive && !ranged) { if (selectedIds.size) clear(); return; }
     event.preventDefault(); event.stopImmediatePropagation();
@@ -102,8 +196,18 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   const bind = () => {
     const next = state.editor?.view.dom ?? null;
     if (bound === next) return;
-    bound?.removeEventListener("click", selectTarget, true); bound = next;
+    if (drag) finishDrag(null, true);
+    bound?.removeEventListener("click", selectTarget, true);
+    bound?.removeEventListener("pointerdown", startDrag, true);
+    bound?.removeEventListener("pointermove", moveDrag, true);
+    bound?.removeEventListener("pointerup", finishDrag, true);
+    bound?.removeEventListener("pointercancel", cancelDrag, true);
+    bound = next;
     bound?.addEventListener("click", selectTarget, true);
+    bound?.addEventListener("pointerdown", startDrag, true);
+    bound?.addEventListener("pointermove", moveDrag, true);
+    bound?.addEventListener("pointerup", finishDrag, true);
+    bound?.addEventListener("pointercancel", cancelDrag, true);
   };
   const clone = (editor, entry) => {
     if (entry.type === "shape") return editor.schema.nodes.shape.create(officeShapeAttributes({ ...entry.node.attrs,
@@ -198,6 +302,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     button.addEventListener("click", () => nudge(button.dataset.axis, Number(button.dataset.amount)));
   }
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && drag) { event.preventDefault(); finishDrag(null, true); return; }
     if (event.key === "Escape" && selectedIds.size && !document.querySelector("dialog[open]")) { event.preventDefault(); clear(); return; }
     const arrow = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
       ArrowUp: ["vertical", -1], ArrowDown: ["vertical", 1] }[event.key];
@@ -212,6 +317,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   });
   const update = () => {
     bind();
+    if (drag && (drag.session !== state.session || !allowed())) finishDrag(null, true);
     if (session !== state.session) { session = state.session; mode = false; selectedIds.clear(); anchorId = null; }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);

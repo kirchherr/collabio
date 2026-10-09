@@ -556,8 +556,8 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-selection-${testInfo.project.name}.png`, fullPage: true });
 });
 
-test("Office positioned root objects align distribute layer and nudge atomically", async ({ page }, testInfo) => {
-  test.setTimeout(90_000);
+test("Office positioned root objects align distribute layer nudge and drag atomically", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Native positioned object arrangement proof", "Anchor paragraph");
   const editor = officeEditor(page), objectId = baseline.document.object_id;
@@ -630,10 +630,43 @@ test("Office positioned root objects align distribute layer and nudge atomically
     .toEqual(["-290px", "310px", "910px"]);
   await editor.press("Control+z"); await editor.press("Control+Shift+z");
 
+  const dragAnchor = shapes.nth(1).locator(".office-shape-anchor");
+  await expect(dragAnchor).toHaveAttribute("aria-label", "3 ausgewählte Objekte gemeinsam ziehen; Maus oder Touch");
+  const editorWidth = await editor.evaluate((element) => element.getBoundingClientRect().width);
+  const pointerType = testInfo.project.name.includes("mobile") ? "touch" : "mouse";
+  const drag = async (pointerId, endType) => {
+    await dragAnchor.dispatchEvent("pointerdown", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: 240, clientY: 240 });
+    await editor.dispatchEvent("pointermove", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: 240 + editorWidth * 0.08, clientY: 280 });
+    await expect(editor.locator("[data-office-multi-dragging]")).toHaveCount(3);
+    await expect(page.locator("#shape-multi-status")).toHaveText("3 Objekte · X +80 · Y +40");
+    await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+      entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+      .toEqual(["58.1%", "58.1%", "58.1%"]);
+    await editor.dispatchEvent(endType, { pointerId, pointerType, isPrimary: true, button: 0, buttons: 0,
+      clientX: 240 + editorWidth * 0.08, clientY: 280 });
+  };
+  await drag(41, "pointercancel");
+  await expect(editor.locator("[data-office-multi-dragging]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50.1%", "50.1%", "50.1%"]);
+  await drag(42, "pointerup");
+  await expect(editor.locator("[data-office-multi-dragging]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"))))
+    .toEqual(["-250px", "350px", "950px"]);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50.1%", "50.1%", "50.1%"]);
+  await editor.press("Control+Shift+z");
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
-  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([501, 501, 501]);
-  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-290, 310, 910]);
+  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([581, 581, 581]);
+  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-250, 350, 950]);
   expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "front", "front"]);
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
   await page.locator("#document-print").click();

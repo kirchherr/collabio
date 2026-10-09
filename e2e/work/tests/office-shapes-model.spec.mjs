@@ -4,7 +4,7 @@ import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, offic
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
-  OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
+  officeShapeMultiTranslate, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -204,6 +204,12 @@ test("Office positioned root objects align and distribute through bounded intege
     .toEqual([110, 910, 310]);
   expect(officeShapeMultiNudge(positioned, "vertical", -1).map((entry) => entry.position.y))
     .toEqual([-301, 199, 899]);
+  expect(officeShapeMultiTranslate(positioned, 75, -40).map((entry) => entry.position))
+    .toEqual([{ layer: "front", x: 175, y: -340 }, { layer: "behind", x: 975, y: 160 },
+      { layer: "front", x: 375, y: 860 }]);
+  expect(officeShapeMultiTranslate(positioned, 5000, -5000).map((entry) => entry.position))
+    .toEqual([{ layer: "front", x: 200, y: -1200 }, { layer: "behind", x: 1000, y: -700 },
+      { layer: "front", x: 400, y: 500 }]);
   const atEdge = positioned.map((entry, index) => ({ ...entry, node: { attrs: { position: {
     ...entry.node.attrs.position, x: index === 1 ? 1000 : entry.node.attrs.position.x } } } }));
   expect(officeShapeMultiNudge(atEdge, "horizontal", 10).map((entry) => entry.position.x))
@@ -214,4 +220,6 @@ test("Office positioned root objects align and distribute through bounded intege
   expect(() => officeShapeMultiDistribution(positioned.slice(0, 2), "vertical")).toThrow();
   expect(() => officeShapeMultiLayer(positioned, "middle")).toThrow();
   expect(() => officeShapeMultiNudge(positioned, "horizontal", 2)).toThrow();
+  expect(() => officeShapeMultiTranslate(positioned, 1.5, 2)).toThrow();
+  expect(() => officeShapeMultiTranslate(positioned, 1, Number.POSITIVE_INFINITY)).toThrow();
 });

@@ -75,15 +75,23 @@ export function officeShapeMultiLayer(entries, layer) {
     position: officeShapePosition({ ...entry.node.attrs.position, layer }) }));
 }
 
+export function officeShapeMultiTranslate(entries, deltaX, deltaY) {
+  if (!officeShapeMultiCanArrange(entries) || !Number.isSafeInteger(deltaX) || !Number.isSafeInteger(deltaY)) {
+    throw new Error("shape-multi-translate");
+  }
+  const xs = entries.map((entry) => entry.node.attrs.position.x);
+  const ys = entries.map((entry) => entry.node.attrs.position.y);
+  const boundedX = Math.max(-Math.min(...xs), Math.min(deltaX, 1000 - Math.max(...xs)));
+  const boundedY = Math.max(-1200 - Math.min(...ys), Math.min(deltaY, 1200 - Math.max(...ys)));
+  return entries.map((entry) => ({ id: entry.id,
+    position: officeShapePosition({ ...entry.node.attrs.position,
+      x: entry.node.attrs.position.x + boundedX, y: entry.node.attrs.position.y + boundedY }) }));
+}
+
 export function officeShapeMultiNudge(entries, axis, amount) {
   if (!officeShapeMultiCanArrange(entries) || !OFFICE_SHAPE_MULTI_NUDGE_AMOUNTS.includes(amount)) {
     throw new Error("shape-multi-nudge");
   }
-  const coordinate = arrangementCoordinate(axis), minimum = coordinate === "x" ? 0 : -1200;
-  const maximum = coordinate === "x" ? 1000 : 1200;
-  const values = entries.map((entry) => entry.node.attrs.position[coordinate]);
-  const bounded = Math.max(minimum - Math.min(...values), Math.min(amount, maximum - Math.max(...values)));
-  return entries.map((entry) => ({ id: entry.id,
-    position: officeShapePosition({ ...entry.node.attrs.position,
-      [coordinate]: entry.node.attrs.position[coordinate] + bounded }) }));
+  const coordinate = arrangementCoordinate(axis);
+  return officeShapeMultiTranslate(entries, coordinate === "x" ? amount : 0, coordinate === "y" ? amount : 0);
 }
