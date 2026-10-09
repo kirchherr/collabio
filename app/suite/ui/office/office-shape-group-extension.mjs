@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
 import { NodeSelection } from "@tiptap/pm/state";
-import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes, officeShapeGroupBounds } from "./office-shape-groups.mjs";
+import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnections } from "./office-shape-groups.mjs";
 
 export function officeShapeGroupExtension() {
   return Node.create({
@@ -9,6 +9,7 @@ export function officeShapeGroupExtension() {
     isolating: true, selectable: true, draggable: false,
     addAttributes: () => ({ id: { default: null, rendered: false }, layout: { default: null, rendered: false },
       gap: { default: null, rendered: false }, connection: { default: null, rendered: false },
+      connections: { default: null, rendered: false },
       position: { default: null, rendered: false } }),
     parseHTML: () => [], renderHTML: () => ["section", { class: "office-shape-group" }, 0],
     addNodeView() {
@@ -50,15 +51,29 @@ export function officeShapeGroupExtension() {
           dom.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(current.childCount) : "1");
           dom.style.setProperty("--shape-group-bound-width", String(bounds.width));
           setPosition(attrs.position ?? null);
+          const connections = officeShapeGroupConnections(attrs, current.childCount);
           if (attrs.connection) {
             dom.dataset.shapeGroupConnection = attrs.connection.kind;
             dom.dataset.shapeGroupConnectionColor = attrs.connection.color;
-            dom.style.setProperty("--shape-group-connection-width", `${attrs.connection.width}px`);
           } else {
             delete dom.dataset.shapeGroupConnection; delete dom.dataset.shapeGroupConnectionColor;
-            dom.style.removeProperty("--shape-group-connection-width");
           }
-          const connection = attrs.connection ? `; Verbindung ${attrs.connection.kind}, ${attrs.connection.color}, ${attrs.connection.width} Pixel` : "";
+          queueMicrotask(() => {
+            for (const [index, child] of Array.from(contentDOM.children).entries()) {
+              const value = connections[index] ?? null;
+              child.toggleAttribute("data-shape-group-connection", value != null);
+              if (value) {
+                child.dataset.shapeGroupConnection = value.kind;
+                child.dataset.shapeGroupConnectionColor = value.color;
+                child.style.setProperty("--shape-group-connection-width", `${value.width}px`);
+              } else {
+                delete child.dataset.shapeGroupConnection; delete child.dataset.shapeGroupConnectionColor;
+                child.style.removeProperty("--shape-group-connection-width");
+              }
+            }
+          });
+          const connection = attrs.connections ? `; ${attrs.connections.filter(Boolean).length} individuelle Verbindungen` : attrs.connection ?
+            `; Verbindung ${attrs.connection.kind}, ${attrs.connection.color}, ${attrs.connection.width} Pixel` : "";
           const position = attrs.position ? `; ${attrs.position.layer === "front" ? "vor" : "hinter"} Text; X ${attrs.position.x}; Y ${attrs.position.y} Pixel` : "";
           control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten${connection}${position}`);
         };

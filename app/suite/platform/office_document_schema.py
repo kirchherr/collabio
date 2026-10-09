@@ -915,10 +915,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         elif kind == "shapeGroup":
             identifier = attrs.get("id")
             connection = attrs.get("connection")
+            connections = attrs.get("connections")
             position = attrs.get("position")
             if (
                 depth != 1
-                or set(attrs) - {"id", "layout", "gap", "connection", "position"}
+                or set(attrs) - {"id", "layout", "gap", "connection", "connections", "position"}
                 or not {"id", "layout", "gap"}.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-group-[a-f0-9]{24}", identifier) is None
@@ -927,6 +928,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or type(attrs.get("gap")) is not int
                 or not 0 <= attrs["gap"] <= 48
                 or len(shape_group_ids) >= 20
+                or (connection is not None and connections is not None)
             ):
                 reject()
             if connection is not None and (
@@ -936,6 +938,23 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or connection.get("color") not in {"slate", "red", "green", "teal", "blue", "purple", "black"}
                 or type(connection.get("width")) is not int
                 or not 1 <= connection["width"] <= 8
+            ):
+                reject()
+            if connections is not None and (
+                not isinstance(connections, list)
+                or not 1 <= len(connections) <= 7
+                or any(
+                    item is not None
+                    and (
+                        not isinstance(item, dict)
+                        or set(item) != {"kind", "color", "width"}
+                        or item.get("kind") not in {"line", "arrow", "doubleArrow"}
+                        or item.get("color") not in {"slate", "red", "green", "teal", "blue", "purple", "black"}
+                        or type(item.get("width")) is not int
+                        or not 1 <= item["width"] <= 8
+                    )
+                    for item in connections
+                )
             ):
                 reject()
             if position is not None and (
@@ -1295,6 +1314,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or any(child != "shape" for child in child_types)
                 or any(child.get("attrs", {}).get("wrap") is not None for child in children)
                 or any(child.get("attrs", {}).get("position") is not None for child in children)
+                or (
+                    node.get("attrs", {}).get("connections") is not None
+                    and len(node["attrs"]["connections"]) != len(children) - 1
+                )
             ):
                 reject()
         elif kind in {"paragraph", "heading"}:

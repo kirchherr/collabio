@@ -450,6 +450,14 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         "attrs": {**group["attrs"], "connection": {"kind": "doubleArrow", "color": "purple", "width": 8}},
     }
     assert validate_office_document({"type": "doc", "content": [connected]})["content"][0] == connected
+    per_edge = {
+        **group,
+        "attrs": {
+            **group["attrs"],
+            "connections": [{"kind": "arrow", "color": "red", "width": 3}],
+        },
+    }
+    assert validate_office_document({"type": "doc", "content": [per_edge]})["content"][0] == per_edge
     for position in [
         {"layer": "front", "x": 0, "y": -1200},
         {"layer": "behind", "x": 1000, "y": 1200},
@@ -492,6 +500,21 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
             "layout": "row",
             "gap": 16,
             "connection": {"kind": "line", "color": "black", "width": 2, "path": "M0 0"},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connection": {"kind": "line", "color": "black", "width": 2},
+            "connections": [None],
+        },
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connections": []},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connections": [False]},
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "connections": [{"kind": "line", "color": "black", "width": True}],
         },
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "position": {}},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "position": []},
@@ -544,6 +567,13 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
     for members in [[shape(1)], [shape(index) for index in range(1, 10)]]:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "content": members}]})
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(
+            {
+                "type": "doc",
+                "content": [{**group, "attrs": {**group["attrs"], "connections": [None, None]}}],
+            }
+        )
     for key, value in (("wrap", {"side": "left", "gap": 16}), ("position", {"layer": "front", "x": 0, "y": 0})):
         member = shape(1)
         member["attrs"][key] = value

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupInsertMember, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -103,6 +103,27 @@ test("Office shape group connections are bounded inert and visible in comparison
   const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
     { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24) } }] };
   expect(describeOfficeBlock(block).label).toContain("Verbindung doubleArrow, purple, 8 px");
+});
+
+test("Office shape group connections can be controlled per bounded edge", () => {
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "row", gap: 24,
+    connections: [{ kind: "arrow", color: "red", width: 3 }, null, { kind: "line", color: "blue", width: 5 }] };
+  expect(officeShapeGroupConnections(group, 4)).toEqual(group.connections);
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  expect(officeShapeGroupInsertMember(group, 4, 2).connections).toEqual([
+    group.connections[0], null, null, group.connections[2],
+  ]);
+  expect(officeShapeGroupRemoveMember(group, 4, 2).connections).toEqual([group.connections[0], group.connections[2]]);
+  const block = { type: "shapeGroup", attrs: group, content: Array.from({ length: 4 }, (_, index) => ({
+    type: "shape", attrs: { ...attrs, id: `shape-${String(index + 1).repeat(24)}` },
+  })) };
+  expect(describeOfficeBlock(block).label).toContain("2 individuelle Verbindungen");
+  expect(() => officeShapeGroupConnections(group, 3)).toThrow();
+  expect(() => officeShapeGroupAttributes({ ...group, connection: group.connections[0] })).toThrow();
+  for (const connections of [[], Array(8).fill(null), [false], [{ kind: "curve", color: "red", width: 2 }],
+    [{ kind: "line", color: "red", width: 2, path: "M0 0" }]]) {
+    expect(() => officeShapeGroupAttributes({ ...group, connections })).toThrow();
+  }
 });
 
 test("Office comparison exposes shape presentation and literal text changes", () => {

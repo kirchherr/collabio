@@ -225,6 +225,58 @@ test("Office shape groups preserve ordered members history print and independent
   expect(copy.content.content.find((entry) => entry.type === "shapeGroup")).toEqual(group);
 });
 
+test("Office shape groups style each connection independently", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Per-edge shape connection proof", "Three connected process steps");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  for (const [index, label] of ["Start", "Review", "Done"].entries()) {
+    if (index === 0) await editor.locator("p").click();
+    else { await editor.locator(".office-shape").last().click(); await editor.press("ArrowRight"); }
+    await page.locator("#shape-options").click(); await page.locator("#shape-text").fill(label);
+    await page.locator("#shape-apply").click();
+  }
+  await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-previous").click();
+  await editor.locator(".office-shape-group .office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-next").click();
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Start", "Review", "Done"]);
+
+  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-connection-scope option")).toHaveText(["Alle Verbindungen", "1 → 2", "2 → 3"]);
+  await page.locator("#shape-group-connection-scope").selectOption("edge-0");
+  await page.locator("#shape-group-connection").selectOption("arrow");
+  await page.locator("#shape-group-connection-color").selectOption("red");
+  await page.locator("#shape-group-connection-width").fill("3"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-connection-scope").selectOption("edge-1");
+  await page.locator("#shape-group-connection").selectOption("line");
+  await page.locator("#shape-group-connection-color").selectOption("blue");
+  await page.locator("#shape-group-connection-width").fill("5"); await page.locator("#shape-apply").click();
+
+  const members = editor.locator(".office-shape-group .office-shape-node");
+  await expect(members.nth(0)).toHaveAttribute("data-shape-group-connection", "arrow");
+  await expect(members.nth(0)).toHaveAttribute("data-shape-group-connection-color", "red");
+  await expect(members.nth(1)).toHaveAttribute("data-shape-group-connection", "line");
+  await expect(members.nth(1)).toHaveAttribute("data-shape-group-connection-color", "blue");
+  await expect(members.nth(2)).not.toHaveAttribute("data-shape-group-connection", /.+/);
+  const saved = await saveOffice(page, { objectId });
+  const group = saved.content.content.find((entry) => entry.type === "shapeGroup");
+  expect(group.attrs.connection).toBeUndefined();
+  expect(group.attrs.connections).toEqual([
+    { kind: "arrow", color: "red", width: 3 },
+    { kind: "line", color: "blue", width: 5 },
+  ]);
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+  await page.locator("#document-print").click();
+  const printMembers = page.locator("#print-preview .office-print-shape-member");
+  await expect(printMembers.nth(0)).toHaveAttribute("data-shape-group-connection", "arrow");
+  await expect(printMembers.nth(1)).toHaveAttribute("data-shape-group-connection", "line");
+  await expect(printMembers.nth(2)).not.toHaveAttribute("data-shape-group-connection", /.+/);
+  await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-per-edge-${testInfo.project.name}.png`, fullPage: true });
+});
+
 test("Office shape groups move freely as one object with history print and offset copies", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await openOffice(page);

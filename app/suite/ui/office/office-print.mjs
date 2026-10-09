@@ -5,7 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement } from "./office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupBounds, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnections, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -121,13 +121,19 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         group.style.setProperty("--shape-group-position-shift", `${-attrs.position.x / 10}%`);
         group.style.setProperty("--shape-group-position-y", `${attrs.position.y}px`);
       }
+      const connections = officeShapeGroupConnections(attrs, children.length);
       if (attrs.connection) {
         group.dataset.shapeGroupConnection = attrs.connection.kind;
         group.dataset.shapeGroupConnectionColor = attrs.connection.color;
-        group.style.setProperty("--shape-group-connection-width", `${attrs.connection.width}px`);
       }
-      for (const child of children) {
+      for (const [index, child] of children.entries()) {
         const member = dom.createElement("div"); member.className = "office-print-shape-member";
+        const connection = connections[index] ?? null;
+        if (connection) {
+          member.dataset.shapeGroupConnection = connection.kind;
+          member.dataset.shapeGroupConnectionColor = connection.color;
+          member.style.setProperty("--shape-group-connection-width", `${connection.width}px`);
+        }
         applyOfficeShapeLayoutDOM(member, child.attrs); member.append(officeShapeElement(child.attrs, dom));
         member.firstElementChild.classList.add("office-print-shape"); group.append(member);
       }

@@ -2,7 +2,7 @@ import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
 import { applyOfficeShapeDOM, applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
-import { OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
+import { OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes, officeShapeGroupConnections, officeShapeGroupInsertMember, officeShapeGroupRemoveMember } from "./office-shape-groups.mjs";
 import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 
 export function officeShapeExtension() {
@@ -204,6 +204,27 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     return other.type.name === "shapeGroup" && other.childCount < OFFICE_SHAPE_GROUP_MEMBER_LIMIT ? other : null;
   };
   const close = (restore = false) => { if ($("shape-dialog").open) $("shape-dialog").close(); if (restore && action && current(action)) focus(state.editor); action = null; };
+  const connectionFromFields = () => $("shape-group-connection").value === "none" ? null : {
+    kind: $("shape-group-connection").value, color: $("shape-group-connection-color").value,
+    width: Number($("shape-group-connection-width").value),
+  };
+  const fillConnection = (connection) => {
+    $("shape-group-connection").value = connection?.kind ?? "none";
+    $("shape-group-connection-color").value = connection?.color ?? "slate";
+    $("shape-group-connection-width").value = String(connection?.width ?? 2);
+  };
+  const rememberConnection = () => {
+    if (!action?.groupConnectionDraft) return;
+    const value = connectionFromFields(), scope = action.groupConnectionScope;
+    if (scope === "all") action.groupConnectionDraft.all = value;
+    else if (/^edge-\d+$/.test(scope)) action.groupConnectionDraft.edges[Number(scope.slice(5))] = value;
+  };
+  const selectConnectionScope = (scope) => {
+    if (!action?.groupConnectionDraft) return;
+    action.groupConnectionScope = scope;
+    $("shape-group-connection-scope").value = scope;
+    fillConnection(scope === "all" ? action.groupConnectionDraft.all : action.groupConnectionDraft.edges[Number(scope.slice(5))]);
+  };
   const fill = (attrs) => {
     $("shape-kind").value = attrs.kind; $("shape-width").value = String(attrs.width); $("shape-height").value = String(attrs.height);
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
@@ -216,23 +237,32 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
     $("shape-group-layout").value = action?.shapeContext?.group?.attrs.layout ?? "row";
     $("shape-group-gap").value = String(action?.shapeContext?.group?.attrs.gap ?? 16);
-    $("shape-group-connection").value = action?.shapeContext?.group?.attrs.connection?.kind ?? "none";
-    $("shape-group-connection-color").value = action?.shapeContext?.group?.attrs.connection?.color ?? "slate";
-    $("shape-group-connection-width").value = String(action?.shapeContext?.group?.attrs.connection?.width ?? 2);
+    const group = action?.shapeContext?.group, scope = $("shape-group-connection-scope");
+    scope.replaceChildren(Object.assign(document.createElement("option"), { value: "all", textContent: "Alle Verbindungen" }));
+    if (group) for (let index = 0; index < group.childCount - 1; index += 1) {
+      scope.append(Object.assign(document.createElement("option"), { value: `edge-${index}`, textContent: `${index + 1} → ${index + 2}` }));
+    }
+    action.groupConnectionDraft = { all: group?.attrs.connection ?? null,
+      edges: group ? officeShapeGroupConnections(group.attrs, group.childCount) : [null] };
+    const selectedEdge = group?.attrs.connections ? Math.min(action.shapeContext.shapeIndex, group.childCount - 2) : null;
+    selectConnectionScope(selectedEdge == null ? "all" : `edge-${selectedEdge}`);
     $("shape-group-position-layer").value = action?.shapeContext?.group?.attrs.position?.layer ?? "flow";
     $("shape-group-position-x").value = String(action?.shapeContext?.group?.attrs.position?.x ?? 0);
     $("shape-group-position-y").value = String(action?.shapeContext?.group?.attrs.position?.y ?? 0);
   };
   const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
   const shapeGroupId = () => `shape-group-${shapeId().slice(6)}`;
-  const readGroup = (id) => officeShapeGroupAttributes({ id, layout: $("shape-group-layout").value,
-    gap: Number($("shape-group-gap").value), connection: $("shape-group-connection").value === "none" ? null : {
-      kind: $("shape-group-connection").value, color: $("shape-group-connection-color").value,
-      width: Number($("shape-group-connection-width").value),
-    }, position: $("shape-group-position-layer").value === "flow" ? null : {
+  const readGroup = (id) => {
+    rememberConnection();
+    const connectionAttrs = action.groupConnectionScope === "all" ? { connection: action.groupConnectionDraft.all } :
+      { connections: action.groupConnectionDraft.edges };
+    return officeShapeGroupAttributes({ id, layout: $("shape-group-layout").value,
+      gap: Number($("shape-group-gap").value), ...connectionAttrs,
+      position: $("shape-group-position-layer").value === "flow" ? null : {
       layer: $("shape-group-position-layer").value,
       x: Number($("shape-group-position-x").value), y: Number($("shape-group-position-y").value),
     } });
+  };
   const read = () => officeShapeAttributes({ id: action?.attrs?.id || action?.id || (action.id = shapeId()),
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
     fill: $("shape-fill").value, stroke: $("shape-stroke").value, strokeWidth: Number($("shape-stroke-width").value),
@@ -290,12 +320,16 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-duplicate").disabled = !grouped || groupCount(action.document) >= OFFICE_SHAPE_GROUP_LIMIT ||
       count() + (action?.shapeContext?.group?.childCount ?? 0) > OFFICE_SHAPE_LIMIT;
     $("shape-duplicate").disabled = count() >= OFFICE_SHAPE_LIMIT || (grouped && action.shapeContext.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT);
+    $("shape-group-connection-scope").disabled = !grouped;
     const connected = $("shape-group-connection").value !== "none";
     $("shape-group-connection-color").disabled = !connected; $("shape-group-connection-width").disabled = !connected; };
   $("shape-options").addEventListener("click", open);
   $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
   $("shape-wrap").addEventListener("input", updateLayoutControls);
   $("shape-group-connection").addEventListener("input", updateLayoutControls);
+  $("shape-group-connection-scope").addEventListener("input", () => {
+    rememberConnection(); selectConnectionScope($("shape-group-connection-scope").value); updateLayoutControls();
+  });
   $("shape-group-position-layer").addEventListener("input", updateLayoutControls);
   $("shape-form").addEventListener("input", preview);
   $("shape-form").addEventListener("submit", (event) => {
@@ -332,7 +366,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     if (context.grouped) {
       const members = [...context.group.content.content]; members.splice(context.shapeIndex + 1, 0, duplicate);
       tr = tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize,
-        editor.schema.nodes.shapeGroup.create(context.group.attrs, members));
+        editor.schema.nodes.shapeGroup.create(officeShapeGroupInsertMember(context.group.attrs, context.group.childCount, context.shapeIndex + 1), members));
       const offset = 1 + members.slice(0, context.shapeIndex + 1).reduce((total, node) => total + node.nodeSize, 0);
       tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + offset));
     } else {
@@ -356,7 +390,10 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
         tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, remaining);
         tr.setSelection(NodeSelection.create(tr.doc, context.groupPos));
       } else {
-        tr.delete(context.shapePos, context.shapePos + context.shape.nodeSize);
+        const remaining = [...members]; remaining.splice(context.shapeIndex, 1);
+        const groupAttrs = officeShapeGroupRemoveMember(context.group.attrs, members.length, context.shapeIndex);
+        tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize,
+          editor.schema.nodes.shapeGroup.create(groupAttrs, remaining));
         tr.setSelection(NodeSelection.create(tr.doc, context.groupPos + 1));
       }
     } else tr.delete(action.shapeSelection.from, action.shapeSelection.to);
@@ -393,7 +430,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
         const otherPos = direction === "previous" ? context.groupPos - other.nodeSize : context.groupPos + context.group.nodeSize;
         const members = direction === "previous" ? [other, ...context.group.content.content] : [...context.group.content.content, other];
         const start = Math.min(context.groupPos, otherPos), end = Math.max(context.groupPos + context.group.nodeSize, otherPos + other.nodeSize);
-        tr.replaceWith(start, end, editor.schema.nodes.shapeGroup.create(context.group.attrs, members));
+        const insertionIndex = direction === "previous" ? 0 : context.group.childCount;
+        const groupAttrs = officeShapeGroupInsertMember(context.group.attrs, context.group.childCount, insertionIndex);
+        tr.replaceWith(start, end, editor.schema.nodes.shapeGroup.create(groupAttrs, members));
         const selectedIndex = context.shapeIndex + (direction === "previous" ? 1 : 0);
         const offset = 1 + members.slice(0, selectedIndex).reduce((total, node) => total + node.nodeSize, 0);
         tr.setSelection(NodeSelection.create(tr.doc, start + offset));
@@ -402,7 +441,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
         const start = Math.min(context.shapePos, otherPos), end = Math.max(context.shapePos + context.shape.nodeSize, otherPos + other.nodeSize);
         let attrs, members, selectedIndex;
         if (other.type.name === "shapeGroup") {
-          attrs = other.attrs; members = direction === "previous" ? [...other.content.content, context.shape] : [context.shape, ...other.content.content];
+          const insertionIndex = direction === "previous" ? other.childCount : 0;
+          attrs = officeShapeGroupInsertMember(other.attrs, other.childCount, insertionIndex);
+          members = direction === "previous" ? [...other.content.content, context.shape] : [context.shape, ...other.content.content];
           selectedIndex = direction === "previous" ? members.length - 1 : 0;
         } else {
           attrs = readGroup(shapeGroupId());
