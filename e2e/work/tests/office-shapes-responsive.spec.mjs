@@ -272,6 +272,7 @@ test("Office shape groups move freely as one object with history print and offse
   await expect(page.locator("#print-preview .office-print-shape-group[data-shape-group-positioned]")).toHaveCount(2);
   await expect(page.locator("#print-preview .office-print-shape-group").first()).toHaveAttribute("data-shape-group-position", "front");
   await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-position-live-${testInfo.project.name}.png`, fullPage: true });
 
   await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-position-layer").selectOption("flow"); await page.locator("#shape-apply").click();
