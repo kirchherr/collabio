@@ -19,6 +19,12 @@ evidence passed 2/2 in 45.1 seconds; its SHA-256 values are desktop
 `42a556806c34e0cee64d55a20cbd5431d91561845dad906799e39af17a5cb22c`. Product and evidence commits through
 `a960331f` are published and synchronized to `dev001`; the isolated review API remains healthy on port 42880.
 
+The complete repository quality gate passed on documentation commit `ed049565`: Ruff passed, all 888 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container and local Roadmap-504 evidence copies were removed; regular and review APIs both
+returned `ok`, with no transient quality, test or Work-E2E runner remaining.
+
 Roadmap 497 through 503 / PLANS 358 through 364 are complete under ADR-0158. Native Office shape groups now support
 one exact connection value per ordered member gap while preserving the byte-compatible uniform connection form.
 The representations are mutually exclusive; an explicit list must contain exactly `memberCount - 1` bounded values
