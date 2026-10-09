@@ -300,7 +300,7 @@ test("Office shape groups move freely as one object with history print and offse
   await expect(page.locator("#shape-group-ungroup")).toBeEnabled(); await page.locator("#shape-group-ungroup").click();
   await expect(editor.locator(".office-shape-group")).toHaveCount(1);
   await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(2);
-  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-remove").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
   await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(3);
   await expect(editor.locator(":scope > .office-shape-node[data-shape-positioned]")).toHaveCount(1);
