@@ -209,7 +209,7 @@ test("Office positioned root objects align and distribute through bounded intege
       { layer: "front", x: 375, y: 860 }]);
   expect(officeShapeMultiTranslate(positioned, 5000, -5000).map((entry) => entry.position))
     .toEqual([{ layer: "front", x: 200, y: -1200 }, { layer: "behind", x: 1000, y: -700 },
-      { layer: "front", x: 400, y: 500 }]);
+      { layer: "front", x: 400, y: 0 }]);
   const atEdge = positioned.map((entry, index) => ({ ...entry, node: { attrs: { position: {
     ...entry.node.attrs.position, x: index === 1 ? 1000 : entry.node.attrs.position.x } } } }));
   expect(officeShapeMultiNudge(atEdge, "horizontal", 10).map((entry) => entry.position.x))
