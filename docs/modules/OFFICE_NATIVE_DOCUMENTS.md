@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–545 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 545 / PLANS 406 native shape multi-object resize
+Status: Roadmap 252–552 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 552 / PLANS 413 native shape multi-object rotation
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0164; current movement: `ARCHITECTURE_DECISIONS/ADR-0164-bounded-native-office-shape-multi-object-resize.md`
+Decisions: ADR-0079 through ADR-0165; current movement: `ARCHITECTURE_DECISIONS/ADR-0165-bounded-native-office-shape-multi-object-rotation.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -115,6 +115,24 @@ Each accepted action validates the full candidate and forms exactly one transact
 save, predecessor history, reload, semantic print/PDF and independent reuse preserve the resulting established
 positions while selection remains transient. No migration, endpoint, dependency, external request, provider, worker,
 recovery store, arbitrary movement value, physical page anchor, nested group or DOCX admission is added.
+
+Roadmap 546 through 552 adds bounded collective relative rotation under
+[ADR-0165](../../ARCHITECTURE_DECISIONS/ADR-0165-bounded-native-office-shape-multi-object-rotation.md).
+Dragging the rotation handle of any selected positioned root shape or complete group applies one common integer angle
+delta to every selected shape and every member of selected groups. Existing distinct rotations remain relative and
+normalize to canonical zero omission or 1 through 359.
+
+The existing standalone handle and the positioned-group handle provide mouse, touch and keyboard access. Movement
+around the active root center uses the shortest signed angle; Shift snaps to 15 degrees. Arrow keys apply one degree,
+Shift-arrows apply 15 degrees, click applies 90 degrees and Home aligns the source angle to zero through a common
+delta. Live changes affect editor-owned DOM only, with signed status, markers and accessible whole-selection labels.
+
+Pointer cancellation, Escape, changed document/session and non-writable or stale state restore all original angles.
+One effective completion validates all rebuilt shapes/groups and creates exactly one undo unit. Group attributes,
+member order, connections, gap, layer, position, dimensions, typography and stable IDs remain unchanged. Confirmed
+CAS save, predecessor history, reload, semantic print/PDF and independent reuse preserve only established rotations.
+This adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary transform,
+physical page anchor, nested group or DOCX DrawingML admission.
 
 Roadmap 539 through 545 adds bounded collective resizing under
 [ADR-0164](../../ARCHITECTURE_DECISIONS/ADR-0164-bounded-native-office-shape-multi-object-resize.md).

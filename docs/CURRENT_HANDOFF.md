@@ -2,6 +2,29 @@
 
 Updated: 2026-10-09
 
+Roadmap 546 through 552 / PLANS 407 through 413 are complete under ADR-0165. Dragging the rotation handle of any
+selected positioned root shape or complete group applies one common relative integer angle to every standalone shape
+and every member of selected groups. Distinct starting angles remain distinct and normalize to canonical zero
+omission or 1 through 359; positions, layers, dimensions, group structure, typography and stable IDs remain intact.
+
+Pointer and touch movement around the active root center uses the shortest signed angle, with Shift snapping to 15
+degrees. Arrow keys rotate one degree, Shift-arrows 15 degrees, click 90 degrees and Home brings the source angle to
+zero through a common delta. The editor provides live DOM-only preview, effective signed status, common markers and
+whole-selection labels. Cancellation, Escape and changed/non-writable state restore all original angles without a
+transaction. One effective completion is one validated transaction and undo unit.
+
+The focused model and exact group/standalone desktop/mobile workflows passed 5/5. The complete native-shape model and
+responsive desktop/mobile matrix passed 35/35 in 4.4 minutes. Local product commit `431b1025` is active in the
+isolated dev001 review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-rotate-431b1025`; the review API is healthy on port 42880. Live
+inspection visibly confirmed the saved relative 15°/52° group rotations and the 45° standalone set without saving a
+new content version.
+
+Only established bounded member rotations enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, arbitrary transform string, physical page geometry,
+nested group, DOCX engine or production admission. GitHub publication remains pending under the previously reported
+explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 539 through 545 / PLANS 400 through 406 are complete under ADR-0164. Resizing the handle of any selected
 positioned root shape or complete group scales the complete eligible selection with mouse, touch or keyboard.
 Independent X/Y factors use a fixed 1000 base; Shift applies one aspect-locked factor. One common legal scale range

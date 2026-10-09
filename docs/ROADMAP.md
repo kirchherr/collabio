@@ -2944,7 +2944,34 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, Recovery-Speicher, freie CSS-Werte, physische Seitenanker,
      verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 545 / PLANS 224 bis 406 sind unter ADR-0139 bis ADR-0164 implementiert
+546. [x] Gemeinsames relatives Drehen mindestens zweier ausgewaehlter positionierter Wurzelformen oder ganzer
+     Formgruppen unter ADR-0165 umgesetzt. Jeder Mitgliedswinkel erhaelt denselben Delta-Wert; unterschiedliche
+     Ausgangswinkel, Gruppenstruktur, IDs, Positionen, Ebenen und Groessen bleiben erhalten.
+
+547. [x] Maus- und Touch-Bewegung um den Mittelpunkt des aktiven Wurzelobjekts in ein gemeinsames kuerzestes
+     ganzzahliges Winkeldelta uebersetzt. Umschalt rastet die Live-Geste reproduzierbar auf 15-Grad-Schritte ein.
+
+548. [x] Den vorhandenen Form-Drehgriff und einen zugaenglichen Gruppen-Drehgriff fuer die Mehrfachauswahl
+     bereitgestellt. Pfeiltasten drehen um ein Grad, Umschalt-Pfeiltasten um 15 Grad, Klick um 90 Grad und Pos1 richtet
+     den aktiven Quellwinkel auf null aus, waehrend alle relativen Winkel erhalten bleiben.
+
+549. [x] DOM-exklusive Live-Vorschau aller betroffenen Formen mit gemeinsamem Drehmarker, effektivem Winkelstatus und
+     zugaenglichen Beschriftungen bereitgestellt. Pointer-Abbruch, Escape, Dokument-/Sitzungswechsel, Schreibschutz
+     und veralteter Zustand stellen alle Ausgangswinkel ohne Transaktion wieder her.
+
+550. [x] Erfolgreiches gemeinsames Drehen als genau eine vollstaendig validierte Transaktion und einen
+     Rueckgaengig-Schritt ausgefuehrt. Einzelobjekt-Drehung und Folgeklick werden waehrend der Geste unterdrueckt;
+     eine Geste ohne effektive Aenderung erzeugt keinen Historieneintrag.
+
+551. [x] Resultierende Winkel durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Reload,
+     semantischen Druck und unabhaengige Wiederverwendung erhalten. Auswahl, Vorschau und Gestenzustand bleiben
+     ungespeichert.
+
+552. [x] Vollstaendigen gemeinsamen Rotationslebenszyklus unter ADR-0165 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, Recovery-Speicher, freie Transformationswerte, physische Seitenanker,
+     verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 552 / PLANS 224 bis 413 sind unter ADR-0139 bis ADR-0165 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

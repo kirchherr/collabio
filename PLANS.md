@@ -1152,12 +1152,36 @@ semantic print, reload and independent reuse while keeping selection, preview an
 406. [x] Close the collective resize lifecycle under ADR-0164 without a migration, endpoint, dependency, external
 request, provider, worker, recovery store, arbitrary CSS, physical page anchor, nested group or DOCX DrawingML admission.
 
+407. [x] Rotate at least two selected positioned root shapes or complete groups through one shared relative angle
+under ADR-0165 while preserving distinct starting angles, group structure, stable IDs, positions, layers and sizes.
+
+408. [x] Convert mouse and touch movement around the active root center into one shortest integer angle delta, with
+Shift snapping the live gesture deterministically to 15-degree increments.
+
+409. [x] Reuse the standalone shape rotation handle and add an accessible group handle. Arrow keys rotate one degree,
+Shift-arrows rotate 15 degrees, click rotates 90 degrees and Home aligns the source angle to zero while preserving
+all relative angles.
+
+410. [x] Expose a DOM-only live preview, effective-angle status, common rotation markers and whole-selection labels,
+and restore every original angle without mutation on pointer cancellation, Escape, document/session change,
+read-only or stale state.
+
+411. [x] Commit one effective collective rotation as exactly one fully validated transaction and undo unit, suppress
+individual rotation/click handling during the gesture, and create no history when angles do not change.
+
+412. [x] Preserve resulting angles through undo/redo, confirmed CAS save, immutable predecessor history, semantic
+print, reload and independent reuse while keeping selection, preview and gesture state transient.
+
+413. [x] Close the collective rotation lifecycle under ADR-0165 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, arbitrary transform values, physical page anchor, nested group or DOCX
+DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 545 / PLANS 406. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging and collective X/Y or aspect-locked resizing with shared boundary clamping, stable IDs, retained relative geometry, one-step history and no implicit positioning. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded collective rotation of selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 552 / PLANS 413. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing and relative rotation with stable IDs, retained geometry, one-step history and no implicit positioning. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with a bounded numeric transform inspector for selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
