@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
-import { officeShapeMultiCanGroup, officeShapeMultiRange, officeShapeMultiSelection, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
+import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
+  officeShapeMultiRange, officeShapeMultiSelection, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -172,4 +173,32 @@ test("Office shape multi-selection is bounded ordered and groups only adjacent f
     node: { attrs: { position: { layer: "front", x: 0, y: 0 }, wrap: null } } }])).toBe(false);
   expect(() => officeShapeMultiSelection(nodes, [nodes[0].id, nodes[0].id])).toThrow();
   expect(() => officeShapeMultiSelection(nodes, Array(21).fill(0).map((_, index) => `shape-${String(index).padStart(24, "0")}`))).toThrow();
+});
+
+test("Office positioned root objects align and distribute through bounded integer anchors", () => {
+  const positioned = [
+    { id: "shape-" + "1".repeat(24), type: "shape", rootIndex: 4,
+      node: { attrs: { position: { layer: "front", x: 100, y: -300 } } } },
+    { id: "shape-group-" + "2".repeat(24), type: "shapeGroup", rootIndex: 2,
+      node: { attrs: { position: { layer: "behind", x: 900, y: 200 } } } },
+    { id: "shape-" + "3".repeat(24), type: "shape", rootIndex: 8,
+      node: { attrs: { position: { layer: "front", x: 300, y: 900 } } } },
+  ];
+  expect(officeShapeMultiCanArrange(positioned)).toBe(true);
+  expect(officeShapeMultiCanArrange(positioned, 3)).toBe(true);
+  expect(officeShapeMultiAlignment(positioned, "horizontal", "start").map((entry) => entry.position.x))
+    .toEqual([100, 100, 100]);
+  expect(officeShapeMultiAlignment(positioned, "horizontal", "center").map((entry) => entry.position.x))
+    .toEqual([500, 500, 500]);
+  expect(officeShapeMultiAlignment(positioned, "vertical", "end").map((entry) => entry.position.y))
+    .toEqual([900, 900, 900]);
+  const distributed = officeShapeMultiDistribution(positioned, "vertical");
+  expect(distributed.map((entry) => entry.position.y)).toEqual([-300, 300, 900]);
+  expect(distributed.map((entry) => entry.position.layer)).toEqual(["front", "behind", "front"]);
+  expect(officeShapeMultiDistribution(positioned, "horizontal").map((entry) => entry.position.x))
+    .toEqual([100, 900, 500]);
+  expect(officeShapeMultiCanArrange([positioned[0], { ...positioned[1], node: { attrs: { position: null } } }])).toBe(false);
+  expect(() => officeShapeMultiAlignment(positioned, "depth", "center")).toThrow();
+  expect(() => officeShapeMultiAlignment(positioned, "horizontal", "stretch")).toThrow();
+  expect(() => officeShapeMultiDistribution(positioned.slice(0, 2), "vertical")).toThrow();
 });

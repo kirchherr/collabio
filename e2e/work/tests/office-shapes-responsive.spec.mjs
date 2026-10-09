@@ -555,3 +555,72 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await expect(officeEditor(page).locator(":scope > .office-shape-group")).toHaveCount(3);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-selection-${testInfo.project.name}.png`, fullPage: true });
 });
+
+test("Office positioned root objects align and distribute atomically", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native positioned object arrangement proof", "Anchor paragraph");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  const insertPositioned = async (text, x, y, layer = "front") => {
+    await page.locator("#shape-options").click();
+    await page.locator("#shape-text").fill(text);
+    await page.locator("#shape-position-layer").selectOption(layer);
+    await page.locator("#shape-position-x").fill(String(x));
+    await page.locator("#shape-position-y").fill(String(y));
+    await page.locator("#shape-apply").click();
+  };
+  await editor.locator("p").click(); await insertPositioned("Arrange A", 100, -300);
+  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
+  await insertPositioned("Arrange B", 900, 200, "behind");
+  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
+  await insertPositioned("Arrange C", 300, 900);
+  const shapes = editor.locator(":scope > .office-shape-node");
+  await expect(shapes).toHaveCount(3);
+
+  await page.locator("#shape-multi-toggle").click();
+  for (const shape of await editor.locator(":scope > .office-shape-node .office-shape").all()) await shape.click();
+  await expect(page.locator("#shape-multi-status")).toHaveText("3 Objekte ausgewählt");
+  await expect(page.locator("#shape-multi-group")).toBeDisabled();
+  await expect(page.locator("#shape-multi-align")).toBeEnabled();
+  await expect(page.locator("#shape-multi-distribute")).toBeEnabled();
+
+  await page.locator("#shape-multi-align").selectOption("horizontal:center");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50%", "50%", "50%"]);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["10%", "90%", "30%"]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50%", "50%", "50%"]);
+
+  await page.locator("#shape-multi-distribute").selectOption("vertical");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"))))
+    .toEqual(["-300px", "300px", "900px"]);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"))))
+    .toEqual(["-300px", "200px", "900px"]);
+  await editor.press("Control+Shift+z");
+
+  const saved = await saveOffice(page, { objectId });
+  const stored = saved.content.content.filter((entry) => entry.type === "shape");
+  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([500, 500, 500]);
+  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-300, 300, 900]);
+  expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "behind", "front"]);
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(3);
+  await page.locator("#print-close").click();
+  await page.locator("#document-reload").click();
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
+  await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "false");
+  await openReuse(page, saved, "Independent arranged objects"); await submitReuse(page, saved);
+  await expectReuseDraft(page, "Independent arranged objects");
+  await expect(officeEditor(page).locator(":scope > .office-shape-node")).toHaveCount(3);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-arrangement-${testInfo.project.name}.png`, fullPage: true });
+});

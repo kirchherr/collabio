@@ -3,6 +3,7 @@ import { closeHistory } from "@tiptap/pm/history";
 import { OFFICE_SHAPE_LIMIT, officeShapeAttributes } from "./office-shapes.mjs";
 import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
+  officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
   officeShapeMultiSelection } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
@@ -61,6 +62,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       groupCount(doc) + duplicateGroups > OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-remove").disabled = !writable || !enough;
     $("shape-multi-group").disabled = !doc || !writable || !officeShapeMultiCanGroup(current) || groupCount(doc) >= OFFICE_SHAPE_GROUP_LIMIT;
+    $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
+    $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
     $("shape-multi-clear").disabled = count === 0;
   };
   const setSelection = (ids, nextAnchor = null) => {
@@ -136,6 +139,40 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       clear(); focus(editor); updateEditor(); notice(`${current.length} ausgewählte Formen atomar gruppiert. Rückgängig ist möglich.`);
     } catch { notice("Die ausgewählten Formen konnten nicht gruppiert werden.", true); }
+  });
+  const commitArrangement = (changes, message) => {
+    const editor = state.editor, current = selectedEntries();
+    if (!editor || !allowed() || changes.length !== current.length) return;
+    const byId = new Map(changes.map((change) => [change.id, change.position]));
+    let tr = editor.state.tr;
+    for (const entry of current) {
+      const position = byId.get(entry.id);
+      const attrs = entry.type === "shape" ? officeShapeAttributes({ ...entry.node.attrs, position }) :
+        officeShapeGroupAttributes({ ...entry.node.attrs, position });
+      tr = tr.setNodeMarkup(entry.pos, undefined, attrs);
+    }
+    if (!tr.docChanged || tr.doc.eq(editor.state.doc)) {
+      notice("Die ausgewählten Objekte sind bereits so angeordnet."); return;
+    }
+    try {
+      validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice(message);
+    } catch { notice("Die ausgewählten Objekte konnten nicht gemeinsam angeordnet werden.", true); }
+  };
+  $("shape-multi-align").addEventListener("change", (event) => {
+    const value = event.target.value; event.target.value = ""; if (!value) return;
+    const [axis, alignment] = value.split(":");
+    try {
+      commitArrangement(officeShapeMultiAlignment(selectedEntries(), axis, alignment),
+        `${selectedIds.size} positionierte Objekte atomar ausgerichtet. Rückgängig ist möglich.`);
+    } catch { notice("Für die gemeinsame Ausrichtung müssen mindestens zwei frei positionierte Objekte ausgewählt sein.", true); }
+  });
+  $("shape-multi-distribute").addEventListener("change", (event) => {
+    const axis = event.target.value; event.target.value = ""; if (!axis) return;
+    try {
+      commitArrangement(officeShapeMultiDistribution(selectedEntries(), axis),
+        `${selectedIds.size} positionierte Objekte atomar gleichmäßig verteilt. Rückgängig ist möglich.`);
+    } catch { notice("Für die gleichmäßige Verteilung müssen mindestens drei frei positionierte Objekte ausgewählt sein.", true); }
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && selectedIds.size && !document.querySelector("dialog[open]")) { event.preventDefault(); clear(); return; }
