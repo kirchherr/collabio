@@ -2787,7 +2787,34 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie Pfade, beliebige Endpunkte,
      Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 503 / PLANS 224 bis 364 sind unter ADR-0139 bis ADR-0158 implementiert
+504. [x] Direkte achsenbezogene Ausrichtung nativer Formgruppen unter ADR-0159 eingefuehrt. Der kanonisch
+     weggelassene Beginn sowie Mitte und Ende richten Reihen oben/mittig/unten und Stapel links/mittig/rechts aus.
+
+505. [x] Gleichmaessige Verteilung ueber eine begrenzte Gesamtflaeche von 160 bis 2400 Pixeln eingefuehrt. Der
+     bestehende Abstand bleibt Mindestabstand; aus gedrehten Mitgliedsmassen, Reihenfolge und Zielflaeche entsteht
+     ein einziger deterministischer effektiver Abstand.
+
+506. [x] Ausrichtung und Verteilung unabhaengig in Browser und Server validiert. Unbekannte Werte, explizites
+     `start`, Boolesche oder gebrochene Flaechen, Werte ausserhalb der Grenzen und freie CSS-Ausdruecke werden
+     fail-closed abgewiesen; bestehende Dokumente bleiben byte-kompatibel.
+
+507. [x] Responsiven Gruppendialog um kontextbezogene Ausrichtung, feste oder gleichmaessige Verteilung und eine
+     begrenzte Pixel-Flaeche erweitert. Nicht anwendbare Regler sind deaktiviert und erklaeren die Reihen-/
+     Stapelsemantik sowie den Mindestabstand.
+
+508. [x] Editor und semantischen Druck/PDF aus derselben Layoutfunktion gespeist. Exakte beliebig gedrehte
+     Mitgliedsmasse, einheitlicher effektiver Abstand, kompakter Reihen-Fallback und individuelle Verbindungen
+     bleiben gemeinsam ausgerichtet, begrenzt und ohne Auswertung gespeicherter Stil-Ausdruecke.
+
+509. [x] Ausrichtung und Verteilung durch isoliertes Rueckgaengig/Wiederholen, bestaetigten CAS-Save, immutable
+     Vorgaengerversion, Reload, Druck, unabhaengige Wiederverwendung und Recovery im bestehenden nativen
+     Dokument-JSON erhalten.
+
+510. [x] Vollstaendigen Lebenszyklus der Formgruppen-Ausrichtung und -Verteilung unter ADR-0159 ohne Migration,
+     Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie CSS-Geometrie,
+     Mehrfachauswahl, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 510 / PLANS 224 bis 371 sind unter ADR-0139 bis ADR-0159 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

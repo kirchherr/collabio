@@ -93,6 +93,14 @@ values. Insertion and member duplication add one disconnected gap, removal drops
 styling at the ordered gap and group duplication preserves the exact list with fresh identities. Editor and semantic
 print/PDF resolve both forms into the same sequence through trusted static CSS.
 
+Roadmap 504 adds bounded cross-axis alignment and equal main-axis distribution under
+[ADR-0159](../../ARCHITECTURE_DECISIONS/ADR-0159-bounded-native-office-shape-group-alignment-and-distribution.md).
+Canonical start alignment remains omitted; center and end map rows to top/middle/bottom and stacks to
+left/middle/right. An optional 160 through 2400 pixel extent derives one deterministic equal gap from exact rotated
+member bounds while retaining the existing gap as a minimum. Editor and semantic print/PDF use the same layout
+function, including compact-row fallback and uniform or per-edge connections. Browser and server reject arbitrary
+values, CSS and non-integer extents; existing documents remain byte-compatible.
+
 The responsive group dialog exposes layer and coordinates. A focusable direct anchor moves the complete group by
 pointer/touch, one-pixel arrows, ten-pixel Shift steps or Home reset. Live movement changes only editor-owned DOM
 presentation; releasing the pointer commits one validated isolated undo step. Row/stack layout, gap, member dimensions

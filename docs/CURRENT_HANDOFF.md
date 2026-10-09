@@ -2,6 +2,23 @@
 
 Updated: 2026-10-09
 
+Roadmap 504 through 510 / PLANS 365 through 371 are complete under ADR-0159. Native Office shape groups now support
+bounded cross-axis alignment and equal distribution across an optional 160 through 2400 pixel extent. Canonical start
+alignment remains omitted; center/end map rows to top/middle/bottom and stacks to left/middle/right. The existing gap
+remains the minimum, and one deterministic effective gap is derived from exact arbitrary-angle member bounds.
+
+Browser and server independently reject unknown alignment values, explicit `start`, booleans, fractions,
+out-of-range extents and free CSS. Editor and semantic print/PDF share the same layout function; compact rows and
+uniform or per-edge connections retain bounded responsive geometry. Isolated undo/redo, confirmed CAS save,
+immutable predecessor history, reload, print, independent reuse and recovery preserve the exact optional attributes.
+
+Focused server validation passed 1/1, the browser model passed 9/9, and the focused responsive workflow passed 2/2.
+The complete shape model and responsive desktop/mobile matrix passed 27/27 in 3.1 minutes. Final focused print
+evidence passed 2/2 in 45.1 seconds; its SHA-256 values are desktop
+`00f609d6b769462595f87d67f6a89314dcafaf8f04cf0501d3878922258b841d` and mobile
+`42a556806c34e0cee64d55a20cbd5431d91561845dad906799e39af17a5cb22c`. Product and evidence commits through
+`a960331f` are published and synchronized to `dev001`; the isolated review API remains healthy on port 42880.
+
 Roadmap 497 through 503 / PLANS 358 through 364 are complete under ADR-0158. Native Office shape groups now support
 one exact connection value per ordered member gap while preserving the byte-compatible uniform connection form.
 The representations are mutually exclusive; an explicit list must contain exactly `memberCount - 1` bounded values
@@ -3746,14 +3763,14 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 497 through 503 / PLANS 358 through 364 are complete. Preserve the mutually exclusive uniform and per-edge
-shape-group connection representations, exact `memberCount - 1` list length, bounded vocabulary, deterministic
-insert/remove/reorder semantics and exact save/history/comparison/print behavior. Keep the complete shape,
-comparison, print and full Python quality matrices green.
+Roadmap 504 through 510 / PLANS 365 through 371 are complete. Preserve canonical alignment omission, bounded
+center/end values, bounded distribution extent, deterministic effective gaps, arbitrary-angle member bounds,
+responsive compact layout and exact uniform/per-edge connection behavior. Keep the complete shape, comparison,
+print and full Python quality matrices green.
 
-Continue native Office before CRM with the next coherent authoring loop. Direct alignment and distribution,
-multi-selection, freely routed endpoints, freehand paths, arbitrary polygons, nested groups, continuous editor
-pagination and DOCX DrawingML interchange require separate decisions. Full workbook semantics, cross-table
+Continue native Office before CRM with native multi-selection as the next coherent authoring loop. Freely routed
+endpoints, freehand paths, arbitrary polygons, nested groups, continuous editor pagination and DOCX DrawingML
+interchange require separate decisions. Full workbook semantics, cross-table
 references, relative formula rewriting, formula-driven charts, transitive references, content-wide reference search,
 persistent backlink indexing, continuous tracked changes and live collaboration also remain separate.
 
