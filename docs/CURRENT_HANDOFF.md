@@ -22,8 +22,14 @@ new content version.
 
 Only established bounded member rotations enter immutable Office JSON. The change adds no migration, endpoint,
 dependency, external request, provider, worker, recovery store, arbitrary transform string, physical page geometry,
-nested group, DOCX engine or production admission. GitHub publication remains pending under the previously reported
-explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+nested group, DOCX engine or production admission. The complete repository quality gate passed with Ruff, 894
+format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning remains.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed, no transient quality, test or Work-E2E runner remains, and regular
+plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
 
 Roadmap 539 through 545 / PLANS 400 through 406 are complete under ADR-0164. Resizing the handle of any selected
 positioned root shape or complete group scales the complete eligible selection with mouse, touch or keyboard.
