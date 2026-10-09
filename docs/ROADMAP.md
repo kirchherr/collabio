@@ -3028,7 +3028,34 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Farben/CSS-/Schriftwerte, physische
      Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 566 / PLANS 224 bis 427 sind unter ADR-0139 bis ADR-0167 implementiert
+567. [x] Eine kopierbare Darstellung aus genau einer ausgewaehlten Wurzelform oder vollstaendigen Formgruppe unter
+     ADR-0168 abgeleitet. Gruppen sind nur bei sieben normalisiert identischen Mitgliedswerten zulaessig; gemischte,
+     unvollstaendige oder verschachtelte Gruppen werden abgewiesen.
+
+568. [x] Exakt Fuellung, Rahmen, Rahmenbreite, Schriftgroesse, Textfarbe, Textstil und Textausrichtung normalisiert.
+     Etablierte Standardwerte 16, automatisch und normal werden beim Anwenden wieder kanonisch ausgelassen; freie,
+     unbekannte, leere oder ungebundene Werte bleiben ausgeschlossen.
+
+569. [x] Die gemerkte Darstellung strikt im aktuellen autorisierten Dokument und in der aktuellen Sitzung gehalten.
+     Dokument-/Sitzungswechsel und verlorenes Schreibrecht loeschen sie; System-Zwischenablage, Browser-Speicher,
+     Office-JSON, API, Telemetrie sowie dokument- oder tenantuebergreifende Uebertragung bleiben ausgeschlossen.
+
+570. [x] Zugaengliche responsive Aktionen `Darstellung merken` und `Darstellung uebertragen` mit explizitem Status
+     bereitgestellt. Merken erfordert eine gueltige Quelle, Uebertragen zwei bis zwanzig gueltige Zielwurzeln.
+
+571. [x] Die sieben Werte auf Einzelwurzeln und jedes Mitglied vollstaendiger Zielgruppen in genau einer validierten
+     Dokumenttransaktion und einem Rueckgaengig-Schritt angewendet. IDs, Gruppenstruktur, Reihenfolge, Verbindungen,
+     Text, Geometrie, Verankerung, Ebene, Position, Groesse und Drehung bleiben erhalten.
+
+572. [x] Normal fliessende Gruppen in der gemeinsamen Darstellungs-Live-Vorschau ohne Positionsannahme gehaertet.
+     Modell-, Desktop-/Mobile-, Undo/Redo-, CAS-Save-, immutable Historien-, Druck-, Reload- und Wiederverwendungs-
+     vertraege sowie die vollstaendige 37-Faelle-Formmatrix bestanden.
+
+573. [x] Den begrenzten Darstellungs-Merken/Uebertragen-Lebenszyklus unter ADR-0168 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, Clipboard-/Browser-Persistenz, freie
+     Darstellungswerte, physische Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 573 / PLANS 224 bis 434 sind unter ADR-0139 bis ADR-0168 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

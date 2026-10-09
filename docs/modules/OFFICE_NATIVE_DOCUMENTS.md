@@ -3,7 +3,7 @@
 Status: Roadmap 252–566 implemented and validated; ordinary tenant and production admission remain closed
 Roadmap: 252 / PLANS 113 foundation through 566 / PLANS 427 native shape multi-object appearance
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0167; current movement: `ARCHITECTURE_DECISIONS/ADR-0167-bounded-native-office-shape-multi-object-appearance.md`
+Decisions: ADR-0079 through ADR-0168; current movement: `ARCHITECTURE_DECISIONS/ADR-0168-bounded-native-office-shape-appearance-copy-paste.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -119,6 +119,26 @@ immutable predecessor history, undo/redo, reload, semantic print/PDF and indepen
 canonical appearance. The complete native-shape model and responsive matrix passes 37/37. This adds no migration,
 endpoint, dependency, external request, provider, worker, recovery store, arbitrary color/CSS/font value, physical
 page anchor, nested group or DOCX DrawingML admission.
+
+Roadmap 567 through 573 adds bounded shape appearance copy/paste under
+[ADR-0168](../../ARCHITECTURE_DECISIONS/ADR-0168-bounded-native-office-shape-appearance-copy-paste.md).
+One selected standalone root or complete root group can provide the seven established appearance values. Complete
+groups are sources only when all members normalize to the same fill, stroke, stroke width, font size, text color,
+text style and alignment. Defaults normalize to 16, automatic and normal before canonical omission; mixed groups and
+unknown or arbitrary values fail closed.
+
+The sample remains in memory for the current authorized document session. Document/session change or lost write
+permission clears it. System clipboard, browser persistence, Office JSON, API, telemetry and cross-document or
+cross-tenant transfer are excluded. Paste requires two through twenty valid roots and rebuilds all standalone targets
+and group members before one transaction and undo unit, retaining IDs, structure, order, connections, text and every
+geometry or anchoring attribute.
+
+Accessible responsive controls expose remember, apply and memory status. Normal-flow group preview no longer assumes
+a free position; it previews and restores appearance without adding position data. Model and real desktop/mobile
+workflows cover normalized sources, uniform/mixed groups, target bounds, preview, one-step undo/redo, confirmed save,
+immutable history, semantic print, reload clearing and independent reuse. The complete native-shape matrix passes
+37/37. No migration, endpoint, dependency, external request, provider, worker, recovery store, clipboard/browser
+persistence, arbitrary value, physical page anchor, nested group or DOCX DrawingML admission is added.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).

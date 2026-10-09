@@ -2,6 +2,37 @@
 
 Updated: 2026-10-09
 
+Roadmap 567 through 573 / PLANS 428 through 434 are complete under ADR-0168. One selected standalone root shape or a
+complete group whose members share the same normalized appearance can provide exactly seven established values:
+fill, stroke, stroke width, font size, text color, text style and alignment. Two through twenty selected standalone
+roots or complete groups can receive the sample in one validated transaction and undo unit. IDs, group identity and
+membership, order, connections, text, anchors, layers, positions, dimensions and rotations remain intact.
+
+The sample exists only in memory for the current authorized document session. Document/session changes and lost
+write permission clear it. It never enters the system clipboard, browser storage, Office JSON, an API request,
+telemetry, another document or another tenant. The responsive controls expose `Darstellung merken`, `Darstellung
+uebertragen` and explicit memory state; normalized default values return to canonical omission.
+
+Direct live review found and closed an additional normal-flow group defect in the established appearance preview:
+the preview had assumed every complete group carried a free position and attempted to read a missing layer. Flow
+groups now preview and restore appearance without adding position data or positioning CSS. The new exact regression
+passed desktop and mobile 2/2, and the final complete native-shape model plus responsive matrix passed 37/37 in 4.6
+minutes. Visible review verified a petrol source group, two red target groups, atomic transfer, exact Undo back to
+`[petrol, red, red]` and Redo to all petrol. No content version was saved.
+
+Product commit `5e3acbcb` is active in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-style-copy`. The change adds no migration, endpoint, dependency,
+external request, provider, worker, recovery store, clipboard/browser persistence, arbitrary appearance value,
+physical page geometry, nested group, DOCX engine or production admission.
+
+Final repository quality passed with Ruff, 897 format-conformant files, Mypy over 607 source files and Pytest to 100%;
+only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts
+passed. The exact `collabio-postgres-test-1` container and `/tmp/collabio-roadmap-567` transfer directory were removed;
+no transient quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 560 through 566 / PLANS 421 through 427 are complete under ADR-0167. Two through twenty selected root
 standalone shapes or complete shape groups can now receive one common bounded appearance in a single accessible
 inspector and one undo unit. Fill, stroke, stroke width, font size, text color, text style and alignment use only the
