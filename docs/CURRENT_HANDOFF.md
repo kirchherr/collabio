@@ -30,7 +30,8 @@ Product behavior is published through commit `93972fa5`; final evidence source i
 request, provider, worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
 Full quality on documented source `b2be0523` passed Ruff, formatting for 886 files, Mypy over 607 source files and
 complete Pytest to 100% with only the known Starlette/AnyIO warning. The eight focused planning and implementation
-documentation contracts also passed.
+documentation contracts also passed. The exact `postgres-test` container was removed, no transient quality, test or
+Work-E2E runner remains, and regular plus review APIs both return `ok`.
 
 Roadmap 483 through 489 / PLANS 344 through 350 are complete under ADR-0156. Native Office shapes now store any
 whole-degree rotation from 1 through 359; zero remains the canonical absence and every existing quarter-turn value
