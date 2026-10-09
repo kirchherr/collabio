@@ -83,11 +83,11 @@ export function officeShapeGroupExtension() {
           setPosition(drag.next);
         };
         const removeDragListeners = () => {
-          dragTarget?.removeEventListener("pointermove", move);
-          dragTarget?.removeEventListener("pointerup", finish);
-          dragTarget?.removeEventListener("pointercancel", cancel);
-          dragTarget?.removeEventListener("mousemove", move);
-          dragTarget?.removeEventListener("mouseup", finish);
+          dragTarget?.removeEventListener("pointermove", move, true);
+          dragTarget?.removeEventListener("pointerup", finish, true);
+          dragTarget?.removeEventListener("pointercancel", cancel, true);
+          dragTarget?.removeEventListener("mousemove", move, true);
+          dragTarget?.removeEventListener("mouseup", finish, true);
         };
         const finish = (event, cancel = false) => {
           if (!drag || (event.pointerId != null && drag.id !== event.pointerId)) return;
@@ -105,11 +105,11 @@ export function officeShapeGroupExtension() {
           drag = { id, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
             start: node.attrs.position, next: node.attrs.position };
           anchor.dataset.shapeGroupDragging = "";
-          dragTarget?.addEventListener("pointermove", move);
-          dragTarget?.addEventListener("pointerup", finish);
-          dragTarget?.addEventListener("pointercancel", cancel);
-          dragTarget?.addEventListener("mousemove", move);
-          dragTarget?.addEventListener("mouseup", finish);
+          dragTarget?.addEventListener("pointermove", move, true);
+          dragTarget?.addEventListener("pointerup", finish, true);
+          dragTarget?.addEventListener("pointercancel", cancel, true);
+          dragTarget?.addEventListener("mousemove", move, true);
+          dragTarget?.addEventListener("mouseup", finish, true);
           event.preventDefault(); event.stopPropagation();
         };
         anchor.addEventListener("pointerdown", (event) => {
