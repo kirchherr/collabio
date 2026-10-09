@@ -3083,7 +3083,34 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, beliebigen z-index, Drag-Reihenfolge,
      physische Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 580 / PLANS 224 bis 441 sind unter ADR-0139 bis ADR-0169 implementiert
+581. [x] Gemeinsames Aufloesen fuer zwei bis zwanzig ausgewaehlte vollstaendige Wurzel-Formgruppen unter ADR-0170
+     ergaenzt. Jede Gruppe behaelt ihren etablierten Umfang von zwei bis acht Formen.
+
+582. [x] Nur normal fliessende vollstaendige Gruppen zugelassen. Einzelne, gemischte, teilweise, verschachtelte,
+     positionierte, doppelte, veraltete, unbekannte oder ungueltige Auswahlen werden fail-closed abgewiesen.
+
+583. [x] Ausschliesslich die ausgewaehlten Gruppenhuellen entfernt. Ihre Formen ersetzen die jeweilige Gruppe an
+     derselben obersten Dokumentposition mit unveraenderten IDs, Texten, Darstellungen, Groessen, Drehungen und
+     Mitgliedsreihenfolgen; alle nicht ausgewaehlten Knoten behalten Reihenfolge und Inhalt.
+
+584. [x] Eine responsive zugaengliche Aktion `Gruppen aufloesen` mit aktueller Schreibrechts- und
+     Auswahlvalidierung bereitgestellt. Nach Erfolg wird die transiente Mehrfachauswahl geloescht und die erste
+     entstandene Form als normale Knotenauswahl fokussiert.
+
+585. [x] Alle Gruppen vom Dokumentende zum Anfang in genau einer validierten Dokumenttransaktion und einem
+     Rueckgaengig-Schritt ersetzt. Undo/Redo stellt den gesamten Zustand atomar wieder her; unzulaessige Aktionen
+     erzeugen weder Transaktion noch Historie.
+
+586. [x] Reines Berechtigungs-/Planmodell, responsive Desktop-/Mobile-Aktion, Wrapper- und Identitaetserhalt,
+     Auswahlbereinigung, Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Druck, Reload,
+     Bereichsauswahl und Wiederverwendung abgedeckt. Der fokussierte Lauf bestand 3/3, die vollstaendige native
+     Formmatrix 39/39 in 4,7 Minuten.
+
+587. [x] Den begrenzten Mehrfach-Aufloesen-Lebenszyklus unter ADR-0170 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, Recovery-Speicher, abgeleitete Position/Ebene, Mitgliedsumschreibung,
+     verschachtelte Gruppen, freie Verbindungen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 587 / PLANS 224 bis 448 sind unter ADR-0139 bis ADR-0170 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

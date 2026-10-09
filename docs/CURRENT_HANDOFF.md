@@ -2,6 +2,34 @@
 
 Updated: 2026-10-10
 
+Roadmap 581 through 587 / PLANS 442 through 448 are complete under ADR-0170. Two through twenty selected complete
+root shape groups can now be dissolved together when every group is in normal flow. One group, mixed or partial
+selections, positioned or nested groups and invalid or stale entries fail closed; positioned groups remain excluded
+because one group anchor and layer cannot be mapped losslessly to several independent shapes.
+
+The action removes only each selected group wrapper and inserts its member shapes at that group's top-level position.
+Member order, stable IDs, text, appearance, dimensions, rotations and canonical shape attributes remain exact;
+unselected nodes retain their order and content. Group-only identity, layout, gap and connection data disappear. All
+replacements run from the document end toward the beginning in one validated transaction and undo unit. Success
+clears transient multi-selection and focuses the first resulting member as an ordinary node selection.
+
+The exact final focused model plus desktop/mobile workflow passed 3/3 in 42.8 seconds. The complete native-shape model
+and responsive matrix passed 39/39 in 4.7 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-multi-ungroup` visibly confirmed two selected complete flow groups,
+an enabled **Gruppen auflösen** action and disabled position-only commands. No content version was saved during review.
+
+Product commit `4e39c08d` is local on `kirchherr/kb-write-unit-of-work`. Complete repository quality passed with Ruff,
+899 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning
+remains. All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, inferred
+position/layer, member rewrite, nested group, arbitrary connector, DOCX engine or production admission. GitHub
+publication remains pending under the previously reported explicit-approval requirement for the internal handoff,
+roadmap, ADRs and dev001 operations record.
+
 Roadmap 574 through 580 / PLANS 435 through 441 are complete under ADR-0169. Two through twenty selected root
 standalone shapes or complete shape groups can now move to the document beginning, one top-level position earlier,
 one position later or to the document end. Positioned, wrapped and normal-flow roots are eligible because only the

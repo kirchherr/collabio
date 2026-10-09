@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–566 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 566 / PLANS 427 native shape multi-object appearance
+Status: Roadmap 252–587 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 587 / PLANS 448 native collective shape-group ungrouping
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0168; current movement: `ARCHITECTURE_DECISIONS/ADR-0168-bounded-native-office-shape-appearance-copy-paste.md`
+Decisions: ADR-0079 through ADR-0170; current movement: `ARCHITECTURE_DECISIONS/ADR-0170-bounded-native-office-multi-group-ungroup.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -158,6 +158,25 @@ and creates no history. Confirmed CAS save, immutable predecessor history, print
 resulting existing Office JSON order. The focused model plus desktop/mobile workflow passes 3/3 and the complete
 native-shape matrix passes 38/38. No migration, endpoint, dependency, external request, provider, worker, recovery
 store, arbitrary z-index, drag ordering, physical page anchor, nested group or DOCX DrawingML admission is added.
+
+Roadmap 581 through 587 adds bounded collective group dissolution under
+[ADR-0170](../../ARCHITECTURE_DECISIONS/ADR-0170-bounded-native-office-multi-group-ungroup.md).
+Two through twenty selected complete root shape groups can be dissolved together when every group is in normal flow.
+One group, mixed shape/group selections, partial or nested groups, positioned groups and invalid or stale selections
+fail closed. Positioned groups remain separate because one group-level anchor and layer cannot be mapped losslessly
+to several independent shapes.
+
+The command removes only each selected group wrapper and inserts its ordered member shapes at the same top-level
+position. Member IDs, text, appearance, dimensions, rotations and canonical shape attributes remain exact, while
+group-only identity, layout, gap and connection data disappear. Every unselected node retains its relative order and
+content. Replacements run from the document end toward the beginning in one validated transaction and undo unit.
+
+The responsive **Gruppen auflösen** action follows current write permission and exact selection eligibility. Success
+clears the transient multi-selection and focuses the first resulting shape. Model and desktop/mobile workflows cover
+eligibility, atomic wrapper removal, undo/redo, confirmed save, immutable history, semantic print, reload, range
+selection and independent reuse. The focused workflow passes 3/3 and the complete native-shape matrix passes 39/39.
+No migration, endpoint, dependency, external request, provider, worker, recovery store, inferred position or layer,
+member rewrite, nested group, arbitrary connector or DOCX DrawingML admission is added.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).
