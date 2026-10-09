@@ -238,17 +238,17 @@ test("Office shape groups style each connection independently", async ({ page },
   }
   await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-previous").click();
-  await editor.locator(".office-shape-group .office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-next").click();
   await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Start", "Review", "Done"]);
 
-  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-group-connection-scope option")).toHaveText(["Alle Verbindungen", "1 → 2", "2 → 3"]);
   await page.locator("#shape-group-connection-scope").selectOption("edge-0");
   await page.locator("#shape-group-connection").selectOption("arrow");
   await page.locator("#shape-group-connection-color").selectOption("red");
   await page.locator("#shape-group-connection-width").fill("3"); await page.locator("#shape-apply").click();
-  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-connection-scope").selectOption("edge-1");
   await page.locator("#shape-group-connection").selectOption("line");
   await page.locator("#shape-group-connection-color").selectOption("blue");
