@@ -561,25 +561,17 @@ test("Office positioned root objects align and distribute atomically", async ({ 
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Native positioned object arrangement proof", "Anchor paragraph");
   const editor = officeEditor(page), objectId = baseline.document.object_id;
-  const insertShape = async (text) => {
+  const insertPositioned = async (text, x, y, layer = "front") => {
     await page.locator("#shape-options").click();
     await page.locator("#shape-text").fill(text);
-    await page.locator("#shape-apply").click();
-  };
-  const setPosition = async (index, x, y, layer = "front") => {
-    await editor.locator(":scope > .office-shape-node .office-shape").nth(index).click();
-    await page.locator("#shape-options").click();
     await page.locator("#shape-position-layer").selectOption(layer);
     await page.locator("#shape-position-x").fill(String(x));
     await page.locator("#shape-position-y").fill(String(y));
     await page.locator("#shape-apply").click();
   };
-  await editor.locator("p").click(); await insertShape("Arrange A");
-  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
-  await insertShape("Arrange B");
-  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
-  await insertShape("Arrange C");
-  await setPosition(0, 100, -300); await setPosition(1, 900, 200, "behind"); await setPosition(2, 300, 900);
+  await editor.locator("p").click(); await insertPositioned("Arrange A", 100, -300); await editor.press("ArrowRight");
+  await insertPositioned("Arrange B", 900, 200, "behind"); await editor.press("ArrowRight");
+  await insertPositioned("Arrange C", 300, 900);
   const shapes = editor.locator(":scope > .office-shape-node");
   await expect(shapes).toHaveCount(3);
 
