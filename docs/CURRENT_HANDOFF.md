@@ -2,6 +2,33 @@
 
 Updated: 2026-10-09
 
+Roadmap 490 through 496 / PLANS 351 through 357 are complete under ADR-0157. Root-level native Office shape groups
+now accept one optional bounded logical position with a front/behind-text layer, normalized integer X from 0 through
+1000 and integer Y from -1200 through 1200 pixels. Normal flow remains the canonical omission. Browser and server
+reject booleans, fractions, unknown keys, CSS/z-index expressions, URLs and positions or wrapping on individual group
+members; nested groups remain invalid.
+
+The responsive group dialog exposes the exact layer and coordinates. A focusable direct anchor moves the complete
+group live by pointer/touch, one-pixel arrows, ten-pixel Shift steps and Home reset. The preview is kept outside the
+editor's content-mutation path and the completed gesture commits exactly one isolated undo step. Editor, comparison
+and semantic print/PDF share exact group bounds derived from row/stack layout, gap and each member's arbitrary-angle
+bounds. Positioned copies receive fresh group/member IDs and a bounded visible 25/24 offset. Ungrouping requires
+normal flow first; removing one member from a positioned two-member group promotes the survivor atomically at the
+group anchor.
+
+Focused server and browser-model checks passed. The complete existing shape desktop/mobile matrix passed 25/25 in
+3.1 minutes, and the final positioned-group evidence rerun passed 2/2. It covers dialog, keyboard, real pointer drag,
+isolated undo/redo, bounded copies, confirmed save, print, safe ungrouping and survivor promotion. The final live-group
+desktop/mobile screenshot SHA-256 values are
+`b4f69f81aebb402497a2000ea610312d6e6635d8bb5ff1e3fd3bdfda9f69ec16` and
+`add7e49ad3414bcc7b29f8d186f56df833e1e9418a8bccbec795913ad44952dc`; both passed visual review without horizontal
+overflow or unreachable controls.
+
+Product behavior is published through commit `93972fa5`; final evidence source is `a69cbddb` on
+`kirchherr/kb-write-unit-of-work`. The isolated review API is healthy at
+`http://192.168.0.108:42880/office?review=shape-group-position-a69cbddb`. No migration, endpoint, dependency, external
+request, provider, worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
+
 Roadmap 483 through 489 / PLANS 344 through 350 are complete under ADR-0156. Native Office shapes now store any
 whole-degree rotation from 1 through 359; zero remains the canonical absence and every existing quarter-turn value
 stays valid. Browser and server reject booleans, fractions, negative and out-of-range values, matrices, CSS, URLs and

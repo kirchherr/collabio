@@ -2733,7 +2733,33 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, neuen Recovery-Speicher, Transformationsmatrix, getrennte Textdrehung,
      physische Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 489 / PLANS 224 bis 350 sind unter ADR-0139 bis ADR-0156 implementiert
+490. [x] Frei positionierbare native Formgruppen unter ADR-0157 eingefuehrt: eine Wurzelgruppe kann optional exakt
+     eine Ebene vor oder hinter Text, eine normalisierte ganzzahlige X-Position von 0 bis 1000 und einen ganzzahligen
+     Y-Versatz von -1200 bis 1200 Pixeln besitzen; Abwesenheit bleibt der kanonische normale Dokumentfluss.
+
+491. [x] Boolesche Werte, Bruchteile, freie CSS- oder Z-Index-Werte, URLs, unbekannte Positionsschluessel sowie
+     Positionierung und Umfluss einzelner Gruppenmitglieder unabhaengig in Browser und Server abgewiesen.
+
+492. [x] Responsiven Gruppendialog und direkten fokussierbaren Gruppenanker umgesetzt: Zeiger und Touch verschieben
+     die komplette Gruppe live, Pfeiltasten um ein Pixel, Umschalt plus Pfeil um zehn Pixel und Pos1 auf den Ursprung;
+     jede abgeschlossene Geste bildet genau einen isolierten Undo-Schritt.
+
+493. [x] Exakte achsenparallele Gruppenmasse aus Reihen-/Stapel-Layout, Abstand und beliebig gedrehten Mitgliedern
+     berechnet und dieselbe validierte Geometrie fuer Editor, Vergleich sowie semantischen Druck/PDF vor oder hinter
+     Text verwendet, ohne Dokumentinhalte als Stil-Ausdruecke auszuwerten.
+
+494. [x] Positionierte Gruppen mit frischen Gruppen- und Mitglieds-IDs unabhaengig dupliziert und mit begrenztem
+     25/24-Versatz sichtbar getrennt; Aufloesen verlangt zuvor normalen Fluss, waehrend das Entfernen des vorletzten
+     Mitglieds den verbleibenden Inhalt atomar als eigenstaendige Form am Gruppenanker erhaelt.
+
+495. [x] Gruppenpositionen durch bestaetigten CAS-Save, immutable Historie, Vergleich, Rueckgaengig/Wiederholen,
+     Druck, Reload, unabhaengige Wiederverwendung und Recovery im bestehenden nativen Dokument-JSON erhalten.
+
+496. [x] Vollstaendigen Lebenszyklus frei positionierter Formgruppen unter ADR-0157 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, physische Seitenanker, beliebige
+     Z-Indizes, gemischte Mitgliedsanker, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 496 / PLANS 224 bis 357 sind unter ADR-0139 bis ADR-0157 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

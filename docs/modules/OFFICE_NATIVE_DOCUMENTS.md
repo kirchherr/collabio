@@ -79,6 +79,24 @@ retain their logical anchor. Browser and server reject fractions, booleans, out-
 strings. Confirmed save, history, comparison and independent shape/group copies retain the exact angle in the existing
 immutable JSON, without a migration, new store, endpoint, dependency or DOCX DrawingML admission.
 
+Roadmap 490 adds one optional bounded logical position to a complete root-level shape group under
+[ADR-0157](../../ARCHITECTURE_DECISIONS/ADR-0157-freely-positioned-native-office-shape-groups.md). The position uses
+exactly a front/behind-text layer, an integer normalized X coordinate from 0 through 1000 and an integer Y offset from
+-1200 through 1200 pixels. Omission remains canonical normal flow. Individual members still reject wrapping and their
+own positions, and groups cannot be nested.
+
+The responsive group dialog exposes layer and coordinates. A focusable direct anchor moves the complete group by
+pointer/touch, one-pixel arrows, ten-pixel Shift steps or Home reset. Live movement changes only editor-owned DOM
+presentation; releasing the pointer commits one validated isolated undo step. Row/stack layout, gap, member dimensions
+and arbitrary rotations feed one exact axis-aligned group bound shared by editor, comparison and semantic print/PDF.
+Static CSS maps only validated tokens and product-generated numbers.
+
+Positioned duplication creates fresh group/member IDs and a bounded visible 25/24 offset. Ungrouping requires normal
+flow first. Removing one member from a two-member positioned group promotes the survivor atomically to a standalone
+shape at the group anchor. Confirmed save, immutable history, reload, independent reuse and recovery preserve the exact
+position in the existing JSON without a migration, endpoint, new store, physical page anchor, arbitrary z-index or
+DOCX DrawingML admission.
+
 Roadmap 305 adds direct earlier/later controls for a selected standalone shape. Each action swaps the complete shape
 with exactly one adjacent top-level document node and keeps selection on the moved shape. Boundary actions are
 disabled, while grouped shapes continue to use member ordering. The isolated undo transaction preserves the stable
@@ -134,7 +152,8 @@ Roadmap 297 adds root-level groups of two through eight flow shapes with exact m
 integer 0–48 pixel gap. Authors can create or extend a group from adjacent shapes, change its layout, edit or remove
 members and dissolve it with isolated undo/redo. Row groups collapse to one column in compact views. Group members
 retain their own validated shape presentation and optional quarter-turn rotation, while wrapping and free positioning
-are rejected. Comparison, immutable history, historical reuse, independent copies and print preserve the exact group.
+of individual members are rejected. Comparison, immutable history, historical reuse, independent copies and print
+preserve the exact group.
 
 Roadmap 296 adds optional left/right text wrapping with an exact integer 0–48 pixel gap. Wrapping and free positioning
 are mutually exclusive in the dialog and both validators. Wrapped shapes occupy at most 45 percent of the available
