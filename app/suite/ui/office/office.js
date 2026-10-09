@@ -22,6 +22,7 @@ import { officeImageGroupAttributes } from "./office-image-groups.mjs";
 import { officeImageGroupExtension } from "./office-image-group-extension.mjs";
 import { officeShapeAttributes } from "./office-shapes.mjs";
 import { officeShapeExtension, installOfficeShapeControls } from "./office-shape-controls.mjs";
+import { installOfficeShapeMultiSelection } from "./office-shape-multi-selection-controls.mjs";
 import { officeChartExtension, installOfficeChartControls } from "./office-chart-controls.mjs";
 import { officeChartAttributes } from "./office-charts.mjs";
 import { officeShapeGroupAttributes } from "./office-shape-groups.mjs";
@@ -674,6 +675,7 @@ function updateEditorState() {
   pageControls.update();
   imageControls.update();
   shapeControls.update();
+  shapeMultiControls.update();
   if (editor) {
     const level = [1, 2, 3].find((candidate) => editor.isActive("heading", { level: candidate }));
     $("text-style").value = level ? `heading-${level}` : "paragraph";
@@ -6177,6 +6179,8 @@ const imageControls = installOfficeImageControls({ state,
   current: characterActionCurrent,
   validate: validateEditorDocument, focus: focusEditor, notice, accessDenied: officeAccessDenied, reference: mutationReference });
 const shapeControls = installOfficeShapeControls({ state, allowed: () => paragraphAllowed(), current: characterActionCurrent,
+  validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
+const shapeMultiControls = installOfficeShapeMultiSelection({ state, allowed: () => paragraphAllowed(),
   validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });
 const chartControls = installOfficeChartControls({ state, $, sessionCurrent, validate: validateEditorDocument,
   update: updateEditorState, notice, focus: focusEditor });

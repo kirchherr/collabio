@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
+import { officeShapeMultiCanGroup, officeShapeMultiRange, officeShapeMultiSelection, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -153,4 +154,22 @@ test("Office comparison exposes shape presentation and literal text changes", ()
   const comparison = compareOfficeDocuments(before, after);
   expect(comparison.counts.changed).toBe(1);
   expect(comparison.rows.some((row) => row.before === before.content[1] || row.after === before.content[1])).toBe(true);
+});
+
+test("Office shape multi-selection is bounded ordered and groups only adjacent flow shapes", () => {
+  const nodes = [
+    { id: "shape-" + "1".repeat(24), type: "shape", rootIndex: 1, node: { attrs: { position: null, wrap: null } } },
+    { id: "shape-group-" + "2".repeat(24), type: "shapeGroup", rootIndex: 2, node: { attrs: {} } },
+    { id: "shape-" + "3".repeat(24), type: "shape", rootIndex: 4, node: { attrs: { position: null, wrap: null } } },
+  ];
+  expect(OFFICE_SHAPE_MULTI_SELECTION_LIMIT).toBe(20);
+  expect(officeShapeMultiSelection(nodes, [nodes[2].id, nodes[0].id])).toEqual([nodes[0], nodes[2]]);
+  expect(officeShapeMultiRange(nodes, nodes[0].id, nodes[2].id)).toEqual(nodes.map((entry) => entry.id));
+  expect(officeShapeMultiCanGroup([nodes[0], { ...nodes[2], rootIndex: 2 }])).toBe(true);
+  expect(officeShapeMultiCanGroup([nodes[0], nodes[2]])).toBe(false);
+  expect(officeShapeMultiCanGroup([nodes[0], nodes[1]])).toBe(false);
+  expect(officeShapeMultiCanGroup([nodes[0], { ...nodes[2], rootIndex: 2,
+    node: { attrs: { position: { layer: "front", x: 0, y: 0 }, wrap: null } } }])).toBe(false);
+  expect(() => officeShapeMultiSelection(nodes, [nodes[0].id, nodes[0].id])).toThrow();
+  expect(() => officeShapeMultiSelection(nodes, Array(21).fill(0).map((_, index) => `shape-${String(index).padStart(24, "0")}`))).toThrow();
 });
