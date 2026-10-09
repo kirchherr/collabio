@@ -2916,7 +2916,35 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Koordinatenfelder, physische
      Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 538 / PLANS 224 bis 399 sind unter ADR-0139 bis ADR-0163 implementiert
+539. [x] Gemeinsames Skalieren mindestens zweier ausgewaehlter positionierter Wurzelformen oder ganzer Formgruppen
+     unter ADR-0164 ueber den Groessenanker eines ausgewaehlten Objekts fuer Maus, Touch und Tastatur umgesetzt.
+     Textfluss- und Umflussobjekte erhalten nie implizit eine Position.
+
+540. [x] Eine gemeinsame X-/Y-Skalierung auf Tausendstelbasis aus dem aktiven Anker abgeleitet und gegen den
+     gemeinsamen zulaessigen Bereich aller Mitgliedsbreiten von 80 bis 1200 sowie Mitgliedshoehen von 40 bis 800
+     begrenzt. Umschalt behaelt das Seitenverhaeltnis ueber einen gemeinsamen Faktor bei.
+
+541. [x] Den vorhandenen Form-Groessenanker und einen zugaenglichen Gruppen-Groessenanker fuer gemeinsame Maus- und
+     Touch-Gesten sowie Pfeiltasten bereitgestellt. Pfeiltasten skalieren um einen Quellpixel, Umschalt-Pfeiltasten
+     um zehn, ohne Gruppenstruktur, Verbindungen, Abstaende, Ebenen, Positionen oder IDs zu veraendern.
+
+542. [x] DOM-exklusive Live-Vorschau aller ausgewaehlten Formen, gemeinsame Prozentanzeige und zugaengliche
+     Ankerbeschreibung bereitgestellt. Pointer-Abbruch, Escape, Dokument-/Sitzungswechsel, Schreibschutz und
+     veralteter Zustand stellen die Ausgangsgroessen ohne Transaktion wieder her.
+
+543. [x] Erfolgreiches Skalieren als genau eine vollstaendig validierte Transaktion und einen Rueckgaengig-Schritt
+     ausgefuehrt. Einzelobjekt-Skalierung und Folgeklick werden waehrend der gemeinsamen Geste unterdrueckt; eine
+     Geste ohne effektive Aenderung erzeugt keinen Historieneintrag.
+
+544. [x] Resultierende Groessen durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Reload,
+     semantischen Druck und unabhaengige Wiederverwendung erhalten. Auswahl, Live-Vorschau und Gestenzustand bleiben
+     ungespeichert.
+
+545. [x] Vollstaendigen gemeinsamen Skalierungslebenszyklus unter ADR-0164 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, Recovery-Speicher, freie CSS-Werte, physische Seitenanker,
+     verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 545 / PLANS 224 bis 406 sind unter ADR-0139 bis ADR-0164 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

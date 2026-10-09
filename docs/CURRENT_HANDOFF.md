@@ -2,6 +2,29 @@
 
 Updated: 2026-10-09
 
+Roadmap 539 through 545 / PLANS 400 through 406 are complete under ADR-0164. Resizing the handle of any selected
+positioned root shape or complete group scales the complete eligible selection with mouse, touch or keyboard.
+Independent X/Y factors use a fixed 1000 base; Shift applies one aspect-locked factor. One common legal scale range
+is intersected across all member widths and heights, keeping every shape within 80-1200 by 40-800.
+
+The existing shape handle and a positioned-group handle expose whole-selection labels, live DOM-only preview and
+effective percentages. Arrow keys change the source axis by one pixel and Shift plus an arrow by ten. Pointer cancel,
+Escape, document/session changes and non-writable or stale state restore the original dimensions without history.
+One effective completion rebuilds and validates the complete selection in exactly one transaction and undo unit;
+group structure, connections, gaps, layers, positions, rotations, typography and stable IDs remain intact.
+
+The pure model plus exact desktop/mobile workflow passed 5/5 in 1.0 minute. The complete native-shape model and
+responsive desktop/mobile matrix passed 34/34 in 4.4 minutes. Local product commit `b90b7af8` is active in the
+isolated dev001 review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-resize-local`; the review API is healthy on port 42880. Live
+inspection confirmed two selected positioned shapes, active collective controls and the accessible resize labels.
+
+Only resulting established dimensions enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, free CSS, physical page geometry, nested group, DOCX
+engine or production admission. GitHub publication of local documentation commit `778ca9b3`, product commit
+`b90b7af8` and this closure remains pending because automatic approval review rejected exporting the internal
+handoff, roadmap, ADR and dev001 operations record to the existing remote without a new explicit user confirmation.
+
 Roadmap 532 through 538 / PLANS 393 through 399 are complete under ADR-0163. Dragging the position anchor of any one
 selected root shape or complete group moves the complete eligible selection with mouse or touch. Horizontal movement
 maps through the current editor width to the established integer X scale; vertical movement uses integer pixels.
@@ -22,8 +45,10 @@ passed 33/33 in 4.3 minutes. Product and focused-test commits through `add05b45`
 
 Only resulting existing bounded logical positions enter immutable Office JSON. The change adds no migration,
 endpoint, dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX
-engine or production admission. Full repository quality and final documentation-contract evidence follow in this
-closure pass.
+engine or production admission. The complete repository quality gate passed after this block: Ruff passed, all 891
+files were formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known
+Starlette/AnyIO warning. The exact temporary PostgreSQL and stale Work-E2E runner containers were removed; no
+transient quality or Work-E2E runner remained, and regular plus review APIs both returned `ok`.
 
 Roadmap 525 through 531 / PLANS 386 through 392 are complete under ADR-0162. Native Office can assign one common
 front/behind-text layer to at least two selected positioned root shapes or complete groups while retaining both

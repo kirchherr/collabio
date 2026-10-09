@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–538 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 538 / PLANS 399 native shape multi-object pointer and touch drag
+Status: Roadmap 252–545 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 545 / PLANS 406 native shape multi-object resize
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0163; current movement: `ARCHITECTURE_DECISIONS/ADR-0163-bounded-native-office-shape-multi-object-pointer-drag.md`
+Decisions: ADR-0079 through ADR-0164; current movement: `ARCHITECTURE_DECISIONS/ADR-0164-bounded-native-office-shape-multi-object-resize.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -115,6 +115,23 @@ Each accepted action validates the full candidate and forms exactly one transact
 save, predecessor history, reload, semantic print/PDF and independent reuse preserve the resulting established
 positions while selection remains transient. No migration, endpoint, dependency, external request, provider, worker,
 recovery store, arbitrary movement value, physical page anchor, nested group or DOCX admission is added.
+
+Roadmap 539 through 545 adds bounded collective resizing under
+[ADR-0164](../../ARCHITECTURE_DECISIONS/ADR-0164-bounded-native-office-shape-multi-object-resize.md).
+Dragging the resize handle of any selected positioned root shape or complete group scales the complete eligible
+selection. Independent X/Y factors use a fixed 1000 base; Shift uses one aspect-locked factor. The common factor is
+clamped against every member shape, keeping widths within 80 through 1200 and heights within 40 through 800.
+
+The existing standalone handle and the positioned-group handle provide mouse, touch and keyboard access. Arrow keys
+change the source dimension by one pixel and Shift plus an arrow by ten. Live changes affect only editor-owned DOM,
+with common percentage status, selection markers and accessible whole-selection labels. Pointer cancellation,
+Escape, a changed document/session and non-writable or stale state restore every original dimension without history.
+
+One effective completion validates all rebuilt shapes/groups and creates exactly one undo unit. Group attributes,
+member order, connections, gap, layer, position, rotation, typography and stable IDs remain unchanged. Confirmed CAS
+save, predecessor history, reload, semantic print/PDF and independent reuse preserve only the resulting established
+dimensions. This adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+arbitrary CSS, physical page anchor, nested group or DOCX DrawingML admission.
 
 Roadmap 532 through 538 adds bounded collective pointer and touch dragging under
 [ADR-0163](../../ARCHITECTURE_DECISIONS/ADR-0163-bounded-native-office-shape-multi-object-pointer-drag.md).
