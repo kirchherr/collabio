@@ -420,7 +420,7 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         )
 
 
-def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
+def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
     def shape(index: int) -> dict[str, Any]:
         return {
             "type": "shape",
@@ -450,6 +450,12 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
         "attrs": {**group["attrs"], "connection": {"kind": "doubleArrow", "color": "purple", "width": 8}},
     }
     assert validate_office_document({"type": "doc", "content": [connected]})["content"][0] == connected
+    for position in [
+        {"layer": "front", "x": 0, "y": -1200},
+        {"layer": "behind", "x": 1000, "y": 1200},
+    ]:
+        positioned = {**group, "attrs": {**group["attrs"], "position": position}}
+        assert validate_office_document({"type": "doc", "content": [positioned]})["content"][0] == positioned
     for attrs in [
         {"id": "short", "layout": "row", "gap": 16},
         {"id": "shape-group-" + "a" * 24, "layout": "grid", "gap": 16},
@@ -486,6 +492,51 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
             "layout": "row",
             "gap": 16,
             "connection": {"kind": "line", "color": "black", "width": 2, "path": "M0 0"},
+        },
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "position": {}},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "position": []},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "position": "front"},
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "middle", "x": 0, "y": 0},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "front", "x": -1, "y": 0},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "behind", "x": 1001, "y": 0},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "front", "x": True, "y": 0},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "front", "x": 0, "y": -1201},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "behind", "x": 0, "y": 1201},
+        },
+        {
+            "id": "shape-group-" + "a" * 24,
+            "layout": "row",
+            "gap": 16,
+            "position": {"layer": "front", "x": 0, "y": 0, "style": "fixed"},
         },
     ]:
         with pytest.raises(OfficeDocumentInvalidContentError):

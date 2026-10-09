@@ -8,6 +8,7 @@ import { officeLinkDescription } from "./office-links.mjs";
 import { officeBookmarkDescription, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
 import { officeTableAttributes, officeTableCellAttributes, officeTableCellStyleDescription, officeTableLayoutDescription } from "./office-tables.mjs";
 import { officeShapeDescription } from "./office-shapes.mjs";
+import { officeShapeGroupDescription } from "./office-shape-groups.mjs";
 import { officeImageGroupLayoutLabel } from "./office-image-groups.mjs";
 import { officeDocumentCardAttributes } from "./office-document-cards.mjs";
 import { officeChartDescription } from "./office-charts.mjs";
@@ -229,7 +230,7 @@ function blockText(block, nested = false) {
       const attrs = officeDocumentCardAttributes(block.attrs);
       return `Dokumentobjekt · ${attrs.mode === "linked" ? "explizit aktualisierbar" : "feste Momentaufnahme"}\n${attrs.targetObjectId}\n${attrs.targetVersionId}`;
     }
-    case "shapeGroup": return `Formgruppe · ${children.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px${block.attrs.connection ? ` · Verbindung ${block.attrs.connection.kind}, ${block.attrs.connection.color}, ${block.attrs.connection.width} px` : ""}\n${children.map((child) => blockText(child, true)).join("\n")}`;
+    case "shapeGroup": return `${officeShapeGroupDescription(block.attrs, children.length)}\n${children.map((child) => blockText(child, true)).join("\n")}`;
     case "shape": return officeShapeDescription(block.attrs);
     case "chart": return officeChartDescription(block.attrs);
     case "paragraph": {
@@ -275,7 +276,7 @@ function blockText(block, nested = false) {
 }
 
 export function describeOfficeBlock(block) {
-  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${officeImageGroupLayoutLabel(block.attrs.layout)} · Abstand ${block.attrs.gap} px` : block.type === "shapeGroup" ? `Formgruppe · ${block.content.length} Formen · ${block.attrs.layout === "row" ? "nebeneinander" : "untereinander"} · Abstand ${block.attrs.gap} px${block.attrs.connection ? ` · Verbindung ${block.attrs.connection.kind}, ${block.attrs.connection.color}, ${block.attrs.connection.width} px` : ""}` : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "chart" ? officeChartDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
+  let label = block.type === "runningText" ? "Kopf-/Fußzeilen und Seitenzahlen" : block.type === "pageSettings" ? "Seiteneinstellungen" : block.type === "image" ? "Bild" : block.type === "imageGroup" ? `Bildgruppe · ${block.content.length} Bilder · ${officeImageGroupLayoutLabel(block.attrs.layout)} · Abstand ${block.attrs.gap} px` : block.type === "shapeGroup" ? officeShapeGroupDescription(block.attrs, block.content.length) : block.type === "shape" ? officeShapeDescription(block.attrs) : block.type === "chart" ? officeChartDescription(block.attrs) : block.type === "styleCatalog" ? "Formatvorlagen" : block.type === "fieldCatalog" ? "Dokumentfelder" : block.type === "sourceCatalog" ? "Quellenkatalog" : nodeLabels[block.type];
   if (block.type === "heading") label += ` Ebene ${block.attrs.level}`;
   if (["paragraph", "heading"].includes(block.type)) {
     const formatting = [...officeParagraphDescription(block.attrs), block.attrs?.styleDescription].filter(Boolean);

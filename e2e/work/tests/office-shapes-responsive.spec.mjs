@@ -225,6 +225,68 @@ test("Office shape groups preserve ordered members history print and independent
   expect(copy.content.content.find((entry) => entry.type === "shapeGroup")).toEqual(group);
 });
 
+test("Office shape groups move freely as one object with history print and offset copies", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Positioned shape group proof", "Text around positioned group");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Position A"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").click(); await editor.press("ArrowRight"); await page.locator("#shape-options").click();
+  await page.locator("#shape-kind").selectOption("ellipse"); await page.locator("#shape-rotation").fill("37");
+  await page.locator("#shape-text").fill("Position B"); await page.locator("#shape-apply").click();
+  await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-previous").click();
+
+  const group = editor.locator(".office-shape-group").first();
+  await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-position-layer")).toBeEnabled();
+  await expect(page.locator("#shape-group-position-x")).toBeDisabled();
+  await page.locator("#shape-group-position-layer").selectOption("front");
+  await page.locator("#shape-group-position-x").fill("400"); await page.locator("#shape-group-position-y").fill("80");
+  await expect(page.locator("#shape-group-ungroup")).toBeDisabled(); await page.locator("#shape-apply").click();
+  await expect(group).toHaveAttribute("data-shape-group-positioned", "");
+  await expect(group).toHaveAttribute("data-shape-group-position", "front");
+  const anchor = group.locator(".office-shape-group-anchor"); await expect(anchor).toBeVisible();
+  await anchor.focus(); await anchor.press("Shift+ArrowRight"); await anchor.press("ArrowDown");
+  await expect(anchor).toHaveAttribute("aria-label", /X 410; Y 81 Pixel/);
+  await editor.press("Control+z"); await expect(anchor).toHaveAttribute("aria-label", /X 410; Y 80 Pixel/);
+  await editor.press("Control+Shift+z"); await expect(anchor).toHaveAttribute("aria-label", /X 410; Y 81 Pixel/);
+  const handle = await anchor.boundingBox(); expect(handle).not.toBeNull();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2); await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2 + 24, handle.y + handle.height / 2 + 12); await page.mouse.up();
+  await expect(anchor).toHaveAttribute("aria-label", /Y 93 Pixel/);
+
+  await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-duplicate").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(2);
+  await editor.press("Control+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(1);
+  await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(2);
+  const saved = await saveOffice(page, { objectId }), groups = saved.content.content.filter((entry) => entry.type === "shapeGroup");
+  expect(groups).toHaveLength(2); expect(groups[0].attrs.position.layer).toBe("front");
+  expect(groups[0].attrs.position.y).toBe(93);
+  expect(groups[1].attrs.position).toEqual({ layer: "front", x: groups[0].attrs.position.x + 25, y: 117 });
+  expect(groups[1].attrs.id).not.toBe(groups[0].attrs.id);
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-shape-group[data-shape-group-positioned]")).toHaveCount(2);
+  await expect(page.locator("#print-preview .office-print-shape-group").first()).toHaveAttribute("data-shape-group-position", "front");
+  await page.locator("#print-close").click();
+
+  await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-position-layer").selectOption("flow"); await page.locator("#shape-apply").click();
+  await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-ungroup")).toBeEnabled(); await page.locator("#shape-group-ungroup").click();
+  await expect(editor.locator(".office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(2);
+  await editor.locator(".office-shape-group .office-shape").first().click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-remove").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(0);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(3);
+  await expect(editor.locator(":scope > .office-shape-node[data-shape-positioned]")).toHaveCount(1);
+  const promoted = await saveOffice(page, { objectId });
+  expect(promoted.content.content.filter((entry) => entry.type === "shape").find((entry) => entry.attrs.position)?.attrs.position)
+    .toEqual(groups[1].attrs.position);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-position-${testInfo.project.name}.png`, fullPage: true });
+});
+
 test("Office positioned shape duplication creates a visible independent copy", async ({ page }) => {
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Native shape duplicate proof", "Text before copy");

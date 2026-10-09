@@ -219,6 +219,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-connection").value = action?.shapeContext?.group?.attrs.connection?.kind ?? "none";
     $("shape-group-connection-color").value = action?.shapeContext?.group?.attrs.connection?.color ?? "slate";
     $("shape-group-connection-width").value = String(action?.shapeContext?.group?.attrs.connection?.width ?? 2);
+    $("shape-group-position-layer").value = action?.shapeContext?.group?.attrs.position?.layer ?? "flow";
+    $("shape-group-position-x").value = String(action?.shapeContext?.group?.attrs.position?.x ?? 0);
+    $("shape-group-position-y").value = String(action?.shapeContext?.group?.attrs.position?.y ?? 0);
   };
   const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
   const shapeGroupId = () => `shape-group-${shapeId().slice(6)}`;
@@ -226,6 +229,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     gap: Number($("shape-group-gap").value), connection: $("shape-group-connection").value === "none" ? null : {
       kind: $("shape-group-connection").value, color: $("shape-group-connection-color").value,
       width: Number($("shape-group-connection-width").value),
+    }, position: $("shape-group-position-layer").value === "flow" ? null : {
+      layer: $("shape-group-position-layer").value,
+      x: Number($("shape-group-position-x").value), y: Number($("shape-group-position-y").value),
     } });
   const read = () => officeShapeAttributes({ id: action?.attrs?.id || action?.id || (action.id = shapeId()),
     kind: $("shape-kind").value, width: Number($("shape-width").value), height: Number($("shape-height").value),
@@ -271,7 +277,11 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-position-x").disabled = grouped || !positioned; $("shape-position-y").disabled = grouped || !positioned;
     $("shape-group-previous").disabled = !groupCandidate(action, "previous");
     $("shape-group-next").disabled = !groupCandidate(action, "next");
-    $("shape-group-ungroup").disabled = !grouped;
+    const groupPositioned = $("shape-group-position-layer").value !== "flow";
+    $("shape-group-position-layer").disabled = !grouped;
+    $("shape-group-position-x").disabled = !grouped || !groupPositioned;
+    $("shape-group-position-y").disabled = !grouped || !groupPositioned;
+    $("shape-group-ungroup").disabled = !grouped || groupPositioned;
     $("shape-group-move-previous").disabled = !grouped || action.shapeContext.rootIndex === 0;
     $("shape-group-move-next").disabled = !grouped || action.shapeContext.rootIndex === action.shapeContext.root.childCount - 1;
     $("shape-group-member-previous").disabled = !grouped || action.shapeContext.shapeIndex === 0;
@@ -286,6 +296,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
   $("shape-wrap").addEventListener("input", updateLayoutControls);
   $("shape-group-connection").addEventListener("input", updateLayoutControls);
+  $("shape-group-position-layer").addEventListener("input", updateLayoutControls);
   $("shape-form").addEventListener("input", preview);
   $("shape-form").addEventListener("submit", (event) => {
     event.preventDefault(); if (!action || !current(action)) { close(); return; }
@@ -339,7 +350,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     if (context?.grouped) {
       const members = context.group.content.content;
       if (members.length === 2) {
-        const remaining = members[context.shapeIndex === 0 ? 1 : 0];
+        const survivor = members[context.shapeIndex === 0 ? 1 : 0];
+        const remaining = context.group.attrs.position == null ? survivor :
+          editor.schema.nodes.shape.create(officeShapeAttributes({ ...survivor.attrs, position: context.group.attrs.position }));
         tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, remaining);
         tr.setSelection(NodeSelection.create(tr.doc, context.groupPos));
       } else {
@@ -449,7 +462,12 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     if (groupCount(editor.state.doc) >= OFFICE_SHAPE_GROUP_LIMIT || count() + context.group.childCount > OFFICE_SHAPE_LIMIT) return;
     const members = context.group.content.content.map((member) =>
       editor.schema.nodes.shape.create(officeShapeAttributes({ ...member.attrs, id: shapeId() })));
-    const attrs = officeShapeGroupAttributes({ ...context.group.attrs, id: shapeGroupId() });
+    const groupPosition = context.group.attrs.position == null ? null : {
+      layer: context.group.attrs.position.layer,
+      x: context.group.attrs.position.x <= 975 ? context.group.attrs.position.x + 25 : context.group.attrs.position.x - 25,
+      y: context.group.attrs.position.y <= 1176 ? context.group.attrs.position.y + 24 : context.group.attrs.position.y - 24,
+    };
+    const attrs = officeShapeGroupAttributes({ ...context.group.attrs, id: shapeGroupId(), position: groupPosition });
     const duplicate = editor.schema.nodes.shapeGroup.create(attrs, members);
     const insertPos = context.groupPos + context.group.nodeSize;
     const tr = editor.state.tr.insert(insertPos, duplicate);
@@ -476,6 +494,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   });
   $("shape-group-ungroup").addEventListener("click", () => {
     if (!action || !current(action) || !action.shapeContext?.grouped) return;
+    if (action.shapeContext.group.attrs.position != null) {
+      $("shape-status").textContent = "Die Gruppe muss vor dem Auflösen in den Textfluss zurückgesetzt werden."; return;
+    }
     const editor = state.editor, context = action.shapeContext, members = context.group.content.content;
     const offset = members.slice(0, context.shapeIndex).reduce((total, node) => total + node.nodeSize, 0);
     const tr = editor.state.tr.replaceWith(context.groupPos, context.groupPos + context.group.nodeSize, members);

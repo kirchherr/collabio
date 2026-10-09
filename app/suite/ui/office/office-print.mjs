@@ -5,7 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement } from "./office-shapes.mjs";
-import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupBounds, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -113,6 +113,14 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;
       group.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
       group.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(children.length) : "1");
+      const bounds = officeShapeGroupBounds(attrs, children.map((child) => child.attrs));
+      group.style.setProperty("--shape-group-bound-width", String(bounds.width));
+      if (attrs.position) {
+        group.dataset.shapeGroupPositioned = ""; group.dataset.shapeGroupPosition = attrs.position.layer;
+        group.style.setProperty("--shape-group-position-x", `${attrs.position.x / 10}%`);
+        group.style.setProperty("--shape-group-position-shift", `${-attrs.position.x / 10}%`);
+        group.style.setProperty("--shape-group-position-y", `${attrs.position.y}px`);
+      }
       if (attrs.connection) {
         group.dataset.shapeGroupConnection = attrs.connection.kind;
         group.dataset.shapeGroupConnectionColor = attrs.connection.color;

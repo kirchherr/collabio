@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupConnection, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -69,6 +69,25 @@ test("Office shape groups admit only bounded inert layout attributes", () => {
   const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
     { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24), kind: "ellipse" } }] };
   expect(describeOfficeBlock(block).label).toContain("Formgruppe · 2 Formen · nebeneinander · Abstand 16 px");
+});
+
+test("Office shape groups preserve bounded positions and rotated member bounds", () => {
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "row", gap: 16,
+    position: { layer: "behind", x: 500, y: 24 } };
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  const rotated = { ...attrs, id: "shape-" + "c".repeat(24), rotation: 90 };
+  expect(officeShapeGroupBounds(group, [attrs, rotated])).toEqual({ width: 496, height: 320 });
+  expect(officeShapeGroupBounds({ ...group, layout: "stack" }, [attrs, rotated])).toEqual({ width: 320, height: 496 });
+  const block = { type: "shapeGroup", attrs: group,
+    content: [{ type: "shape", attrs }, { type: "shape", attrs: rotated }] };
+  expect(describeOfficeBlock(block).label).toContain("hinter Text · X 500 · Y 24 px");
+  for (const position of [{}, [], "front", { layer: "middle", x: 0, y: 0 },
+    { layer: "front", x: -1, y: 0 }, { layer: "behind", x: 1001, y: 0 },
+    { layer: "front", x: true, y: 0 }, { layer: "front", x: 0, y: -1201 },
+    { layer: "behind", x: 0, y: 1201 }, { layer: "front", x: 0, y: 0, style: "fixed" }]) {
+    expect(() => officeShapeGroupAttributes({ ...group, position })).toThrow();
+  }
+  expect(() => officeShapeGroupBounds(group, [attrs])).toThrow();
 });
 
 test("Office shape group connections are bounded inert and visible in comparisons", () => {
