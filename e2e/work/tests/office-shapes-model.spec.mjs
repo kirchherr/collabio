@@ -203,7 +203,7 @@ test("Office shape multi-selection reorders complete roots atomically and stably
   expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 7 }], "last")).toThrow();
 });
 
-test("Office shape multi-selection ungroups only complete normal-flow groups", () => {
+test("Office shape multi-selection ungroups complete same-anchor groups", () => {
   const member = (suffix) => ({ attrs: { ...attrs, id: `shape-${suffix.repeat(24)}` } });
   const group = (suffix, rootIndex, position = null) => ({
     id: `shape-group-${suffix.repeat(24)}`, type: "shapeGroup", rootIndex,
@@ -223,6 +223,22 @@ test("Office shape multi-selection ungroups only complete normal-flow groups", (
   expect(officeShapeMultiCanUngroup(groups.slice(0, 1))).toBe(false);
   expect(officeShapeMultiCanUngroup([groups[0], { ...groups[1], type: "shape" }])).toBe(false);
   expect(officeShapeMultiCanUngroup([groups[0], group("2", 4, { layer: "front", x: 500, y: 0 })])).toBe(false);
+  const positioned = [group("1", 1, { layer: "front", x: 100, y: -20 }),
+    group("2", 4, { layer: "front", x: 700, y: 180 })];
+  const placements = positioned.flatMap((entry, groupIndex) => entry.node.content.content.map((memberNode, memberIndex) => ({
+    id: memberNode.attrs.id, position: { layer: "front", x: groupIndex * 600 + memberIndex * 200,
+      y: groupIndex * 200 + memberIndex * 120 } })));
+  expect(officeShapeMultiCanUngroup(positioned)).toBe(true);
+  expect(officeShapeMultiUngroup(positioned, placements)).toEqual({ groups: [
+    { id: positioned[0].id, rootIndex: 1, attrs: officeShapeGroupAttributes(positioned[0].node.attrs),
+      memberIds: positioned[0].node.content.content.map((entry) => entry.attrs.id), memberPositions: placements.slice(0, 2) },
+    { id: positioned[1].id, rootIndex: 4, attrs: officeShapeGroupAttributes(positioned[1].node.attrs),
+      memberIds: positioned[1].node.content.content.map((entry) => entry.attrs.id), memberPositions: placements.slice(2) },
+  ], memberIds: placements.map((entry) => entry.id) });
+  expect(() => officeShapeMultiUngroup(positioned)).toThrow();
+  expect(() => officeShapeMultiUngroup(positioned, placements.slice(0, 3))).toThrow();
+  expect(() => officeShapeMultiUngroup(positioned, placements.map((entry, index) => index === 3 ?
+    { ...entry, position: { ...entry.position, layer: "behind" } } : entry))).toThrow();
   expect(() => officeShapeMultiUngroup([groups[0], { ...groups[1], node: { ...groups[1].node,
     content: { content: [member("3"), { attrs: { ...attrs, id: "shape-invalid" } }] } } }])).toThrow();
 });
@@ -250,6 +266,23 @@ test("Office shape multi-selection regroups exact remembered normal-flow members
     node: { attrs: { ...entry.node.attrs, position: { layer: "front", x: 500, y: 0 } } } } : entry), snapshot)).toBe(false);
   expect(officeShapeMultiCanRegroup([...entries, { id: groups[0].id, type: "shapeGroup", rootIndex: 8,
     node: { attrs: groups[0].attrs } }], snapshot)).toBe(false);
+
+  const positionedGroups = groups.map((group, groupIndex) => ({ ...group,
+    attrs: { ...group.attrs, position: { layer: "front", x: 200 + groupIndex * 600, y: groupIndex * 200 } },
+    memberPositions: group.memberIds.map((id, memberIndex) => ({ id,
+      position: { layer: "front", x: groupIndex * 600 + memberIndex * 200,
+        y: groupIndex * 200 + memberIndex * 120 } })) }));
+  const positionedEntries = entries.map((entry) => ({ ...entry, node: { attrs: { ...entry.node.attrs,
+    position: positionedGroups.flatMap((group) => group.memberPositions).find((placement) => placement.id === entry.id).position } } }));
+  const positionedSnapshot = { groups: positionedGroups };
+  expect(officeShapeMultiCanRegroup(positionedEntries, positionedSnapshot)).toBe(true);
+  expect(officeShapeMultiRegroup(positionedEntries, positionedSnapshot).groups).toEqual([
+    { ...positionedGroups[0], rootIndex: 1, endRootIndex: 2 },
+    { ...positionedGroups[1], rootIndex: 5, endRootIndex: 6 },
+  ]);
+  expect(officeShapeMultiCanRegroup(positionedEntries.map((entry, index) => index === 1 ? { ...entry,
+    node: { attrs: { ...entry.node.attrs, position: { ...entry.node.attrs.position, x: entry.node.attrs.position.x + 1 } } } } : entry),
+  positionedSnapshot)).toBe(false);
 });
 
 test("Office positioned root objects align and distribute through bounded integer anchors", () => {

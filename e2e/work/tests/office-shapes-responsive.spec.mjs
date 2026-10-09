@@ -262,7 +262,7 @@ test("Office shape groups preserve ordered members history print and independent
 });
 
 test("Office shape groups move freely as one object with history print and offset copies", async ({ page }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Positioned shape group proof", "Text around positioned group");
   const editor = officeEditor(page), objectId = baseline.document.object_id;
@@ -358,6 +358,59 @@ test("Office shape groups move freely as one object with history print and offse
   await expect(page.locator("#print-preview .office-print-shape-group").first()).toHaveAttribute("data-shape-group-position", "front");
   await page.locator("#print-close").click();
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-position-live-${testInfo.project.name}.png`, fullPage: true });
+
+  const originalViewport = page.viewportSize();
+  await page.setViewportSize({ width: 1200, height: Math.max(900, originalViewport.height) });
+  const groupedBoxes = await editor.locator(":scope > .office-shape-group .office-shape").evaluateAll((elements) =>
+    elements.map((element) => { const box = element.getBoundingClientRect(), root = element.closest(".tiptap").getBoundingClientRect(); return {
+      centerX: box.left + box.width / 2 - root.left, centerY: box.top + box.height / 2 - root.top,
+    }; }));
+  await page.locator("#shape-multi-toggle").click();
+  for (const control of await editor.locator(":scope > .office-shape-group .office-shape-group-control").all()) {
+    await control.dispatchEvent("mousedown", { button: 0 });
+  }
+  await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte ausgewählt");
+  await expect(page.locator("#shape-multi-ungroup")).toBeEnabled(); await page.locator("#shape-multi-ungroup").click();
+  await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(0);
+  await expect(editor.locator(":scope > .office-shape-node[data-shape-positioned]")).toHaveCount(4);
+  await expect(page.locator("#shape-multi-regroup")).toBeVisible();
+  await expect(page.locator("#shape-multi-regroup")).toBeEnabled();
+  const ungroupedBoxes = await editor.locator(":scope > .office-shape-node > .office-shape").evaluateAll((elements) =>
+    elements.map((element) => { const box = element.getBoundingClientRect(), root = element.closest(".tiptap").getBoundingClientRect(); return {
+      centerX: box.left + box.width / 2 - root.left, centerY: box.top + box.height / 2 - root.top,
+    }; }));
+  expect(ungroupedBoxes).toHaveLength(groupedBoxes.length);
+  for (const [index, box] of ungroupedBoxes.entries()) {
+    expect(Math.abs(box.centerX - groupedBoxes[index].centerX)).toBeLessThanOrEqual(4);
+    expect(Math.abs(box.centerY - groupedBoxes[index].centerY)).toBeLessThanOrEqual(2);
+  }
+  await editor.press("Control+z"); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(2);
+  await editor.press("Control+Shift+z");
+  await expect(editor.locator(":scope > .office-shape-node[data-shape-positioned]")).toHaveCount(4);
+  const positionedUngrouped = await saveOffice(page, { objectId });
+  expect(positionedUngrouped.version.previous_version_id).toBe(saved.version.version_id);
+  const positionedMembers = positionedUngrouped.content.content.filter((entry) => entry.type === "shape");
+  expect(positionedMembers).toHaveLength(4);
+  expect(positionedMembers.every((entry) => entry.attrs.position?.layer === "front")).toBe(true);
+  expect((await officeContent(page, objectId, { versionId: saved.version.version_id })).content).toEqual(saved.content);
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveCount(0);
+  await expect(page.locator("#print-preview .office-print-shape[data-shape-position]")).toHaveCount(4);
+  await page.locator("#print-close").click();
+  await expect(page.locator("#shape-multi-regroup")).toBeEnabled(); await page.locator("#shape-multi-regroup").click();
+  await expect(editor.locator(":scope > .office-shape-group[data-shape-group-positioned]")).toHaveCount(2);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(0);
+  await editor.press("Control+z");
+  await expect(editor.locator(":scope > .office-shape-node[data-shape-positioned]")).toHaveCount(4);
+  await editor.press("Control+Shift+z");
+  await expect(editor.locator(":scope > .office-shape-group[data-shape-group-positioned]")).toHaveCount(2);
+  const positionedRegrouped = await saveOffice(page, { objectId });
+  expect(positionedRegrouped.version.previous_version_id).toBe(positionedUngrouped.version.version_id);
+  expect(positionedRegrouped.content.content.filter((entry) => entry.type === "shapeGroup")).toEqual(groups);
+  expect((await officeContent(page, objectId, { versionId: positionedUngrouped.version.version_id })).content)
+    .toEqual(positionedUngrouped.content);
+  await page.locator("#shape-multi-toggle").click();
+  await page.setViewportSize(originalViewport);
 
   await group.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-position-layer").selectOption("flow"); await page.locator("#shape-apply").click();

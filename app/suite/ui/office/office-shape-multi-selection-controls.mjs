@@ -143,6 +143,42 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   const rootElement = (entry) => entry.type === "shapeGroup" ?
     state.editor?.view.dom.querySelector(`.office-shape-group[data-shape-group="${entry.id}"]`) :
     state.editor?.view.dom.querySelector(`.office-shape-node:has(>.office-shape[data-office-shape="${entry.id}"])`);
+  const positionedUngroupPlacements = (current) => {
+    if (!current.length || current[0].node.attrs.position == null) return null;
+    const placements = []; let expansionBefore = 0;
+    for (const entry of current) {
+      const root = rootElement(entry), memberRoots = root?.querySelectorAll(
+        ":scope > .office-shape-group-content > .office-shape-node");
+      if (!root || memberRoots?.length !== entry.node.childCount) throw new Error("shape-multi-ungroup-layout");
+      const rootRect = root.getBoundingClientRect();
+      if (!Number.isFinite(rootRect.width) || rootRect.width <= 0) throw new Error("shape-multi-ungroup-layout");
+      for (const [index, memberRoot] of Array.from(memberRoots).entries()) {
+        const member = entry.node.child(index), shape = memberRoot.querySelector(":scope > .office-shape");
+        if (!shape || shape.dataset.officeShape !== member.attrs.id) throw new Error("shape-multi-ungroup-layout");
+        const box = shape.getBoundingClientRect(), style = shape.ownerDocument.defaultView.getComputedStyle(shape);
+        const width = Number.parseFloat(style.width), height = Number.parseFloat(style.height);
+        if (![box.left, box.top, box.width, box.height, width, height].every(Number.isFinite) || width <= 0 ||
+            height <= 0 || width > rootRect.width + 1) throw new Error("shape-multi-ungroup-layout");
+        const futureWidth = Math.min(rootRect.width, member.attrs.width);
+        const futureHeight = member.attrs.height * futureWidth / member.attrs.width;
+        const available = rootRect.width - futureWidth;
+        const rawX = available <= 0.5 ? 0 :
+          (box.left + box.width / 2 - rootRect.left - futureWidth / 2) / available * 1000;
+        const rawY = box.top + box.height / 2 - rootRect.top - futureHeight / 2 - expansionBefore - index;
+        const x = Math.max(0, Math.min(1000, Math.round(rawX)));
+        const y = Math.max(-1200, Math.min(1200, Math.round(rawY)));
+        const targetCenterX = box.left + box.width / 2;
+        const positionedCenterX = rootRect.left + futureWidth / 2 + available * x / 1000;
+        if (Math.abs(targetCenterX - positionedCenterX) > 4 || Math.abs(rawY - y) > 0.5) {
+          throw new Error("shape-multi-ungroup-layout");
+        }
+        placements.push({ id: member.attrs.id, position: { layer: entry.node.attrs.position.layer,
+          x, y } });
+      }
+      expansionBefore += entry.node.childCount - 1;
+    }
+    return placements;
+  };
   const previewPosition = (entry, position, dragging = true) => {
     const root = rootElement(entry); if (!root) return;
     root.toggleAttribute("data-office-multi-dragging", dragging);
@@ -513,18 +549,26 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     const editor = state.editor, current = selectedEntries();
     if (!editor || !allowed()) return;
     try {
-      const plan = officeShapeMultiUngroup(current); let tr = editor.state.tr;
+      const plan = officeShapeMultiUngroup(current, positionedUngroupPlacements(current));
+      const positions = new Map(plan.groups.flatMap((group) => group.memberPositions ?? [])
+        .map((placement) => [placement.id, placement.position]));
+      let tr = editor.state.tr;
       for (const entry of [...current].reverse()) {
-        tr = tr.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, entry.node.content.content);
+        const members = entry.node.content.content.map((member) => {
+          const position = positions.get(member.attrs.id);
+          return position ? editor.schema.nodes.shape.create(officeShapeAttributes({ ...member.attrs, position })) : member;
+        });
+        tr = tr.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, members);
       }
       tr.setSelection(NodeSelection.create(tr.doc, current[0].pos)); validate(tr.doc);
       regroupMemory = { session: state.session, groups: plan.groups };
       editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       clear(); focus(editor); updateEditor();
-      notice(`${plan.groups.length} Formgruppen wurden atomar in ${plan.memberIds.length} eigenständige Formen aufgelöst. Rückgängig ist möglich.`);
+      const placement = positions.size ? " frei positionierte" : "";
+      notice(`${plan.groups.length} Formgruppen wurden atomar in ${plan.memberIds.length}${placement} eigenständige Formen aufgelöst. Rückgängig ist möglich.`);
     } catch {
       regroupMemory = null; paint();
-      notice("Nur mindestens zwei vollständige normal fließende Formgruppen können gemeinsam aufgelöst werden.", true);
+      notice("Nur mindestens zwei vollständige Formgruppen derselben Ankerart können gemeinsam aufgelöst werden; ihre sichtbare Anordnung muss in den Positionsgrenzen liegen.", true);
     }
   });
   $("shape-multi-regroup").addEventListener("click", () => {
@@ -535,7 +579,9 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       const plan = officeShapeMultiRegroup(current, regroupMemory); let tr = editor.state.tr;
       for (const group of [...plan.groups].reverse()) {
         const members = group.memberIds.map((id) => byId.get(id));
-        const node = editor.schema.nodes.shapeGroup.create(group.attrs, members.map((entry) => entry.node));
+        const memberNodes = members.map((entry) => group.attrs.position == null ? entry.node :
+          editor.schema.nodes.shape.create(officeShapeAttributes({ ...entry.node.attrs, position: null })));
+        const node = editor.schema.nodes.shapeGroup.create(group.attrs, memberNodes);
         tr = tr.replaceWith(members[0].pos, members.at(-1).pos + members.at(-1).node.nodeSize, node);
       }
       const first = plan.groups[0], firstEntry = byId.get(first.memberIds[0]);

@@ -151,19 +151,36 @@ function officeShapeMultiMembers(entry) {
 export function officeShapeMultiCanUngroup(entries) {
   if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
   try {
+    const positioned = entries[0]?.node?.attrs.position != null;
     return entries.every((entry) => {
-      if (entry?.type !== "shapeGroup" || entry.node?.attrs.position != null) return false;
+      if (entry?.type !== "shapeGroup" || (entry.node?.attrs.position != null) !== positioned) return false;
       const members = officeShapeMultiMembers(entry);
-      return members.length >= 2 && members.length <= OFFICE_SHAPE_GROUP_MEMBER_LIMIT;
+      return members.length >= 2 && members.length <= OFFICE_SHAPE_GROUP_MEMBER_LIMIT &&
+        members.every((member) => member.position == null && member.wrap == null);
     });
   } catch { return false; }
 }
 
-export function officeShapeMultiUngroup(entries) {
+export function officeShapeMultiUngroup(entries, placements = null) {
   if (!officeShapeMultiCanUngroup(entries)) throw new Error("shape-multi-ungroup");
+  const positioned = entries[0].node.attrs.position != null;
+  const placementById = new Map();
+  if (positioned) {
+    if (!Array.isArray(placements)) throw new Error("shape-multi-ungroup");
+    for (const placement of placements) {
+      if (typeof placement?.id !== "string" || placementById.has(placement.id)) throw new Error("shape-multi-ungroup");
+      placementById.set(placement.id, officeShapePosition(placement.position));
+    }
+  } else if (placements != null) throw new Error("shape-multi-ungroup");
   const groups = entries.map((entry) => ({ id: entry.id, rootIndex: entry.rootIndex,
     attrs: officeShapeGroupAttributes(entry.node.attrs),
-    memberIds: entry.node.content.content.map((member) => member.attrs.id) }));
+    memberIds: entry.node.content.content.map((member) => member.attrs.id),
+    ...(positioned ? { memberPositions: entry.node.content.content.map((member) => {
+      const position = placementById.get(member.attrs.id);
+      if (!position || position.layer !== entry.node.attrs.position.layer) throw new Error("shape-multi-ungroup");
+      placementById.delete(member.attrs.id); return { id: member.attrs.id, position };
+    }) } : {}) }));
+  if (placementById.size) throw new Error("shape-multi-ungroup");
   return { groups, memberIds: groups.flatMap((group) => group.memberIds) };
 }
 
@@ -176,27 +193,48 @@ export function officeShapeMultiRegroup(entries, snapshot) {
     existingIds.add(entry.id); byId.set(entry.id, entry);
   }
   const groupIds = new Set(), memberIds = new Set();
+  const positioned = snapshot.groups[0]?.attrs?.position != null;
   const groups = snapshot.groups.map((group) => {
     const attrs = officeShapeGroupAttributes(group?.attrs);
-    if (typeof group?.id !== "string" || attrs.id !== group.id || attrs.position != null ||
+    if (typeof group?.id !== "string" || attrs.id !== group.id || (attrs.position != null) !== positioned ||
         groupIds.has(group.id) || existingIds.has(group.id) || !Array.isArray(group.memberIds) ||
         group.memberIds.length < 2 || group.memberIds.length > OFFICE_SHAPE_GROUP_MEMBER_LIMIT) {
       throw new Error("shape-multi-regroup");
     }
     officeShapeGroupConnections(attrs, group.memberIds.length);
+    const expectedPositions = new Map();
+    if (positioned) {
+      if (!Array.isArray(group.memberPositions) || group.memberPositions.length !== group.memberIds.length) {
+        throw new Error("shape-multi-regroup");
+      }
+      for (const placement of group.memberPositions) {
+        if (typeof placement?.id !== "string" || expectedPositions.has(placement.id)) throw new Error("shape-multi-regroup");
+        const position = officeShapePosition(placement.position);
+        if (position.layer !== attrs.position.layer) throw new Error("shape-multi-regroup");
+        expectedPositions.set(placement.id, position);
+      }
+    } else if (group.memberPositions != null) throw new Error("shape-multi-regroup");
     groupIds.add(group.id);
     const members = group.memberIds.map((id) => {
       const entry = byId.get(id);
       if (typeof id !== "string" || memberIds.has(id) || entry?.type !== "shape" || entry.id !== id ||
           !Number.isSafeInteger(entry.rootIndex) || entry.rootIndex < 0) throw new Error("shape-multi-regroup");
       const shape = officeShapeAttributes(entry.node?.attrs);
-      if (shape.id !== id || shape.position != null || shape.wrap != null) throw new Error("shape-multi-regroup");
+      const expected = expectedPositions.get(id);
+      if (shape.id !== id || shape.wrap != null || (!positioned && shape.position != null) ||
+          (positioned && (!expected || shape.position?.layer !== expected.layer || shape.position.x !== expected.x ||
+            shape.position.y !== expected.y))) throw new Error("shape-multi-regroup");
+      expectedPositions.delete(id);
       memberIds.add(id); return entry;
     });
+    if (expectedPositions.size) throw new Error("shape-multi-regroup");
     if (members.some((entry, index) => index > 0 && entry.rootIndex !== members[index - 1].rootIndex + 1)) {
       throw new Error("shape-multi-regroup");
     }
-    return { id: group.id, attrs, memberIds: [...group.memberIds], rootIndex: members[0].rootIndex,
+    return { id: group.id, attrs, memberIds: [...group.memberIds],
+      ...(positioned ? { memberPositions: group.memberPositions.map((placement) => ({
+        id: placement.id, position: officeShapePosition(placement.position) })) } : {}),
+      rootIndex: members[0].rootIndex,
       endRootIndex: members.at(-1).rootIndex };
   });
   if (groups.some((group, index) => index > 0 && group.rootIndex <= groups[index - 1].endRootIndex) ||
