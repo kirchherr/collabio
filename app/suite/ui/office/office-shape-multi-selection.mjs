@@ -1,4 +1,5 @@
-import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes,
+import { OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes,
+  officeShapeGroupConnections,
   officeShapeGroupBounds } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_COLORS, OFFICE_SHAPE_TEXT_ALIGNMENTS, OFFICE_SHAPE_TEXT_COLORS,
   OFFICE_SHAPE_TEXT_STYLES, officeShapeAttributes, officeShapeBounds,
@@ -161,8 +162,52 @@ export function officeShapeMultiCanUngroup(entries) {
 export function officeShapeMultiUngroup(entries) {
   if (!officeShapeMultiCanUngroup(entries)) throw new Error("shape-multi-ungroup");
   const groups = entries.map((entry) => ({ id: entry.id, rootIndex: entry.rootIndex,
+    attrs: officeShapeGroupAttributes(entry.node.attrs),
     memberIds: entry.node.content.content.map((member) => member.attrs.id) }));
   return { groups, memberIds: groups.flatMap((group) => group.memberIds) };
+}
+
+export function officeShapeMultiRegroup(entries, snapshot) {
+  if (!Array.isArray(entries) || !Array.isArray(snapshot?.groups) || snapshot.groups.length < 2 ||
+      snapshot.groups.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) throw new Error("shape-multi-regroup");
+  const byId = new Map(), existingIds = new Set();
+  for (const entry of entries) {
+    if (typeof entry?.id !== "string" || existingIds.has(entry.id)) throw new Error("shape-multi-regroup");
+    existingIds.add(entry.id); byId.set(entry.id, entry);
+  }
+  const groupIds = new Set(), memberIds = new Set();
+  const groups = snapshot.groups.map((group) => {
+    const attrs = officeShapeGroupAttributes(group?.attrs);
+    if (typeof group?.id !== "string" || attrs.id !== group.id || attrs.position != null ||
+        groupIds.has(group.id) || existingIds.has(group.id) || !Array.isArray(group.memberIds) ||
+        group.memberIds.length < 2 || group.memberIds.length > OFFICE_SHAPE_GROUP_MEMBER_LIMIT) {
+      throw new Error("shape-multi-regroup");
+    }
+    officeShapeGroupConnections(attrs, group.memberIds.length);
+    groupIds.add(group.id);
+    const members = group.memberIds.map((id) => {
+      const entry = byId.get(id);
+      if (typeof id !== "string" || memberIds.has(id) || entry?.type !== "shape" || entry.id !== id ||
+          !Number.isSafeInteger(entry.rootIndex) || entry.rootIndex < 0) throw new Error("shape-multi-regroup");
+      const shape = officeShapeAttributes(entry.node?.attrs);
+      if (shape.id !== id || shape.position != null || shape.wrap != null) throw new Error("shape-multi-regroup");
+      memberIds.add(id); return entry;
+    });
+    if (members.some((entry, index) => index > 0 && entry.rootIndex !== members[index - 1].rootIndex + 1)) {
+      throw new Error("shape-multi-regroup");
+    }
+    return { id: group.id, attrs, memberIds: [...group.memberIds], rootIndex: members[0].rootIndex,
+      endRootIndex: members.at(-1).rootIndex };
+  });
+  if (groups.some((group, index) => index > 0 && group.rootIndex <= groups[index - 1].endRootIndex) ||
+      entries.filter((entry) => entry.type === "shapeGroup").length + groups.length > OFFICE_SHAPE_GROUP_LIMIT) {
+    throw new Error("shape-multi-regroup");
+  }
+  return { groups, memberIds: [...memberIds] };
+}
+
+export function officeShapeMultiCanRegroup(entries, snapshot) {
+  try { officeShapeMultiRegroup(entries, snapshot); return true; } catch { return false; }
 }
 
 export function officeShapeMultiCanStyle(entries) {

@@ -7,11 +7,12 @@ import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanOrder, officeShapeMultiCanStyle,
-  officeShapeMultiCanUngroup,
+  officeShapeMultiCanRegroup, officeShapeMultiCanUngroup,
   officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
-  officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate, officeShapeMultiUngroup,
+  officeShapeMultiRegroup, officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
+  officeShapeMultiUngroup,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
@@ -45,7 +46,8 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null;
+    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null,
+    regroupMemory = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -94,6 +96,10 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       count === 1 ? "1 Objekt ausgewählt" : `${count} Objekte ausgewählt`;
     const actions = $("shape-multi-actions"); actions.hidden = count === 0;
     const current = selectedEntries(), writable = allowed(), enough = current.length >= 2, doc = state.editor?.state.doc;
+    const rememberedGroups = regroupMemory?.session === state.session;
+    $("shape-multi-regroup").hidden = !rememberedGroups;
+    $("shape-multi-regroup").disabled = !doc || !writable || !rememberedGroups ||
+      !officeShapeMultiCanRegroup(entries(), regroupMemory);
     const duplicateShapes = current.reduce((total, entry) => total + (entry.type === "shape" ? 1 : entry.node.childCount), 0);
     const duplicateGroups = current.filter((entry) => entry.type === "shapeGroup").length;
     $("shape-multi-duplicate").disabled = !doc || !writable || !enough || shapeCount(doc) + duplicateShapes > OFFICE_SHAPE_LIMIT ||
@@ -512,10 +518,35 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
         tr = tr.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, entry.node.content.content);
       }
       tr.setSelection(NodeSelection.create(tr.doc, current[0].pos)); validate(tr.doc);
+      regroupMemory = { session: state.session, groups: plan.groups };
       editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       clear(); focus(editor); updateEditor();
       notice(`${plan.groups.length} Formgruppen wurden atomar in ${plan.memberIds.length} eigenständige Formen aufgelöst. Rückgängig ist möglich.`);
-    } catch { notice("Nur mindestens zwei vollständige normal fließende Formgruppen können gemeinsam aufgelöst werden.", true); }
+    } catch {
+      regroupMemory = null; paint();
+      notice("Nur mindestens zwei vollständige normal fließende Formgruppen können gemeinsam aufgelöst werden.", true);
+    }
+  });
+  $("shape-multi-regroup").addEventListener("click", () => {
+    const editor = state.editor;
+    if (!editor || !allowed() || regroupMemory?.session !== state.session) return;
+    try {
+      const current = entries(), byId = new Map(current.map((entry) => [entry.id, entry]));
+      const plan = officeShapeMultiRegroup(current, regroupMemory); let tr = editor.state.tr;
+      for (const group of [...plan.groups].reverse()) {
+        const members = group.memberIds.map((id) => byId.get(id));
+        const node = editor.schema.nodes.shapeGroup.create(group.attrs, members.map((entry) => entry.node));
+        tr = tr.replaceWith(members[0].pos, members.at(-1).pos + members.at(-1).node.nodeSize, node);
+      }
+      const first = plan.groups[0], firstEntry = byId.get(first.memberIds[0]);
+      tr.setSelection(NodeSelection.create(tr.doc, firstEntry.pos)); validate(tr.doc);
+      editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      clear(); focus(editor); updateEditor();
+      notice(`${plan.groups.length} zuletzt aufgelöste Formgruppen wurden atomar wiederhergestellt. Rückgängig ist möglich.`);
+    } catch {
+      regroupMemory = null; paint();
+      notice("Die zuletzt aufgelösten Gruppen können in diesem Dokumentzustand nicht wiederhergestellt werden.", true);
+    }
   });
   $("shape-multi-group").addEventListener("click", () => {
     const editor = state.editor, current = selectedEntries(); if (!editor || !allowed() || !officeShapeMultiCanGroup(current)) return;
@@ -857,8 +888,11 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (appearanceSnapshot && (appearanceSnapshot.session !== state.session ||
         appearanceSnapshot.doc !== state.editor?.state.doc || !allowed())) closeAppearance();
     if (appearanceClipboard && (appearanceClipboard.session !== state.session || !allowed())) appearanceClipboard = null;
+    if (regroupMemory && (regroupMemory.session !== state.session || state.session?.canWrite !== true ||
+        state.session?.historical === true)) regroupMemory = null;
     if (session !== state.session) {
       session = state.session; mode = false; selectedIds.clear(); anchorId = null; appearanceClipboard = null;
+      regroupMemory = null;
     }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);

@@ -4,11 +4,11 @@ import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, offic
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
-  officeShapeMultiCanUngroup, officeShapeMultiDistribution,
+  officeShapeMultiCanRegroup, officeShapeMultiCanUngroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
-  officeShapeMultiUngroup,
+  officeShapeMultiRegroup, officeShapeMultiUngroup,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -213,14 +213,43 @@ test("Office shape multi-selection ungroups only complete normal-flow groups", (
   const groups = [group("1", 1), group("2", 4)];
   expect(officeShapeMultiCanUngroup(groups)).toBe(true);
   expect(officeShapeMultiUngroup(groups)).toEqual({ groups: [
-    { id: groups[0].id, rootIndex: 1, memberIds: groups[0].node.content.content.map((entry) => entry.attrs.id) },
-    { id: groups[1].id, rootIndex: 4, memberIds: groups[1].node.content.content.map((entry) => entry.attrs.id) },
+    { id: groups[0].id, rootIndex: 1,
+      attrs: { id: groups[0].id, layout: "row", gap: 16 },
+      memberIds: groups[0].node.content.content.map((entry) => entry.attrs.id) },
+    { id: groups[1].id, rootIndex: 4,
+      attrs: { id: groups[1].id, layout: "row", gap: 16 },
+      memberIds: groups[1].node.content.content.map((entry) => entry.attrs.id) },
   ], memberIds: groups.flatMap((entry) => entry.node.content.content.map((memberNode) => memberNode.attrs.id)) });
   expect(officeShapeMultiCanUngroup(groups.slice(0, 1))).toBe(false);
   expect(officeShapeMultiCanUngroup([groups[0], { ...groups[1], type: "shape" }])).toBe(false);
   expect(officeShapeMultiCanUngroup([groups[0], group("2", 4, { layer: "front", x: 500, y: 0 })])).toBe(false);
   expect(() => officeShapeMultiUngroup([groups[0], { ...groups[1], node: { ...groups[1].node,
     content: { content: [member("3"), { attrs: { ...attrs, id: "shape-invalid" } }] } } }])).toThrow();
+});
+
+test("Office shape multi-selection regroups exact remembered normal-flow members", () => {
+  const member = (suffix, rootIndex) => ({ id: `shape-${suffix.repeat(24)}`, type: "shape", rootIndex,
+    node: { attrs: { ...attrs, id: `shape-${suffix.repeat(24)}` } } });
+  const entries = [member("1", 1), member("2", 2), member("3", 5), member("4", 6)];
+  const groups = [
+    { id: `shape-group-${"1".repeat(24)}`, attrs: { id: `shape-group-${"1".repeat(24)}`, layout: "row", gap: 16 },
+      memberIds: entries.slice(0, 2).map((entry) => entry.id) },
+    { id: `shape-group-${"2".repeat(24)}`, attrs: { id: `shape-group-${"2".repeat(24)}`, layout: "stack", gap: 20 },
+      memberIds: entries.slice(2).map((entry) => entry.id) },
+  ];
+  const snapshot = { groups };
+  expect(officeShapeMultiCanRegroup(entries, snapshot)).toBe(true);
+  expect(officeShapeMultiRegroup(entries, snapshot)).toEqual({ groups: [
+    { ...groups[0], rootIndex: 1, endRootIndex: 2 },
+    { ...groups[1], rootIndex: 5, endRootIndex: 6 },
+  ], memberIds: entries.map((entry) => entry.id) });
+  expect(officeShapeMultiCanRegroup(entries, { groups: groups.slice(0, 1) })).toBe(false);
+  expect(officeShapeMultiCanRegroup([entries[1], entries[0], ...entries.slice(2)], snapshot)).toBe(true);
+  expect(officeShapeMultiCanRegroup(entries.map((entry, index) => index === 1 ? { ...entry, rootIndex: 3 } : entry), snapshot)).toBe(false);
+  expect(officeShapeMultiCanRegroup(entries.map((entry, index) => index === 2 ? { ...entry,
+    node: { attrs: { ...entry.node.attrs, position: { layer: "front", x: 500, y: 0 } } } } : entry), snapshot)).toBe(false);
+  expect(officeShapeMultiCanRegroup([...entries, { id: groups[0].id, type: "shapeGroup", rootIndex: 8,
+    node: { attrs: groups[0].attrs } }], snapshot)).toBe(false);
 });
 
 test("Office positioned root objects align and distribute through bounded integer anchors", () => {
