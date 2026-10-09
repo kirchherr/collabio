@@ -24,6 +24,9 @@ and blue edges; responsive mobile review confirmed bounded layout without horizo
 assertions verified both mobile edge values. Product and evidence commits through `664f10a4` are published and synced
 to `dev001`; the isolated review API remains healthy on port 42880.
 
+The complete repository quality gate passed on documentation commit `6f1ce824`: Ruff passed, all 887 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+
 Roadmap 490 through 496 / PLANS 351 through 357 are complete under ADR-0157. Root-level native Office shape groups
 now accept one optional bounded logical position with a front/behind-text layer, normalized integer X from 0 through
 1000 and integer Y from -1200 through 1200 pixels. Normal flow remains the canonical omission. Browser and server
