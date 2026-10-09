@@ -26,6 +26,9 @@ to `dev001`; the isolated review API remains healthy on port 42880.
 
 The complete repository quality gate passed on documentation commit `6f1ce824`: Ruff passed, all 887 files were
 formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+The eight focused planning and implementation documentation contracts passed on `c21143cd`. The exact temporary
+`collabio-postgres-test-1` container and local Roadmap-497 evidence copies were removed; both regular and review APIs
+returned `ok`, with no transient quality, test or Work-E2E runner remaining.
 
 Roadmap 490 through 496 / PLANS 351 through 357 are complete under ADR-0157. Root-level native Office shape groups
 now accept one optional bounded logical position with a front/behind-text layer, normalized integer X from 0 through
