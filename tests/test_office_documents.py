@@ -458,6 +458,15 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         },
     }
     assert validate_office_document({"type": "doc", "content": [per_edge]})["content"][0] == per_edge
+    aligned = {
+        **group,
+        "attrs": {
+            **group["attrs"],
+            "alignment": "center",
+            "distributionExtent": 800,
+        },
+    }
+    assert validate_office_document({"type": "doc", "content": [aligned]})["content"][0] == aligned
     for position in [
         {"layer": "front", "x": 0, "y": -1200},
         {"layer": "behind", "x": 1000, "y": 1200},
@@ -510,6 +519,11 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         },
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connections": []},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "connections": [False]},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "alignment": "start"},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "alignment": "stretch"},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "distributionExtent": 159},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "distributionExtent": 2401},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "distributionExtent": True},
         {
             "id": "shape-group-" + "a" * 24,
             "layout": "row",

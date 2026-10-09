@@ -201,11 +201,23 @@ test("Office shape groups preserve ordered members history print and independent
   await editor.press("Control+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(2);
   await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group .office-shape")).toHaveCount(3);
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-alignment").selectOption("center");
+  await page.locator("#shape-group-distribution").selectOption("even");
+  await expect(page.locator("#shape-group-distribution-extent")).toBeEnabled();
+  await page.locator("#shape-group-distribution-extent").fill("900");
   await expect(page.locator("#shape-group-connection-scope option")).toHaveText(["Alle Verbindungen", "1 → 2", "2 → 3"]);
   await page.locator("#shape-group-connection-scope").selectOption("edge-0");
   await page.locator("#shape-group-connection").selectOption("arrow");
   await page.locator("#shape-group-connection-color").selectOption("red");
   await page.locator("#shape-group-connection-width").fill("3"); await page.locator("#shape-apply").click();
+  const alignedGroup = editor.locator(".office-shape-group");
+  await expect(alignedGroup).toHaveAttribute("data-shape-group-alignment", "center");
+  await expect(alignedGroup).toHaveAttribute("data-shape-group-distributed", "");
+  await expect(alignedGroup.locator(".office-shape-group-content")).toHaveCSS("align-items", "center");
+  expect(Number.parseInt(await alignedGroup.evaluate((element) => element.style.getPropertyValue("--shape-group-gap")), 10)).toBeGreaterThan(24);
+  await editor.press("Control+z"); await expect(alignedGroup).toHaveAttribute("data-shape-group-alignment", "start");
+  await expect(alignedGroup).not.toHaveAttribute("data-shape-group-distributed", "");
+  await editor.press("Control+Shift+z"); await expect(alignedGroup).toHaveAttribute("data-shape-group-alignment", "center");
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-connection-scope").selectOption("edge-1");
   await page.locator("#shape-group-connection").selectOption("line");
@@ -217,7 +229,7 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(connectedMembers.nth(2)).not.toHaveAttribute("data-shape-group-connection", /.+/);
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
-  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connections: [
+  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, alignment: "center", distributionExtent: 900, connections: [
     { kind: "arrow", color: "red", width: 3 }, { kind: "line", color: "blue", width: 5 },
   ] }, content: [
     { type: "shape", attrs: { text: "Alpha" } },
@@ -227,6 +239,8 @@ test("Office shape groups preserve ordered members history print and independent
   expect(new Set(group.content.map((entry) => entry.attrs.id)).size).toBe(3);
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-alignment", "center");
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-distributed", "");
   const printMembers = page.locator("#print-preview .office-print-shape-member");
   await expect(printMembers.nth(0)).toHaveAttribute("data-shape-group-connection", "arrow");
   await expect(printMembers.nth(1)).toHaveAttribute("data-shape-group-connection", "line");

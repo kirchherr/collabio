@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { closeHistory } from "@tiptap/pm/history";
 import { NodeSelection } from "@tiptap/pm/state";
-import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnections } from "./office-shape-groups.mjs";
+import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes, officeShapeGroupLayout, officeShapeGroupConnections } from "./office-shape-groups.mjs";
 
 export function officeShapeGroupExtension() {
   return Node.create({
@@ -10,6 +10,7 @@ export function officeShapeGroupExtension() {
     addAttributes: () => ({ id: { default: null, rendered: false }, layout: { default: null, rendered: false },
       gap: { default: null, rendered: false }, connection: { default: null, rendered: false },
       connections: { default: null, rendered: false },
+      alignment: { default: null, rendered: false }, distributionExtent: { default: null, rendered: false },
       position: { default: null, rendered: false } }),
     parseHTML: () => [], renderHTML: () => ["section", { class: "office-shape-group" }, 0],
     addNodeView() {
@@ -45,9 +46,13 @@ export function officeShapeGroupExtension() {
         };
         const paint = (current) => {
           const attrs = officeShapeGroupAttributes(current.attrs);
-          const bounds = officeShapeGroupBounds(attrs, current.content.content.map((member) => member.attrs));
+          const bounds = officeShapeGroupLayout(attrs, current.content.content.map((member) => member.attrs));
           dom.dataset.shapeGroup = attrs.id; dom.dataset.shapeGroupLayout = attrs.layout;
-          dom.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
+          dom.dataset.shapeGroupAlignment = attrs.alignment ?? "start";
+          dom.toggleAttribute("data-shape-group-distributed", attrs.distributionExtent != null);
+          dom.style.setProperty("--shape-group-gap", `${bounds.gap}px`);
+          if (attrs.distributionExtent != null) dom.style.setProperty("--shape-group-distribution-extent", `${attrs.distributionExtent}px`);
+          else dom.style.removeProperty("--shape-group-distribution-extent");
           dom.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(current.childCount) : "1");
           dom.style.setProperty("--shape-group-bound-width", String(bounds.width));
           setPosition(attrs.position ?? null);
@@ -75,7 +80,9 @@ export function officeShapeGroupExtension() {
           const connection = attrs.connections ? `; ${attrs.connections.filter(Boolean).length} individuelle Verbindungen` : attrs.connection ?
             `; Verbindung ${attrs.connection.kind}, ${attrs.connection.color}, ${attrs.connection.width} Pixel` : "";
           const position = attrs.position ? `; ${attrs.position.layer === "front" ? "vor" : "hinter"} Text; X ${attrs.position.x}; Y ${attrs.position.y} Pixel` : "";
-          control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten${connection}${position}`);
+          const alignment = attrs.alignment ? `; Ausrichtung ${attrs.alignment === "center" ? "Mitte" : "Ende"}` : "";
+          const distribution = attrs.distributionExtent ? `; gleichmäßig auf ${attrs.distributionExtent} Pixel verteilt` : "";
+          control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten${alignment}${distribution}${connection}${position}`);
         };
         paint(node);
         const selectGroup = () => {

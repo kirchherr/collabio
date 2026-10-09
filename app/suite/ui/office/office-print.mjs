@@ -5,7 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement } from "./office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnections, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupLayout, officeShapeGroupConnections, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -111,9 +111,12 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       }
       const group = dom.createElement("section"); group.className = "office-shape-group office-print-shape-group";
       group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;
-      group.style.setProperty("--shape-group-gap", `${attrs.gap}px`);
+      group.dataset.shapeGroupAlignment = attrs.alignment ?? "start";
+      group.toggleAttribute("data-shape-group-distributed", attrs.distributionExtent != null);
       group.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(children.length) : "1");
-      const bounds = officeShapeGroupBounds(attrs, children.map((child) => child.attrs));
+      const bounds = officeShapeGroupLayout(attrs, children.map((child) => child.attrs));
+      group.style.setProperty("--shape-group-gap", `${bounds.gap}px`);
+      if (attrs.distributionExtent != null) group.style.setProperty("--shape-group-distribution-extent", `${attrs.distributionExtent}px`);
       group.style.setProperty("--shape-group-bound-width", String(bounds.width));
       if (attrs.position) {
         group.dataset.shapeGroupPositioned = ""; group.dataset.shapeGroupPosition = attrs.position.layer;

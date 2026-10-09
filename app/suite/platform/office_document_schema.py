@@ -919,7 +919,17 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             position = attrs.get("position")
             if (
                 depth != 1
-                or set(attrs) - {"id", "layout", "gap", "connection", "connections", "position"}
+                or set(attrs)
+                - {
+                    "id",
+                    "layout",
+                    "gap",
+                    "alignment",
+                    "distributionExtent",
+                    "connection",
+                    "connections",
+                    "position",
+                }
                 or not {"id", "layout", "gap"}.issubset(attrs)
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"shape-group-[a-f0-9]{24}", identifier) is None
@@ -927,6 +937,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or attrs.get("layout") not in {"row", "stack"}
                 or type(attrs.get("gap")) is not int
                 or not 0 <= attrs["gap"] <= 48
+                or ("alignment" in attrs and attrs.get("alignment") not in {"center", "end"})
+                or (
+                    "distributionExtent" in attrs
+                    and (
+                        type(attrs.get("distributionExtent")) is not int
+                        or not 160 <= attrs["distributionExtent"] <= 2400
+                    )
+                )
                 or len(shape_group_ids) >= 20
                 or (connection is not None and connections is not None)
             ):

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupInsertMember, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -69,6 +69,24 @@ test("Office shape groups admit only bounded inert layout attributes", () => {
   const block = { type: "shapeGroup", attrs: group, content: [{ type: "shape", attrs },
     { type: "shape", attrs: { ...attrs, id: "shape-" + "c".repeat(24), kind: "ellipse" } }] };
   expect(describeOfficeBlock(block).label).toContain("Formgruppe · 2 Formen · nebeneinander · Abstand 16 px");
+});
+
+test("Office shape groups align members and distribute bounded gaps", () => {
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "stack", gap: 16,
+    alignment: "center", distributionExtent: 600 };
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  const second = { ...attrs, id: "shape-" + "c".repeat(24), width: 160, height: 80 };
+  expect(officeShapeGroupLayout(group, [attrs, second])).toEqual({ width: 320, height: 600, gap: 360 });
+  expect(officeShapeGroupBounds(group, [attrs, second])).toEqual({ width: 320, height: 600 });
+  expect(officeShapeGroupDescription(group, 2)).toContain("Ausrichtung Mitte · gleichmäßig auf 600 px verteilt");
+  expect(officeShapeGroupAttributes({ ...group, alignment: "end", distributionExtent: 2400 })).toEqual({
+    ...group, alignment: "end", distributionExtent: 2400,
+  });
+  for (const invalid of [{ ...group, alignment: "start" }, { ...group, alignment: "stretch" },
+    { ...group, distributionExtent: 159 }, { ...group, distributionExtent: 2401 },
+    { ...group, distributionExtent: true }, { ...group, distributionExtent: 600.5 }]) {
+    expect(() => officeShapeGroupAttributes(invalid)).toThrow();
+  }
 });
 
 test("Office shape groups preserve bounded positions and rotated member bounds", () => {

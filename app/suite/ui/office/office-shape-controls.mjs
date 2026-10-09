@@ -237,6 +237,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-position-x").value = String(attrs.position?.x ?? 0); $("shape-position-y").value = String(attrs.position?.y ?? 0);
     $("shape-group-layout").value = action?.shapeContext?.group?.attrs.layout ?? "row";
     $("shape-group-gap").value = String(action?.shapeContext?.group?.attrs.gap ?? 16);
+    $("shape-group-alignment").value = action?.shapeContext?.group?.attrs.alignment ?? "start";
+    $("shape-group-distribution").value = action?.shapeContext?.group?.attrs.distributionExtent == null ? "fixed" : "even";
+    $("shape-group-distribution-extent").value = String(action?.shapeContext?.group?.attrs.distributionExtent ?? 800);
     const group = action?.shapeContext?.group, scope = $("shape-group-connection-scope");
     scope.replaceChildren(Object.assign(document.createElement("option"), { value: "all", textContent: "Alle Verbindungen" }));
     if (group) for (let index = 0; index < group.childCount - 1; index += 1) {
@@ -258,6 +261,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       { connections: action.groupConnectionDraft.edges };
     return officeShapeGroupAttributes({ id, layout: $("shape-group-layout").value,
       gap: Number($("shape-group-gap").value), ...connectionAttrs,
+      alignment: $("shape-group-alignment").value === "start" ? null : $("shape-group-alignment").value,
+      distributionExtent: $("shape-group-distribution").value === "fixed" ? null : Number($("shape-group-distribution-extent").value),
       position: $("shape-group-position-layer").value === "flow" ? null : {
       layer: $("shape-group-position-layer").value,
       x: Number($("shape-group-position-x").value), y: Number($("shape-group-position-y").value),
@@ -311,6 +316,9 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-position-layer").disabled = !grouped;
     $("shape-group-position-x").disabled = !grouped || !groupPositioned;
     $("shape-group-position-y").disabled = !grouped || !groupPositioned;
+    $("shape-group-alignment").disabled = !grouped;
+    $("shape-group-distribution").disabled = !grouped;
+    $("shape-group-distribution-extent").disabled = !grouped || $("shape-group-distribution").value === "fixed";
     $("shape-group-ungroup").disabled = !grouped || groupPositioned;
     $("shape-group-move-previous").disabled = !grouped || action.shapeContext.rootIndex === 0;
     $("shape-group-move-next").disabled = !grouped || action.shapeContext.rootIndex === action.shapeContext.root.childCount - 1;
@@ -327,6 +335,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   $("shape-position-layer").addEventListener("input", () => { if ($("shape-position-layer").value !== "flow") $("shape-wrap").value = "none"; updateLayoutControls(); });
   $("shape-wrap").addEventListener("input", updateLayoutControls);
   $("shape-group-connection").addEventListener("input", updateLayoutControls);
+  $("shape-group-distribution").addEventListener("input", updateLayoutControls);
   $("shape-group-connection-scope").addEventListener("input", () => {
     rememberConnection(); selectConnectionScope($("shape-group-connection-scope").value); updateLayoutControls();
   });
