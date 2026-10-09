@@ -550,7 +550,7 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await controls.nth(0).click({ modifiers: ["Control"] }); await controls.nth(2).click({ modifiers: ["Shift"] });
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(3);
   await page.keyboard.press("Escape"); await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
-  await openReuseHistory(page, saved); await openReuse(page, saved, "Independent multi-selection result");
+  await openReuse(page, saved, "Independent multi-selection result");
   await submitReuse(page, saved); await expectReuseDraft(page, "Independent multi-selection result");
   await expect(officeEditor(page).locator(":scope > .office-shape-group")).toHaveCount(3);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-selection-${testInfo.project.name}.png`, fullPage: true });
