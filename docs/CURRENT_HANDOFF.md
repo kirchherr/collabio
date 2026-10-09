@@ -21,8 +21,13 @@ the isolated review API is healthy on port 42880 and the review is available at
 
 Only existing bounded logical positions enter immutable Office JSON. The implementation never measures rendered
 edges or physical pages and adds no migration, endpoint, dependency, external request, provider, worker, recovery
-store, nested group, arbitrary geometry, DOCX engine or production admission. Full repository quality and final
-documentation-contract evidence follow in this closure pass.
+store, nested group, arbitrary geometry, DOCX engine or production admission.
+
+The complete repository quality gate passed on documentation commit `3cfd98b1`: Ruff passed, all 890 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality or Work-E2E runner remains, and regular plus
+review APIs both return `ok`.
 
 Roadmap 511 through 517 / PLANS 372 through 378 are complete under ADR-0160. Native Office now supports transient
 multi-selection of up to 20 root-level standalone shapes and complete shape groups. Authors can use an explicit
