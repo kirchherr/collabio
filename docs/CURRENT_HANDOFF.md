@@ -27,6 +27,13 @@ connections: all six pure model checks passed and the browser cases failed only 
 confirmed health, the unchanged 22-case matrix passed. No migration, endpoint, dependency, external request, provider,
 worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
 
+Full quality on documented source `8235a011` passed Ruff, formatting for 871 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The first quality attempt stopped before Mypy and
+Pytest because one new validator expression required the repository formatter's single-line form; commit `8235a011`
+contains that format-only correction. The focused server contract then passed 36/36 again. The exact temporary
+`postgres-test` container was removed, no transient test or browser runner remains, and regular plus review APIs both
+return `ok`.
+
 Roadmap 482 / PLANS 343 closes the per-section first-page feasibility gate without opening unsupported metadata. A
 real four-page Chromium PDF used two two-page named sections. Page one rendered `ALPHA-FIRST`, page two
 `ALPHA-GENERAL`, and both pages of the later section rendered `BETA-GENERAL`; `BETA-FIRST` never appeared. Chromium's
