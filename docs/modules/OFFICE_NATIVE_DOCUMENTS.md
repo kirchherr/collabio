@@ -416,7 +416,10 @@ nested, adjacent and page-break-adjacent markers are rejected.
 The document root owns the first section and each `sectionBreak.attrs` owns the next one until another marker.
 Profiles are complete rather than inherited, which keeps history, comparison, independent copies and recovery
 deterministic. Page numbering continues across the whole document. The root first-page profile remains limited to the
-document's first page. Per-section first pages and number restarts are separate contracts.
+document's first page. A Roadmap-482 four-page Chromium probe verified that a named `@page …:first` selector still
+matches only the first page of the complete document: the first page of the second named section received its general
+header. Per-section first-page metadata therefore remains rejected until a separately proven segmented render-and-
+merge path can guarantee the result. Number restarts retain the same architecture boundary.
 
 Printing assigns fixed ordinal wrappers to twelve trusted static named-page rules. Each segment also receives exactly
 one validated column token; manual page breaks retain the active section count and section markers switch to their

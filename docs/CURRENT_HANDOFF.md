@@ -1,6 +1,15 @@
 # Current Project Handoff
 
-Updated: 2026-10-08
+Updated: 2026-10-09
+
+Roadmap 482 / PLANS 343 closes the per-section first-page feasibility gate without opening unsupported metadata. A
+real four-page Chromium PDF used two two-page named sections. Page one rendered `ALPHA-FIRST`, page two
+`ALPHA-GENERAL`, and both pages of the later section rendered `BETA-GENERAL`; `BETA-FIRST` never appeared. Chromium's
+named `@page …:first` selector therefore addresses only the first page of the complete document, not the first page
+of each named section. Section profiles continue to reject `running.firstPage` until a separately proven segmented
+PDF render-and-merge architecture exists. The probe passed 1/1, produced a four-page PDF with SHA-256
+`2434608636bb8c6cbcee01d238801c08806adb935a31c25b33f5cc6609fac73b`, made no product or tenant write, and left the
+existing document-wide first-page behavior unchanged.
 
 Roadmap 475 through 481 / PLANS 336 through 342 are complete under ADR-0155. Native Office document and complete
 section page profiles now support exactly one, two or three text columns. Absence remains the canonical one-column

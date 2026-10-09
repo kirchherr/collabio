@@ -2705,7 +2705,13 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abruf, Provider, Worker, neuen Recovery-Speicher, freie Spaltenbreiten, kontinuierliche Abschnittspaginierung
      oder DOCX-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 481 / PLANS 224 bis 342 sind unter ADR-0139 bis ADR-0155 implementiert.
+482. [x] Abschnittseigene Erstseitenvarianten nach einem realen Vierseiten-Chromium-PDF-Test fail-closed gehalten:
+     `@page <abschnitt>:first` greift nur auf der ersten Seite des Gesamtdokuments. Der zweite benannte Abschnitt
+     erhielt auf seiner ersten Seite bereits das allgemeine Profil. Abschnittsmetadaten bleiben deshalb abgewiesen,
+     bis ein separat nachgewiesener segmentierter Render- und Merge-Pfad echte Abschnittserstseiten garantiert.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 482 / PLANS 224 bis 343 sind unter ADR-0139 bis ADR-0155 implementiert
+beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
 bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
