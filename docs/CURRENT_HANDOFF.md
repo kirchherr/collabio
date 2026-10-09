@@ -28,6 +28,9 @@ Product behavior is published through commit `93972fa5`; final evidence source i
 `kirchherr/kb-write-unit-of-work`. The isolated review API is healthy at
 `http://192.168.0.108:42880/office?review=shape-group-position-a69cbddb`. No migration, endpoint, dependency, external
 request, provider, worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
+Full quality on documented source `b2be0523` passed Ruff, formatting for 886 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The eight focused planning and implementation
+documentation contracts also passed.
 
 Roadmap 483 through 489 / PLANS 344 through 350 are complete under ADR-0156. Native Office shapes now store any
 whole-degree rotation from 1 through 359; zero remains the canonical absence and every existing quarter-turn value
