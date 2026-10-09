@@ -230,13 +230,15 @@ test("Office shape groups style each connection independently", async ({ page },
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Per-edge shape connection proof", "Three connected process steps");
   const editor = officeEditor(page), objectId = baseline.document.object_id;
-  for (const [index, label] of ["Start", "Done"].entries()) {
-    if (index === 0) await editor.locator("p").click();
-    else { await editor.locator(".office-shape").last().click(); await editor.press("ArrowRight"); }
-    await page.locator("#shape-options").click(); await page.locator("#shape-text").fill(label);
-    await page.locator("#shape-apply").click();
-  }
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-text").fill("Start"); await page.locator("#shape-apply").click();
+  await expect(editor.locator(".office-shape")).toHaveCount(1);
+  await editor.locator(".office-shape").click(); await editor.press("ArrowRight");
+  await expect(page.locator("#shape-options")).toHaveText("Form einfügen …");
+  await page.locator("#shape-options").click(); await page.locator("#shape-text").fill("Done");
+  await page.locator("#shape-apply").click(); await expect(editor.locator(".office-shape")).toHaveCount(2);
   await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-group-previous")).toBeEnabled();
   await page.locator("#shape-group-previous").click();
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-duplicate").click();
