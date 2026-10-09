@@ -28,7 +28,7 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await page.locator("#shape-kind").selectOption("ellipse"); await page.locator("#shape-fill").selectOption("teal");
   await page.locator("#shape-font-size").fill("28"); await page.locator("#shape-text-color").selectOption("purple");
   await page.locator("#shape-text-style").selectOption("boldItalic");
-  await page.locator("#shape-rotation").selectOption("90");
+  await page.locator("#shape-rotation").fill("90");
   await page.locator("#shape-position-layer").selectOption("front");
   await page.locator("#shape-position-x").fill("500"); await page.locator("#shape-position-y").fill("24");
   await page.locator("#shape-text").fill("Edited ellipse"); await page.locator("#shape-apply").click();
@@ -94,6 +94,64 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   expect(copy.content.content.find((entry) => entry.type === "shape").attrs).toEqual(wrapped.content.content.find((entry) => entry.type === "shape").attrs);
 });
 
+test("Office shapes rotate at exact arbitrary angles by dialog keyboard and pointer", async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Arbitrary shape rotation", "Rotation anchor");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  await editor.locator("p").click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-width").fill("320"); await page.locator("#shape-height").fill("160");
+  await page.locator("#shape-text").fill("Rotated 37 degrees"); await page.locator("#shape-rotation").fill("37");
+  await expect(page.locator("#shape-preview")).toHaveAttribute("data-shape-rotation", "37");
+  await page.locator("#shape-apply").click();
+
+  const node = editor.locator(".office-shape-node"), shape = node.locator(".office-shape");
+  await expect(shape).toHaveAttribute("data-shape-rotation", "37");
+  await expect(node).toHaveAttribute("data-shape-rotated", "");
+  await expect(node).not.toHaveAttribute("data-shape-sideways", "");
+  await expect(shape).toHaveCSS("transform", /matrix/);
+
+  await shape.click(); await page.locator("#shape-options").click();
+  await expect(page.locator("#shape-rotation")).toHaveValue("37");
+  await page.locator("#shape-rotation").fill("360"); await expect(page.locator("#shape-apply")).toBeDisabled();
+  await page.locator("#shape-rotation").fill("359"); await expect(page.locator("#shape-apply")).toBeEnabled();
+  await page.locator("#shape-apply").click(); await expect(shape).toHaveAttribute("data-shape-rotation", "359");
+
+  let rotate = node.locator(".office-shape-rotate"); await rotate.focus(); await rotate.press("ArrowRight");
+  await expect(shape).not.toHaveAttribute("data-shape-rotation", /.+/);
+  await editor.press("Control+z"); await expect(shape).toHaveAttribute("data-shape-rotation", "359");
+  await editor.press("Control+Shift+z"); await expect(shape).not.toHaveAttribute("data-shape-rotation", /.+/);
+  rotate = node.locator(".office-shape-rotate"); await rotate.focus(); await rotate.press("Shift+ArrowLeft");
+  await expect(shape).toHaveAttribute("data-shape-rotation", "345");
+
+  const geometry = await node.evaluate((element) => {
+    const shapeBox = element.querySelector(".office-shape").getBoundingClientRect();
+    const handleBox = element.querySelector(".office-shape-rotate").getBoundingClientRect();
+    const center = { x: shapeBox.left + shapeBox.width / 2, y: shapeBox.top + shapeBox.height / 2 };
+    const start = { x: handleBox.left + handleBox.width / 2, y: handleBox.top + handleBox.height / 2 };
+    const end = { x: center.x + Math.max(80, shapeBox.width / 2 + 40), y: center.y };
+    const angle = (point) => Math.atan2(point.y - center.y, point.x - center.x) * 180 / Math.PI;
+    const delta = ((angle(end) - angle(start) + 540) % 360) - 180;
+    return { start, end, expected: ((345 + Math.round(delta)) % 360 + 360) % 360 };
+  });
+  await page.mouse.move(geometry.start.x, geometry.start.y); await page.mouse.down();
+  await page.mouse.move(geometry.end.x, geometry.end.y, { steps: 6 }); await page.mouse.up();
+  if (geometry.expected) await expect(shape).toHaveAttribute("data-shape-rotation", String(geometry.expected));
+  else await expect(shape).not.toHaveAttribute("data-shape-rotation", /.+/);
+  await editor.press("Control+z"); await expect(shape).toHaveAttribute("data-shape-rotation", "345");
+  await editor.press("Control+Shift+z");
+  if (geometry.expected) await expect(shape).toHaveAttribute("data-shape-rotation", String(geometry.expected));
+
+  const saved = await saveOffice(page, { objectId });
+  expect(saved.content.content.find((entry) => entry.type === "shape").attrs.rotation).toBe(geometry.expected || undefined);
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+  await page.locator("#document-print").click();
+  if (geometry.expected % 180) await expect(page.locator("#print-preview .office-print-shape-node")).toHaveAttribute("data-shape-rotated", "");
+  if (geometry.expected) await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-rotation", String(geometry.expected));
+  await page.locator("#print-close").click();
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-arbitrary-rotation-${testInfo.project.name}.png`, fullPage: true });
+});
+
 test("Office shape groups preserve ordered members history print and independent copies", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await openOffice(page);
@@ -105,7 +163,7 @@ test("Office shape groups preserve ordered members history print and independent
   await editor.locator(".office-shape").click(); await editor.press("ArrowRight");
   await expect(page.locator("#shape-options")).toHaveText("Form einfügen …");
   await page.locator("#shape-options").click(); await page.locator("#shape-kind").selectOption("ellipse");
-  await page.locator("#shape-text").fill("Beta"); await page.locator("#shape-rotation").selectOption("90");
+  await page.locator("#shape-text").fill("Beta"); await page.locator("#shape-rotation").fill("143");
   await page.locator("#shape-font-size").fill("24"); await page.locator("#shape-text-color").selectOption("blue");
   await page.locator("#shape-text-style").selectOption("bold");
   await page.locator("#shape-apply").click(); await expect(editor.locator(".office-shape")).toHaveCount(2);
@@ -147,7 +205,7 @@ test("Office shape groups preserve ordered members history print and independent
   expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, connection: { kind: "doubleArrow", color: "purple", width: 4 } }, content: [
     { type: "shape", attrs: { text: "Alpha" } },
     { type: "shape", attrs: { text: "Alpha" } },
-    { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 90 } },
+    { type: "shape", attrs: { text: "Beta", fontSize: 24, textColor: "blue", textStyle: "bold", rotation: 143 } },
   ] });
   expect(new Set(group.content.map((entry) => entry.attrs.id)).size).toBe(3);
   const prints = await installPrintProbe(page); await page.locator("#document-print").click();

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeShapeAttributes, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
+import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupConnection, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -10,8 +10,11 @@ test("Office shapes preserve only bounded inert attributes", () => {
   expect(officeShapeAttributes(attrs)).toEqual(attrs);
   expect(officeShapeAttributes({ ...attrs, rotation: null })).toEqual(attrs);
   expect(officeShapeDescription(attrs)).toContain("Abgerundetes Rechteck · 320 × 160 px");
-  expect(officeShapeAttributes({ ...attrs, rotation: 270 })).toEqual({ ...attrs, rotation: 270 });
-  expect(officeShapeDescription({ ...attrs, rotation: 90 })).toContain("90° gedreht");
+  expect(officeShapeAttributes({ ...attrs, rotation: 37 })).toEqual({ ...attrs, rotation: 37 });
+  expect(officeShapeAttributes({ ...attrs, rotation: 359 })).toEqual({ ...attrs, rotation: 359 });
+  expect(officeShapeDescription({ ...attrs, rotation: 37 })).toContain("37° gedreht");
+  expect(officeShapeBounds({ ...attrs, rotation: 90 })).toEqual({ width: 160, height: 320 });
+  expect(officeShapeBounds({ ...attrs, rotation: 45 })).toEqual({ width: 340, height: 340 });
   const formatted = { ...attrs, fontSize: 28, textColor: "purple", textStyle: "boldItalic" };
   expect(officeShapeAttributes(formatted)).toEqual(formatted);
   expect(officeShapeDescription(formatted)).toContain("Schrift 28 px · Textfarbe violett · fett und kursiv");
@@ -19,7 +22,8 @@ test("Office shapes preserve only bounded inert attributes", () => {
   for (const invalid of [{ ...attrs, id: "shape-short" }, { ...attrs, kind: "svg" }, { ...attrs, width: 79 },
     { ...attrs, height: 801 }, { ...attrs, fill: "url(external)" }, { ...attrs, strokeWidth: true },
     { ...attrs, text: "bad\u0000text" }, { ...attrs, textAlign: "justify" }, { ...attrs, rotation: 0 },
-    { ...attrs, rotation: 45 }, { ...attrs, rotation: true }, { ...attrs, fontSize: 9 }, { ...attrs, fontSize: 16 },
+    { ...attrs, rotation: -1 }, { ...attrs, rotation: 360 }, { ...attrs, rotation: 90.5 },
+    { ...attrs, rotation: true }, { ...attrs, fontSize: 9 }, { ...attrs, fontSize: 16 },
     { ...attrs, fontSize: 73 }, { ...attrs, fontSize: true }, { ...attrs, textColor: "transparent" },
     { ...attrs, textColor: "url(external)" }, { ...attrs, textStyle: "normal" },
     { ...attrs, textStyle: "bold;position:fixed" }, { ...attrs, onclick: "run()" }]) {

@@ -1,7 +1,7 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { applyOfficeShapeDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
+import { applyOfficeShapeDOM, applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement, officeShapePosition, OFFICE_SHAPE_COLORS, OFFICE_SHAPE_LIMIT } from "./office-shapes.mjs";
 import { OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 
@@ -29,20 +29,18 @@ export function officeShapeExtension() {
           const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
           editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
         };
+        const commitRotation = (rotation) => {
+          if (typeof getPos !== "function") return;
+          const at = getPos(); if (!Number.isInteger(at)) return;
+          const normalized = ((rotation % 360) + 360) % 360;
+          const attrs = officeShapeAttributes({ ...current.attrs, rotation: normalized || null });
+          const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
+          editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+        };
         const render = () => {
           const shape = officeShapeElement(current.attrs); dom.replaceChildren(shape);
           dom.toggleAttribute("data-shape-positioned", current.attrs.position != null);
-          if (current.attrs.wrap != null) {
-            const wrap = officeShapeWrap(current.attrs.wrap), sideways = [90, 270].includes(current.attrs.rotation);
-            const width = sideways ? current.attrs.height : current.attrs.width, height = sideways ? current.attrs.width : current.attrs.height;
-            dom.dataset.shapeWrap = wrap.side; dom.style.setProperty("--office-shape-wrap-gap", `${wrap.gap}px`);
-            dom.style.setProperty("--office-shape-wrap-width", `${Math.min(width, 480 * width / height)}px`);
-          } else {
-            delete dom.dataset.shapeWrap; dom.style.removeProperty("--office-shape-wrap-gap"); dom.style.removeProperty("--office-shape-wrap-width");
-          }
-          dom.toggleAttribute("data-shape-sideways", [90, 270].includes(current.attrs.rotation));
-          dom.style.setProperty("--office-shape-width", String(current.attrs.width));
-          dom.style.setProperty("--office-shape-height", String(current.attrs.height));
+          applyOfficeShapeLayoutDOM(dom, current.attrs);
           const resize = document.createElement("button"); resize.type = "button"; resize.className = "office-shape-resize";
           const describeSize = (width, height) => resize.setAttribute("aria-label", `Formgröße ${width} mal ${height} Pixel; ziehen oder mit Pfeiltasten ändern`);
           resize.textContent = "Größe ändern"; describeSize(current.attrs.width, current.attrs.height);
@@ -78,15 +76,52 @@ export function officeShapeExtension() {
           });
           dom.append(resize);
           const rotate = document.createElement("button"); rotate.type = "button"; rotate.className = "office-shape-rotate";
-          rotate.textContent = "90° drehen";
-          rotate.setAttribute("aria-label", `Form um 90 Grad nach rechts drehen; aktuell ${current.attrs.rotation || 0} Grad`);
+          const describeRotation = (rotation) => {
+            rotate.textContent = `Drehen · ${rotation}°`;
+            rotate.setAttribute("aria-label", `Formdrehung ${rotation} Grad; ziehen oder mit Pfeiltasten ändern, Klick dreht 90 Grad`);
+          };
+          describeRotation(current.attrs.rotation || 0);
+          let rotationDrag = null, suppressRotateClick = false;
+          const pointerAngle = (event, center) => Math.atan2(event.clientY - center.y, event.clientX - center.x) * 180 / Math.PI;
+          const shortestAngle = (value) => ((value + 540) % 360) - 180;
+          rotate.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) return;
+            const bounds = shape.getBoundingClientRect(), center = { x: bounds.left + bounds.width / 2, y: bounds.top + bounds.height / 2 };
+            rotationDrag = { id: event.pointerId, center, startPointer: pointerAngle(event, center),
+              start: current.attrs.rotation || 0, next: current.attrs.rotation || 0, moved: false };
+            rotate.setPointerCapture(event.pointerId); event.preventDefault();
+          });
+          rotate.addEventListener("pointermove", (event) => {
+            if (!rotationDrag || rotationDrag.id !== event.pointerId) return;
+            const delta = shortestAngle(pointerAngle(event, rotationDrag.center) - rotationDrag.startPointer);
+            const next = ((rotationDrag.start + Math.round(delta)) % 360 + 360) % 360;
+            rotationDrag.moved ||= Math.abs(delta) >= 1;
+            rotationDrag.next = next; describeRotation(next);
+            applyOfficeShapeDOM(shape, { ...current.attrs, rotation: next || null });
+            applyOfficeShapeLayoutDOM(dom, { ...current.attrs, rotation: next || null });
+          });
+          const finishRotation = (event, cancel = false) => {
+            if (!rotationDrag || (event.pointerId != null && rotationDrag.id !== event.pointerId)) return;
+            if (rotate.hasPointerCapture(rotationDrag.id)) rotate.releasePointerCapture(rotationDrag.id);
+            const { next, start, moved } = rotationDrag; rotationDrag = null;
+            if (cancel) { render(); return; }
+            suppressRotateClick = moved;
+            if (moved && next !== start) commitRotation(next);
+          };
+          rotate.addEventListener("pointerup", (event) => finishRotation(event));
+          rotate.addEventListener("pointercancel", (event) => finishRotation(event, true));
           rotate.addEventListener("click", (event) => {
-            event.preventDefault(); if (typeof getPos !== "function") return;
-            const at = getPos(); if (!Number.isInteger(at)) return;
-            const next = ((current.attrs.rotation || 0) + 90) % 360;
-            const attrs = officeShapeAttributes({ ...current.attrs, rotation: next || null });
-            const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
-            editor.view.dispatch(closeHistory(transaction).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+            event.preventDefault();
+            if (suppressRotateClick) { suppressRotateClick = false; return; }
+            commitRotation((current.attrs.rotation || 0) + 90);
+          });
+          rotate.addEventListener("keydown", (event) => {
+            let next = null;
+            if (["ArrowLeft", "ArrowDown"].includes(event.key)) next = (current.attrs.rotation || 0) - (event.shiftKey ? 15 : 1);
+            if (["ArrowRight", "ArrowUp"].includes(event.key)) next = (current.attrs.rotation || 0) + (event.shiftKey ? 15 : 1);
+            if (event.key === "Home") next = 0;
+            if (next == null || event.ctrlKey || event.metaKey || event.altKey) return;
+            event.preventDefault(); commitRotation(next);
           });
           dom.append(rotate);
           if (current.attrs.position == null) return;

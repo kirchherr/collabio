@@ -4,7 +4,7 @@ import { officeCharacterDOMAttributes } from "./office-character.mjs";
 import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
-import { officeShapeElement } from "./office-shapes.mjs";
+import { applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement } from "./office-shapes.mjs";
 import { officeShapeGroupAttributes, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
@@ -37,6 +37,13 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     .map((node) => officeSectionProfile(node.attrs));
   const columnsForSection = (section) => officePageColumns(section ? sectionProfiles[section - 1].page : content.attrs?.page);
   const setColumns = (element, section) => { element.dataset.officeColumns = columnsForSection(section); };
+  const printShape = (rawAttrs) => {
+    const attrs = officeShapeAttributes(rawAttrs), shape = officeShapeElement(attrs, dom);
+    shape.classList.add("office-print-shape");
+    if (!attrs.rotation || attrs.rotation % 180 === 0 || attrs.position) return shape;
+    const wrapper = dom.createElement("div"); wrapper.className = "office-print-shape-node";
+    applyOfficeShapeLayoutDOM(wrapper, attrs); wrapper.append(shape); return wrapper;
+  };
   let footnote = 0, endnote = 0;
   const render = (value, depth = 0) => {
     if (!value || ++count > 10000 || depth > 32) throw new Error("Invalid print structure");
@@ -94,7 +101,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
     }
     if (value.type === "shape") {
       if (depth !== 1 || value.content) throw new Error("Invalid shape");
-      const shape = officeShapeElement(value.attrs, dom); shape.classList.add("office-print-shape"); return shape;
+      return printShape(value.attrs);
     }
     if (value.type === "shapeGroup") {
       const attrs = officeShapeGroupAttributes(value.attrs), children = value.content || [];
@@ -113,7 +120,8 @@ export function renderOfficePrintDocument(content, title, dom = document, images
       }
       for (const child of children) {
         const member = dom.createElement("div"); member.className = "office-print-shape-member";
-        const shape = officeShapeElement(child.attrs, dom); shape.classList.add("office-print-shape"); member.append(shape); group.append(member);
+        applyOfficeShapeLayoutDOM(member, child.attrs); member.append(officeShapeElement(child.attrs, dom));
+        member.firstElementChild.classList.add("office-print-shape"); group.append(member);
       }
       return group;
     }

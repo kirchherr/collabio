@@ -361,9 +361,12 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     positioned = {**attrs, "position": {"layer": "front", "x": 500, "y": -1200}}
     positioned_document = {"type": "doc", "content": [{"type": "shape", "attrs": positioned}]}
     assert validate_office_document(positioned_document) == positioned_document
-    rotated = {**attrs, "rotation": 270}
+    rotated = {**attrs, "rotation": 37}
     rotated_document = {"type": "doc", "content": [{"type": "shape", "attrs": rotated}]}
     assert validate_office_document(rotated_document) == rotated_document
+    for rotation in (1, 359):
+        boundary = {"type": "doc", "content": [{"type": "shape", "attrs": {**attrs, "rotation": rotation}}]}
+        assert validate_office_document(boundary) == boundary
     wrapped = {**attrs, "wrap": {"side": "right", "gap": 48}}
     wrapped_document = {"type": "doc", "content": [{"type": "shape", "attrs": wrapped}]}
     assert validate_office_document(wrapped_document) == wrapped_document
@@ -388,7 +391,8 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "textStyle": "normal"},
         {**attrs, "textStyle": "bold;position:fixed"},
         {**attrs, "rotation": 0},
-        {**attrs, "rotation": 45},
+        {**attrs, "rotation": -1},
+        {**attrs, "rotation": 360},
         {**attrs, "rotation": 90.0},
         {**attrs, "rotation": True},
         {**attrs, "wrap": {"side": "middle", "gap": 0}},
@@ -430,7 +434,7 @@ def test_native_shape_groups_are_bounded_flow_only_root_objects() -> None:
                 "strokeWidth": 2,
                 "text": f"Shape {index}",
                 "textAlign": "center",
-                **({"rotation": 90} if index == 2 else {}),
+                **({"rotation": 143} if index == 2 else {}),
             },
         }
 

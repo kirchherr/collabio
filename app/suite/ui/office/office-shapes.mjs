@@ -32,7 +32,8 @@ export function officeShapeAttributes(attrs) {
       (Object.hasOwn(attrs, "fontSize") && attrs.fontSize !== null &&
         (!Number.isInteger(attrs.fontSize) || attrs.fontSize < 10 || attrs.fontSize > 72 || attrs.fontSize === 16)) ||
       (Object.hasOwn(attrs, "position") && attrs.position !== null && typeof attrs.position !== "object") ||
-      (Object.hasOwn(attrs, "rotation") && attrs.rotation !== null && ![90, 180, 270].includes(attrs.rotation)) ||
+      (Object.hasOwn(attrs, "rotation") && attrs.rotation !== null &&
+        (!Number.isInteger(attrs.rotation) || attrs.rotation < 1 || attrs.rotation > 359)) ||
       (Object.hasOwn(attrs, "textColor") && attrs.textColor !== null && !OFFICE_SHAPE_TEXT_COLORS.includes(attrs.textColor)) ||
       (Object.hasOwn(attrs, "textStyle") && attrs.textStyle !== null && !OFFICE_SHAPE_TEXT_STYLES.includes(attrs.textStyle)) ||
       (Object.hasOwn(attrs, "wrap") && attrs.wrap !== null && typeof attrs.wrap !== "object") ||
@@ -58,6 +59,37 @@ export function officeShapeAttributes(attrs) {
   return result;
 }
 
+export function officeShapeBounds(attrs) {
+  const shape = officeShapeAttributes(attrs), radians = (shape.rotation || 0) * Math.PI / 180;
+  const cosine = Math.abs(Math.cos(radians)), sine = Math.abs(Math.sin(radians));
+  const dimension = (value) => Math.ceil(Math.round(value * 1e9) / 1e9);
+  return {
+    width: dimension(shape.width * cosine + shape.height * sine),
+    height: dimension(shape.width * sine + shape.height * cosine),
+  };
+}
+
+export function applyOfficeShapeLayoutDOM(element, attrs) {
+  const shape = officeShapeAttributes(attrs), bounds = officeShapeBounds(shape);
+  const rotatedBounds = Boolean(shape.rotation && shape.rotation % 180 !== 0);
+  element.toggleAttribute("data-shape-rotated", rotatedBounds);
+  element.toggleAttribute("data-shape-sideways", [90, 270].includes(shape.rotation));
+  element.style.setProperty("--office-shape-width", String(shape.width));
+  element.style.setProperty("--office-shape-height", String(shape.height));
+  element.style.setProperty("--office-shape-bound-width", String(bounds.width));
+  element.style.setProperty("--office-shape-bound-height", String(bounds.height));
+  if (shape.wrap) {
+    element.dataset.shapeWrap = shape.wrap.side;
+    element.style.setProperty("--office-shape-wrap-gap", `${shape.wrap.gap}px`);
+    element.style.setProperty("--office-shape-wrap-width", `${Math.min(bounds.width, 480 * bounds.width / bounds.height)}px`);
+  } else {
+    delete element.dataset.shapeWrap;
+    element.style.removeProperty("--office-shape-wrap-gap");
+    element.style.removeProperty("--office-shape-wrap-width");
+  }
+  return element;
+}
+
 export function officeShapeDescription(attrs) {
   const shape = officeShapeAttributes(attrs);
   const kind = { rectangle: "Rechteck", roundedRectangle: "Abgerundetes Rechteck", ellipse: "Ellipse" }[shape.kind];
@@ -80,15 +112,7 @@ export function applyOfficeShapeDOM(element, attrs) {
   if (shape.textColor) element.dataset.shapeTextColor = shape.textColor; else delete element.dataset.shapeTextColor;
   if (shape.textStyle) element.dataset.shapeTextStyle = shape.textStyle; else delete element.dataset.shapeTextStyle;
   if (shape.rotation) element.dataset.shapeRotation = String(shape.rotation); else delete element.dataset.shapeRotation;
-  if (shape.wrap) {
-    element.dataset.shapeWrap = shape.wrap.side;
-    element.style.setProperty("--office-shape-wrap-gap", `${shape.wrap.gap}px`);
-    const sideways = [90, 270].includes(shape.rotation), width = sideways ? shape.height : shape.width, height = sideways ? shape.width : shape.height;
-    element.style.setProperty("--office-shape-wrap-width", `${Math.min(width, 480 * width / height)}px`);
-  } else {
-    delete element.dataset.shapeWrap;
-    element.style.removeProperty("--office-shape-wrap-gap"); element.style.removeProperty("--office-shape-wrap-width");
-  }
+  applyOfficeShapeLayoutDOM(element, shape);
   if (shape.position) {
     element.dataset.shapePosition = shape.position.layer;
     element.style.setProperty("--office-shape-position-x", `${shape.position.x / 10}%`);
@@ -98,8 +122,6 @@ export function applyOfficeShapeDOM(element, attrs) {
     delete element.dataset.shapePosition;
     for (const name of ["--office-shape-position-x", "--office-shape-position-shift", "--office-shape-position-y"]) element.style.removeProperty(name);
   }
-  element.style.setProperty("--office-shape-width", String(shape.width));
-  element.style.setProperty("--office-shape-height", String(shape.height));
   element.style.setProperty("--office-shape-rotation", `${shape.rotation || 0}deg`);
   element.style.setProperty("--office-shape-stroke", `${shape.strokeWidth}px`);
   element.style.setProperty("--office-shape-font-size", `${shape.fontSize || 16}px`);
