@@ -21,9 +21,14 @@ inspection confirmed two selected positioned shapes, active collective controls 
 
 Only resulting established dimensions enter immutable Office JSON. The change adds no migration, endpoint,
 dependency, external request, provider, worker, recovery store, free CSS, physical page geometry, nested group, DOCX
-engine or production admission. GitHub publication of local documentation commit `778ca9b3`, product commit
-`b90b7af8` and this closure remains pending because automatic approval review rejected exporting the internal
-handoff, roadmap, ADR and dev001 operations record to the existing remote without a new explicit user confirmation.
+engine or production admission. The complete repository quality gate passed with Ruff, 893 format-conformant files,
+Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning remains. All eight focused
+planning and implementation documentation contracts passed. The exact temporary `collabio-postgres-test-1`
+container was removed, no transient quality or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication of local documentation commit `778ca9b3`, product commit `b90b7af8` and closure commits from
+`5d374a51` onward remains pending because automatic approval review rejected exporting the internal handoff, roadmap,
+ADRs and dev001 operations record to the existing remote without a new explicit user confirmation.
 
 Roadmap 532 through 538 / PLANS 393 through 399 are complete under ADR-0163. Dragging the position anchor of any one
 selected root shape or complete group moves the complete eligible selection with mouse or touch. Horizontal movement
