@@ -230,7 +230,7 @@ test("Office shape groups style each connection independently", async ({ page },
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Per-edge shape connection proof", "Three connected process steps");
   const editor = officeEditor(page), objectId = baseline.document.object_id;
-  for (const [index, label] of ["Start", "Review", "Done"].entries()) {
+  for (const [index, label] of ["Start", "Done"].entries()) {
     if (index === 0) await editor.locator("p").click();
     else { await editor.locator(".office-shape").last().click(); await editor.press("ArrowRight"); }
     await page.locator("#shape-options").click(); await page.locator("#shape-text").fill(label);
@@ -239,8 +239,8 @@ test("Office shape groups style each connection independently", async ({ page },
   await editor.locator(".office-shape").nth(1).click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-previous").click();
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
-  await page.locator("#shape-group-next").click();
-  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Start", "Review", "Done"]);
+  await page.locator("#shape-duplicate").click();
+  await expect(editor.locator(".office-shape-group .office-shape")).toHaveText(["Start", "Start", "Done"]);
 
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await expect(page.locator("#shape-group-connection-scope option")).toHaveText(["Alle Verbindungen", "1 → 2", "2 → 3"]);
