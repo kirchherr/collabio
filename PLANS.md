@@ -995,6 +995,30 @@ reload, independent reuse and recovery in the existing native-document JSON.
 external request, provider, worker, new recovery store, physical page anchor, arbitrary z-index, mixed member anchors,
 nesting or DOCX DrawingML admission.
 
+358. [x] Add per-edge native Office shape-group connections under ADR-0158 while preserving the existing uniform
+connection representation. An explicit list contains exactly one bounded connection or null value per ordered member
+gap, and the two representations are mutually exclusive.
+
+359. [x] Reject mismatched list lengths, unknown keys, boolean widths, arbitrary paths, SVG, CSS, URLs and ambiguous
+uniform/per-edge combinations independently in browser and server validation.
+
+360. [x] Extend the responsive group dialog with an all-connections scope and numbered gap choices. Preserve untouched
+edges when converting a uniform connection to individual editing and disable color/width without an active connection.
+
+361. [x] Resolve uniform and individual values into the same exact edge sequence for accessible editor and semantic
+print/PDF rendering, with horizontal rows and vertical stacks or compact-row fallback through trusted static CSS.
+
+362. [x] Keep structural edits deterministic: member insertion and duplication add one disconnected gap, removal drops
+one adjacent gap, reordering retains presentation at the ordered gap and whole-group duplication preserves the exact
+sequence with fresh identities.
+
+363. [x] Preserve per-edge connections through isolated undo/redo, confirmed CAS save, immutable history, comparison,
+reload, print, independent reuse and recovery in the existing native-document JSON.
+
+364. [x] Close the per-edge shape-group connection lifecycle under ADR-0158 without a migration, endpoint,
+dependency, external request, provider, worker, new recovery store, freehand path, arbitrary endpoint, nesting or
+DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:

@@ -2759,7 +2759,35 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, physische Seitenanker, beliebige
      Z-Indizes, gemischte Mitgliedsanker, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 496 / PLANS 224 bis 357 sind unter ADR-0139 bis ADR-0157 implementiert
+497. [x] Individuelle Verbindungen je Strecke einer nativen Formgruppe unter ADR-0158 eingefuehrt. Neben der
+     bestehenden einheitlichen Verbindung kann eine Gruppe exakt eine Verbindung oder Leerstelle pro geordneter
+     Mitgliedsluecke speichern; beide Darstellungen schliessen sich gegenseitig aus.
+
+498. [x] Listenlaenge, Nullstellen sowie die festen Linien-, Pfeil-, Farb- und Staerkenwerte unabhaengig in Browser und
+     Server validiert. Unbekannte Schluessel, Boolesche Staerken, freie Pfade, SVG, CSS, URLs und uneindeutige
+     Kombinationen werden fail-closed abgewiesen.
+
+499. [x] Responsiven Gruppendialog um **Alle Verbindungen** und nummerierte Strecken wie **1 → 2** erweitert. Beim
+     Wechsel von einheitlicher zu einzelner Bearbeitung bleiben unberuehrte Strecken erhalten; Farbe und Staerke sind
+     ohne Verbindung deaktiviert.
+
+500. [x] Einheitliche und individuelle Verbindungen im Editor sowie semantischen Druck/PDF aus derselben exakten
+     Streckenfolge gerendert. Reihen nutzen horizontale, Stapel und kompakte Reihen vertikale Darstellung aus
+     ausschliesslich vertrauenswuerdigen statischen Stilzuordnungen.
+
+501. [x] Gruppenoperationen deterministisch geschlossen: Einfuegen und Mitgliedsduplizierung ergaenzen eine leere
+     Strecke, Entfernen beseitigt genau eine angrenzende Strecke, Umordnen behaelt die Darstellung am geordneten
+     Zwischenraum und Gruppenduplizierung kopiert die exakte Folge mit frischen Identitaeten.
+
+502. [x] Individuelle Strecken durch isoliertes Rueckgaengig/Wiederholen, bestaetigten CAS-Save, immutable
+     Vorgaengerversion, Vergleich, Reload, Druck, unabhaengige Wiederverwendung und Recovery im bestehenden nativen
+     Dokument-JSON erhalten.
+
+503. [x] Vollstaendigen Lebenszyklus individueller Formgruppen-Verbindungen unter ADR-0158 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie Pfade, beliebige Endpunkte,
+     Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 503 / PLANS 224 bis 364 sind unter ADR-0139 bis ADR-0158 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

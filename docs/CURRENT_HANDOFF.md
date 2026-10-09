@@ -2,6 +2,28 @@
 
 Updated: 2026-10-09
 
+Roadmap 497 through 503 / PLANS 358 through 364 are complete under ADR-0158. Native Office shape groups now support
+one exact connection value per ordered member gap while preserving the byte-compatible uniform connection form.
+The representations are mutually exclusive; an explicit list must contain exactly `memberCount - 1` bounded values
+or null entries. Browser and server independently reject bad lengths, unknown keys, boolean widths, arbitrary paths,
+SVG, CSS, URLs and ambiguous uniform/per-edge combinations.
+
+The responsive group dialog offers **Alle Verbindungen** and numbered gaps such as **1 → 2**. Moving from uniform to
+individual editing preserves every untouched gap. Member insertion and duplication add one disconnected gap, removal
+drops exactly one adjacent gap, reordering retains styling at the ordered gap and group duplication preserves the
+exact list with fresh identities. Editor and semantic print/PDF resolve uniform and individual forms into one exact
+edge sequence using trusted static CSS.
+
+Focused browser/server checks passed. The complete shape model and responsive desktop/mobile matrix passed 26/26 in
+3.1 minutes. Final focused evidence passed 2/2 in 43.6 seconds. Full-page screenshot SHA-256 values are desktop
+`9b708e873e037af14634bc1dfd2b8da140ca28621912a745c7c21b2c64719209` and mobile
+`a6f9720f58978c2d3ff0c1a07ef732e429eb168c5278c8126b75c6c54866641b`; focused group values are desktop
+`26ca3a3c0d5f01f313bfa485f8d75013062c79a1784de2b7f8f2a1e99e00bc2f` and mobile
+`02afa49949d28c82567a7dafd78c761eb7d2e60011987a5b692704a44b91d679`. Desktop evidence visibly shows distinct red
+and blue edges; responsive mobile review confirmed bounded layout without horizontal overflow, and exact DOM
+assertions verified both mobile edge values. Product and evidence commits through `664f10a4` are published and synced
+to `dev001`; the isolated review API remains healthy on port 42880.
+
 Roadmap 490 through 496 / PLANS 351 through 357 are complete under ADR-0157. Root-level native Office shape groups
 now accept one optional bounded logical position with a front/behind-text layer, normalized integer X from 0 through
 1000 and integer Y from -1200 through 1200 pixels. Normal flow remains the canonical omission. Browser and server
@@ -3718,16 +3740,16 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 363 through 370 / PLANS 224 through 231 are complete. Preserve safe HTML/TSV table translation, active and
-external-content stripping, bounded local A1:T200 formulas, independent server recomputation, fixed error results,
-minimal recalculation updates, clean undo/redo and exact save/history/comparison/print behavior. Keep the complete
-table, comparison, print and full Python quality matrices green.
+Roadmap 497 through 503 / PLANS 358 through 364 are complete. Preserve the mutually exclusive uniform and per-edge
+shape-group connection representations, exact `memberCount - 1` list length, bounded vocabulary, deterministic
+insert/remove/reorder semantics and exact save/history/comparison/print behavior. Keep the complete shape,
+comparison, print and full Python quality matrices green.
 
-Continue native Office before CRM with the next coherent authoring loop. Connectors, freehand paths, arbitrary
-polygons, shape grouping, arbitrary overlap ordering, text wrapping around shapes, continuous editor pagination and DOCX DrawingML
-interchange require separate decisions. Full workbook semantics, cross-table references, relative formula rewriting,
-formula-driven charts, transitive references, content-wide reference search, persistent backlink indexing, continuous
-tracked changes and live collaboration also remain separate.
+Continue native Office before CRM with the next coherent authoring loop. Direct alignment and distribution,
+multi-selection, freely routed endpoints, freehand paths, arbitrary polygons, nested groups, continuous editor
+pagination and DOCX DrawingML interchange require separate decisions. Full workbook semantics, cross-table
+references, relative formula rewriting, formula-driven charts, transitive references, content-wide reference search,
+persistent backlink indexing, continuous tracked changes and live collaboration also remain separate.
 
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic

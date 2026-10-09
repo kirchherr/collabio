@@ -85,6 +85,14 @@ exactly a front/behind-text layer, an integer normalized X coordinate from 0 thr
 -1200 through 1200 pixels. Omission remains canonical normal flow. Individual members still reject wrapping and their
 own positions, and groups cannot be nested.
 
+Roadmap 497 adds per-edge native shape-group connections under
+[ADR-0158](../../ARCHITECTURE_DECISIONS/ADR-0158-per-edge-native-office-shape-group-connections.md). A group retains
+either its byte-compatible uniform `connection` or one exact `connections` list with one bounded value or null entry
+per ordered member gap. The responsive dialog can edit all gaps or one numbered gap while preserving untouched
+values. Insertion and member duplication add one disconnected gap, removal drops one adjacent gap, reordering keeps
+styling at the ordered gap and group duplication preserves the exact list with fresh identities. Editor and semantic
+print/PDF resolve both forms into the same sequence through trusted static CSS.
+
 The responsive group dialog exposes layer and coordinates. A focusable direct anchor moves the complete group by
 pointer/touch, one-pixel arrows, ten-pixel Shift steps or Home reset. Live movement changes only editor-owned DOM
 presentation; releasing the pointer commits one validated isolated undo step. Row/stack layout, gap, member dimensions
@@ -186,7 +194,8 @@ undo steps and become durable only through the existing confirmed CAS save.
 Shapes shrink to the available editor or print width without horizontal overflow. Comparison, history and independent
 copies preserve exact attributes and print emits an inert accessible element. Server and browser reject unknown keys,
 duplicate IDs, nesting, excess shapes, control characters and values outside the fixed vocabularies. Arbitrary SVG,
-paths, CSS, remote resources, scripts, OLE, connectors, shape grouping and DrawingML interchange are not admitted.
+paths, CSS, remote resources, scripts, OLE, freely routed connectors, nested shape grouping and DrawingML interchange
+are not admitted.
 
 ## User workflow and scope
 
