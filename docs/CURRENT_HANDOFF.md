@@ -13,12 +13,20 @@ normal-flow shapes can be grouped atomically; positioned or wrapped shapes, exis
 nesting remain rejected. Existing limits of 100 shapes, 20 groups and eight members are checked before dispatch.
 
 The focused model check passed and the exact responsive workflow passed 2/2 across desktop and mobile after the
-review API was rebuilt with the new Office bundle. It covers explicit and modifier selection, visible markers,
-atomic duplicate/group/remove, isolated undo/redo, confirmed CAS save, immutable predecessor history, semantic
-print, reload clearing and independent reuse. Product and focused-test commits through `ba6b7d21` are published and
-synchronized to `dev001`; the review API is healthy on port 42880. Only resulting existing shape/group JSON is
-persisted. No migration, endpoint, dependency, external request, provider, worker, ordinary tenant, indexing, AI,
-DOCX engine or production admission changed.
+review API was rebuilt with the new Office bundle. The complete shape model and responsive desktop/mobile matrix
+passed 30/30 in 3.7 minutes. It covers explicit and modifier selection, visible markers, atomic
+duplicate/group/remove, isolated undo/redo, confirmed CAS save, immutable predecessor history, semantic print,
+reload clearing and independent reuse. The live review visibly confirmed two selected root groups, the active
+multi-selection mode and the correct collective actions. Product and focused-test commits through `ba6b7d21` are
+published and synchronized to `dev001`; the review API is healthy on port 42880. Only resulting existing shape/group
+JSON is persisted. No migration, endpoint, dependency, external request, provider, worker, ordinary tenant,
+indexing, AI, DOCX engine or production admission changed.
+
+The complete repository quality gate passed on documentation commit `29d5e381`: Ruff passed, all 889 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality, test or Work-E2E runner remains, and regular
+plus review APIs both return `ok`.
 
 Roadmap 504 through 510 / PLANS 365 through 371 are complete under ADR-0159. Native Office shape groups now support
 bounded cross-axis alignment and equal distribution across an optional 160 through 2400 pixel extent. Canonical start
