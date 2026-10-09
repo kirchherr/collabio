@@ -882,10 +882,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or ("textStyle" in attrs and attrs.get("textStyle") not in {"bold", "italic", "boldItalic"})
                 or (
                     "rotation" in attrs
-                    and (
-                        type(attrs.get("rotation")) is not int
-                        or not 1 <= attrs["rotation"] <= 359
-                    )
+                    and (type(attrs.get("rotation")) is not int or not 1 <= attrs["rotation"] <= 359)
                 )
             ):
                 reject()
