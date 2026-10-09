@@ -3,7 +3,8 @@ import { compareOfficeDocuments, describeOfficeBlock } from "../office-compariso
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
-  officeShapeMultiRange, officeShapeMultiSelection, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
+  OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -197,8 +198,20 @@ test("Office positioned root objects align and distribute through bounded intege
   expect(distributed.map((entry) => entry.position.layer)).toEqual(["front", "behind", "front"]);
   expect(officeShapeMultiDistribution(positioned, "horizontal").map((entry) => entry.position.x))
     .toEqual([100, 900, 500]);
+  expect(officeShapeMultiLayer(positioned, "behind").map((entry) => entry.position.layer))
+    .toEqual(["behind", "behind", "behind"]);
+  expect(officeShapeMultiNudge(positioned, "horizontal", 10).map((entry) => entry.position.x))
+    .toEqual([110, 910, 310]);
+  expect(officeShapeMultiNudge(positioned, "vertical", -1).map((entry) => entry.position.y))
+    .toEqual([-301, 199, 899]);
+  const atEdge = positioned.map((entry, index) => ({ ...entry, node: { attrs: { position: {
+    ...entry.node.attrs.position, x: index === 1 ? 1000 : entry.node.attrs.position.x } } } }));
+  expect(officeShapeMultiNudge(atEdge, "horizontal", 10).map((entry) => entry.position.x))
+    .toEqual([100, 1000, 300]);
   expect(officeShapeMultiCanArrange([positioned[0], { ...positioned[1], node: { attrs: { position: null } } }])).toBe(false);
   expect(() => officeShapeMultiAlignment(positioned, "depth", "center")).toThrow();
   expect(() => officeShapeMultiAlignment(positioned, "horizontal", "stretch")).toThrow();
   expect(() => officeShapeMultiDistribution(positioned.slice(0, 2), "vertical")).toThrow();
+  expect(() => officeShapeMultiLayer(positioned, "middle")).toThrow();
+  expect(() => officeShapeMultiNudge(positioned, "horizontal", 2)).toThrow();
 });

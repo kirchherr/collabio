@@ -556,7 +556,7 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-selection-${testInfo.project.name}.png`, fullPage: true });
 });
 
-test("Office positioned root objects align and distribute atomically", async ({ page }, testInfo) => {
+test("Office positioned root objects align distribute layer and nudge atomically", async ({ page }, testInfo) => {
   test.setTimeout(90_000);
   await openOffice(page);
   const baseline = await createOfficeDocument(page, "Native positioned object arrangement proof", "Anchor paragraph");
@@ -607,11 +607,34 @@ test("Office positioned root objects align and distribute atomically", async ({ 
     .toEqual(["-300px", "200px", "900px"]);
   await editor.press("Control+Shift+z");
 
+  await page.locator("#shape-multi-layer").selectOption("front");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapePosition))).toEqual(["front", "front", "front"]);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapePosition))).toEqual(["front", "behind", "front"]);
+  await editor.press("Control+Shift+z");
+
+  await editor.press("ArrowRight");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50.1%", "50.1%", "50.1%"]);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"))))
+    .toEqual(["50%", "50%", "50%"]);
+  await editor.press("Control+Shift+z");
+  await editor.press("Shift+ArrowDown");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"))))
+    .toEqual(["-290px", "310px", "910px"]);
+  await editor.press("Control+z"); await editor.press("Control+Shift+z");
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
-  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([500, 500, 500]);
-  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-300, 300, 900]);
-  expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "behind", "front"]);
+  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([501, 501, 501]);
+  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-290, 310, 910]);
+  expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "front", "front"]);
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(3);

@@ -4,7 +4,7 @@ import { OFFICE_SHAPE_LIMIT, officeShapeAttributes } from "./office-shapes.mjs";
 import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
-  officeShapeMultiSelection } from "./office-shape-multi-selection.mjs";
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiSelection } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
   const bytes = new Uint8Array(12); crypto.getRandomValues(bytes);
@@ -64,6 +64,13 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-group").disabled = !doc || !writable || !officeShapeMultiCanGroup(current) || groupCount(doc) >= OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
+    $("shape-multi-layer").disabled = !writable || !officeShapeMultiCanArrange(current);
+    const positions = current.map((entry) => entry.node?.attrs.position).filter(Boolean);
+    const movable = writable && officeShapeMultiCanArrange(current);
+    $("shape-multi-nudge-left").disabled = !movable || positions.some((position) => position.x <= 0);
+    $("shape-multi-nudge-right").disabled = !movable || positions.some((position) => position.x >= 1000);
+    $("shape-multi-nudge-up").disabled = !movable || positions.some((position) => position.y <= -1200);
+    $("shape-multi-nudge-down").disabled = !movable || positions.some((position) => position.y >= 1200);
     $("shape-multi-clear").disabled = count === 0;
   };
   const setSelection = (ids, nextAnchor = null) => {
@@ -174,8 +181,31 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
         `${selectedIds.size} positionierte Objekte atomar gleichmäßig verteilt. Rückgängig ist möglich.`);
     } catch { notice("Für die gleichmäßige Verteilung müssen mindestens drei frei positionierte Objekte ausgewählt sein.", true); }
   });
+  $("shape-multi-layer").addEventListener("change", (event) => {
+    const layer = event.target.value; event.target.value = ""; if (!layer) return;
+    try {
+      commitArrangement(officeShapeMultiLayer(selectedEntries(), layer),
+        `${selectedIds.size} positionierte Objekte atomar ${layer === "front" ? "vor" : "hinter"} den Text gelegt. Rückgängig ist möglich.`);
+    } catch { notice("Für die gemeinsame Ebene müssen mindestens zwei frei positionierte Objekte ausgewählt sein.", true); }
+  });
+  const nudge = (axis, amount) => {
+    try {
+      commitArrangement(officeShapeMultiNudge(selectedEntries(), axis, amount),
+        `${selectedIds.size} positionierte Objekte atomar um ${Math.abs(amount)} Schritt${Math.abs(amount) === 1 ? "" : "e"} verschoben. Rückgängig ist möglich.`);
+    } catch { notice("Für das gemeinsame Verschieben müssen mindestens zwei frei positionierte Objekte ausgewählt sein.", true); }
+  };
+  for (const button of document.querySelectorAll("[data-shape-multi-nudge]")) {
+    button.addEventListener("click", () => nudge(button.dataset.axis, Number(button.dataset.amount)));
+  }
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && selectedIds.size && !document.querySelector("dialog[open]")) { event.preventDefault(); clear(); return; }
+    const arrow = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
+      ArrowUp: ["vertical", -1], ArrowDown: ["vertical", 1] }[event.key];
+    const active = document.activeElement, inScope = state.editor?.view.dom.contains(active) || active?.closest?.(".shape-multi-tools");
+    if (arrow && selectedIds.size >= 2 && allowed() && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !document.querySelector("dialog[open]") && inScope && !["INPUT", "SELECT", "TEXTAREA"].includes(active?.tagName)) {
+      event.preventDefault(); nudge(arrow[0], arrow[1] * (event.shiftKey ? 10 : 1)); return;
+    }
     if (!["Delete", "Backspace"].includes(event.key) || selectedIds.size < 2 || !allowed() || document.querySelector("dialog[open]")) return;
     if (!state.editor?.view.dom.contains(document.activeElement) && !document.activeElement?.closest?.(".shape-multi-tools")) return;
     event.preventDefault(); $("shape-multi-remove").click();

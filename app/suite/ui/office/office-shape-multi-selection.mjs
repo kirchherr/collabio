@@ -4,6 +4,8 @@ import { officeShapePosition } from "./office-shapes.mjs";
 export const OFFICE_SHAPE_MULTI_SELECTION_LIMIT = 20;
 export const OFFICE_SHAPE_MULTI_AXES = ["horizontal", "vertical"];
 export const OFFICE_SHAPE_MULTI_ALIGNMENTS = ["start", "center", "end"];
+export const OFFICE_SHAPE_MULTI_LAYERS = ["front", "behind"];
+export const OFFICE_SHAPE_MULTI_NUDGE_AMOUNTS = [-10, -1, 1, 10];
 
 export function officeShapeMultiSelection(entries, ids) {
   if (!Array.isArray(entries) || !Array.isArray(ids) || ids.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT ||
@@ -63,4 +65,25 @@ export function officeShapeMultiDistribution(entries, axis) {
     Math.round(first + (last - first) * index / (ordered.length - 1))]));
   return entries.map((entry) => ({ id: entry.id,
     position: officeShapePosition({ ...entry.node.attrs.position, [coordinate]: positions.get(entry.id) }) }));
+}
+
+export function officeShapeMultiLayer(entries, layer) {
+  if (!officeShapeMultiCanArrange(entries) || !OFFICE_SHAPE_MULTI_LAYERS.includes(layer)) {
+    throw new Error("shape-multi-layer");
+  }
+  return entries.map((entry) => ({ id: entry.id,
+    position: officeShapePosition({ ...entry.node.attrs.position, layer }) }));
+}
+
+export function officeShapeMultiNudge(entries, axis, amount) {
+  if (!officeShapeMultiCanArrange(entries) || !OFFICE_SHAPE_MULTI_NUDGE_AMOUNTS.includes(amount)) {
+    throw new Error("shape-multi-nudge");
+  }
+  const coordinate = arrangementCoordinate(axis), minimum = coordinate === "x" ? 0 : -1200;
+  const maximum = coordinate === "x" ? 1000 : 1200;
+  const values = entries.map((entry) => entry.node.attrs.position[coordinate]);
+  const bounded = Math.max(minimum - Math.min(...values), Math.min(amount, maximum - Math.max(...values)));
+  return entries.map((entry) => ({ id: entry.id,
+    position: officeShapePosition({ ...entry.node.attrs.position,
+      [coordinate]: entry.node.attrs.position[coordinate] + bounded }) }));
 }
