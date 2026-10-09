@@ -90,8 +90,8 @@ class LegacySqlServerConnectorPolicy(BaseModel):
 
     @model_validator(mode="after")
     def require_secure_connector_policy(self) -> Self:
-        if self.connector_kind != LegacySqlConnectorKind.SQLSERVER:
-            raise ValueError("legacy SQL Server connector policy must use connector_kind=sqlserver")
+        if self.connector_kind not in {LegacySqlConnectorKind.SQLSERVER, LegacySqlConnectorKind.POSTGRES}:
+            raise ValueError("legacy SQL metadata connector policy must use connector_kind=sqlserver or postgres")
         if self.required_worker_network_mode != LegacySqlServerNetworkMode.APPROVED_LEGACY_HOST_ONLY:
             raise ValueError("SQL Server metadata worker must only egress to approved legacy hosts")
         if not self.isolated_worker_required:

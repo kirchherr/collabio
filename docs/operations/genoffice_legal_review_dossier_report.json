@@ -1,0 +1,1184 @@
+{
+  "all_runtime_license_text_evidence_complete": true,
+  "all_runtime_package_integrities_verified": true,
+  "authoritative_image_sbom_allowed": false,
+  "automated_legal_evidence_complete": true,
+  "compound_license_packages": [
+    "jszip",
+    "pako"
+  ],
+  "dependency_legal_files": [
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:b199f62d08e249598cbc090ebaf8c0827f4d31c16f80f8bf896865333901b459",
+      "kind": "readme",
+      "package_name": "@nodable/entities",
+      "package_version": "3.0.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:7e3484a07c208b5c5813290a993244c6841efc3d4241c29a07ef948e8129a758",
+      "size_bytes": 3485,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:d941692e010464ea3a714e57c0b960810c75bdd308041115f33edee873eb48f6",
+      "kind": "license",
+      "package_name": "@nodable/entities",
+      "package_version": "3.0.0",
+      "path": "supplemental/@nodable/entities@3.0.0/LICENSE",
+      "scope": "supplemental_dependency_source",
+      "sha256": "sha256:750cb3fb6362804957ef52caaf9b5c824015be44d494637330d7cd8834d31d40",
+      "size_bytes": 1064,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:9d905858bc7492696a544cc779bb178c88fccc6929bcff0a9a54db333f7d216e",
+      "kind": "license",
+      "package_name": "anynum",
+      "package_version": "1.0.1",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:7e5be35607bc41898f62d2c63684c03f6b5bc415aaee1fe833907c69b61d781f",
+      "kind": "readme",
+      "package_name": "anynum",
+      "package_version": "1.0.1",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:1e88190ad99aa33ac5114a49f5661319938346d35fbc1babcaca0b4b47fbbb09",
+      "size_bytes": 4642,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:70592ca0345c9ce209639c957c09b47c0cdaa266c2b081f44e547742821a866f",
+      "kind": "license",
+      "package_name": "core-util-is",
+      "package_version": "1.0.3",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:33b734d60042d0fe0c92dd1fc1e874193a1c899ec3e276a2eb935d2d0bf5b710",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:e6937997088295b064583a29bf6f7919ffb982bfc77e48943cd7b437bbd266db",
+      "kind": "readme",
+      "package_name": "core-util-is",
+      "package_version": "1.0.3",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:57072548a79553ec5a930b370f5f37f2b86f57ab39357dc63e097c7e8ba7412a",
+      "size_bytes": 67,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:c7567eb411ac3c724c8e7a3794c452fa497333c2d505de66038c404e95cdd80a",
+      "kind": "license",
+      "package_name": "fast-xml-builder",
+      "package_version": "1.3.0",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:3317b66c7f6f3caab20447dc7ff18c7a20f42f6e3d9f81c20dedece8db63a947",
+      "kind": "readme",
+      "package_name": "fast-xml-builder",
+      "package_version": "1.3.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:b55a37d12169e4fcfa8718b132c446eba4fa067e22c3cafc5a4d6cf6054fce76",
+      "size_bytes": 4913,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:097dc2609c8a8ba8a6c165b2e343fda9ddf2c20004778112dc2a96daa9ba3d85",
+      "kind": "license",
+      "package_name": "fast-xml-parser",
+      "package_version": "5.10.1",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:7883225d5e84a6bbb9b170c3d891b4bf6d6259cee869c86bd86381a927071745",
+      "size_bytes": 1073,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:f6e9863cee7e33b88df6522f2c44c4d7e5b713c09150951e8ad6d430f4a62887",
+      "kind": "readme",
+      "package_name": "fast-xml-parser",
+      "package_version": "5.10.1",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:534c9ac1ad79c0b7e37b908b63db17fde29f1b4c3cef9a6cad1074fa57dc70e5",
+      "size_bytes": 9565,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:6bad5bb106631aa8451eb12c57594cf059219c887972c8c3bfbff6bfb83f8df3",
+      "kind": "license",
+      "package_name": "immediate",
+      "package_version": "3.0.6",
+      "path": "LICENSE.txt",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:809e66de579fb7d92503848bbe6d1f348f4f6521a71e5d294fe7cc0c87a3b4ff",
+      "size_bytes": 1115,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:fbf4042f8a15540a818ff700945c42834e15dbee10cc87a5bab40030c0f0eb61",
+      "kind": "readme",
+      "package_name": "immediate",
+      "package_version": "3.0.6",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:f8ba840a9e01f16ccab189fc52191a42324153ad376b8ade110db8af9300ffe1",
+      "size_bytes": 3697,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "isc_grant_text"
+      ],
+      "evidence_id": "sha256:456904217cf65e691b817db8dfc45e70679551e8afd127a4d921f6496fff56a2",
+      "kind": "license",
+      "package_name": "inherits",
+      "package_version": "2.0.4",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:5ffe28e7ade7d8f10d85d5337a73fd793dac5c462fb9a28fbf8c5046c7fbca3b",
+      "size_bytes": 749,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:8ef416b32d47ef367d00c0580bf49d7e538197c56a4550c122302ad0b477e45d",
+      "kind": "readme",
+      "package_name": "inherits",
+      "package_version": "2.0.4",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:b33c8be1ca837d9e4c9b0e04a550feacbc101556164d3cdbb875aed6ccbb8a29",
+      "size_bytes": 1625,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:2b040dde2e293e48d623d4334fad913829ce2fa180d5afa26920f58605cafaa9",
+      "kind": "license",
+      "package_name": "is-unsafe",
+      "package_version": "2.0.0",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:387592f64876b3a6f2140f0a6a78c56a63ee7272cba25818152b5e8db40ec57b",
+      "kind": "readme",
+      "package_name": "is-unsafe",
+      "package_version": "2.0.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:037ee459a3870681c47d454eec265ead4822ab25724519b90e047cf2d4b2efad",
+      "size_bytes": 22085,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:73f784310f07038f3e87b0298ea6e638b7017068ea22c0116f7060eabe3f5c33",
+      "kind": "readme",
+      "package_name": "isarray",
+      "package_version": "1.0.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:ff138e683771b187f3629c383db72ee7d632009010a36d08e18e8d2a34222ec7",
+      "size_bytes": 1890,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text",
+        "gpl_3_text"
+      ],
+      "evidence_id": "sha256:2f321fc30b30140d6222052dcf9da3a9b0b02dd6a33e3e79a780d57580124d9d",
+      "kind": "license",
+      "package_name": "jszip",
+      "package_version": "3.10.1",
+      "path": "LICENSE.markdown",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:566c953c6090b1218ca6217dd7359d45dde46581968586dc607d59a78af6a9c4",
+      "size_bytes": 33753,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:41d97c134aa9c4bd46cff096bb756753015c542fbfd5858b4a88888b3a6336c7",
+      "kind": "readme",
+      "package_name": "jszip",
+      "package_version": "3.10.1",
+      "path": "README.markdown",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:5eee3659204ed8f04b58d388b2dae55539c5cbcda733e4e945811c9121a68ede",
+      "size_bytes": 678,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:2134beee01be2ccc0d8352f9a28213644c8e91a71ec1333ca30639860365a4d3",
+      "kind": "license",
+      "package_name": "jszip",
+      "package_version": "3.10.1",
+      "path": "lib/license_header.js",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:27873abeec2df3693480a8d1b8fe17dd61bee843d1b39c1c9cfab57ffe93099e",
+      "size_bytes": 388,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:af71b0afd46f328df4aa494635306d8bc84788d86381d5f2ddb553af36e7f1b6",
+      "kind": "readme",
+      "package_name": "lie",
+      "package_version": "3.3.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:97a1e33c510ea9ce0eb1faf0bc1f89a71bfe414c1768b227d47b5ac3c50e1a29",
+      "size_bytes": 2165,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:ddca89da0477cf8209bb3a6efad751fc620ae10733c40865e66c9c103f0bda29",
+      "kind": "license",
+      "package_name": "lie",
+      "package_version": "3.3.0",
+      "path": "license.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:5c81b0caa98593408b03125efa25efe622341ed87ae55561968828cd887d64a4",
+      "size_bytes": 1084,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:6e3ec4913da148f5a70c8d5b99fcde1bc4c2d844d3e1e29abbaa877fde1d3532",
+      "kind": "license",
+      "package_name": "pako",
+      "package_version": "1.0.11",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:a04665b3b2de56c66730c1f720f528175739e4104f79073614aa611da1e85539",
+      "size_bytes": 1104,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:ec0298a6f77a062552af0d6019a4ffe6eeee804664fd73e714d1232458909942",
+      "kind": "readme",
+      "package_name": "pako",
+      "package_version": "1.0.11",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:8174ca473d9df9da15064d199064e8e3ff88d46beb66b545e048756e6f0fb469",
+      "size_bytes": 6066,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "zlib_terms_text"
+      ],
+      "evidence_id": "sha256:be4c07d1afd08ac87aaadb6d97472ebb8d848303e60b119de4a330a662cb1f69",
+      "kind": "readme",
+      "package_name": "pako",
+      "package_version": "1.0.11",
+      "path": "lib/zlib/README",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:d8b499598e43d755ea8918448128259ff01820c50d94d5a48c8883d0a594ddb1",
+      "size_bytes": 2180,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:b370defdba0bd92c6792f4a450eca668dc656500a5188bddf5dea51afc1a24a2",
+      "kind": "license",
+      "package_name": "path-expression-matcher",
+      "package_version": "1.6.2",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:75486ea0af9309140ca6e2c401d7e67bea8f4892344e5707f6394dc5e83dfc44",
+      "size_bytes": 1056,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:3956a5d6e4041dd591d12f8371cca8d1d9327817f9d53c614d97e674be0f3e39",
+      "kind": "readme",
+      "package_name": "path-expression-matcher",
+      "package_version": "1.6.2",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:b3624137327085ee17b4731c3431a56e93b64e1627521cfdc43ab9e20a5c584d",
+      "size_bytes": 30029,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:47b13a3bfaa2be897bbbffff3d639f5f9dda2899f01481ef00186a73e1d98378",
+      "kind": "license",
+      "package_name": "process-nextick-args",
+      "package_version": "2.0.1",
+      "path": "license.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:ecdccbcf39024f624ded480c01c0b25458e1eca8f26ecf040933865ce56d9a4f",
+      "size_bytes": 1064,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:ddacf8b53beee875aee05a7454f87e687d570c289ce3408be8065e4b9e5ec3a5",
+      "kind": "readme",
+      "package_name": "process-nextick-args",
+      "package_version": "2.0.1",
+      "path": "readme.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:f659caaae9d9f4a860850b3229f6c261a09b86e3644dbc01128fe5d74b01aecd",
+      "size_bytes": 450,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:716bb4a263d0c07651ba7f43ec06609fc704b4d38cc8758f3fbcb010c953b286",
+      "kind": "license",
+      "package_name": "readable-stream",
+      "package_version": "2.3.8",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:ec62dc96da0099b87f4511736c87309335527fb7031639493e06c95728dc8c54",
+      "size_bytes": 2337,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:3d26bd89fa53c8cbd4c68bfba6af5667591eb2ee12754419db27b3691d110727",
+      "kind": "readme",
+      "package_name": "readable-stream",
+      "package_version": "2.3.8",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:5a917d93a11215fbdfe7366e7466bc2ef3e3b9dee8291b0e1d48e6d4796f19cf",
+      "size_bytes": 2999,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:6d230c96654abad89d0e627bddf84909e4484d912a9d0279f3763db1c4a3b175",
+      "kind": "license",
+      "package_name": "safe-buffer",
+      "package_version": "5.1.2",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:c7cc929b57080f4b9d0c6cf57669f0463fc5b39906344dfc8d3bc43426b30eac",
+      "size_bytes": 1081,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:bb5dedf226b4d32150b354d9fd55c7dfefcf899f95cc768eefba4899b1d21e04",
+      "kind": "readme",
+      "package_name": "safe-buffer",
+      "package_version": "5.1.2",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:d301a850808775718ddb510d4bf2a922d9b0afa72894e67137daa20fbeafac05",
+      "size_bytes": 19555,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:da2c93a1a5e366829660f9c0f9316898494f09795fb43b6c25ed8c42c8730873",
+      "kind": "license",
+      "package_name": "setimmediate",
+      "package_version": "1.0.5",
+      "path": "LICENSE.txt",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:c4b4ad3a5746f1f5249a6dd90396ec519264e1bb02e01e48a6522c48a3a97cb4",
+      "size_bytes": 1103,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:137acf037ec7b7c5f19f322430ba8f6b85f8db4727fa1f6fc9244879183873f1",
+      "kind": "license",
+      "package_name": "string_decoder",
+      "package_version": "1.1.1",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:11f2aafb37d06b3ee5bdaf06e9811141d0da05263c316f3d627f45c20d43261b",
+      "size_bytes": 2338,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:eaf05a51462c592c627200c57f88f8699ae2d688ba314da34e417b530c03e028",
+      "kind": "readme",
+      "package_name": "string_decoder",
+      "package_version": "1.1.1",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:64417fec74bed1e4160c792189c85e6f37f4232a179e2beb04f32d80df76c4cf",
+      "size_bytes": 1801,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:2f57fe5c283960360c2a8acf7f4fc38db43fe82918ef91ea55cbf1db0bd14a60",
+      "kind": "license",
+      "package_name": "strnum",
+      "package_version": "2.4.1",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:2aa16be0f4fad003a352a955a43314e9d1d8deef7034060a82ac9c49f32b81e2",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:4e8157e74529bad7a73fcc9b82b125ad4e73fcbe5bc5f1b7deb7eab3bcb798bf",
+      "kind": "readme",
+      "package_name": "strnum",
+      "package_version": "2.4.1",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:6423769d4556b51fd966ed0cbf5d9bfd7813553560a1849966f48677ed674f83",
+      "size_bytes": 4652,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:46fe808aeff3f3c634c2969d14302688bc18a0a60e791d279476cbe96fe2fdb0",
+      "kind": "license",
+      "package_name": "util-deprecate",
+      "package_version": "1.0.2",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:0154425673db15cdfa80ecba2c9b1f1a867f7197a006764712849bfc3a93cbb7",
+      "size_bytes": 1102,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:d6eeb3c196016c1c1f20279f0a169170a3089bf8a5ec65ecc2ad46cb8c4ba94b",
+      "kind": "readme",
+      "package_name": "util-deprecate",
+      "package_version": "1.0.2",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:d30a5eca847bc6edc7b9723884def8942a66f89d12a5735dc22d1ee1216ff2ea",
+      "size_bytes": 1666,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "mit_grant_text"
+      ],
+      "evidence_id": "sha256:4c0c0fcc6bfd1d707e0858abf0306599b2bb05321b0c8f1118c4154f3f46a343",
+      "kind": "license",
+      "package_name": "xml-naming",
+      "package_version": "0.3.0",
+      "path": "LICENSE",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:8e75fc0e776c62ccadb8178ece8d3daa9ba7601fb0a49b2dfb0ea9a7a5c0aa07",
+      "size_bytes": 1077,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [],
+      "evidence_id": "sha256:93f41daa50d10427e2e2ad17471fc07cb1bffc5fb93255f1fe18db7530de9012",
+      "kind": "readme",
+      "package_name": "xml-naming",
+      "package_version": "0.3.0",
+      "path": "README.md",
+      "scope": "runtime_dependency",
+      "sha256": "sha256:aa6f359e935296f26e878a119528daa37b9755391ecb701dd1a1330477440423",
+      "size_bytes": 9749,
+      "utf8_verified": true
+    }
+  ],
+  "dependency_licenses": [
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:b199f62d08e249598cbc090ebaf8c0827f4d31c16f80f8bf896865333901b459",
+        "sha256:d941692e010464ea3a714e57c0b960810c75bdd308041115f33edee873eb48f6"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:aac1b10aae6c2c7f1fe8f82f4ba7e665605441286acbcb50d8864be4eda2e6bf",
+      "package_name": "@nodable/entities",
+      "package_version": "3.0.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:9d905858bc7492696a544cc779bb178c88fccc6929bcff0a9a54db333f7d216e",
+        "sha256:7e5be35607bc41898f62d2c63684c03f6b5bc415aaee1fe833907c69b61d781f"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:705d5c67f0438588aded995c6f88fee65495d0bf6a785a5fa2c448a2fb1f341a",
+      "package_name": "anynum",
+      "package_version": "1.0.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:70592ca0345c9ce209639c957c09b47c0cdaa266c2b081f44e547742821a866f",
+        "sha256:e6937997088295b064583a29bf6f7919ffb982bfc77e48943cd7b437bbd266db"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:4430fdc71f2cf3b5e297113b9a692da2d6cff96cf84da00f0ecef5e5a6e74d0c",
+      "package_name": "core-util-is",
+      "package_version": "1.0.3",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:c7567eb411ac3c724c8e7a3794c452fa497333c2d505de66038c404e95cdd80a",
+        "sha256:3317b66c7f6f3caab20447dc7ff18c7a20f42f6e3d9f81c20dedece8db63a947"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:bf856def127685974acc667fc4d0cb612b0cd48226cb0050aa909c66d614783a",
+      "package_name": "fast-xml-builder",
+      "package_version": "1.3.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:097dc2609c8a8ba8a6c165b2e343fda9ddf2c20004778112dc2a96daa9ba3d85",
+        "sha256:f6e9863cee7e33b88df6522f2c44c4d7e5b713c09150951e8ad6d430f4a62887"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:96c5fb404c640da25ceac9cceebe599d703df1fb22887ef6c8d768bd56d1c6d6",
+      "package_name": "fast-xml-parser",
+      "package_version": "5.10.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:6bad5bb106631aa8451eb12c57594cf059219c887972c8c3bfbff6bfb83f8df3",
+        "sha256:fbf4042f8a15540a818ff700945c42834e15dbee10cc87a5bab40030c0f0eb61"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:98c792f39650b00818c05dcc407902034dc4092f368596b37658d44f28739d11",
+      "package_name": "immediate",
+      "package_version": "3.0.6",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "ISC",
+      "detected_text_markers": [
+        "isc_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:456904217cf65e691b817db8dfc45e70679551e8afd127a4d921f6496fff56a2",
+        "sha256:8ef416b32d47ef367d00c0580bf49d7e538197c56a4550c122302ad0b477e45d"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:d94dbc6c1bb3c5ac0fb12a73ade187108fc60de273a1b754f55044eb5e24afaf",
+      "package_name": "inherits",
+      "package_version": "2.0.4",
+      "required_text_markers": [
+        "isc_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:2b040dde2e293e48d623d4334fad913829ce2fa180d5afa26920f58605cafaa9",
+        "sha256:387592f64876b3a6f2140f0a6a78c56a63ee7272cba25818152b5e8db40ec57b"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:99f1556cb178706d884881069f6bb8a2a50b241f86a88ea265aa6719014bef23",
+      "package_name": "is-unsafe",
+      "package_version": "2.0.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:73f784310f07038f3e87b0298ea6e638b7017068ea22c0116f7060eabe3f5c33"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:e23c76f14f5222e07e39d89858b61e8e33f96956de9e0df3659cbdf8db950c87",
+      "package_name": "isarray",
+      "package_version": "1.0.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "(MIT OR GPL-3.0-or-later)",
+      "detected_text_markers": [
+        "gpl_3_text",
+        "mit_grant_text"
+      ],
+      "expression_semantics": "choice",
+      "human_license_choice_required": true,
+      "legal_file_evidence_ids": [
+        "sha256:2f321fc30b30140d6222052dcf9da3a9b0b02dd6a33e3e79a780d57580124d9d",
+        "sha256:41d97c134aa9c4bd46cff096bb756753015c542fbfd5858b4a88888b3a6336c7",
+        "sha256:2134beee01be2ccc0d8352f9a28213644c8e91a71ec1333ca30639860365a4d3"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:5117f4a2a645aeb307bf3b829c575ad58135cc97e75291e594532ab5b5b21b23",
+      "package_name": "jszip",
+      "package_version": "3.10.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:af71b0afd46f328df4aa494635306d8bc84788d86381d5f2ddb553af36e7f1b6",
+        "sha256:ddca89da0477cf8209bb3a6efad751fc620ae10733c40865e66c9c103f0bda29"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:2db8461cd4a10e2fc3588c8c55da34d33465ff81cc19c72416bbcaec7ee6a36e",
+      "package_name": "lie",
+      "package_version": "3.3.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "(MIT AND Zlib)",
+      "detected_text_markers": [
+        "mit_grant_text",
+        "zlib_terms_text"
+      ],
+      "expression_semantics": "cumulative",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:6e3ec4913da148f5a70c8d5b99fcde1bc4c2d844d3e1e29abbaa877fde1d3532",
+        "sha256:ec0298a6f77a062552af0d6019a4ffe6eeee804664fd73e714d1232458909942",
+        "sha256:be4c07d1afd08ac87aaadb6d97472ebb8d848303e60b119de4a330a662cb1f69"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:0d4028dc0352a740c30cbfd772917f2744986d42bfa0b06ec7642bffe7ad3941",
+      "package_name": "pako",
+      "package_version": "1.0.11",
+      "required_text_markers": [
+        "mit_grant_text",
+        "zlib_terms_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:b370defdba0bd92c6792f4a450eca668dc656500a5188bddf5dea51afc1a24a2",
+        "sha256:3956a5d6e4041dd591d12f8371cca8d1d9327817f9d53c614d97e674be0f3e39"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:a501b52ebf8236b2264e98b23000ca67e30d0d6cbb2815a041e8b2c0e3818a36",
+      "package_name": "path-expression-matcher",
+      "package_version": "1.6.2",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:47b13a3bfaa2be897bbbffff3d639f5f9dda2899f01481ef00186a73e1d98378",
+        "sha256:ddacf8b53beee875aee05a7454f87e687d570c289ce3408be8065e4b9e5ec3a5"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:425bf8c725d23bc5ac76bcedd10d9cdbbd6354c7273dd7def44417cfbca8889b",
+      "package_name": "process-nextick-args",
+      "package_version": "2.0.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:716bb4a263d0c07651ba7f43ec06609fc704b4d38cc8758f3fbcb010c953b286",
+        "sha256:3d26bd89fa53c8cbd4c68bfba6af5667591eb2ee12754419db27b3691d110727"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:1648613948f68ac9cbbe8f72a3f93a67ecdb862ffb57946a2c0bbb5a1479a532",
+      "package_name": "readable-stream",
+      "package_version": "2.3.8",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:6d230c96654abad89d0e627bddf84909e4484d912a9d0279f3763db1c4a3b175",
+        "sha256:bb5dedf226b4d32150b354d9fd55c7dfefcf899f95cc768eefba4899b1d21e04"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:e09206c60fccafb952c854af7629cbb031a98d6da2e143fb3aa3c8a48402aa22",
+      "package_name": "safe-buffer",
+      "package_version": "5.1.2",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:da2c93a1a5e366829660f9c0f9316898494f09795fb43b6c25ed8c42c8730873"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:5cb9fc22698364ed42c02d6aa3dc50ffeafa68452ae84699672e3dfd74922c9e",
+      "package_name": "setimmediate",
+      "package_version": "1.0.5",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:137acf037ec7b7c5f19f322430ba8f6b85f8db4727fa1f6fc9244879183873f1",
+        "sha256:eaf05a51462c592c627200c57f88f8699ae2d688ba314da34e417b530c03e028"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:af8262434508fa8292407f7fef4690d19eabb73387ca230b41f2a1155216963a",
+      "package_name": "string_decoder",
+      "package_version": "1.1.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:2f57fe5c283960360c2a8acf7f4fc38db43fe82918ef91ea55cbf1db0bd14a60",
+        "sha256:4e8157e74529bad7a73fcc9b82b125ad4e73fcbe5bc5f1b7deb7eab3bcb798bf"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:375915559b5736275bc523f73c64804c8c6904d0ee089303847ab8606b39b391",
+      "package_name": "strnum",
+      "package_version": "2.4.1",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:46fe808aeff3f3c634c2969d14302688bc18a0a60e791d279476cbe96fe2fdb0",
+        "sha256:d6eeb3c196016c1c1f20279f0a169170a3089bf8a5ec65ecc2ad46cb8c4ba94b"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:79a1de983c1b393180c47456d6b73caab278a00ea6e37d5c6675f2dcdec2a3e5",
+      "package_name": "util-deprecate",
+      "package_version": "1.0.2",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    },
+    {
+      "declared_license_expression": "MIT",
+      "detected_text_markers": [
+        "mit_grant_text"
+      ],
+      "expression_semantics": "single",
+      "human_license_choice_required": false,
+      "legal_file_evidence_ids": [
+        "sha256:4c0c0fcc6bfd1d707e0858abf0306599b2bb05321b0c8f1118c4154f3f46a343",
+        "sha256:93f41daa50d10427e2e2ad17471fc07cb1bffc5fb93255f1fe18db7530de9012"
+      ],
+      "license_text_evidence_complete": true,
+      "package_archive_integrity_verified": true,
+      "package_archive_sha256": "sha256:da0925864bd4c04ef3384e89ef5d4774d82ed6d9fa241519b003ddbcc0effac8",
+      "package_name": "xml-naming",
+      "package_version": "0.3.0",
+      "required_text_markers": [
+        "mit_grant_text"
+      ]
+    }
+  ],
+  "engine_execution_allowed": false,
+  "enterprise_license_present_and_scope_excluded": true,
+  "human_decision_record_created": false,
+  "human_review_ready": true,
+  "legal_decision_record_schema_hash": "sha256:f4e8c757268f3d3b6e0b93b730252129e3988888fed07ccadb1199292b3225df",
+  "legal_decision_record_schema_version": "genoffice_legal_decision_record.v1",
+  "legal_review_complete": false,
+  "license_material_collection_report_hash": "sha256:2a75877f68e3e4f9ef11a648f0031bc184e97899c8533a67f4d1bd9c7fa40195",
+  "npm_provenance_admission_report_hash": "sha256:c85feac5fa9788ef10a4076034d2443c230e8536ee5c02de61b8cfe9ea114aa3",
+  "production_use_allowed": false,
+  "report_hash": "sha256:eb523d13b0cb10fea752c4e0d549a9c06f2736e4f3f38721bb7b0ba948614c5a",
+  "reproducible_worker_build_allowed": false,
+  "review_questions": [
+    {
+      "category": "license",
+      "evidence_refs": [
+        "sha256:ef86b3e2c428163a4da71db6c1b8b30cf1338dec2460ab0e7c18a30db8c971ca"
+      ],
+      "question_id": "apache-2-distribution-obligations",
+      "required_decision": "Confirm Apache-2.0 redistribution, modification notice, attribution, patent and termination obligations for the approved Collabio distribution model."
+    },
+    {
+      "category": "notice",
+      "evidence_refs": [
+        "sha256:aa85aca99633e0dac66e27d59fa2df1f431352ed0b38f97b1917354b6d5f4eb0"
+      ],
+      "question_id": "upstream-notice-preservation",
+      "required_decision": "Approve the exact upstream NOTICE preservation and the Collabio third-party notice artifact."
+    },
+    {
+      "category": "trademark",
+      "evidence_refs": [
+        "sha256:63a691167e6c435cccfa2da98abc3742b5a56163a62aacf3ab53306ca7e22126"
+      ],
+      "question_id": "upstream-trademark-exclusion",
+      "required_decision": "Confirm Collabio-only branding and prohibit GenOffice, Genspark and upstream logos in product identity."
+    },
+    {
+      "category": "scope",
+      "evidence_refs": [
+        "sha256:574dd4398dcbbaff39766dbd1bf6b966e5f3f62f799388f4728fb254b2f53c87"
+      ],
+      "question_id": "enterprise-tree-exclusion",
+      "required_decision": "Confirm that ee/** remains excluded from source, build context, image and distribution."
+    },
+    {
+      "category": "distribution",
+      "evidence_refs": [
+        "sha256:b199f62d08e249598cbc090ebaf8c0827f4d31c16f80f8bf896865333901b459",
+        "sha256:d941692e010464ea3a714e57c0b960810c75bdd308041115f33edee873eb48f6",
+        "sha256:9d905858bc7492696a544cc779bb178c88fccc6929bcff0a9a54db333f7d216e",
+        "sha256:7e5be35607bc41898f62d2c63684c03f6b5bc415aaee1fe833907c69b61d781f",
+        "sha256:70592ca0345c9ce209639c957c09b47c0cdaa266c2b081f44e547742821a866f",
+        "sha256:e6937997088295b064583a29bf6f7919ffb982bfc77e48943cd7b437bbd266db",
+        "sha256:c7567eb411ac3c724c8e7a3794c452fa497333c2d505de66038c404e95cdd80a",
+        "sha256:3317b66c7f6f3caab20447dc7ff18c7a20f42f6e3d9f81c20dedece8db63a947",
+        "sha256:097dc2609c8a8ba8a6c165b2e343fda9ddf2c20004778112dc2a96daa9ba3d85",
+        "sha256:f6e9863cee7e33b88df6522f2c44c4d7e5b713c09150951e8ad6d430f4a62887",
+        "sha256:6bad5bb106631aa8451eb12c57594cf059219c887972c8c3bfbff6bfb83f8df3",
+        "sha256:fbf4042f8a15540a818ff700945c42834e15dbee10cc87a5bab40030c0f0eb61",
+        "sha256:456904217cf65e691b817db8dfc45e70679551e8afd127a4d921f6496fff56a2",
+        "sha256:8ef416b32d47ef367d00c0580bf49d7e538197c56a4550c122302ad0b477e45d",
+        "sha256:2b040dde2e293e48d623d4334fad913829ce2fa180d5afa26920f58605cafaa9",
+        "sha256:387592f64876b3a6f2140f0a6a78c56a63ee7272cba25818152b5e8db40ec57b",
+        "sha256:73f784310f07038f3e87b0298ea6e638b7017068ea22c0116f7060eabe3f5c33",
+        "sha256:2f321fc30b30140d6222052dcf9da3a9b0b02dd6a33e3e79a780d57580124d9d",
+        "sha256:41d97c134aa9c4bd46cff096bb756753015c542fbfd5858b4a88888b3a6336c7",
+        "sha256:2134beee01be2ccc0d8352f9a28213644c8e91a71ec1333ca30639860365a4d3",
+        "sha256:af71b0afd46f328df4aa494635306d8bc84788d86381d5f2ddb553af36e7f1b6",
+        "sha256:ddca89da0477cf8209bb3a6efad751fc620ae10733c40865e66c9c103f0bda29",
+        "sha256:6e3ec4913da148f5a70c8d5b99fcde1bc4c2d844d3e1e29abbaa877fde1d3532",
+        "sha256:ec0298a6f77a062552af0d6019a4ffe6eeee804664fd73e714d1232458909942",
+        "sha256:be4c07d1afd08ac87aaadb6d97472ebb8d848303e60b119de4a330a662cb1f69",
+        "sha256:b370defdba0bd92c6792f4a450eca668dc656500a5188bddf5dea51afc1a24a2",
+        "sha256:3956a5d6e4041dd591d12f8371cca8d1d9327817f9d53c614d97e674be0f3e39",
+        "sha256:47b13a3bfaa2be897bbbffff3d639f5f9dda2899f01481ef00186a73e1d98378",
+        "sha256:ddacf8b53beee875aee05a7454f87e687d570c289ce3408be8065e4b9e5ec3a5",
+        "sha256:716bb4a263d0c07651ba7f43ec06609fc704b4d38cc8758f3fbcb010c953b286",
+        "sha256:3d26bd89fa53c8cbd4c68bfba6af5667591eb2ee12754419db27b3691d110727",
+        "sha256:6d230c96654abad89d0e627bddf84909e4484d912a9d0279f3763db1c4a3b175",
+        "sha256:bb5dedf226b4d32150b354d9fd55c7dfefcf899f95cc768eefba4899b1d21e04",
+        "sha256:da2c93a1a5e366829660f9c0f9316898494f09795fb43b6c25ed8c42c8730873",
+        "sha256:137acf037ec7b7c5f19f322430ba8f6b85f8db4727fa1f6fc9244879183873f1",
+        "sha256:eaf05a51462c592c627200c57f88f8699ae2d688ba314da34e417b530c03e028",
+        "sha256:2f57fe5c283960360c2a8acf7f4fc38db43fe82918ef91ea55cbf1db0bd14a60",
+        "sha256:4e8157e74529bad7a73fcc9b82b125ad4e73fcbe5bc5f1b7deb7eab3bcb798bf",
+        "sha256:46fe808aeff3f3c634c2969d14302688bc18a0a60e791d279476cbe96fe2fdb0",
+        "sha256:d6eeb3c196016c1c1f20279f0a169170a3089bf8a5ec65ecc2ad46cb8c4ba94b",
+        "sha256:4c0c0fcc6bfd1d707e0858abf0306599b2bb05321b0c8f1118c4154f3f46a343",
+        "sha256:93f41daa50d10427e2e2ad17471fc07cb1bffc5fb93255f1fe18db7530de9012"
+      ],
+      "question_id": "runtime-compound-license-resolution",
+      "required_decision": "Resolve each runtime SPDX expression, including the jszip OR choice and cumulative pako MIT AND Zlib obligations, against the exact package license texts."
+    },
+    {
+      "category": "license",
+      "evidence_refs": [
+        "sha256:5d75eeaec6bfaa3ad824505b56f055284909f693cafb84795d17cacd0d77b7a0"
+      ],
+      "question_id": "vendored-emf-license-and-provenance",
+      "required_decision": "Confirm the vendored emf-converter Apache-2.0 obligations against byte, npm and SLSA provenance evidence."
+    }
+  ],
+  "root_apache_2_license_text_marker_verified": true,
+  "root_notice_present": true,
+  "runtime_dependency_count": 21,
+  "runtime_dependency_license_file_count": 42,
+  "schema_version": "genoffice_legal_review_dossier_report.v1",
+  "source_archive_sha256": "sha256:62f4adf92ee3f4b94db2b388a5badc605601c5e56874829e9427c43b95093040",
+  "source_import_allowed": false,
+  "source_legal_files": [
+    {
+      "detected_markers": [
+        "apache_2_text",
+        "mainfunc_trademark_owner"
+      ],
+      "evidence_id": "sha256:ef86b3e2c428163a4da71db6c1b8b30cf1338dec2460ab0e7c18a30db8c971ca",
+      "kind": "license",
+      "package_name": null,
+      "package_version": null,
+      "path": "LICENSE",
+      "scope": "root",
+      "sha256": "sha256:68e32334df324ef4fc79fad3a26487e5abac36055a484bb6c8d7ecf9d8350885",
+      "size_bytes": 11345,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "genoffice_notice_attribution",
+        "mainfunc_trademark_owner"
+      ],
+      "evidence_id": "sha256:aa85aca99633e0dac66e27d59fa2df1f431352ed0b38f97b1917354b6d5f4eb0",
+      "kind": "notice",
+      "package_name": null,
+      "package_version": null,
+      "path": "NOTICE",
+      "scope": "root",
+      "sha256": "sha256:df01475e39e3d292935a8aa965f45519250b2707d625e2506e7421cd702f0970",
+      "size_bytes": 567,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "genoffice_notice_attribution",
+        "genoffice_trademark_restriction",
+        "mainfunc_trademark_owner",
+        "enterprise_license_terms"
+      ],
+      "evidence_id": "sha256:63a691167e6c435cccfa2da98abc3742b5a56163a62aacf3ab53306ca7e22126",
+      "kind": "readme",
+      "package_name": null,
+      "package_version": null,
+      "path": "README.md",
+      "scope": "root",
+      "sha256": "sha256:641a90d23cfc3d5ee2679cc101e572cfa1a6ded4a88594e200eb5f8965716c9c",
+      "size_bytes": 13656,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "genoffice_notice_attribution",
+        "mainfunc_trademark_owner",
+        "enterprise_license_terms"
+      ],
+      "evidence_id": "sha256:574dd4398dcbbaff39766dbd1bf6b966e5f3f62f799388f4728fb254b2f53c87",
+      "kind": "license",
+      "package_name": null,
+      "package_version": null,
+      "path": "ee/LICENSE",
+      "scope": "excluded_enterprise",
+      "sha256": "sha256:bb4b26103fde4b2ff7249cbf6696b641721ad17d117349ddf4f93f50c4548e25",
+      "size_bytes": 1356,
+      "utf8_verified": true
+    },
+    {
+      "detected_markers": [
+        "apache_2_text"
+      ],
+      "evidence_id": "sha256:5d75eeaec6bfaa3ad824505b56f055284909f693cafb84795d17cacd0d77b7a0",
+      "kind": "license",
+      "package_name": null,
+      "package_version": null,
+      "path": "packages/docx-engine/src/vendor/emf-converter/LICENSE",
+      "scope": "vendored_component",
+      "sha256": "sha256:2c27550900d2cabf83527a04600ba8042e3ba89e70ec077ff220afa48c8230a7",
+      "size_bytes": 11363,
+      "utf8_verified": true
+    }
+  ],
+  "source_report_hash": "sha256:7a4eb66cfeefbf6defad574f33b07c904b62c7f076ecb21277e99ae87e2b951d",
+  "supplemental_dependency_source_license_verified": true,
+  "supply_chain_admission_report_hash": "sha256:580bd646106d79b712d42ecef490a8165435525a1feaeb52c10999274584767f",
+  "upstream_trademark_owner": "Mainfunc, Inc.",
+  "upstream_trademark_restriction_verified": true,
+  "vendored_apache_2_license_text_marker_verified": true,
+  "vendored_provenance_report_hash": "sha256:5ac1fdfa83034db3a8da06985b5f96e87a8eb0acfe3614f05b4fb3afe8e3dd04"
+}

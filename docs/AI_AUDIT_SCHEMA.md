@@ -28,6 +28,16 @@
 - `embedding_model_version.registered`
 - `embedding_model_version.approved`
 - `embedding_model_version.retired`
+- `crm_erp.source_resolver_acl_trace`
+- `crm_erp.source_citation_contract`
+- `crm_erp.prompt_audit_contract`
+- `crm_erp.redaction_contract`
+- `crm_erp.authorized_context_contract`
+- `crm_erp.inference_execution_boundary`
+
+## CRM/ERP prompt audit contract
+
+CRM/ERP prompt-audit contract events may store model IDs, prompt-template IDs, source object IDs, source-citation audit event IDs, contract hashes, required audit field names, citation counts, approval states, and blocking reasons. CRM/ERP redaction contract events may additionally store redaction policy IDs, redaction contract hashes, covered source data classes, required redaction step names, upstream prompt-audit event IDs, and blocking reasons. CRM/ERP authorized-context contract events may additionally store authorized chunk counts, contract hashes, upstream redaction event IDs, covered source data classes, required context step names, and blocking reasons. CRM/ERP inference-execution boundary events may additionally store required inference event types, model provider/checksum metadata, prompt-template versions and approval states, tenant AI/RAG policy booleans, risk levels, derived inference data classes, policy decisions, human-confirmation presence, upstream authorized-context event IDs, boundary hashes, provider-call flags, answer-generation flags, and blocking reasons. They must not store prompt bodies, retrieved source text, redacted source text, context bodies, generated outputs, tool-call bodies, transcripts, raw audio, embeddings, or source snippets.
 
 ## Logging rule
 
@@ -48,3 +58,22 @@ Keyword search events may store candidate counts, authorized candidate counts, a
 `collabio.audit_checkpoints` stores HMAC-SHA256 checkpoint evidence over a tenant chain prefix. The row stores a key reference and the checkpoint hash, never signing key material.
 
 `collabio.audit_worm_exports` stores evidence that a checkpointed chain prefix was exported to WORM-capable storage. It records the export manifest hash, storage URI, object lock mode, and audit chain reference; the object-store write path remains responsible for actual WORM enforcement.
+
+These two tables are the legacy v1 path. Existing rows remain readable and restoreable, but new production automation must use the v2 path below. HMAC checkpoint creation accepts process-local secret material and is therefore not a production signing boundary.
+
+## KMS-signed WORM snapshots v2
+
+`audit_worm_snapshot_worker` creates a complete tenant audit-chain prefix from sequence 1 through the latest committed event. It verifies the chain before any provider call, serializes events canonically, and builds `audit_worm_snapshot_manifest.v2` with the exact range, event hashes, classification, retention policy and Legal Hold state. Prompt and output bodies are absent because the authoritative audit store contains only hashes and controlled metadata.
+
+The manifest SHA-256 digest is signed through `AuditCheckpointSigner`. Audit-signing keys use the dedicated `kms-sign://<tenant>/audit/vN` namespace and are not cryptoshreddable data-class keys. The production adapter calls an asymmetric OpenBao Transit key, accepts only ECDSA/SHA-256 or RSA-PSS/SHA-256, immediately asks OpenBao to verify the detached signature, and records the provider key ID, key version, public-key hash and provider request IDs. The public DER key is included in the signed WORM bundle for later offline verification. No private key or signing secret enters Collabio, Docker, object storage or PostgreSQL.
+
+The archived public key is not trusted merely because it is inside the bundle. Independent verification requires a tenant-specific `audit_signing_trust_policy.v1` plus its separately pinned canonical hash. The policy binds the logical signing-key version to the exact provider identity, public-key hash, algorithm and signing-time validity window. `audit-worm-verify` then checks the exact bundle hash, strict canonical v2 schemas, complete tenant hash chain and detached signature without provider or network access. Its report is metadata-only and excludes events, user IDs, source-object IDs, metadata, signatures and public-key bytes.
+
+The signed bundle is written through `AuditWormObjectStore`. The S3-compatible Ceph RGW adapter requires bucket versioning and Object Lock, writes an explicit object version in `COMPLIANCE` mode with an explicit retention timestamp and OpenBao Transit-backed SSE-KMS, reads that exact version back, verifies its SHA-256, and verifies Object Lock, Legal Hold, metadata and encryption through `HeadObject`. Only then are these rows committed atomically:
+
+- `collabio.audit_snapshot_checkpoints_v2`: append-only KMS signature and chain-prefix evidence.
+- `collabio.audit_worm_snapshot_receipts_v2`: append-only exact object-version, retention, readback and encryption evidence.
+
+Both tables use forced tenant RLS, the isolated `collabio_audit_writer` role, denied update/delete policies and owner-level mutation-rejection triggers. The normal application role has no grants. A deterministic checkpoint ID makes a completed chain prefix idempotent. If storage succeeds but the PostgreSQL transaction fails, the protected object version is retained and must be reconciled; it must never be deleted to hide an incomplete receipt.
+
+Operational details and the production proof boundary are in `docs/operations/AUDIT_WORM_SNAPSHOTS.md`.

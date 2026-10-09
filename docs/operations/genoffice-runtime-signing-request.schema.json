@@ -1,0 +1,289 @@
+{
+  "$defs": {
+    "GenOfficeRuntimeAuthorizationPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization_id": {
+          "title": "Authorization Id",
+          "type": "string"
+        },
+        "change_control_ref": {
+          "title": "Change Control Ref",
+          "type": "string"
+        },
+        "corpus_manifest_hash": {
+          "title": "Corpus Manifest Hash",
+          "type": "string"
+        },
+        "engine_fixture_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Engine Fixture Ids",
+          "type": "array"
+        },
+        "external_network_allowed": {
+          "const": false,
+          "default": false,
+          "title": "External Network Allowed",
+          "type": "boolean"
+        },
+        "hosted_service_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Hosted Service Allowed",
+          "type": "boolean"
+        },
+        "issued_at_utc": {
+          "format": "date-time",
+          "title": "Issued At Utc",
+          "type": "string"
+        },
+        "on_prem_distribution_allowed": {
+          "const": false,
+          "default": false,
+          "title": "On Prem Distribution Allowed",
+          "type": "boolean"
+        },
+        "payload_hash": {
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "persistent_document_write_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Persistent Document Write Allowed",
+          "type": "boolean"
+        },
+        "preflight_only_fixture_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Preflight Only Fixture Ids",
+          "type": "array"
+        },
+        "production_use_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Production Use Allowed",
+          "type": "boolean"
+        },
+        "purpose": {
+          "const": "synthetic_docx_fidelity_proof",
+          "default": "synthetic_docx_fidelity_proof",
+          "title": "Purpose",
+          "type": "string"
+        },
+        "risk_acceptance_ref": {
+          "title": "Risk Acceptance Ref",
+          "type": "string"
+        },
+        "sandbox_profile_hash": {
+          "title": "Sandbox Profile Hash",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "genoffice_runtime_authorization_payload.v1",
+          "default": "genoffice_runtime_authorization_payload.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signer_policy_hash": {
+          "title": "Signer Policy Hash",
+          "type": "string"
+        },
+        "source_import_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Source Import Allowed",
+          "type": "boolean"
+        },
+        "synthetic_worker_execution_allowed": {
+          "const": true,
+          "default": true,
+          "title": "Synthetic Worker Execution Allowed",
+          "type": "boolean"
+        },
+        "tenant_content_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Tenant Content Allowed",
+          "type": "boolean"
+        },
+        "valid_until_utc": {
+          "format": "date-time",
+          "title": "Valid Until Utc",
+          "type": "string"
+        },
+        "worker_admission_report_hash": {
+          "title": "Worker Admission Report Hash",
+          "type": "string"
+        },
+        "worker_image_archive_sha256": {
+          "title": "Worker Image Archive Sha256",
+          "type": "string"
+        },
+        "worker_image_config_digest": {
+          "title": "Worker Image Config Digest",
+          "type": "string"
+        },
+        "worker_sbom_sha256": {
+          "title": "Worker Sbom Sha256",
+          "type": "string"
+        },
+        "worker_vulnerability_report_hash": {
+          "title": "Worker Vulnerability Report Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "authorization_id",
+        "issued_at_utc",
+        "valid_until_utc",
+        "risk_acceptance_ref",
+        "change_control_ref",
+        "signer_policy_hash",
+        "worker_admission_report_hash",
+        "worker_image_config_digest",
+        "worker_image_archive_sha256",
+        "worker_sbom_sha256",
+        "worker_vulnerability_report_hash",
+        "corpus_manifest_hash",
+        "sandbox_profile_hash",
+        "engine_fixture_ids",
+        "preflight_only_fixture_ids",
+        "payload_hash"
+      ],
+      "title": "GenOfficeRuntimeAuthorizationPayload",
+      "type": "object"
+    },
+    "GenOfficeRuntimeSigningAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "ed25519",
+          "default": "ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        },
+        "signer_role": {
+          "enum": [
+            "product_owner",
+            "security_compliance_owner"
+          ],
+          "title": "Signer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "signer_role",
+        "key_id"
+      ],
+      "title": "GenOfficeRuntimeSigningAssignment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "authorization_effective": {
+      "const": false,
+      "default": false,
+      "title": "Authorization Effective",
+      "type": "boolean"
+    },
+    "content_included": {
+      "const": false,
+      "default": false,
+      "title": "Content Included",
+      "type": "boolean"
+    },
+    "payload": {
+      "$ref": "#/$defs/GenOfficeRuntimeAuthorizationPayload"
+    },
+    "prepared_at_utc": {
+      "format": "date-time",
+      "title": "Prepared At Utc",
+      "type": "string"
+    },
+    "private_key_ingestion_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Ingestion Allowed",
+      "type": "boolean"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "required_signer_roles": {
+      "items": {
+        "enum": [
+          "product_owner",
+          "security_compliance_owner"
+        ],
+        "type": "string"
+      },
+      "title": "Required Signer Roles",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_signing_request.v1",
+      "default": "genoffice_runtime_signing_request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets_included": {
+      "const": false,
+      "default": false,
+      "title": "Secrets Included",
+      "type": "boolean"
+    },
+    "signature_creation_performed": {
+      "const": false,
+      "default": false,
+      "title": "Signature Creation Performed",
+      "type": "boolean"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "signature_message_size_bytes": {
+      "title": "Signature Message Size Bytes",
+      "type": "integer"
+    },
+    "signing_assignments": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeRuntimeSigningAssignment"
+      },
+      "title": "Signing Assignments",
+      "type": "array"
+    },
+    "valid_until_utc": {
+      "format": "date-time",
+      "title": "Valid Until Utc",
+      "type": "string"
+    }
+  },
+  "required": [
+    "prepared_at_utc",
+    "valid_until_utc",
+    "payload",
+    "signature_message_sha256",
+    "signature_message_size_bytes",
+    "required_signer_roles",
+    "signing_assignments",
+    "request_hash"
+  ],
+  "title": "GenOfficeRuntimeSigningRequest",
+  "type": "object"
+}

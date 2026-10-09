@@ -1,6 +1,6 @@
 # Master Roadmap
 
-Stand: 2026-06-10
+Stand: 2026-09-18
 
 Diese Roadmap merged:
 
@@ -44,6 +44,24 @@ Arbeitsweise:
 - Sicherheits-, Compliance-, Retention-, KMS-, Authz-, Audit-, AI- und RAG-Aenderungen brauchen bewusstere Reviews als normale UI-Aenderungen.
 - Forschungs- und Stack-Entscheidungen werden in `docs/RESEARCH_BASELINE.md`, `docs/OPEN_SOURCE_STACK.md` und `docs/ADR_BACKLOG.md` gepflegt.
 
+## Aktuelle Produktprioritaet
+
+Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwicklung vor weiterem CRM-Ausbau.**
+
+- Punkte 252 bis 256 sind abgeschlossen: native Formatierung, Gliederung, Suchen/Ersetzen, kontextbezogene Tabellen,
+  versioniertes Speichern, Versionsvergleich, eine fruehere Fassung als neuer lokaler Entwurf sowie Kommentare und
+  Diskussionen an gespeicherten Fassungen und Textstellen. Aktuelle ACLs, CAS, explizite Bestaetigung und unveraenderliche
+  Historie bleiben verbindlich. Die 152 Pruefungen (117 Browserfaelle und 35 Modellfaelle) und den nichtleeren
+  Review-Recovery-Nachweis erhalten. Native Office-Workflows weiter ausbauen; Aenderungsverfolgung und
+  Live-Zusammenarbeit bleiben kuenftige Arbeit. Den bestehenden
+  DOCX-Quick-Edit-Spike mit synthetischem Korpus, isoliertem Proof-Harness und source-blinder/CDR-Kandidatenpruefung
+  als getrennten Pfad erhalten. Reale Word-/GenOffice-Fidelity-Ergebnisse, Kalibrierung und
+  menschliche Abnahme bleiben eigenstaendige Voraussetzungen; aktuelle Runtime- und Image-Freigaben werden nicht
+  durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
+- CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
+  CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
+- Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
+
 ## Globale Definition Of Done
 
 - [ ] `docker compose run --rm test` ist gruen.
@@ -77,6 +95,7 @@ Bereits umgesetzt:
 - [x] Initiale API- und Policy-Tests.
 - [x] Strukturierte Roadmap-Datei.
 - [x] Phase-0-Tooling mit Ruff, Mypy, Pytest, Docker Compose Quality Gate und GitHub Actions CI.
+- [x] Supply-Chain-Gate fuer Repository und gebautes Runtime-Image: Vulnerability-, Secret-, IaC-/Misconfiguration- und Lizenzpruefung, CycloneDX-SBOM sowie OIDC/Sigstore-basierte Provenance- und SBOM-Attestierungen fuer getaggte Releases.
 - [x] Request-scoped Tenant Context fuer Tenant-Daten-Endpunkte.
 - [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung.
 - [x] Statischer OIDC/JWKS Verifier mit RS256, `kid`-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting.
@@ -98,14 +117,29 @@ Bereits umgesetzt:
 - [x] Docker-PostgreSQL/pgvector-Service mit Migrationsrunner und Live-RLS-Integrationstests.
 - [x] pgvector Adapter fuer Upsert, Lifecycle-Transition und Candidate-only Search.
 - [x] Worker Entry Points fuer Vector Reindex und Deletion Propagation.
+- [x] Guarded SourceObject-Klartext-Preview-Release mit Tenant Policy, ACL-Revalidierung, kompletter Preview-Evidence-Kette, frischem Release Gate, exakter Human Confirmation und append-only PostgreSQL-Belegen ohne Inhalts-Persistenz.
+- [x] Atomarer CRM-Account-Onboarding-Write fuer Account, Contact, Activity, metadata-only Note, vier Objekt-ACLs und append-only Receipt in einer PostgreSQL-Transaktion mit Idempotenz-, Rollen-, RLS-, Rollback- und Restore-Proof.
+- [x] Produktiver Tasks-&-Activities-Slice fuer atomare Task-/Initialaktivitaets-/ACL-/Receipt-Writes, ACL-gepruefte Reads, Rollen- und Feature-Gates sowie PostgreSQL-Restore-Kontrollen.
+- [x] Produktiver Time-Tracking-Slice fuer atomare Entry-/Approval-/ACL-/Receipt-Writes, autorisierte Reads und PostgreSQL-Restore-Kontrollen.
+- [x] Gemeinsames `business_backend_release_gate.v1` fuer CRM-Onboarding, Tasks und Zeiterfassung mit Live-API-, Modul-, Migrations-, PostgreSQL- und Restore-Nachweis.
+- [x] Nicht-ausfuehrender `productivity_pilot_preflight_gate.v1` fuer explizite Tenant-Auswahl, sichere Features, Monitoring und nicht-destruktive Rollback-Grenzen.
+- [x] Autoritativ persistierte Preflight-Evidenz und tenant-sichere append-only Human-Admission mit exakter Hash-Bindung, RLS, Idempotenz, Audit-Metadaten und Restore-Kontrollen; dieser Schritt allein startet keinen Pilot-Traffic.
+- [x] Tenant- und routenspezifische Traffic-Scope-Erzwingung append-only an Admission, Preflight und Policy binden; Default Deny blockiert alle verwalteten Pilot-Routen bis zur separaten Start-Autorisierung.
+- [x] Explizite, maximal acht Stunden gueltige Start-Autorisierung mit Vier-Augen-Prinzip, vollstaendiger Monitoring-/Rollback-Evidenz, automatischem Ablauf und default-closed Deployment-Kill-Switch an Admission, Preflight, Policy und Traffic-Scope binden.
+- [x] Designated-User-Runtime-Window mit separatem Tenant-Admin-Vier-Augen-Schritt, exakter Start-/Route-Bindung und append-only metadata-only Zugriffsbeobachtungen erzwingen.
+- [x] Kontrollierten Entwicklungs-Pilot mit einem synthetisch designierten Fachnutzer auf genau sieben Operationen ausfuehren, alle sieben append-only Beobachtungen nachweisen, den Kill-Switch sofort schliessen und Backup-/Restore-Evidenz erneuern.
+- [x] Tenant-sicheren append-only Closure-Report an geschlossenem Switch, Runtime-Fenster, Beobachtungen, Domain-Receipts und erneuerter Recovery-Evidenz binden.
+- [x] Tenant-sicheres Realnutzer-Pilot-Read-Model ueber Nomination, Admission, Start, Runtime und Closure bereitstellen; alte Zyklen nicht hochstufen und fehlerhafte Evidenz fail-closed behandeln.
+- [ ] Reale Principals, Zweck-, Privacy-, Workforce-, Production-Continuity- und Vier-Augen-Evidenz sammeln; erst danach einen separat freigegebenen Realnutzer-Pilot starten.
 
 Noch nicht umgesetzt:
 
 - [x] Master-Compliance-Dokumente.
 - [x] ADR-Struktur.
-- [ ] Persistente Datenbank.
-- [ ] Vollstaendiger IAM/OIDC Auth Context.
+- [x] Persistente PostgreSQL/RLS-Datenbank mit isoliertem Restore-Proof.
+- [x] IAM/OIDC Auth Context mit Principal-, Rollen-, Gruppen-, ACL-, ABAC- und Replay-Stores.
 - [ ] Automatisierte WORM Audit Snapshots und produktive KMS-signierte Audit Checkpoints.
+  Providerneutraler v2-Control-Plane-Pfad, Migration, OpenBao-Transit-One-shot-Worker, Sign/Verify, exakter Ceph-RGW-Object-Version-Readback, append-only Receipts, Offline-Verifikation und das fail-closed Live-Provider-Abnahmegate sind umgesetzt. Die Kubernetes/Rook/Ceph/OpenBao-Produktionsreferenz, exakten Versionspins, sichere Proof/Production-Trennung und der metadata-only Stack-Preflight sind ebenfalls umgesetzt; ein dedizierter realer Proof-Cluster und freigegebene Proof-Ressourcen fuer den finalen Nachweis fehlen noch. AWS ist weder Voraussetzung noch Roadmap-Ziel.
 - [ ] KMS/WORM/Retention/Legal Hold.
 - [ ] Office-, Mail-, Search-, E-Discovery-, Admin- und Business-Module.
 
@@ -436,12 +470,12 @@ Aufgaben:
 - [x] `pyproject.toml` mit Ruff, MyPy/Pyright und Pytest anlegen.
 - [ ] TypeScript-/Frontend-Tooling vorbereiten.
 - [x] CI fuer Tests, Lint, Typpruefung und Docker Build anlegen.
-- [ ] Secret Scan integrieren.
-- [ ] Dependency Scan integrieren.
-- [ ] License Scan integrieren.
+- [x] Secret Scan integrieren.
+- [x] Dependency Scan integrieren.
+- [x] License Scan integrieren.
 - [ ] SAST/DAST/IaC Scan einplanen.
-- [ ] CycloneDX SBOM generieren.
-- [ ] Build Provenance und signierte Artefakte vorbereiten.
+- [x] CycloneDX SBOM generieren.
+- [x] Build Provenance und signierte Artefakte vorbereiten.
 - [ ] ADR-Template anlegen.
 - [ ] Compliance-Matrix als YAML/Markdown-Quelle versionieren.
 - [ ] Test-Fixtures fuer Tenants, Rollen, Dokumente, Mails, Holds und AI Policies anlegen.
@@ -513,7 +547,7 @@ Aufgaben:
 - [ ] Role- und Datenklassen-spezifische Modellfreigaben administrierbar machen.
 - [x] Append-only Audit Event Schema implementieren.
 - [x] Audit Hash Chain implementieren.
-- [ ] Audit Verification Command implementieren.
+- [x] Audit Verification Command mit exaktem Bundle-Hash, separat gepinnter Tenant-Trust-Policy, vollstaendiger Chain-Pruefung und providerfreier ECDSA/RSA-PSS-Verifikation implementieren.
 - [x] Persistente Audit Storage Abstraktion implementieren.
 - [x] PostgreSQL Audit Store mit isolierter Runtime-Rolle, Tenant-Sequencing, HMAC-Checkpoints und WORM-Export-Evidence implementieren.
 - [ ] PostgreSQL-Backed Stores mit Migrationen implementieren.
@@ -560,6 +594,11 @@ Aufgaben:
 - [x] Content Hash Verification implementieren.
 - [x] Storage Manifest implementieren.
 - [x] KMS Adapter implementieren.
+- [x] Providerneutralen v2-Pfad fuer asymmetrisch KMS-signierte Audit-Checkpoints, kanonische Audit-Snapshots, exakte S3-Object-Version-Readbacks und append-only PostgreSQL-Receipts implementieren.
+- [x] Fail-closed Abnahmegate fuer den selbst gehosteten Ceph-RGW-/OpenBao-Transit-Referenzstack mit gepinnten Endpunkten und Artefakten, Restore-Bindung, exaktem Version-DELETE-Denial und Post-Denial-Readback implementieren.
+- [x] Gehaertete Kubernetes/Rook/Ceph/OpenBao-Referenzkonfiguration, exakte Release-Policy, Proof/Production-Topologien und fail-closed Provider-Stack-Preflight implementieren.
+- [x] Ephemeren, explizit bestaetigten und rein lesenden Collabio-Runtime-Protokoll-Probe fuer authentifiziertes Ceph-RGW-/OpenBao-TLS mit kurzlebiger Least-Privilege-Identitaet und metadata-only Entwicklungsreport implementieren.
+- [ ] Produktiven KMS-/Object-Lock-Provider mit realem Sign/Verify, Compliance-Retention, Delete-Denial und isoliertem Receipt-Restore nachweisen.
 - [x] Envelope Encryption API implementieren.
 - [x] Lokale Dev-KMS- und Envelope-Implementierung in Production fail-closed sperren.
 - [x] Key Rotation Interface implementieren.
@@ -600,7 +639,8 @@ Epics:
 
 Aufgaben:
 
-- [ ] Dokument-Metadaten- und Version-APIs erstellen.
+- [x] Native Dokument-Metadaten- und Version-APIs erstellen (Roadmap 252/253).
+- [ ] Weitergehende Kollaborations- und Interchange-Vertraege fuer Dokumente ausbauen.
 - [ ] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren.
 - [ ] CRDT Service vorbereiten.
 - [ ] WebSocket Gateway vorbereiten.
@@ -1025,7 +1065,7 @@ CRM/ERP `crm_erp`:
 - [x] Legacy-SQL-Discovery-Framework fuer Schema-Snapshot, Candidate-Inference, Import-Evidence-Plan und Quarantaene unbekannter Tabellen implementieren.
 - [x] Isolierten SQL-Server-Metadata-Adapter-Worker hinter Connector-Policy implementieren.
 - [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
+- [x] Subfeatures definieren: `crm_erp.crm.accounts`, `crm_erp.crm.contacts`, `crm_erp.crm.activities`, `crm_erp.erp.products`, `crm_erp.erp.suppliers`, `crm_erp.erp.orders`, `crm_erp.erp.invoices`, `crm_erp.legacy_import.sqlserver`, `crm_erp.gobd_export`, `crm_erp.legal_hold`, `crm_erp.search.keyword`, `crm_erp.rag_indexing`, `crm_erp.ai_assist`.
 - [x] Schemas planen: `crm_erp`, `crm`, `erp`, `crm_erp_legacy`.
 - [x] CRM/ERP-Objektregeln definieren fuer `crm.account`, `crm.contact`, `crm.activity`, `crm.note`, `erp.product`, `erp.supplier`, `erp.order`, `erp.order_item`, `erp.invoice`, `erp.invoice_item`, `erp.delivery_note`, `erp.contract`, `legacy.row`.
 - [x] Persistente CRM/ERP Schema-Scaffold-Migration mit `crm_erp.schema_plans`, `crm_erp.object_type_rules`, RLS und startup-blocking Evidence implementieren.
@@ -1033,26 +1073,42 @@ CRM/ERP `crm_erp`:
 - [x] Gated CRM Contacts Read-Vertical-Slice mit `crm.contacts`, Account-Link-Redaktion, Pflichtmetadaten, RLS, Audit und `GET /v1/crm/contacts` implementieren.
 - [x] Gated CRM Activities/Notes Read-Vertical-Slice mit `crm.activities`, `crm.notes`, Link-Redaktion, Pflichtmetadaten, RLS, Audit, metadata-only Notes und `GET /v1/crm/activities` plus `GET /v1/crm/notes` implementieren.
 - [x] Minimalen ERP Products Read-Vertical-Slice mit `erp.products`, `internal` Klassifikation, Pflichtmetadaten, RLS, Audit und `GET /v1/erp/products` als Architekturbeweis implementieren.
-- [ ] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
+- [x] Pflichtmetadaten erzwingen: Tenant, Object ID, Object Type, Source System, Classification, Retention Policy, Legal Hold State, Lifecycle State, KMS Key Ref, Audit Chain Ref, Schema Version.
 - [x] Datenklassen harmonisieren: `personal_data`, `working_data`, `gobd_record`, `security_data` und `export_package` sind Alias-/Lifecycle-/Objektkonzepte auf kanonischen Runtime-Klassen.
-- [ ] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
-- [ ] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
-- [ ] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
-- [ ] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices, Invoice Items.
+- [x] Pflichtmetadaten-Contract auf weitere Modul-Write-Slices und Migration-Staging ausweiten, bevor neue persistente Fachobjekte eingefuehrt werden.
+- [x] SQL-Server-Import nach Discovery mit Extract, Staging, Validation, Mapping, Row Counts, Checksums, Manifest Hash und Audit Events planen.
+- [x] Legacy-SQL-Staging-Profile in den spaeteren Import-Dry-Run-Store einhaengen, sobald Row-Count- und Checksum-Strategie feststeht.
+- [x] Legacy-SQL-Import-Dry-Run als metadata-only Worker ausfuehren und Ergebnis-Store anbinden, ohne produktive Import-Writes.
+- [x] Legacy-SQL-Import-Dry-Run-Result-Review und Human-Approval-Gate fuer spaetere Import-Writes planen.
+- [x] Legacy-SQL-Import-Write-Approval-Request-Boundary als nicht-ausfuehrendes Admin-/API-Gate vorbereiten, ohne Import-Writes freizuschalten.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Persistenz planen, weiterhin ohne Import-Write-Execution.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Store-Migration mit RLS, Append-only und Idempotency vorbereiten, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Import-Write-Approval-Record-Store-Adapter anbinden, weiterhin ohne Import-Write-Execution.
+- [x] Migration APIs planen: Runs erstellen, anzeigen, Reports abrufen und Freigabe erteilen.
+- [x] Legacy-SQL-Migration-Run-Registry-Skeleton mit RLS, Idempotency und metadata-only Reports vorbereiten, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Registry-Adapter fuer metadata-only Run-/Report-Lookup anbinden, ohne Import-Write-Execution.
+- [x] Legacy-SQL-Migration-API-Read-Endpoints fuer metadata-only Run-/Report-Discovery anbinden, ohne Run-Erstellung, Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Creation-Boundary als nicht-ausfuehrendes Admin-Gate vorbereiten, ohne Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Run-Creation-Store-Persistenz an Boundary binden und idempotent metadata-only speichern, ohne Freigabe oder Import-Write-Execution.
+- [x] Legacy-SQL-Migration-Report-Metadata-Persistenz an Run binden und idempotent metadata-only speichern, ohne Report-Freigabe oder Import-Write-Execution.
+- [x] CRM Vertical Slice: Accounts, Contacts, Activities, Notes.
+- [x] ERP Vertical Slice: Products, Suppliers, Orders, Order Items, Invoices und Invoice Items sind als metadata-only API-Slices vorhanden.
 - [ ] GoBD-faehige Retention fuer Order, Invoice, Invoice PDF, Contract und Migration Evidence definieren.
 - [ ] Legal Hold Scopes fuer Kunde, Auftrag, Rechnung, Projekt, Kontakt, Legacy-Row und verbundene Dokumente definieren.
-- [ ] CRM/ERP Search zuerst klassisch/ACL-gefiltert, RAG erst nach Source Resolver, Redaction und Audit Trace.
+- [x] CRM/ERP Search zuerst klassisch/ACL-gefiltert mit `POST /v1/crm-erp/search` und metadata-only Readiness ueber `GET /v1/platform/search/crm-erp/readiness`, im Workspace sichtbar; RAG-Readiness ist ueber `GET /v1/platform/search/crm-erp/rag-readiness` contract-ready fuer Kontextaufbau; Source-Resolver-ACL-Trace, Source-Citation-Contract, Prompt-Audit-Contract, Redaction-Contract, Authorized-Context-Contract und Inference-Execution-Boundary sind ueber `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract`, `POST /v1/platform/search/crm-erp/prompt-audit-contract`, `POST /v1/platform/search/crm-erp/redaction-contract`, `POST /v1/platform/search/crm-erp/authorized-context-contract` und `POST /v1/platform/search/crm-erp/inference-execution-boundary` metadata-only vorhanden, echte Provider-Ausfuehrung und RAG-Antwortgenerierung bleiben offen.
 - [ ] AI Assist fuer CRM/ERP default-off und nur hinter Tenant Policy, Local LLM Gateway und Human Oversight.
 
 Vorbereitete Modul-Familien:
 
 - Wissensdatenbank: Artikel, Versionen, Freigaben, Quellen, Attachments, RAG-Zitationen und Knowledge-Retention. Erster metadata-only Read-Slice: `GET /v1/kb/articles`; Source-Version- und Restore-Evidence fuer Manifest Hash, Content Hash, ACL-Version, Disabled-State-Restore und Legal-Hold-Restore ist vorbereitet.
-- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence.
+- LMS: Kurse, Einschreibungen, Lernfortschritt, Zertifikate, Nachweise, Pflichtschulungen und Audit Evidence. Charter, Feature-Registry, Object-Rules, globaler `not_installed`-Katalogeintrag, `0046_lms_metadata_schema.sql`, `0047_lms_package_install_approval_records.sql`, `0048_lms_dry_run_execution_approval_records.sql`, `GET /v1/platform/modules/families/lms/catalog-readiness`, `GET /v1/platform/modules/families/lms/restore-drill-evidence`, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate`, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records`, `GET /v1/platform/modules/families/lms/package-installation-readiness`, `POST /v1/platform/modules/families/lms/package-installation-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-executor-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-implementation-review` und `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-contract`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-request-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-runtime-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-receipt-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-persistence-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-activation-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary` fuer den ersten Kurs-/Einschreibestatus-Slice sind vorbereitet; echte Package-Installation, Tenant-Provisioning, Business-API und Runtime bleiben bewusst naechste Gates; der Result-Contract definiert nur Receipt-Felder und No-Write-Flags; Execution-Gate, Request-Boundary, Runtime-Boundary, Execution-Preflight, Receipt-Boundary, Result-Persistence-Boundary, Start-, Dispatch-, Worker-Boundary, Final-Readiness-Gate und Approval-Boundary, Approval-Record, Admission-Gate, Runbook und Execution-Plan und Plan-Review und Scheduler-Boundary und Worker-Image-Boundary bleiben ebenfalls metadata-only.
 - Aufgaben und Aktivitaeten: Tasks, Activities, Zustandswechsel, Verantwortlichkeiten, Fristen, Workflow Audit und Legal-Hold-Bezug.
 - Meldesysteme und Tickets: Meldungen, Incidents, Tickets, SLA-State, Kommunikation, Schutzbedarf, Eskalation und E-Discovery-Anbindung.
 - Zeiterfassung: Time Entries, Korrekturen, Freigaben, Exportnachweise, Aufbewahrung, Payroll/ERP-Bruecken und DSGVO-Minimierung.
 
 Alle vorbereiteten Modul-Familien starten ueber `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`. CRM/ERP bleibt damit der Architekturbeweis fuer Modul-Slices, nicht der Produktfokus.
+
+Der tenant-sichere Backlog-Kontrakt GET /v1/platform/modules/families/backlog macht diese Modul-Familien metadata-only sichtbar. Er aktiviert keine Module, legt keine Aufgaben an und erlaubt keine Runtime-Ausfuehrung; er zeigt nur die notwendigen Charter-, Feature-, Registry-, Rechte-, Audit-, Retention- und Backup-/Failover-Gates je Familie. LMS hat zusaetzlich `GET /v1/platform/modules/families/lms/catalog-readiness`, `GET /v1/platform/modules/families/lms/restore-drill-evidence`, `GET /v1/platform/modules/families/lms/tenant-admin-package-approval-gate`, `POST /v1/platform/modules/families/lms/tenant-admin-package-approval-records`, `GET /v1/platform/modules/families/lms/package-installation-readiness`, `POST /v1/platform/modules/families/lms/package-installation-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-executor-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-skeleton`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-implementation-review` und `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-contract`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-request-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-executor-runtime-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-preflight`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-receipt-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-result-persistence-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-activation-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-start-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-dispatch-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-final-readiness-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-approval-records`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-admission-gate`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-runbook`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-plan-review`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-scheduler-boundary`, `POST /v1/platform/modules/families/lms/package-installation-dry-run-execution-worker-image-boundary` als metadata-only Readiness-, Approval-Record-, Boundary-, Skeleton-, Dry-Run-Plan-, Dry-Run-Execution-Boundary-, Dry-Run-Execution-Skeleton-, Dry-Run-Executor-Implementation-Review- und Dry-Run-Result-Contract- und Dry-Run-Execution-Gate- und Dry-Run-Execution-Request-Boundary- und Dry-Run-Executor-Runtime-Boundary- und Dry-Run-Execution-Preflight- und Dry-Run-Execution-Receipt-Boundary- und Dry-Run-Result-Persistence-Boundary- und Approval-Boundary-, Admission-Gate-, Runbook- und Execution-Plan- und Plan-Review- und Scheduler-Boundary- und Worker-Image-Boundary-Nachweise nach dem globalen `not_installed`-Katalogeintrag und vor Package-Installation, Tenant-Provisioning und Business-API.
 
 Exit-Kriterien:
 
@@ -1168,6 +1224,17 @@ Deliver:
 
 Empfohlene naechste Reihenfolge:
 
+Roadmap-Triage-Regel ab jetzt:
+
+- **Fundament jetzt:** Tenant-Isolation, Auth/Rights, Audit, Backup/Restore, RLS, Evidence-Gates, Datenmodell-Grenzen und
+  alles, was spaeter nur teuer oder riskant nachzuziehen waere.
+- **Produktzug jetzt:** schmale End-to-End-Pfade, die echte Nutzung beweisen und auf dem Fundament aufsetzen.
+- **Spaeter / nicht jetzt:** Adapter, Komfortfunktionen, breitere Moduloberflaechen, echte Renderer/Viewer,
+  Automatisierung und Integrationen, wenn sie keinen aktuellen Sicherheits- oder Datenmodell-Blocker loesen.
+
+Vor jedem neuen Roadmap-Punkt wird explizit entschieden: **Muss das jetzt?** Wenn nein, bleibt der Punkt sichtbar, wird
+aber als spaeterer Ausbau behandelt und nicht als naechster Arbeitsschritt priorisiert.
+
 1. [x] Research Baseline, Open-Source-Stack-Matrix und ADR-Backlog anlegen.
 2. [x] `PRODUCT_CHARTER.md`, `SECURITY.md`, `THREAT_MODEL.md` und `COMPLIANCE_MATRIX.md` anlegen.
 3. [x] `ARCHITECTURE_DECISIONS/` mit ADR-Template und ADRs fuer Tenancy, WORM, KMS und Audit anlegen.
@@ -1223,7 +1290,7 @@ Empfohlene naechste Reihenfolge:
 53. [x] Legacy-SQL-Discovery- und Import-Evidence-Framework als sicheren Schritt vor Mapping und Datenimport implementieren.
 54. [x] Isolierten SQL-Server-Metadata-Adapter-Worker mit Connector-Policy implementieren.
 55. [x] CRM/ERP-Mapping-Evidence fuer Discovery-Tabellen, Zielobjekt-Kandidaten, `legacy.row`-Fallbacks und Quarantaene-Entscheidungen implementieren.
-56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, RAG und AI Assist implementieren.
+56. [x] CRM/ERP Subfeature Registry fuer Accounts, Kontakte, Aktivitaeten, Produkte, Lieferanten, Bestellungen, Rechnungen, Import, Export, Legal Hold, Keyword-Suche, RAG und AI Assist implementieren.
 57. [x] Review-Kritik aufnehmen und P0-Soforthaertungen fuer dev-only Header Auth, RAG DataClass Propagation und lokale Dev-Krypto umsetzen.
 58. [x] Signed JWT PrincipalResolver mit serverseitiger Tenant-, Rollen-, Gruppen- und Objekt-ACL-Aufloesung implementieren.
 59. [x] Statischen OIDC/JWKS Verifier mit RS256-Key-Auswahl, Issuer/Audience-Allowlist, Replay Guard und Health Reporting implementieren.
@@ -1256,7 +1323,1796 @@ Empfohlene naechste Reihenfolge:
 86. [x] PostgreSQL-Transaktionsadapter fuer Knowledge-Base-Writes implementieren, der Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence fuer Create/Edit gemeinsam committed oder verwirft.
 87. [x] Source-Object-Persistenzgrenze fuer Knowledge-Base-Writes haerten: dauerhafte metadata-only Write-Receipts mit `collabio.source_object_write_receipts`, RLS, Receipt-Hash und API-Execution-Evidence anbinden.
 88. [x] PostgreSQL-Source-Metadatenadapter und Content-Store-Bridge fuer Source Objects entwerfen, damit Knowledge-Base-Writes spaeter Source-Metadata, Content-Manifest, Artikel-/Version-Metadaten und Evidence ohne Content-Leakage atomar koordinieren koennen.
-89. [ ] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+89. [x] Knowledge-Base-Write-Unit-of-Work vorbereiten: Source-Object-Receipt, Source-Metadata, Storage-Manifest, Artikel-/Version-Metadaten, Source-Version-Evidence und Restore-Evidence in einem koordinierten Commit-Vertrag zusammenfuehren.
+90. [x] Knowledge-Base-Production-Write-Grenze haerten: gemeinsamen PostgreSQL-Transaktionskontext fuer KB-Metadatenadapter, Source-Object-Receipts und Source-Metadata-Bridge entwerfen, damit API-Produktivwiring erst mit explizitem Atomicity-/Recovery-Nachweis aktiviert wird.
+91. [x] Knowledge-Base-Content-Store-Recovery-Evidence vorbereiten: Content-Store-Inventar, Orphan-Reconciliation-Nachweis, Restore-Drill-Hash und API-Wiring-Gate fuer `PostgresKnowledgeBaseWriteUnitOfWork` definieren.
+92. [x] Knowledge-Base-Produktiv-Content-Store anbinden: S3/MinIO-kompatiblen Adapter mit Object-Lock/WORM-Pruefung, Orphan-Reconciliation-Worker und API-Wiring-Gate fuer Postgres-UoW aktivieren.
+93. [x] Knowledge-Base-Produktiv-API-Wiring unter Deployment-Gate vorbereiten: saubere `source_object_content_recovery_evidence.v1`, S3/MinIO-Providerprofil und Restore-Drill-Evidence muessen gemeinsam vor aktivierten Writes vorliegen.
+94. [x] Konkreten S3-kompatiblen SDK-Client hinter `S3CompatibleObjectStoreClient` anbinden und per Compose-Profil/Providerprofil-Evidence gegen Versioning, Object Lock, Legal Hold und Restore-Drill testen; MinIO bleibt Entwicklungsziel, Ceph RGW ist das produktive Referenzprofil.
+95. [x] Source-Object-Content-Store-Provider in die Runtime-Konfiguration integrieren: `S3CompatibleSourceObjectContentStore`, Providerprofil-Evidence, Recovery-Evidence und Knowledge-Base-Deployment-Gate automatisch aus der aktivierten Object-Storage-Backend-Konfiguration verdrahten.
+96. [x] Knowledge-Base-Produktivwiring tenant-sicher aktivierbar machen: Runtime-Gate-Evidence per Admin-/Deployment-Aktivierung tenant-spezifisch persistieren und die API vom prozessweiten `SUITE_KB_RUNTIME_TENANT_ID` in eine request-sichere Runtime-Auswahl ueberfuehren.
+97. [x] Knowledge-Base-Content-Reconciliation operationalisieren: aktivierte Runtime-Tenants regelmaessig gegen Object-Store-Inventar, Storage-Manifeste und Restore-Drill-Evidence pruefen, Aktivierungen bei Drift sperren und Refresh-/Reactivation-Evidence auditierbar machen.
+98. [x] Knowledge-Base-Reconciliation als Worker-Betriebspfad ausbauen: tenant-Auswahl aus Modulstatus/Runtime-Aktivierungen, Compose-Worker-Entrypoint, Runbook-Evidence, Retry-/Alerting-Kontrakt und regelmaessige Restore-Drill-Bindung operationalisieren.
+99. [x] Persistente Platform-Module-Registry fuer API und Worker angleichen: `collabio.module_catalog` und `collabio.tenant_modules` als Store anbinden, Migration-Evidence aus DB verwenden, tenant-sichere `ModuleWorkerGate`-Nutzung fuer API/Worker vereinheitlichen und Dev-Seeding/Backfill definieren.
+100. [x] Platform-Module-Registry betrieblich haerten: Admin-Runbook fuer Seed/Backfill/Reparatur, Pg-basierte API-Smoke-Tests fuer Tenant-Lifecycle, Worker-Discovery-Drills und Audit-/Backup-Evidence fuer Modulstatus-Aenderungen operationalisieren.
+101. [x] MVP-Produktzug starten: Module-Cockpit und ersten durchgehenden SourceObject-Flow fuer Wissensdatenbank/Dokument/Mail sichtbar machen, ohne neue Infrastrukturabstraktionen einzuziehen.
+102. [x] Erste echte Workspace-Shell/UI fuer das Module-Cockpit bauen: Status, naechste Aktion und SourceObject-Flows scanbar darstellen, ohne Marketing-Landingpage und ohne neue Compliance-Bypasses.
+103. [x] Workspace-Shell vertiefen: Modulaktionen aus dem Cockpit kontrolliert an Admin-APIs anbinden und KB-/Dokument-/Mail-Detailansichten metadata-only navigierbar machen.
+104. [x] SourceObject-Detailzug produktionsnah machen: repository-backed metadata-only Detail-Endpoints fuer Dokumente, Mail und Wissensdatenbank anbinden, ACL-Pruefung pro Detailabruf auditieren und die Workspace-Shell von Cockpit-Flow-Snapshots auf diese Detail-API umstellen.
+105. [x] SourceObject-Detailzug weiter haerten: Detail-API auf persistente SourceObject-Repository-Backends fuer Dokumente/Mail vorbereiten, UI-Fehlerzustaende fuer 403/404 sichtbar differenzieren und Pg-basierte Detail-Smoke-Tests einziehen.
+106. [x] Dokument-/Mail-Detailzug als naechsten Produktpfad vorbereiten: persistente Repository-Auswahl operationalisieren, SourceObject-Flows von Demo-Seeding zu Backend-Konfiguration fuehren und Detailansichten um sichere Preview-Slots ohne Content-Bypass erweitern.
+107. [x] Dokument-/Mail-Preview-Gate konkretisieren: sichere metadata-first Preview-Policies, Parser-/Sanitizer-Grenzen, Mail-Header/Attachment-Metadaten und Content-Freigabe nur hinter explizitem Policy-/ACL-/Audit-Nachweis vorbereiten.
+108. [x] Dokument-/Mail-Preview-Approval-Skeleton vorbereiten: Content-Preview-Anfragen als metadata-only Decision-Objekte modellieren, Tenant-Policy/ACL/Audit/Parser-Sanitizer-Evidence pruefen und weiterhin blockieren, bis explizite Freigabe und sichere Renderer-Grenzen nachgewiesen sind.
+109. [x] Dokument-/Mail-Preview-Approval operationalisieren: persistentes Preview-Decision-Ledger, Tenant-Policy-Schalter, Renderer-Sandbox-Evidence und Human-Confirmation-Workflow anbinden, ohne Content-Ausgabe freizuschalten.
+110. [x] Preview-Decision-Ledger produktionshart machen: PostgreSQL/RLS-Adapter, Restore-Evidence, Backup-Abdeckung und Renderer-Sandbox-Worker-Evidence anbinden, bevor irgendein Content-Rendering-Pfad geoeffnet wird.
+111. [x] Renderer-Sandbox-Worker-Skeleton aufbauen: isolierten Worker-Run als metadata-only Evidence erzeugen, Parser/Sanitizer/Backup/Restore-Evidence gegen Tenant und SourceObject binden und weiterhin keinen gerenderten Content ausgeben.
+112. [x] Renderer-Sandbox-Evidence produktionshart machen: PostgreSQL/RLS-Store, Restore-Drill-Pruefung und Worker-Queue-Anbindung fuer Preview-Renderer-Evidence ergaenzen, bevor echte Rendering-Engines oder Viewer eingebunden werden.
+113. [x] Renderer-Worker-Runbook und Restore-Drill operationalisieren: Queue-Wiederaufnahme, Idempotency-Replay, Tenant-Isolation-Smoke-Test und Preview-Decision-/Renderer-Evidence-Recovery als wiederholbaren Compose-Drill nachweisen.
+114. [x] Preview-Renderer-Drill mit realer Postgres-Smoke-Fixture erweitern: API erzeugt Decision-/Renderer-Evidence, `preview-renderer-drill` verifiziert sie im Compose-Pfad, und der Report-Hash wird als Release-/Restore-Evidence referenzierbar.
+115. [x] Preview-Renderer-Release-Gate definieren: frischen API-Smoke-Report-Hash und Recovery-Drill-Report-Hash als harte Voraussetzung modellieren, bevor echte Renderer, Viewer oder Content-Release-Workflows angeschlossen werden.
+116. [x] Preview-Renderer-Release-Gate-Evidence operationalisieren: Gate-Reports persistent referenzieren, Compose-Smoke um Gate-Erzeugung erweitern und echte Renderer-/Viewer-Anbindung erst hinter diesem Gate erlauben.
+117. [x] Preview-Renderer-Release-Gate-Store produktionshart machen: PostgreSQL/RLS-Migration, Restore-Drill-Pruefung und Compose-Smoke auf persistenten Gate-Store umstellen, bevor Renderer-/Viewer-Gate-Hashes produktiv verwendet werden.
+118. [x] Roadmap-Triage vor dem naechsten Ausbau anwenden: naechsten Schritt nur ziehen, wenn er Fundament oder unmittelbaren Produktzug staerkt; spaeter nachziehbare Adapter-/UI-/Automationsarbeit sichtbar parken.
+119. [x] Legacy-SQL-Import-Readiness-Evidence definieren: Discovery-/Import-/Mapping-Hashes zusammenfuehren, Dry-Run nur bei sauberer Mapping-Kette erlauben und Quarantaene/`legacy.row` als manuellen Mapping-Blocker ausweisen.
+120. [x] Legacy-SQL-Readiness als Compose/Worker-Smoke operationalisieren: Metadata-Worker-Ergebnis, Mapping-Manifest und Readiness-Evidence als Report ausgeben, bevor reale SQL-Verbindung oder Import-Dry-Run zugelassen wird.
+121. [x] Legacy-SQL-Discovery-Intake-Gate vorbereiten: echte Discovery-Anfragen nur mit Tenant, Approval, Secret-Ref, Connector-Policy-Hash und freigegebenem Host-Profil annehmen; keine DSN, keine Rohdaten, kein Import-Dry-Run.
+122. [x] Legacy-SQL-Discovery-Intake operationalisieren: Admin-/Worker-Entry-Point fuer Intake-Evidence und Metadata-Worker-Command anbinden, ohne echte Verbindung, Import-Dry-Run oder Rohdatenfreigabe.
+123. [x] Legacy-SQL-Evidence-Ledger persistieren: Intake-, Discovery-, Mapping-, Readiness- und Smoke-Report-Hashes tenant-sicher mit RLS/Restore-Evidence speichern, bevor echte Legacy-Verbindungen zugelassen werden.
+124. [x] Legacy-SQL-Evidence-Ledger in Intake-/Readiness-Drills verdrahten: Operations-Reports optional in `collabio.legacy_sql_evidence_ledger` schreiben und Restore-Drill-Nachweis mit Report-Hashes verbinden.
+125. [x] Legacy-SQL-Evidence-Ledger-Backends operationalisieren: JSONL/Postgres-Schreibpfad in Compose-Drills pruefen, Restore-Drill gegen Ledger-Eintraege laufen lassen und erst danach echte Legacy-Host-Profile freigeben.
+126. [x] Legacy-SQL-Host-Profile-Release-Gate vorbereiten: echte Host-Profile nur nach Ledger-Operations-Report, Connector-Policy-Hash, Secret-Ref, Egress-Freigabe und expliziter menschlicher Bestaetigung aktivierbar machen; keine DSN, keine Rohdaten und kein Import-Dry-Run im Gate.
+127. [x] Legacy-SQL-Host-Profile-Release-Gate operationalisieren: Gate-Evidence tenant-sicher persistieren, Compose-Smoke fuer Ready/Blocked-Pfade anbinden und erst danach einen echten Host-Profile-Adapter vorbereiten.
+128. [x] Legacy-SQL-Host-Profile-Adapter-Skeleton vorbereiten: Persistierte Ready-Gate-Evidence tenant-sicher laden, Secret-/Egress-Handles nur an metadata-only Worker-Scheduling binden und weiterhin keine echte Netzwerkverbindung im Default-Compose oeffnen.
+129. [x] Legacy-SQL-Metadata-Worker-Scheduling-Queue vorbereiten: Schedule-Evidence tenant-sicher und idempotent persistieren, Worker-Lease/Retry/Restore-Evidence modellieren und weiterhin keine echte Legacy-Verbindung im Default-Compose oeffnen.
+130. [x] Legacy-SQL-Metadata-Worker-Lease-Consumer-Skeleton vorbereiten: geleaste Queue-Jobs in einem isolierten Offline-Runner validieren, Secret-/Egress-Aufloesung weiterhin nur als Handle pruefen und echte Legacy-Verbindung weiter gesperrt lassen.
+131. [x] Legacy-SQL-Connector-Sandbox-Profil vorbereiten: default-off Netzwerk-/Secret-Handle-Profil fuer spaetere reale Legacy-Host-Konnektivitaet modellieren, nur hinter Release-Gate, Queue-Lease und Consumer-Activation sichtbar machen und Rohdaten/Import weiterhin blockieren.
+132. [x] Legacy-SQL-Connector-Sandbox-Enablement-Gate vorbereiten: explizite menschliche Freigabe, Provider-Attestation, Restore-Evidence und Sandbox-Profil-Hash als hartes Gate fuer spaetere echte Verbindungsversuche modellieren; Raw Data, Import-Dry-Run und Import-Write bleiben getrennt blockiert.
+133. [x] Legacy-SQL-Connector-Provider-Attestation-Adapter vorbereiten: Netzwerk-, Secret-Resolver- und Audit-Provider-Handles gegen echte Deployment-Profile validieren, aber weiterhin keine Verbindung oeffnen und kein Secret-Material aufloesen.
+134. [x] Legacy-SQL-Connector-Connection-Attempt-Preflight-Gate vorbereiten: Enablement-Gate, Provider-Attestation-Adapter, Restore-Evidence und Operator-Kontext zu einem letzten No-Secret/No-Socket-Nachweis binden, bevor spaeter echte Verbindungsversuche implementiert werden.
+135. [x] Legacy-SQL-Connector-Real-Connection-Executor-Skeleton vorbereiten: hinter dem Preflight-Gate einen weiterhin nicht-ausfuehrenden Executor-Contract modellieren, der Secret-/Socket-Materialisierung, Timeout-/Retry-Policy, Audit und Kill-Switches vor echter Implementierung festlegt.
+136. [x] Legacy-SQL-Connector-Real-Connection-Executor-Policy-Store vorbereiten: Executor-Contracts, Timeout-/Retry-Policies, Audit-Plaene und Kill-Switch-Policies tenant-sicher persistierbar machen, bevor echte Socket-Ausfuehrung implementiert wird.
+137. [x] Legacy-SQL-Connector-Execution-Readiness-Review-Gate vorbereiten: gespeicherte Executor-Policy-Bundles gegen Human-Review, Change-Control, Restore-Drill und Kill-Switch-Zustand pruefen, bevor echte Socket- oder Secret-Materialisierung ueberhaupt geplant wird.
+138. [x] Legacy-SQL-Connector-Materialization-Plan-Gate vorbereiten: Review-Gate-Ergebnis, Provider-Profile, Operator-MFA und Kill-Switch-Snapshot in einen weiterhin nicht-ausfuehrenden Materialisierungsplan binden, bevor Socket- oder Secret-Materialisierung implementiert wird.
+139. [x] Legacy-SQL-Connector-Socket-Secret-Implementation-ADR vorbereiten: Materialization-Plan-Gate-Ergebnis, echte Provider-Limits, Netzwerkroute, Secret-Manager, Rollback und Kill-Switch-Runbook als ADR-Gate dokumentieren, bevor eine ausfuehrende Implementierung geschrieben wird.
+140. [x] Legacy-SQL-Connector-Runtime-PR-Gate vorbereiten: ADR-Gate-Ergebnis, Runtime-Code-Review, Testcontainer, Secret-Manager-Binding, Netzwerkroute, Rollback-Probe und Kill-Switch-Probe als letztes nicht-ausfuehrendes PR-Gate binden, bevor Socket- oder Secret-Runtime-Code gemergt wird.
+141. [x] Legacy-SQL-Connector-Runtime-Merge-Gate vorbereiten: Runtime-PR-Gate-Ergebnis, Branch-Protection-Status, Security-Scan, Container-Provenance, Secret-Rotation-Plan und Kill-Switch-Drill als Merge-Gate binden, bevor ausfuehrender Socket-/Secret-Code in eine aktivierbare Runtime gelangt.
+142. [x] Legacy-SQL-Connector-Runtime-Activation-Gate vorbereiten: Runtime-Merge-Gate-Ergebnis, tenant-spezifische Aktivierungsfreigabe, Runtime-Feature-Flag, Secret-Rotation-Bestaetigung, Netzwerkfreigabe, Rollback-Freeze und Kill-Switch-Arming als weiterhin nicht-ausfuehrendes Activation-Gate binden, bevor echte Verbindungsversuche aktivierbar werden.
+143. [x] Legacy-SQL-Connector-Live-Connection-Gate vorbereiten: Runtime-Activation-Gate-Ergebnis, Secret-Broker-Binding, Netzwerk-Egress-Policy, Least-Privilege-DB-Rolle, Timeout-/Circuit-Breaker, Audit-Sink und Emergency-Disable als weiterhin kontrolliertes Gate binden, bevor ein erster echter metadata-only Connection-Probe erlaubt wird.
+144. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Gate vorbereiten: Live-Connection-Gate-Ergebnis, echten Provider-Treiber, Secret-Broker-Read-Path, Metadata-Query-Allowlist, Timeout-/Circuit-Breaker-Ausfuehrung, Audit-Sink und Emergency-Disable als eng begrenztes Ausfuehrungsgate binden, bevor ein erster echter metadata-only Probe implementiert wird.
+145. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Skeleton implementieren: Metadata-Connection-Probe-Gate-Ergebnis, Provider-Treiber-Adapter, Secret-Broker-Leseaufruf, Metadata-Query-Allowlist, Timeout-/Circuit-Breaker, Audit-Sink und Emergency-Disable als ersten echten metadata-only Probe hinter Default-Off und Kill-Switch implementieren, ohne Rohdaten, Import-Dry-Run oder Writes zu erlauben.
+146. [x] Legacy-SQL-Connector-Metadata-Connection-Probe-Live-Adapter haerten: echten Postgres-Provider hinter dem Skeleton mit Secret-Broker-Materialisierung, freigegebener Netzwerkroute, Redaction/Audit, Timeout-/Circuit-Breaker und Emergency-Stop in einem isolierten Worker aktivieren, weiterhin ohne Rohdaten, Import-Dry-Run oder Writes. SQL Server bleibt bis zu Treibercontainer-, Netzwerkprofil- und Testinstanz-Evidence bewusst Adapter-spaeter.
+147. [x] Produktzug-Re-Fokus nach Legacy-SQL-Metadata-Probe: Legacy-SQL bei metadata-only Live-Probe einfrieren und als naechsten MVP-Slice Workspace/Module-Cockpit, KB-/Dokument-/Mail-SourceObject-Flow, Preview-Entscheidung und Rechte-/Audit-Sichtbarkeit produktnah zusammenfuehren, ohne neue Import- oder Rohdatenpfade.
+148. [x] Workspace-Preview-Entscheidung produktiver fuehren: aus der Flow-Readiness heraus einen gefuehrten metadata-only Action-Flow fuer Renderer-Sandbox-Evidence und Preview-Decision-Anforderung bauen, weiter ohne Content-Rendering oder Rohdatenfreigabe.
+149. [x] Produktiver Arbeitskorb als naechster MVP-Slice: aus Modulstatus, SourceObject-Readiness und Preview-Entscheidungen eine einfache Aufgaben-/Naechste-Schritte-Sicht ableiten, ohne das spaetere Aufgabenmodul, Tickets oder Automationen vorwegzunehmen.
+150. [x] Arbeitskorb-Aktionen rollen- und zustandsgefuehrt schaerfen: Work-Items mit sicheren Action-Hints, Modul-/Flow-Sprungzielen und UI-Gates verbinden, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+151. [x] Arbeitskorb-Rollenmatrix absichern: Tenant-Admin, Security-Admin und Reader-Kontexte gegen dieselben Work-Items pruefen und UI-/Contract-Gates nachweisen, ohne eine neue RBAC-Engine oder persistente Aufgaben einzufuehren.
+152. [x] Arbeitskorb-State-Transitions nachweisen: nach Preview-Decision und Modul-Provision/Enable Work-Items neu berechnen und obsolete Actions ausblenden oder umstufen, ohne persistente Aufgaben, Tickets oder Automationen einzufuehren.
+153. [x] Arbeitskorb-Operational-Evidence schaerfen: Work-Item-Zaehler, Confirmation-Gates und State-Transition-Signale in Audit-/Cockpit-Metadaten nachvollziehbar machen, ohne Rohdaten, Inhalte oder persistente Aufgaben zu speichern.
+154. [x] Arbeitskorb-Operational-Summary im Workspace sichtbar machen: die read-only Evidence aus Work-Item-Zaehlern, Rollen-/Confirmation-Gates und State-Transition-Signalen kompakt anzeigen, ohne neue Aktionen, persistente Aufgaben oder Rohdaten einzufuehren.
+155. [x] Workspace-Cockpit als MVP-Startpunkt konsolidieren: Module, Arbeitskorb, SourceObject-Flows und Detailansicht als produktiven Einstieg pruefen, offene Foundation-Luecken priorisieren und spaetere Nice-to-haves aus dem unmittelbaren Pfad entfernen.
+156. [x] MVP-Startpunkt-Snapshot als Review-Artefakt vorbereiten: Cockpit-Readiness, offene Foundation-Gaps, Deferred-Themen und naechste sichere Aktion in einem metadata-only Handover-Report exportierbar machen, ohne produktive Automationen oder neue Module vorzuziehen.
+157. [x] Foundation-Gap-Abbau aus dem MVP-Snapshot starten: Preview-Decision-Gaps, Modulaktivierung und Human-Confirmation als naechsten produktiven Pfad priorisieren, waehrend Office/Mail-Vollclients, Tickets, LMS und Zeiterfassung bewusst deferred bleiben.
+158. [x] Preview-Decision-Gap konkret abbauen: aus dem Foundation-Gap-Plan die pending Preview-Decision-Arbeitsschritte zuerst operationalisieren und nach Ausfuehrung die Gap-Liste automatisch reduzieren, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+159. [x] Preview-Blocked-Gap klaeren: nach abgebautem Pending-Gap die geblockten Preview-Decisions als Evidence-/Policy-Thema sichtbar fuehren und entscheiden, welche Evidence wirklich jetzt noetig ist, ohne Content-Release oder Viewer-Adapter vorzuziehen.
+160. [x] Modulaktivierungs-Gap fokussiert abbauen: nach Preview-Evidence-Brief nur die notwendigen Modul-Provisioning-/Enablement-Aktionen fuer den MVP-Arbeitsbereich operationalisieren, ohne spaetere Modulfachlichkeit, Tickets oder Automationen vorzuziehen.
+161. [x] Human-Confirmation-Gap scharf stellen: verbleibende explizite Bestaetigungen nach Preview- und Modul-Gap getrennt sichtbar fuehren und nur notwendige bestaetigungsgebundene Foundation-Schritte behandeln, ohne persistente Aufgaben, Tickets oder Automationen vorzuziehen.
+162. [x] Content-Release-Gate bewusst halten: nach geschaerftem Human-Confirmation-Gap den verbleibenden Content-Release-Block als Policy-/Viewer-Deferred-Entscheidung dokumentieren und nur pruefen, ob MVP-Readiness ohne Content-Preview produktiv genug ist.
+163. [x] MVP-Readiness-Entscheidung finalisieren: Workspace, Snapshot und Foundation-Gap-Plan als metadata-only Produktivpfad gegen Rollen, Audit, Backup/Failover und Modulstatus zusammenziehen, ohne Office-/Mail-Vollclient, Viewer, Tickets oder Automationen vorzuziehen.
+164. [x] MVP-Produktivpfad als Release-Kandidat pruefen: Demo-Tenant, Rollenmatrix, Audit-Events, Snapshot-Export und Backup-/Failover-Schutzsignale als zusammenhaengenden Smoke-Run dokumentieren, ohne neue Module oder Content-Preview-Funktionalitaet vorzuziehen.
+165. [x] MVP-Release-Handover schaerfen: Release-Candidate-Smoke, Snapshot-Hash und offene Foundation-Gaps in eine knappe Betreiber-/Reviewer-Uebergabe zusammenfassen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+166. [x] MVP-Release-Review abschliessen: Handover-Evidence, offene Gaps und Betreiber-Checkliste gegen Security-/Compliance-Guardrails reviewbar machen, ohne neue Produktfunktionen oder Content-Preview-Pfade vorzuziehen.
+167. [x] MVP-Pilot-Freigabe vorbereiten: Release-Review, Handover und Smoke-Evidence in ein minimales Pilot-Gate ueberfuehren, ohne neue Produktfunktionen, Content-Preview oder Automationen vorzuziehen.
+168. [x] MVP-Pilot-Betriebsstatus sichtbar machen: Pilot-Gate, Release-Review und offene Foundation-Gaps als read-only Betreiberstatus zusammenziehen, ohne neue Produktfunktionen, Content-Preview, Tickets oder Automationen vorzuziehen.
+169. [x] MVP-Pilot-Readiness-Bericht schaerfen: Pilot-Betriebsstatus, offene Foundation-Gaps und Deferred-Scope in eine knappe Review-/Betreiberansicht ueberfuehren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+170. [x] MVP-Pilot-Startumfang fixieren: Readiness-Bericht, Betreiberstatus und erlaubte Pilot-Flaechen als minimalen Startumfang dokumentieren, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+171. [x] MVP-Pilot-Betreiberpfad absichern: fixierten Startumfang, Evidence-Kette und offene Foundation-Gaps als kurzes metadata-only Runbook sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+172. [x] MVP-Pilot-Reviewpunkt festlegen: Betreiber-Runbook, Startumfang und offene Foundation-Gaps als formalen Reviewpunkt fuer Pilotstart sichtbar machen, ohne Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit vorzuziehen.
+173. [x] MVP-Pilot-Startentscheidung vorbereiten: Reviewpunkt, Runbook und Evidence-Hashes in eine explizite Human-Confirmation-Vorlage ueberfuehren, ohne Pilotstart, Content-Preview, Tickets, Automationen oder neue Modulfachlichkeit auszufuehren.
+174. [x] MVP-Pilot-Entscheidungsprotokoll vorbereiten: Human-Confirmation-Vorlage, Reviewpunkt und Evidence-Hashes in ein auditierbares Entscheidungsprotokoll-Schema ueberfuehren, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+175. [x] MVP-Pilot-Entscheidungs-Preflight sichtbar machen: Entscheidungsprotokoll-Schema, Human-Confirmation-Vorlage und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Bestaetigung zu speichern, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+176. [x] MVP-Pilot-Approval-Workflow abgrenzen: Preflight, Entscheidungsprotokoll-Schema und Human-Confirmation-Vorlage in eine klare Workflow-Grenze ueberfuehren, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+177. [x] MVP-Pilot-Approval-Readiness konsolidieren: Approval-Workflow-Grenze, Preflight und Entscheidungsartefakte als finale read-only Freigabevorbereitung zusammenziehen, ohne Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+178. [x] MVP-Pilot-Go-No-Go-Grenze vorbereiten: Approval-Readiness in eine explizite Human-Decision-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+179. [x] MVP-Pilot-Go-No-Go-Entscheidungsprotokoll vorbereiten: Go/No-Go-Grenze, Approval-Readiness und Evidence-Hashes in ein auditierbares Human-Decision-Record-Schema ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+180. [x] MVP-Pilot-Decision-Capture-Grenze vorbereiten: Go/No-Go-Entscheidungsprotokoll-Schema in eine explizite Human-Decision-Capture-Grenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+181. [x] MVP-Pilot-Decision-Capture-Preflight sichtbar machen: Decision-Capture-Grenze, Go/No-Go-Entscheidungsprotokoll-Schema und Evidence-Kette als read-only Vorpruefung zusammenziehen, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+182. [x] MVP-Pilot-Decision-Capture-Submit-Skeleton vorbereiten: Decision-Capture-Preflight in einen expliziten Human-Submit-Vertrag ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+183. [x] MVP-Pilot-Decision-Capture-Submit-Dry-Run vorbereiten: Submit-Skeleton in eine reine Validierungs-Simulation fuer Human-Submit-Eingaben ueberfuehren, ohne Entscheidung anzunehmen, zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+184. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Grenze vorbereiten: Dry-Run-Vertrag in eine explizite Payload-Validierungsgrenze ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+185. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Dry-Run vorbereiten: Payload-Validierungsgrenze in eine explizite, nicht persistierende Validierungsanfrage fuer synthetische Human-Submit-Payloads ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+186. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Boundary vorbereiten: Payload-Validation-Dry-Run in eine explizite Request-Boundary fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+187. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Dry-Run vorbereiten: Request-Boundary in eine nicht persistierende Request-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+188. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Skeleton vorbereiten: Request-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+189. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Dry-Run vorbereiten: Execution-Skeleton in eine nicht persistierende Execution-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+190. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Boundary vorbereiten: Execution-Dry-Run in eine explizite Aktivierungsgrenze fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+191. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Dry-Run vorbereiten: Activation-Boundary in eine nicht persistierende Aktivierungs-Dry-Run-Auswertung fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+192. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Skeleton vorbereiten: Activation-Dry-Run in einen nicht aktivierten Approval-Skeleton fuer spaetere Human-Submit-Payload-Validierung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+193. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Dry-Run vorbereiten: Approval-Skeleton in eine nicht persistierende Approval-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+194. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Boundary vorbereiten: Approval-Dry-Run in eine explizite Request-Boundary fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+195. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Dry-Run vorbereiten: Approval-Request-Boundary in eine nicht persistierende Request-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+196. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Skeleton vorbereiten: Request-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+197. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Dry-Run vorbereiten: Execution-Skeleton in eine nicht persistierende Execution-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+198. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Boundary vorbereiten: Execution-Dry-Run in eine explizite Result-Boundary fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+199. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Dry-Run vorbereiten: Result-Boundary in eine nicht persistierende Result-Dry-Run-Auswertung fuer spaetere Human-Activation-Approval-Anfragen ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+200. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Execution-Skeleton vorbereiten: Result-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu aktivieren, Entscheidung zu speichern, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+201. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Boundary vorbereiten: Result-Execution-Skeleton in eine explizite Handler-Boundary fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+202. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Dry-Run vorbereiten: Handler-Boundary in eine nicht registrierende Handler-Dry-Run-Auswertung fuer spaetere Result-Verarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+203. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Skeleton vorbereiten: Handler-Dry-Run in einen nicht aktivierten Execution-Skeleton fuer spaetere Handler-Ausfuehrung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+204. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Dry-Run vorbereiten: Handler-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ausfuehrung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+205. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Boundary vorbereiten: Handler-Execution-Dry-Run in eine explizite Handler-Execution-Result-Boundary fuer spaetere Handler-Ergebnisverarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+206. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisverarbeitung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+207. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+208. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+209. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+210. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+211. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+212. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+213. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+214. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+215. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+216. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+217. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+218. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+219. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+220. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+221. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+222. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+223. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+224. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+225. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine explizite Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+226. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+227. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+228. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Pruefung ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+229. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+230. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+231. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Dry-Run in eine nicht ausfuehrende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+232. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Boundary in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Auswertung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+233. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+234. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Skeleton in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+235. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Dry-Run-Fortsetzung in eine nicht aktivierte Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+236. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung in einen nicht persistierenden Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+237. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run in einen nicht aktivierten Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+238. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Skeleton in eine nicht persistierende Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+239. [x] MVP-Pilot-Decision-Capture-Payload-Validation-Request-Execution-Activation-Approval-Request-Execution-Result-Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung vorbereiten: Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Dry-Run-Fortsetzung in eine nicht aktivierte Handler-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Result-Execution-Boundary-Fortsetzung-Boundary-Fortsetzung fuer spaetere Handler-Ergebnisuebernahme ueberfuehren, ohne Handler zu registrieren, Resultat anzunehmen, Approval zu persistieren, Pilotstart auszufuehren oder neue Modulfachlichkeit vorzuziehen.
+240. [x] Boundary-Fortsetzungsserie beendet und Produktfokus wiederhergestellt: keine weiteren abstrakten Dry-Run-Huellen ohne unmittelbaren Nutzer- oder Betriebswert; offene Arbeit wird wieder an produktiven Foundation-Gaps, echten Betriebsnachweisen und zusammenhaengenden Produktzuegen priorisiert.
+241. [x] Operative MVP-Pilot-Entscheidung geschlossen: stabilen autoritativen Cockpit-Kontext, echte
+     `go`/`no_go`/`defer`-Erfassung, rollen- und tenant-sichere API, idempotentes append-only PostgreSQL-RLS-Ledger,
+     hash-only Grund/Confirmation, Audit, Restore-Vertrag und Cockpit-Bedienpfad umgesetzt. Der Entscheid erlaubt
+     weder Admission noch Modulaktivierung, Traffic oder Pilotstart. Die vorbereitende Kette 183-239 bleibt
+     eingefrorene Read-only-Kompatibilitaet und erzeugt keine weiteren Roadmap-Schritte.
+242. [x] Offene MVP-Foundation-Aktionen als zusammenhaengenden Bedienpfad operationalisiert: Preview-Decisions und
+     Modulstatuswechsel werden tenant-spezifisch vorab aufgelistet, metadata-only und rollenbasiert validiert, mit
+     exakter Tenant-Bestaetigung sowie unmittelbar frischem Cockpit-Abgleich ausgefuehrt und pro Aufgabe sichtbar
+     fortgeschrieben. Neue Module folgen kontrolliert `provision -> enable`; Teilfehler erzwingen einen frischen Plan.
+     Content-Release, Fachmodul-Daten, Automationen sowie externe oder destruktive Aktionen bleiben ausgeschlossen.
+243. [x] Ersten echten Endnutzer-Arbeitsbereich auf das abgenommene Backend gesetzt: `/work` komponiert Aufgaben,
+     Aktivitaeten, Zeiterfassung, Tickets, Wissensartikel und CRM-Accounts ausschliesslich ueber deren bestehende
+     tenant-, ACL-, Modul- und Pilot-gepruefte Fach-APIs. Tagesuebersicht, Fachfilter, responsive Ansichten sowie
+     ausdruecklich ausgeloeste Task-, Zeit- und Ticket-Workflows sind ohne neuen Sammel-Endpunkt umgesetzt; partielle
+     Sperren bleiben pro Bereich sichtbar und koennen keine andere Fachgrenze umgehen. Wissens- und CRM-Pfade bleiben
+     read-only, destruktive Tickettransitionen werden in dieser Oberflaeche nicht angeboten.
+244. [x] Aufgaben-Lebenszyklus als vollstaendigen append-only Produktzug geschlossen: erlaubte Statusmatrix,
+     optimistische Zustandspruefung, atomare Statusaktivitaet, tenant-lokale Hash-Kette, PostgreSQL-Trigger,
+     hash-only Bestaetigung fuer Abbruch/Archivierung, ACL-/Rollen-Gates, Restore-Nachweis und Bedienpfad in `/work`.
+     Die neue Route bleibt ausserhalb des historisch freigegebenen Sieben-Operationen-Piloten fail-closed.
+245. [x] Zeiterfassungs-Freigabezug geschlossen: Einreichung sowie Genehmigung, Ablehnung oder Korrekturanforderung
+     werden append-only projiziert; Service und PostgreSQL erzwingen Vier-Augen-Trennung, exakte Human-Bestaetigung
+     wird nur gehasht gespeichert, und Restore-Gate sowie `/work` fuehren den neuen Zustand mit. Auch diese Route
+     erweitert den laufenden Pilotumfang nicht ohne neue ausdrueckliche Freigabe.
+246. [x] Aufgaben-Neuzuweisung und Faelligkeitsaenderung als Produktzug geschlossen: optimistische Zustandskontrolle,
+     aktiver Zielprincipal, praezise ACL-Umschreibung, append-only Aktivitaetsnachweis und ein gemeinsamer
+     datenbankseitiger Mutation-Lock mit Lifecycle-Transitionen sind in API, Restore-Vertrag und `/work` gebunden.
+247. [x] Zeiterfassungskorrektur und Neueinreichung als Produktzug geschlossen: unveraenderliche Revisionen sind an
+     den exakten Korrekturauftrag und dessen Hash gebunden; PostgreSQL, API, Restore-Vertrag und `/work` pruefen die
+     Kette gemeinsam, ohne den Pilotumfang zu erweitern.
+248. [x] Ersten Daily-Work-Loop browserbasiert abgenommen: ein isoliertes, intern vernetztes und hostportfreies
+     Playwright-Profil prueft 28 Zustandsfaelle fuer sieben Fachquellen in ready/empty/blocked/unavailable sowie
+     Route-Policy, reale Task-Neuzuweisung mit Time-Correction/Resubmission und separate Desktop-/Mobile-Ansichten,
+     insgesamt 32 Faelle auf ephemerem PostgreSQL. Der Pilot-Kill-Switch blieb geschlossen; es gab keine
+     Tenant-Aktivierung oder dauerhaften Nutzdaten.
+249. [x] Guarded Knowledge-Base-Create/Edit in `/work` geschlossen: serverseitige SourceObject-Vorbereitung,
+     autoritative Artikel-/Versions-ACLs, explizite Freigabe/Bestaetigung und tenantweise serialisierte PostgreSQL-/S3-
+     Writes verwenden die bestehenden Approval-, UoW-, Audit- und Restore-Grenzen. Migration `0082` bindet neue ACLs
+     atomar; Restore prueft Trigger und Funktionsdefinitionen. Alle 41 isolierten Browserfaelle, volle Remote-Quality
+     sowie Backup/Restore/Release-Gates sind gruen. Konflikte, Speicherausfaelle und verspaetete Antworten nach einem
+     Kontextwechsel sind abgedeckt; reale Tenant-Aktivierung, Pilot und RAG/Indexing bleiben geschlossen.
+250. [x] Wissensartikel fuer berechtigte Leser in `/work` vollstaendig oeffnen: eigene Leseansicht mit Inhalt,
+     aktueller Version und Aenderungsdatum, ohne Schreibrecht oder Adminrolle. Artikel-, Versions- und Quellen-ACL,
+     exakte Source-Version und Inhaltsintegritaet serverseitig pruefen; Rechteentzug, Fremdtenant, Speicherfehler,
+     Kontextwechsel und Desktop/Mobile isoliert browserbasiert abgenommen. Volle Remote-Quality und alle 50
+     Browserfaelle sind gruen. Pilot und RAG/Indexing bleiben geschlossen.
+251. [x] CRM-Kontodetails mit zugehoerigen Kontakten und Aktivitaeten in `/work` nutzbar machen: bestehenden
+     Account-Workspace-Vertrag mit drei Feature-Gates, autoritativen Objekt-ACLs und redigierten Verknuepfungen
+     wiederverwenden. Leere, gesperrte und ausgefallene Detailansichten sowie Refresh, Kontextwechsel und
+     Desktop/Mobile gegen isoliertes PostgreSQL geprueft. Volle Remote-Quality und alle 60 Browserfaelle sind gruen.
+     Bestehende Pilot-Grenze bleibt geschlossen; keine neue Mutation, Migration oder reale Tenant-Aktivierung.
+
+252. [x] Native Office-Produktgrundlage unter `/office` geschlossen: lokale Rich-Text-Formatierung, Tabellen,
+     Gliederung, Textsuche, Fokusmodus und explizites Speichern neuer Versionen. Eigenes Modul mit geschlossenen
+     Tenant-Features, aktuellen Lese-/Schreib-ACLs, PostgreSQL/S3, CAS, exakter Wiederholung und Migration 0083.
+     Volle Backend-Quality auf `7bba74f` gruen; auf `5917bdf` alle 73 Browserfaelle in 160,237 Sekunden gruen,
+     ohne uebersprungene, unerwartete oder flakige Faelle, Desktop/Tablet/Mobile visuell geprueft. Nichtleerer Restore
+     mit 13 Dokumenten, 18 Versionen, fuenf mehrversionigen Dokumenten und 37 SourceObjects bestanden:
+     `sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`.
+     Hauptmigration 0083 und Foundation mit 83 Migrationen, 91 Tabellen und Office-Integritaetskontrollen gruen.
+     Business-/API-Rollout wird separat operational dokumentiert; keine reale Tenant- oder Produktivfreigabe.
+     Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen beziehungsweise eigenstaendig.
+253. [x] Autorisierte gespeicherte Office-Versionen vergleichen und eine fruehere Fassung als neuen lokalen Entwurf
+     uebernehmen: Text, Titel, Formatierung, Listen und Tabellen werden blockweise verglichen, grosse Ergebnisse
+     vollstaendig und seitenweise dargestellt. Aktuellen Head und Schreibrechte frisch laden; erst bestaetigtes
+     CAS-Speichern erzeugt eine neue Version, die bestehende Historie bleibt unveraendert. Rechteentzug, Konflikte,
+     spaete Antworten, begrenzte Historie und identische Uebernahme sind geprueft. Volle Remote-Quality auf `3aa0069`
+     gruen; alle 100 Pruefungen (88 Browserfaelle plus 12 Modellfaelle) in 249,923 Sekunden bestanden, ohne
+     uebersprungene, unerwartete oder flakige Faelle; Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration;
+     Restore-Nachweise aus Punkt 252 bleiben erhalten. Office bleibt vor CRM priorisiert; Tenant-, Pilot- und
+     DOCX-/Engine-Freigaben bleiben geschlossen beziehungsweise eigenstaendig.
+254. [x] Suchen und Ersetzen im nativen Office-Dokument geschlossen: literale Unicode-sichere Suche,
+     Gross-/Kleinschreibung, ganze Woerter, vollstaendige Trefferzahlen und einzelne/alle Ersetzungen als ein
+     rueckgaengiger lokaler Bearbeitungsschritt. Struktur und Formatierung ausserhalb der Treffer bleiben erhalten,
+     Inhaltsgrenzen werden vor Aenderung geprueft; schreibgeschuetzte/historische Fassungen bleiben nur durchsuchbar.
+     Geladener Ausgangsinhalt ist vom Undo-Verlauf ausgeschlossen. Volle Remote-Quality auf `f4c37e5` gruen;
+     alle 132 Pruefungen (97 Browserfaelle und 35 Modellfaelle) in 291,588 Sekunden bestanden, ohne uebersprungene,
+     unerwartete oder flakige Faelle. Desktop/Tablet/Mobile visuell geprueft. Keine neue Migration oder Ablage;
+     bestehende Bestaetigungs-/CAS-/Recovery-Vertraege und geschlossene Tenant-/Pilot-/Engine-Gates bleiben erhalten.
+
+255. [x] Komfortable Tabellenbearbeitung im nativen Office-Editor: waehlbare Tabellengroesse, kontextabhaengige
+     Zeilen-/Spaltenaktionen, Kopfzeile, Zell-/Zeilen-/Spalten-/Tabellenauswahl und begrenzte Tastaturnavigation.
+     Aenderungen vor Anwendung validieren, einzeln rueckgaengig machen und Entfernen bestaetigen. Schreibschutz,
+     Historie und laufende/unbestaetigte Speicherung respektieren; echte gespeicherte Versionen und responsive
+     Bedienung auf dev001 geprueft. Volle Remote-Quality auf `e3cf88c` gruen; alle 142 Pruefungen (107 Browserfaelle plus
+     35 Modellfaelle) in 359,156 Sekunden bestanden, ohne uebersprungene, unerwartete oder flakige Faelle. Alle bisherigen
+     132 Pruefungen bleiben gruen. Desktop/Tablet/Mobile visuell geprueft; beim Wechsel auf Tabletbreite klappt die
+     Gliederung ein und gibt die Tabelle frei. Bestehendes Schema, Recovery und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
+
+256. [x] Kommentare und Dokumentpruefung im nativen Office abgeschlossen: Diskussionen an exakte gespeicherte
+     Fassungen und serverseitig validierte Textstellen gebunden; bestaetigte Anlage, Antworten, Erledigen und
+     Wiedereroeffnen mit aktuellen Dokumentrechten, eigenen Revisionskonflikten und exakten Wiederholungen.
+     Append-only Review-Ereignisse mit PostgreSQL/S3-Belegen und responsivem Browsernachweis. Volle Remote-Quality
+     auf `2305a96` gruen: Ruff/Formatierung fuer 674 Dateien, Mypy fuer 532 Dateien und vollstaendiges Pytest.
+     Alle 152 Pruefungen (117 Browserfaelle plus 35 Modellfaelle) auf `7400b35` in 432,486 Sekunden bestanden,
+     ohne uebersprungene, unerwartete oder flakige Faelle. Hauptmigration 0084 und Foundation mit 84 Migrationen
+     und 93 Tabellen gruen; nichtleerer isolierter Restore mit 57 Dokumenten, 93 Versionen, neun Diskussionen und
+     17 Review-Ereignissen bestanden. API-Rollout, Health und Cleanup am 2026-09-18 um 13:14:20 UTC gruen.
+     Keine reale Tenant-Aktivierung; Pilot, Indexing und DOCX-/Engine-Gates bleiben geschlossen.
+
+257. [x] Gespeicherte Textvorschlaege im nativen Office: bestaetigte Anlage an einer exakten gespeicherten Textstelle,
+     Vorher/Nachher-Vergleich und bestaetigtes Annehmen oder Ablehnen. Annahme muss Entscheidung und neue
+     Dokumentversion in derselben PostgreSQL-Transaktion speichern; veraltete Anker bleiben unveraendert.
+     Volle Remote-Quality auf `9c17a31` gruen: 684 formatierte Dateien, Mypy fuer 541 Quelldateien und vollstaendiges
+     Pytest. 688 fokussierte Tests sowie alle 162 Browser-/Modellpruefungen in 535,956 Sekunden bestanden;
+     keine uebersprungenen, unerwarteten oder flakigen Faelle. Desktop/Tablet/Mobile visuell geprueft.
+     Migration 0085, Foundation mit 85 Migrationen/95 Tabellen und nichtleerer Restore von 67 Dokumenten,
+     109 Versionen, zehn Vorschlaegen und sieben Entscheidungen (fuenf angenommen, zwei abgelehnt) bestanden.
+     API-Rollout mit 13 Office-Operationen, Health und Cleanup am 2026-09-21 um 07:18:57 UTC gruen.
+     Normale Tenant-, Pilot-, Indexing- und Engine-Freigaben bleiben geschlossen.
+
+258. [x] Druckansicht fuer exakte gespeicherte native Office-Fassungen mit A4/Letter, Hoch-/Querformat,
+     erneuter Leseautorisierung vor Browserdruck/PDF-Speicherung, sicherem Inhaltsrendering und isolierten
+     Druckstilen. Full-Quality auf cf2244c bestanden: Ruff, 689 formatierte Dateien, Mypy 541 Quellen und Pytest.
+     Alle 170 Browser-/Modellpruefungen (135 + 35) in 562,234 Sekunden bestanden, keine ausgelassenen,
+     unerwarteten oder instabilen Ergebnisse. Echte PDFs auf Textvollstaendigkeit, Seitenformat, semantische
+     Struktur und sichtbare Ausgabe geprueft. Abschliessende Test-Cleanup-Absicherung d8300aa fokussiert gruen.
+     Bestehende 162 Pruefungen, unveraenderliche Versionen und geschlossene Tenant-/Pilot-/Engine-Gates erhalten.
+     Keine neue Persistenz oder serverseitige DOCX-/PDF-Konvertierung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
+     API-Rollout, Health und abschliessender Betriebszustand: docs/CURRENT_HANDOFF.md.
+
+259. [x] Gespeicherte native Office-Fassung als unabhaengigen neuen Dokumententwurf verwenden:
+     frische Quell-Leserechte und Erstellungsfaehigkeit, eigener Titel, Schutz ungespeicherter Entwuerfe,
+     neue Objektidentitaet erst nach bestehender Speicherbestaetigung. Original, Versionen und ACLs bleiben
+     unveraendert; keine Uebernahme von Diskussionen/Vorschlaegen oder neue Server-Kopiertransaktion.
+     Volle Quality auf e7fec24 gruen: Ruff, 691 formatierte Dateien, Mypy 541 Quellen und vollstaendiges Pytest.
+     Zehn fokussierte sowie alle 180 Browser-/Modellpruefungen (145 + 35) in 664,306 Sekunden bestanden;
+     keine ausgelassenen, unerwarteten oder instabilen Ergebnisse. Desktop/Tablet/Mobile unabhaengig visuell geprueft.
+     API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 12:22:11 UTC gruen; alle Tenant-/Pilot-/Engine-Gates
+     bleiben geschlossen. Keine Schema-/Persistenzaenderung; Recovery-Nachweis aus Punkt257 bleibt erhalten.
+
+260. [x] Native Office-Dokumente ueber die ersten 200 Eintraege hinaus auffindbar machen: serverseitige literale
+     Titelsuche, begrenzte Seiten mit aktueller ACL-Pruefung vor Seitengrenzen und kontextgebundene Cursor.
+     Suche, Nachladen und Wiederholen erhalten geoeffnete Dokumente und ungespeicherte Entwuerfe unabhaengig von
+     Listenmitgliedschaft; Suchtexte bleiben ausserhalb normaler Logs. Mobiler Office-Einstieg in Work erreichbar.
+     Volle Quality auf 5bcb7d2 gruen: Ruff, 699 formatierte Dateien, Mypy 547 Quellen und vollstaendiges Pytest.
+     180 fokussierte Python-, zehn fokussierte Browser- sowie alle 190 Browser-/Modellpruefungen (155 + 35)
+     bestanden; Gesamtmatrix 651,284899 Sekunden, keine ausgelassenen, unerwarteten oder instabilen Ergebnisse.
+     Fuenf finale Bildschirmansichten unabhaengig geprueft; 306 echte Listen-Zugriffslogs ohne Suchtexte/Cursor.
+     API-only-Rollout, Live-Pruefung und Cleanup am 2026-09-21 um 13:04:19 UTC gruen; geschlossene Gates erhalten.
+     Keine neue Persistenz, Hauptdatenbank-Migration oder Recovery-Ausfuehrung; Nachweis aus Punkt257 bleibt erhalten.
+
+261. [x] Aeltere gespeicherte Office-Fassungen ueber das bisherige 200-Versionen-Fenster hinaus nachladen:
+     begrenzte Seiten entlang der unveraenderlichen Vorgaengerkette, dokument- und kontextgebundene Cursor und
+     frische Parent-ACL je Seite. Auswahl, Vergleich und lokale Entwuerfe beim Nachladen erhalten; neuere Fassungen
+     eindeutig anzeigen und Verlauf bewusst aktualisieren. Kommentar-/Vorschlagsentwuerfe beim Historienwechsel
+     erhalten; laufende Abrufe beim Ausblenden, Tabwechsel und Fokusmodus abbrechen. Volle Quality auf 46a83b4 gruen:
+     Ruff, 705 formatierte Dateien, Mypy 551 Quellen und vollstaendiges Pytest. Alle 200 Browser-/Modellpruefungen
+     (165 + 35) in 688,743181 Sekunden bestanden, keine ausgelassenen, unerwarteten oder instabilen Ergebnisse.
+     Alle bisherigen 190 Faelle erhalten; 249 fokussierte Python- und 23 fokussierte Browserpruefungen ebenfalls gruen.
+     Fuenf finale Bildschirmansichten unabhaengig geprueft; 322 Listen- und 205 Historien-Zugriffslogs ohne Suchtexte/Cursor.
+     API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md. Keine neue Schema-/
+     Persistenzaenderung oder Recovery-Ausfuehrung; Nachweis aus Punkt257 und geschlossene Gates bleiben erhalten.
+
+262. [x] Absatzformatierung im nativen Office: Ausrichtung, Zeilenabstand und Abstaende davor/danach in einem
+     kompakten auswahlgebundenen Dialog. Strikt validierte optionale Werte bleiben durch Speichern, Undo, Vergleich,
+     Wiederverwendung, Druck und Recovery erhalten; bisherige kanonische Inhaltsbytes bleiben unveraendert.
+     Volle Quality auf 8b61d8d gruen: Ruff, 712 formatierte Dateien, Mypy 557 Quellen und vollstaendiges Pytest.
+     Alle 215 Browser-/Modellpruefungen (176 + 39) in 759,313613 Sekunden bestanden, keine ausgelassenen,
+     unerwarteten oder instabilen Ergebnisse; alle bisherigen 200 Faelle erhalten. 294 fokussierte Python- und
+     46 fokussierte Browser-/Modellpruefungen ebenfalls gruen. Sechs finale Office-/Work-Ansichten und alle drei
+     PDF-Seiten unabhaengig geprueft; 28 vollstaendige Absaetze, keine leeren Seiten oder abgeschnittenen Inhalte.
+     Vollstaendig paginierter nichtleerer Recovery-Nachweis mit 330 Dokumenten, 666 Fassungen und 721 SourceObjects
+     sowie Releasegates gruen. API-Rollout und abschliessende Health-/Gate-Nachweise stehen in docs/CURRENT_HANDOFF.md.
+     Keine neue SQL-Migration, Abhaengigkeit oder API; normale Tenant-/Pilot-/Engine-Gates bleiben geschlossen.
+
+263. [x] Zeichenformatierung mit Schriftgroessen und benannten Textfarben fuer Auswahl oder folgende Eingabe.
+     Gemischte Werte, Standard/Reset, Undo, aktuelle ACLs und bestaetigte CAS-Saves erhalten; Vergleich, Ersetzungen,
+     Wiederverwendung, Druck/PDF und vollstaendige nichtleere Recovery geprueft. ADR-0087; volle Python-Qualitaet gruen.
+     Bestandene Abdeckung aller 231 Faelle: 230 Erfolge im Gesamtlauf plus korrigierte vollstaendige 8er-Historiensuite.
+     Die urspruenglichen Setupfehler bleiben in den Rohberichten erhalten; kein einzelner Lauf mit 231 Erfolgen.
+     Recovery: 460 Dokumente, 935 Fassungen und 1.045 SourceObjects; Releasegates, API-Rollout und Live-Pruefung gruen.
+     Schriftgroessen/Farben auf Desktop, Tablet, Mobil und zwei echten PDF-Seiten visuell geprueft.
+
+264. [x] Vollstaendiges Ersetzen per Tastatur auch fuer Dokumente mit abschliessenden oder mehreren Tabellen.
+     Strukturelle Gesamtauswahl, Bestaetigung, Abbrechen und ein eigener Undo-Schritt; Schema-/Groessenschutz,
+     Leser-/Historiengrenzen, Kontextwechsel, unveraenderte alte Fassungen und lokale Review-Entwuerfe erhalten.
+     Zehn neue Browserfaelle sowie die bestehenden Tabellen-/Historienfaelle pruefen die Korrektur.
+     Volle Qualitaet und alle 241 Browser-/Modellfaelle in einem Lauf auf d7270a7 gruen; Desktop/Mobil visuell geprueft.
+     API-Rollout und geschlossene Gates sind in docs/CURRENT_HANDOFF.md dokumentiert. Keine Schema-/Backend-Aenderung.
+
+265. [x] Native Formatuebertragung innerhalb eines Dokuments: Zeichen und Absatz gemeinsam oder getrennt aufnehmen
+     und anwenden. Einheitliche Vorlage, explizite Standardwerte, exakte Text-/Zellauswahl, Code-Ausschluss,
+     ein Undo-Schritt sowie unveraenderte Inhalte, Struktur und alte Versionen. Mobile Review-Seitenleisten bleiben
+     trotz umgebrochener Werkzeugleiste bedienbar. ADR-0088; volle Qualitaet und alle 252 Browser-/Modellfaelle auf
+     ac70c29 gruen, ebenso 43 gezielte Responsive-/Formatfaelle und visuelle Abnahme. API-Rollout, geschlossene Gates
+     und erhaltene fehlgeschlagene Vorlaeufe sind in docs/CURRENT_HANDOFF.md dokumentiert.
+
+266. [x] Native Listenbearbeitung: ausgewaehlte Punkte ein-/ausruecken und Startzahl der aktuellen nummerierten
+     Liste waehlen. Text, Zeichen-/Absatzformate, Unterlisten, Undo und Tabellen-Tab erhalten; Groessen-/Tiefenschutz
+     sowie Leser-/Historien-/Kontextgrenzen geprueft. ADR-0089; zwoelf gezielte Faelle, volle Qualitaet und alle
+     264 Browser-/Modellfaelle auf fb8dbd3 gruen. Responsive Ansichten visuell geprueft; Betriebsnachweise und
+     geschlossene Gates stehen in docs/CURRENT_HANDOFF.md.
+
+267. [x] Dokumenteigene Formatvorlagen mit wiederverwendbaren Definitionen, gemeinsamer Aktualisierung,
+     kontextbezogener Bedienung und Vorschau. Direkte Formate, Undo, Historie, Vergleich, Druck und Wiederherstellung
+     erhalten. ADR-0090; volle Qualitaet und alle 280 Browser-/Modellfaelle auf 1e09a10 gruen. PDF/Sichtpruefung,
+     frischer nichtleerer Restore, Release-Gates und API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
+
+268. [x] Native PNG/JPEG-Bilder mit dokumenteigenen versionierten Assets und isolierter Normalisierung umgesetzt:
+     Upload, Einfuegen, Groesse/Ausrichtung, Alternativtext/Bildunterschrift, Verschieben/Entfernen/Undo,
+     bestaetigtes Speichern, Historie, unabhaengige Kopie und Druck. ADR-0091; alle297 Browser-/Modellfaelle auf96a299f
+     und volle Qualitaet auf5d3eb35 bei identischen Produktquellen bestanden. PDF/Sichtpruefung, frischer nichtleerer
+     Dokument-/Bild-Restore und beide Release-Gates vor Decoder/API-Rollout bestanden. Nachweise in CURRENT_HANDOFF.md.
+
+269. [x] Nativen Bildzuschnitt ergaenzt: interaktive Vorschau, Zuruecksetzen und tastaturbedienbare begrenzte
+     Einstellungen unter ADR-0092. Versionierte Geometrie erhaelt die exakte Bildquelle; Undo, Vergleich, Kopie,
+     echte PDFs und frischer nichtleerer Restore bestanden. Volle Qualitaet auf 54fe1ff; bestandene Nachweise fuer
+     alle 303 unterschiedlichen Browser-/Modellfaelle aus 302/303 im Volllauf plus korrigierter 57-Faelle-Nachpruefung
+     auf 3da08b8, kein einzelner vollstaendig gruener Lauf. Beide Release-Gates vor API-Rollout bestanden.
+
+270. [x] Nativen Textumfluss um Bilder unter ADR-0093 ergaenzt: stabiler Anker im Dokumentfluss, Links/Rechts und
+     begrenzter Textabstand. Blockdarstellung fuer schmale/verschachtelte Ansichten, Seitenwechsel, Zuschnitt,
+     Tastaturbedienung, Undo, Historie, Kopien und echte PDFs geprueft. Volle Qualitaet und ein kompletter gruener
+     313-Faelle-Lauf auf 1d8a58f; frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
+     Nachweise in CURRENT_HANDOFF.md. Beliebige Seitenpositionen und weitere Objekttypen bleiben separat.
+
+271. [x] Explizite native Seitenumbrueche unter ADR-0094 umgesetzt: sichtbare Markierung auf Dokumentebene,
+     Einfuegen/Entfernen per Menue und Tastatur sowie isoliertes Undo. Formatierung, Bilder, Tabellen, Historie,
+     Vergleich, Kopien und Altformat-Bytes bleiben erhalten. Volle Qualitaet bestanden; 325 unterschiedliche Faelle
+     durch den Gesamtlauf mit 324/325 und die korrigierte Nachpruefung mit 12/12 abgedeckt, kein einzelner komplett
+     gruener Gesamtlauf. Vier echte PDFs/14 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout
+     bestanden; Nachweise in CURRENT_HANDOFF.md. Durchgaengige Pagination, Abschnittslayout und DOCX bleiben separat.
+
+272. [x] Dokumenteigene Seiteneinstellungen unter ADR-0095 umgesetzt: A4/Letter, Hoch-/Querformat, begrenzte
+     Seitenraender, Vorschau, Reset und isoliertes Undo. Altformat-Bytes, Historie und Kopien bleiben erhalten.
+     Volle Python-Qualitaet und ein kompletter Lauf mit 345/345 Browser-/Modellfaellen bestanden auf 800a3a5.
+     Acht echte PDFs/16 Seiten, frischer Vier-Versionen-Restore, beide Release-Gates und API-only-Rollout bestanden.
+     Externe PDF-Pruefung deckte eine alte CSS-Uebersteuerung auf und bestaetigte die Korrektur der echten Raender.
+     Nachweise in CURRENT_HANDOFF.md. Abschnittslayout und durchgaengige Pagination bleiben separat.
+
+273. [x] Dokumenteigene Kopf-/Fusszeilen und Seitenzahlen unter ADR-0096 umgesetzt: begrenzte Klartexte,
+     Seite X oder Seite X von Y, Vorschau, unabhaengiger Reset und isoliertes Undo. Historie/Kopien bleiben exakt.
+     2924 Python-Faelle bestanden; 367 Browser-/Modellfaelle im Gesamtlauf plus 42 betroffene Faelle nach
+     einer zusaetzlichen Reset-Korrektur bestanden, kein einzelner Gesamtlauf auf dem letzten Quellstand.
+     Zwoelf echte PDFs/36 Seiten, frischer nichtleerer Restore, beide Release-Gates und API-only-Rollout bestanden.
+     Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `9892e41` veroeffentlicht.
+
+274. [x] Abweichende Kopf-/Fusszeilen fuer die erste Seite und gezieltes Ausblenden ihrer Seitenzahl unter
+     ADR-0097 umgesetzt: getrennte Vorschau, vollstaendiger Reset, isoliertes Undo und feste Druckregeln.
+     Altformate bleiben bytegleich; Historie/Kopien und sechs Recovery-Versionen bleiben exakt. Alle 2936
+     Python- und 372 Browser-/Modellfaelle bestanden. Vier echte dreiseitige PDFs pruefen getrennte Profile,
+     verborgene/sichtbare erste Seitennummer und fortlaufende Seiten 2/3. Frischer Restore, Release-Gates,
+     API-only-Rollout und Live-Checks bestanden. Allgemeine Abschnitte, freie Felder, Editor-Pagination und
+     DOCX bleiben separat. Nachweise in CURRENT_HANDOFF.md. Implementierung als Commit `48ae9c9` veroeffentlicht.
+
+275. [x] Allgemeine native Abschnitte unter ADR-0098 umsetzen: Ein root-basierter Abschnittsumbruch startet eine
+     neue Druckseite und besitzt das vollstaendige validierte Seiten- und Kopf-/Fusszeilenprofil des Folgeabschnitts.
+     Einfuegen, Bearbeiten, Entfernen, Vorschau und isoliertes Undo bleiben responsiv; Speichern, Historie, Kopien,
+     Reviews und Vorschlaege behalten exakte Struktur und Positionen. Feste vertrauenswuerdige Druckslots erzeugen
+     echte Mischformat-PDFs mit global fortlaufender Nummerierung. Ein frischer Vier-Versionen-Restore bindet
+     Altformat, einen Abschnitt, zwei Abschnitte und Reset. Freie Felder, abschnittsweise erste Seiten,
+     Nummern-Neustarts, Editor-Pagination, schwebende Objekte und DOCX bleiben separat. Volle Quality, eine komplette
+     379-Fall-Browser-/Modellmatrix, zwei echte Mischformat-PDFs, frischer Vier-Versionen-Restore, Hauptsicherung,
+     beide Release-Gates, API-Rollout und Live-Pruefung sind gruen. Implementierung als Commit `04d45cd` veroeffentlicht.
+
+276. [x] Sichere native Hyperlinks unter ADR-0099 umgesetzt: Exakt markierter Text speichert ein begrenztes absolutes
+     HTTPS- oder einfaches mailto-Ziel. Unsichere/mehrdeutige Protokolle, Zugangsdaten, automatische Erkennung,
+     Hintergrundabrufe und automatische Navigation bleiben verboten. Einfuegen, Bearbeiten, Entfernen und bewusstes
+     Oeffnen bleiben responsiv; Undo, Speichern, Historie, Vergleich, Kopien, Suche, Reviews und Vorschlaege behalten
+     exakte Markierungsgrenzen. Semantischer Druck und ein frischer Altformat/Hinzufuegen/Aendern/Entfernen-Restore
+     schliessen den Slice. Lesezeichen, Querverweise, URL-Vorschauen, freie Felder und DOCX bleiben separat. Volle
+     Python-Qualitaet und ein kompletter Lauf mit 384/384 Browser-/Modellfaellen bestanden. Zwei echte PDFs,
+     responsiver Sichttest, frischer Vier-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und
+     Live-Pruefung sind gruen. Implementierung als Commit `12e8fca` veroeffentlicht.
+
+277. [x] Native Lesezeichen und interne Querverweise unter ADR-0100 umgesetzt: Stabile dokumentlokale Anker besitzen
+     begrenzte eindeutige Namen; Querverweise markieren expliziten Text und referenzieren nur eine stabile Anker-ID.
+     Einfuegen, Umbenennen, Entfernen, bewusstes Springen und gebrochene Ziele bleiben responsiv und undo-faehig.
+     Speichern, Historie, Vergleich, Kopien, Suche, Reviews und Vorschlaege behalten exakte Struktur und Positionen.
+     Semantischer interner PDF-Druck und ein frischer Altformat/Hinzufuegen/Umbenennen/Gebrochen/Reset-Restore
+     schliessen den Slice. Automatische Beschriftungen, Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise,
+     URL-Vorschauen und DOCX bleiben separat. Volle Python-Qualitaet, ein kompletter Lauf mit 389/389 Browser-/
+     Modellfaellen, responsive Sichtpruefung, zwei echte PDFs, frischer Fuenf-Versionen-Restore, Hauptsicherung,
+     beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen. Implementierung als Commitserie `6c4c6e0`
+     bis `7e61f72` veroeffentlicht.
+
+278. [x] Native Abbildungsbeschriftungen und stabile Abbildungsnummern umgesetzt: Dokumenteigene Bilder erhalten eine
+     optionale semantische Beschriftung; Nummern werden deterministisch aus der Dokumentreihenfolge abgeleitet und
+     bleiben in Editor, Historie, Vergleich, Kopien und Druck konsistent. Einfuegen, Bearbeiten, Entfernen und Undo
+     bleiben responsiv. Querverweise auf Abbildungen verwenden stabile Ziel-IDs und zeigen gebrochene Ziele sicher an.
+     Tabellenbeschriftungen, freie Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat.
+     Volle Python-Qualitaet, zwei komplette Laeufe mit jeweils 394/394 Browser-/Modellfaellen, responsive Sichtpruefung,
+     zwei echte getaggte PDFs, frischer Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout
+     und Live-Pruefung sind gruen. Implementierung als Commitserie `1559bb5` bis `42a6f67` veroeffentlicht.
+
+279. [x] Native Tabellenbeschriftungen und stabile Tabellennummern unter ADR-0102 umgesetzt: Tabellen erhalten eine optionale
+     semantische Beschriftung und dokumentlokale stabile Ziel-ID; sichtbare Nummern werden aus der Dokumentreihenfolge
+     abgeleitet. Bearbeiten, Entfernen, Undo, Historie, Vergleich, Kopien, Druck und Querverweise behalten exakte
+     Identitaet und sichere gebrochene Ziele. Abbildungen und Tabellen fuehren getrennte Nummernfolgen. Freie
+     Seitenfelder, dokumentuebergreifende Verweise, Rueckverweise und DOCX bleiben separat. Volle Python-Qualitaet,
+     eine komplette 398/398-Browser-/Modellmatrix, responsive Sichtpruefung, zwei echte getaggte A4-PDFs, frischer
+     Fuenf-Versionen-Restore, Hauptsicherung, beide Release-Gates, API-only-Rollout und Live-Pruefung sind gruen.
+     Implementierung als Commitserie `e757b7e` bis `d2fe43f` veroeffentlicht.
+
+280. [x] Native freie Dokumentfelder umgesetzt: Ein begrenzter dokumenteigener Schluessel-/Wert-Katalog und explizite
+     Feldknoten sollen wiederverwendbare Werte in Text sowie Kopf-/Fusszeilen einsetzen, ohne Skripte, externe
+     Aufloesung oder stilles Umschreiben. Undo, Speichern, Historie, Vergleich, Kopien, Druck und gebrochene Felder
+     muessen exakt bleiben. Dokumentuebergreifende Verweise, Rueckverweise, Formeln und DOCX bleiben separat.
+
+281. [x] Ein natives generiertes Inhaltsverzeichnis umgesetzt: Ein expliziter Block leitet seine Eintraege bis zur
+     gewaehlten Ebene aus der aktuellen Ueberschriftenreihenfolge ab, ohne gerenderten Altstand zu speichern.
+
+282. [x] Native Fussnoten umgesetzt: Begrenzte literale Noten mit stabilen lokalen IDs und dokumentreihenfolgeabhaengiger
+     Nummerierung muessen in Editor, Versionen, Vergleich, Kopien und semantischem Druck exakt bleiben.
+
+283. [x] Native Endnoten umgesetzt: Eine von Fussnoten getrennte Nummernfolge und ein eigener Druckabschnitt halten
+     dieselben Inertheits-, Undo-, Versions- und Recovery-Grenzen ein.
+
+284. [x] Native Quellenverweise und Literaturverzeichnis umgesetzt: Ein begrenzter dokumenteigener Quellenkatalog,
+     explizite Verweise, sichere fehlende Quellen und ein abgeleitetes Verzeichnis duerfen keine externe Aufloesung
+     oder Netzwerkanfrage ausloesen.
+
+285. [x] Native Formeln umgesetzt: Begrenzter Quelltext und barrierefreie Beschreibung werden als literale inerte
+     Daten gespeichert und semantisch gedruckt; Auswertung, Makros und externe Formel-Engines bleiben geschlossen.
+
+286. [x] Einen nativen lokalen Referenznavigator umgesetzt: Eine abgeleitete Uebersicht zeigt Felder, Noten, Quellen
+     und Formeln samt gebrochenen Zielen, ohne persistierte Rueckverweise oder dokumentuebergreifende Suche.
+
+Native Office bleibt vor CRM. Roadmap 280–286 / PLANS 141–147 ist als gemeinsamer semantischer Dokumentzug unter
+ADR-0103 abgeschlossen und veroeffentlicht. Volle Python-Qualitaet, die komplette 403/403-Browser-/Modellmatrix,
+responsive Sichtpruefung, ein unabhaengig geprueftes getaggtes A4-PDF, ein frischer Zehn-Versionen-Restore,
+Hauptsicherung, Restore- und Release-Gates, API-only-Rollout mit Pilot 0 und Live-Pruefung sind gruen. Der Restore
+verifizierte 586 Dokumente, 1.161 exakte Office-Versionen, 204 Dokumente mit Historie und 1.299 SourceObjects.
+Dokumentuebergreifende Verweise, globale Rueckverweise, Formel-Auswertung und DOCX bleiben separat.
+
+287. [x] Begrenzte native Dokumentverweise umgesetzt: Explizit ausgewaehlter Text speichert nur die stabile
+     Zielobjekt-ID und eine exakte unveraenderliche Zielversion. Eine getrennte Read-API liest die Quellversion erneut
+     und prueft jedes Ziel frisch gegen Tenant, aktuelle autoritative ACL und exakte Version. Nicht vorhandene,
+     geloeschte und nicht autorisierte Ziele liefern denselben inerten Zustand ohne Titel. Bewusstes Oeffnen navigiert
+     erst nach erneuter Pruefung; Laden und Drucken loesen ebenfalls frisch auf. Der Druck erzeugt keine
+     dokumentuebergreifende Aktion. Globale Rueckverweise, Referenzsuche und DOCX-Beziehungen bleiben separat.
+
+Native Office bleibt vor CRM. Roadmap 287 / PLANS 148 ist unter ADR-0104 implementiert. Der Vertrag besitzt
+serverseitige Schema-, ACL-, API- und Recovery-Pruefungen sowie Browsermodell-, Editor-, Historien-, Entzugs- und
+Druckpruefungen. Der Vier-Versionen-Restore bindet Quell- und Zielhistorie samt exakter historischer Aufloesung. Volle
+Python-Qualitaet, kombinierte 406-Fall-Browserabdeckung, frische Wiederherstellung, beide Release-Gates, API-only-
+Rollout mit Pilot 0 und Live-Pruefung sind abgeschlossen. Der naechste Office-Schritt ist ein separater Entwurf fuer
+globale Rueckverweise ohne Metadatenleck ueber nicht lesbare Quelldokumente.
+
+288. [x] Begrenzte native Rueckverweise umgesetzt: Die exakte Zielversion wird zuerst frisch autorisiert. Danach
+     werden ausschliesslich aktuelle Versionen derzeit lesbarer Quelldokumente in Abschnitten von hoechstens 50
+     Kandidaten ausgewertet. Ergebnisse enthalten nur aktuelle Quell-ID, exakte Quellversion, sicheren Titel und
+     begrenzte Trefferzahl; Quellinhalt sowie Anzahl oder Titel unlesbarer Quellen bleiben verborgen. Signierte Cursor
+     sind an Tenant, Akteur, Rollen, Zielobjekt, Zielversion und Seitengroesse gebunden. Bewusstes Oeffnen prueft den
+     Zugriff erneut. Es gibt keinen persistenten Rueckverweisindex, keine Druckausgabe und keinen Loesch-Backlog.
+
+Native Office bleibt vor CRM. Roadmap 288 / PLANS 149 ist unter ADR-0105 implementiert. Server-, API-, PostgreSQL-,
+Recovery-, Browsermodell- sowie responsive Desktop-/Mobile-Pruefungen decken exakte Versionen, aktuellen Quellzugriff,
+Entzug, Tenant-Bindung, sichere Metadaten und begrenzte Pagination ab. Transitive Graphen, inhaltsweite Referenzsuche,
+persistente Indexierung und DOCX-Beziehungen bleiben separat.
+
+289. [x] Native Bild-Ebenen und freie verankerte Positionierung umgesetzt: Bilder koennen im Textfluss sowie vor oder
+     hinter Text liegen. Ein strikt begrenzter Anker speichert horizontale Relativposition und vertikalen Versatz,
+     bleibt per Maus, Touch und Tastatur bedienbar und verhindert aktive CSS-Werte. Textumfluss und freie Platzierung
+     sind gegenseitig ausgeschlossen. Rueckgaengig, Vergleich, Historie, unabhaengige Kopie, Druck und Recovery
+     bewahren die exakte Position; der Reset laesst Legacy-Bytes unveraendert. Absolute DOCX-Seitenanker und eine
+     fortlaufend paginierte Editor-Geometrie bleiben separat.
+
+Native Office bleibt vor CRM. Roadmap 289 / PLANS 150 ist unter ADR-0106 implementiert. Schema-, Browsermodell- und
+responsive Desktop-/Mobile-Pruefungen decken Grenzen, Vorder-/Hintergrund, direkte Ankerbedienung, Undo, Historie,
+Druck und Regressionen fuer Zuschnitt/Textumfluss ab. Es gibt keine neue Datenbankmigration, Abhaengigkeit oder
+Tenant-Aktivierung.
+
+290. [x] Native Bilddrehung und Spiegelung umgesetzt: Bildversionen speichern optional nur Vierteldrehungen sowie
+     horizontale und vertikale Spiegelachsen. Beliebige Winkel, Matrizen, CSS und ein expliziter Identitaetswert werden
+     abgewiesen. Der responsive Rahmen reserviert auch bei 90/270 Grad die gedrehten Abmessungen; Quelldatei, Zuschnitt,
+     Beschriftung und Alternativtext bleiben unveraendert. Vorschau, Rueckgaengig/Wiederholen, Vergleich, Historie,
+     unabhaengige Kopie, Druck und ein frischer Rotate/Mirror/Reset-Restore bewahren die exakte Darstellung.
+
+Native Office bleibt vor CRM. Roadmap 290 / PLANS 151 ist unter ADR-0107 implementiert. Die vollstaendige
+Python-Qualitaet ist gruen; 84 Bild-/Recovery-Pruefungen und die komplette 42-teilige Desktop-/Mobile-Bildmatrix
+decken sichere Grenzen, responsive Geometrie, Druck, ACLs und alle bisherigen Bildfunktionen ab. Der frische
+nummerierte Restore bestaetigt 799 Dokumente, 1.629 Versionen, 2.033 Quellobjekte und die exakte Transformationslinie.
+Es gibt keine neue Datenbankmigration, Abhaengigkeit, Tenant-Aktivierung oder Aenderung der Originalpixel.
+
+291. [x] Native Bildgruppen umgesetzt: Zwei bis acht vorhandene Bilder lassen sich als begrenzte, inerte Gruppe
+     anordnen, mit einem Zeilen- oder Stapellayout und einem Abstand von 0 bis 48 Pixeln. Gruppen koennen erweitert,
+     gemeinsam verschoben, als Einheit gedruckt und wieder aufgeloest werden; Entfernen, Rueckgaengig/Wiederholen,
+     Vergleich, Historie und unabhaengige Dokumentkopien bewahren Reihenfolge und exakte Bildversionen. Breite
+     Zeilengruppen verwenden gleichmaessige Spalten, kompakte Ansichten wechseln sicher in eine vertikale Folge.
+
+Native Office bleibt vor CRM. Roadmap 291 / PLANS 152 ist unter ADR-0108 implementiert. Vollstaendige Python-Qualitaet
+und die 45-teilige Desktop-/Mobile-Bildmatrix sind gruen. Der frische nummerierte Restore bestaetigt 912 Dokumente,
+1.887 Versionen, 2.482 Quellobjekte, 533 Bildassets, 871 gespeicherte Referenzen und die exakte Folge
+Zeile/12 Pixel -> Stapel/24 Pixel -> aufgeloest. Es gibt keine Datenbankmigration, neue Abhaengigkeit,
+Tenant-Aktivierung, freie CSS-Gruppe oder Aenderung der Originalpixel.
+
+292. [x] Begrenzte native Formen umgesetzt: Rechtecke, abgerundete Rechtecke und Ellipsen lassen sich mit festen
+     Farbtokens, Rahmenstaerke, ganzzahligen Abmessungen, Text und Textausrichtung einfuegen und bearbeiten. Einfuegen,
+     Bearbeiten und Entfernen bilden getrennte Rueckgaengig-Schritte. Responsive Darstellung, Vergleich, unveraenderliche
+     Versionen, unabhaengige Dokumentkopien und Druck bewahren die kanonischen Attribute und literalen Texte.
+
+Native Office bleibt vor CRM. Roadmap 292 / PLANS 153 ist unter ADR-0109 implementiert. Vollstaendige Python-Qualitaet
+ist gruen; die fokussierte Modell- und Desktop-/Mobile-Workflowmatrix besteht 4/4. Server und Browser erzwingen
+Top-Level-Platzierung, eindeutige IDs, hoechstens 100 Formen sowie feste Grenzen fuer Masse, Farben, Rahmen und Text.
+SVG, freie Pfade, CSS, URLs, Skripte, OLE, Verbinder, Ueberlagerungsebenen und DOCX-DrawingML bleiben ausgeschlossen.
+Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+293. [x] Begrenzte verankerte Formebenen umgesetzt: Native Formen koennen optional vor oder hinter dem Text liegen und
+     verwenden eine normierte horizontale Position von 0 bis 1000 sowie einen vertikalen Versatz von -1200 bis 1200
+     Pixeln. Ein separater, immer bedienbarer Anker unterstuetzt Zeiger, Touch und Tastatur. Ebenenwechsel, Verschieben,
+     Rueckgaengig/Wiederholen und Rueckkehr in den Textfluss bleiben einzelne, kanonische Entwurfsschritte.
+
+Native Office bleibt vor CRM. Roadmap 293 / PLANS 154 ist unter ADR-0110 implementiert. Vollstaendige Python-Qualitaet
+ist gruen; 31 Schematests und die 5-teilige Modell-/Desktop-/Mobile-Formmatrix bestehen. Versionen, Vergleich, Druck
+und unabhaengige Kopien bewahren den exakten logischen Anker. Freies CSS, physische Seitenkoordinaten, beliebige
+Z-Indizes, Konturumfluss, Verbinder und DrawingML-Anker bleiben ausgeschlossen. Es gibt keine Datenbankmigration,
+neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+294. [x] Direkte begrenzte Formgroessenaenderung umgesetzt: Eine ausgewaehlte Form zeigt einen sichtbaren, fokussierbaren
+     Groessenregler. Zeiger und Touch zeigen Breite und Hoehe unmittelbar als Vorschau und schreiben beim Loslassen
+     genau einen Rueckgaengig-Schritt. Pfeiltasten aendern um ein Pixel, Umschalt plus Pfeiltaste um zehn Pixel. Die
+     bestehenden Grenzen von 80 bis 1200 Pixel Breite und 40 bis 800 Pixel Hoehe gelten unveraendert.
+
+Native Office bleibt vor CRM. Roadmap 294 / PLANS 155 ist unter ADR-0111 implementiert. 31 Schematests und die
+5-teilige Modell-/Desktop-/Mobile-Formmatrix bestehen; der vollstaendige Qualitaetslauf ist gruen. Normalfluss,
+vor/hinter Text, Undo/Redo, Versionen, Druck und unabhaengige Kopien bewahren die kanonischen Masse. Es gibt keine
+Schemaerweiterung, Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung. Seitenverhaeltnis-
+Sperren, Rotation, Formgruppen, Verbinder, Konturumfluss und DrawingML bleiben getrennte Entscheidungen.
+
+295. [x] Begrenzte Vierteldrehung fuer native Formen umgesetzt: Eine Form speichert optional nur 90, 180 oder 270
+     Grad; 0 Grad bleibt die kanonische Abwesenheit. Dialog und direkter fokussierbarer 90-Grad-Schalter verwenden
+     denselben Vertrag und getrennte Rueckgaengig-Schritte. Seitwaerts gedrehte Formen reservieren im normalen
+     Textfluss responsive vertauschte Aussenmasse; Formtext dreht sich mit.
+
+Native Office bleibt vor CRM. Roadmap 295 / PLANS 156 ist unter ADR-0112 implementiert. 31 Schematests, die 5-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Ebenen, Groessenaenderung,
+Undo/Redo, Versionen, Vergleich, Druck und unabhaengige Kopien bewahren den exakten Winkel. Beliebige Winkel,
+Transformationsmatrizen, getrennte Textdrehung, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+296. [x] Begrenzten Textumfluss um native Formen umgesetzt: Eine Form kann links oder rechts stehen und speichert
+     einen ganzzahligen Textabstand von 0 bis 48 Pixeln. Umfluss und freie Position schliessen sich in Dialog, Browser
+     und Server aus. Umflossene Formen belegen hoechstens 45 Prozent der Textbreite; schmale Ansichten wechseln
+     automatisch in einen sicheren Vollbreitenblock.
+
+Native Office bleibt vor CRM. Roadmap 296 / PLANS 157 ist unter ADR-0113 implementiert. 31 Schematests, die 6-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Rotation, Groessenaenderung,
+Undo/Redo, historische Versionen, Druck und unabhaengige Kopien bewahren Seite und Abstand exakt. Freie CSS-Floats,
+Konturumfluss, gleichzeitige freie Position, Formgruppen, Verbinder und DrawingML bleiben ausgeschlossen. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+297. [x] Begrenzte native Formgruppen umgesetzt: Zwei bis acht vorhandene Formen lassen sich in exakter Reihenfolge
+     neben- oder untereinander mit 0 bis 48 Pixel Abstand gruppieren. Gruppen koennen erweitert, bearbeitet,
+     aufgeloest und als einzelner Rueckgaengig-Schritt behandelt werden; schmale Ansichten wechseln sicher in eine
+     Spalte. Freie Position und Textumfluss sind innerhalb einer Gruppe ausgeschlossen.
+
+Native Office bleibt vor CRM. Roadmap 297 / PLANS 158 ist unter ADR-0114 implementiert. 32 Schematests, die 9-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Vergleich, immutable Versionen,
+historische Wiederverwendung, Druck und unabhaengige Kopien bewahren Gruppen-ID, Reihenfolge, Layout, Abstand und alle
+Formattribute exakt. Verschachtelte oder gemischte Gruppen, beliebige Gruppentransformationen, Verbinder und DrawingML
+bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+298. [x] Begrenzte Verbindungen innerhalb nativer Formgruppen umgesetzt: Eine Gruppe kann ihre aufeinanderfolgenden
+     Mitglieder einheitlich mit Linie, Richtungspfeil oder Doppelpfeil verbinden. Sie speichert nur einen festen
+     Farbtoken und eine ganzzahlige Strichstaerke von 1 bis 8 Pixeln. Reihen werden horizontal, Stapel und kompakte
+     Ansichten vertikal verbunden.
+
+Native Office bleibt vor CRM. Roadmap 298 / PLANS 159 ist unter ADR-0115 implementiert. 32 Schematests, die 10-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo/Redo, Vergleich, immutable
+Versionen, historische Wiederverwendung, Druck und unabhaengige Kopien bewahren Verbindungstyp, Farbe und Staerke
+exakt. Beliebige Endpunkte, Pfade, Kurven, Einzelkantenstile, SVG und DrawingML bleiben ausgeschlossen. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+299. [x] Direkte barrierefreie Reihenfolge fuer Mitglieder nativer Formgruppen umgesetzt: Die ausgewaehlte Form kann
+     jeweils eine Position frueher oder spaeter gesetzt werden. Nicht moegliche Randaktionen sind deaktiviert; jede
+     Verschiebung ist ein eigener Rueckgaengig-Schritt und die Auswahl folgt der verschobenen Form.
+
+Native Office bleibt vor CRM. Roadmap 299 / PLANS 160 ist unter ADR-0116 implementiert. Die 10-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo/Redo, gespeicherte
+Reihenfolge, Gruppenlayout, Verbindungen, immutable Versionen, historische Wiederverwendung, Druck und unabhaengige
+Kopien bleiben exakt erhalten. Die Funktion verwendet die bereits validierte Gruppenreihenfolge und fuegt kein neues
+Schema, keine Drag-only-Bedienung, keine Ueberlappungsebenen und keinen beliebigen z-index hinzu. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+300. [x] Begrenzte native Formtypografie umgesetzt: Formtext kann optional eine ganzzahlige Schriftgroesse von 10 bis
+     72 Pixeln, einen festen Textfarbtoken und fett, kursiv oder fett-kursiv verwenden. Die kanonische Standardgroesse
+     16 Pixel, automatische Kontrastfarbe und normaler Schnitt bleiben ohne Zusatzattribute gespeichert.
+
+Native Office bleibt vor CRM. Roadmap 300 / PLANS 161 ist unter ADR-0117 implementiert. Die fokussierten
+Serverschematests, die 10-teilige Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen.
+Vorschau, Accessibility-Beschreibung, Undo/Redo, Vergleich, immutable Versionen, Formgruppen, Druck und unabhaengige
+Kopien bewahren die Typografie exakt. Beliebige Fonts, CSS, URLs, Markup, freie Stilwerte und transparente Schrift
+bleiben ausgeschlossen. Es gibt keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+301. [x] Direkte native Formduplizierung umgesetzt: Eine ausgewaehlte Form wird mit neuer kryptografischer ID und
+     allen validierten Inhalten und Darstellungswerten kopiert. In Gruppen steht die Kopie direkt hinter der Quelle;
+     frei positionierte Kopien werden innerhalb der vorhandenen Grenzen sichtbar versetzt.
+
+Native Office bleibt vor CRM. Roadmap 301 / PLANS 162 ist unter ADR-0118 implementiert. Die 12-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Globale und gruppenbezogene Grenzen
+werden vor der Mutation geprueft; jede Duplizierung ist ein isolierter Undo/Redo-Schritt. Exakte Speicherung,
+immutable Versionen, Gruppenverbindungen, Druck und unabhaengige Dokumentkopien bleiben erhalten. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+302. [x] Direkte native Formgruppen-Duplizierung umgesetzt: Die komplette validierte Gruppe wird direkt hinter der
+     Quelle eingefuegt. Die Kopie erhaelt eine neue Gruppen-ID und jedes Mitglied eine neue Form-ID; Reihenfolge,
+     Layout, Abstand, Verbindung sowie saemtliche Mitgliedsattribute bleiben exakt erhalten.
+
+Native Office bleibt vor CRM. Roadmap 302 / PLANS 163 ist unter ADR-0119 implementiert. Die 14-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Die Grenzen von 20 Gruppen und 100
+Formen werden vor der Mutation geprueft; die gesamte Kopie ist ein isolierter Undo/Redo-Schritt. Speicherung,
+immutable Versionen, Vergleich und Druck verwenden unabhaengige Identitaeten. Es gibt keine Datenbankmigration, neue
+Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+303. [x] Atomare Entfernung nativer Formgruppen umgesetzt: **Gruppe entfernen** loest die stabile Gruppen-ID im
+     aktuellen Editorzustand erneut auf und entfernt den kompletten Gruppen-Knoten in genau einem Undo-Schritt.
+     Einzelne Mitglieder oder sonstiger Dokumentinhalt bleiben nicht versehentlich als Zwischenzustand zurueck.
+
+Native Office bleibt vor CRM. Roadmap 303 / PLANS 164 ist unter ADR-0120 implementiert. Die 16-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo stellt Identitaet,
+Mitgliedsreihenfolge, Layout, Abstand, Verbindung und alle Mitgliedsattribute exakt wieder her; Redo entfernt die
+Gruppe erneut. Bestaetigtes Speichern, immutable Vorgaengerversionen und Druck bewahren ihre exakten Vertraege. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+304. [x] Direkte Reihenfolge nativer Formgruppen umgesetzt: Die komplette ausgewaehlte Gruppe kann genau eine
+     Dokumentposition frueher oder spaeter verschoben werden. Nicht moegliche Richtungen sind an den Dokumentgrenzen
+     deaktiviert; jede Aktion tauscht die Gruppe atomar mit genau einem benachbarten Top-Level-Knoten.
+
+Native Office bleibt vor CRM. Roadmap 304 / PLANS 165 ist unter ADR-0121 implementiert. Die 18-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Gruppen- und Mitgliedsidentitaeten,
+Mitgliedsreihenfolge, Layout, Abstand, Verbindung und alle Attribute bleiben exakt erhalten. Undo/Redo, bestaetigtes
+Speichern, immutable Vorgaengerversionen und Druck bewahren die jeweilige Dokumentreihenfolge. Es gibt keine
+Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+305. [x] Direkte Reihenfolge einzelner nativer Formen umgesetzt: Eine ausgewaehlte ungruppierte Form kann genau eine
+     Top-Level-Dokumentposition frueher oder spaeter verschoben werden. Nicht moegliche Richtungen sind an den
+     Dokumentgrenzen deaktiviert; Gruppenmitglieder behalten ihre eigenen Reihenfolge-Aktionen.
+
+Native Office bleibt vor CRM. Roadmap 305 / PLANS 166 ist unter ADR-0122 implementiert. Die 20-teilige
+Modell-/Desktop-/Mobile-Formmatrix und der vollstaendige Qualitaetslauf sind gruen. Stabile Form-ID, Typ, Text,
+Geometrie, Farben, Rahmen, Typografie, Drehung, Umfluss und optionale Position bleiben exakt erhalten. Undo/Redo,
+bestaetigtes Speichern, immutable Vorgaengerversionen und Druck bewahren die jeweilige Dokumentreihenfolge. Es gibt
+keine Datenbankmigration, neue Abhaengigkeit, Tenant-Aktivierung oder Engine-Zulassung.
+
+306. [x] Atomare Entfernung nativer Bildgruppen umgesetzt: **Bildgruppe entfernen** loest die stabile Gruppen-ID im
+     aktuellen Editorzustand erneut auf und entfernt den kompletten Gruppen-Knoten in genau einem Undo-Schritt.
+     Quellassets und sonstiger Dokumentinhalt bleiben unveraendert.
+
+Native Office bleibt vor CRM. Roadmap 306 / PLANS 167 ist unter ADR-0123 implementiert. Die 47-teilige native
+Modell-/Desktop-/Mobile-Bildmatrix und der vollstaendige Qualitaetslauf sind gruen. Undo stellt Gruppenidentitaet,
+Mitgliedsreihenfolge, Layout, Abstand und saemtliche Asset-, Zuschnitt-, Transformations-, Alternativtext-,
+Beschriftungs- und Abbildungsattribute exakt wieder her. Bestaetigtes Speichern, immutable Vorgaengerversionen und
+Druck bewahren ihre exakten Vertraege. Es gibt keine Asset-Loeschung, Datenbankmigration, neue Abhaengigkeit,
+Tenant-Aktivierung oder Engine-Zulassung.
+
+307. [x] Unabhaengige Duplizierung nativer Bildgruppen umgesetzt: **Bildgruppe duplizieren** kopiert die komplette
+     Gruppe direkt hinter ihre Quelle. Die Gruppe, jedes Asset, jede Asset-Version und jedes Abbildungsziel erhalten
+     frische Identitaeten; Reihenfolge, Pixel, Layout, Abstand und saemtliche Darstellungsattribute bleiben exakt.
+
+Native Office bleibt vor CRM. Roadmap 307 / PLANS 168 ist unter ADR-0124 implementiert. Der neue tenant- und
+schreibautorisierte Serverpfad prueft alle zwei bis acht Quellen erneut und legt ihre Kopien atomar unter der bestehenden
+200-Asset-Grenze an. Erst eine vollstaendige validierte Antwort aendert den lokalen Entwurf in genau einem Undo-Schritt;
+Fehler, veraltete Gruppen und Grenzverletzungen lassen ihn unveraendert. Die komplette 53-teilige native Bild- und
+Abbildungsmatrix sowie Ruff, Formatierung fuer 786 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Ein frischer
+isolierter Restore prueft 1.525 Dokumente, 3.155 Office-Versionen, 4.088 SourceObjects, 772 Bildassets und vier
+unabhaengig besessene Gruppenduplikate. Es gibt keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
+308. [x] Unabhaengige Duplizierung einzelner nativer Bilder umgesetzt: **Bild duplizieren** erzeugt ein frisches
+     dokumenteigenes Asset samt Version und fuegt die Kopie direkt hinter der Quelle ein. Nummerierte Kopien erhalten
+     ein frisches Abbildungsziel; frei positionierte Kopien werden innerhalb der bestehenden Grenzen sichtbar versetzt.
+
+Native Office bleibt vor CRM. Roadmap 308 / PLANS 169 ist unter ADR-0125 implementiert. Der Server prueft Tenant,
+Schreibrecht, unveraenderliche Quellbytes und die 200-Asset-Grenze erneut. Der Client verlangt frische Identitaeten
+bei gleichem Pixelhash und gleichen Quelldimensionen, loest die Quelle nach dem Request erneut auf und fuegt genau
+einen Undo-Schritt aus. Fehler oder veraltete Selektionen lassen den Entwurf unveraendert. Die komplette 55-teilige
+Bild-/Abbildungsmatrix sowie Ruff, Formatierung fuer 786 Dateien, Mypy ueber 605 Quellen und Pytest sind gruen. Der
+frische isolierte Restore prueft 1.580 Dokumente, 3.285 Office-Versionen, 4.304 SourceObjects, 858 Bildassets, 1.479
+gespeicherte Bildverweise und fuenf unabhaengig besessene Einzelbildduplikate. Es gibt keine Datenbankmigration,
+Tenant-Aktivierung oder Engine-Zulassung.
+
+309. [x] Austausch der Datei eines nativen Bildes umgesetzt: **Neue Bilddatei** erzeugt eine frische dokumenteigene
+     Asset-/Versionsbindung, behaelt Beschreibung, Abbildungsziel und validierte Darstellung bei und ersetzt den
+     ausgewaehlten Bildknoten erst mit **In Entwurf übernehmen** in einem Undo-Schritt.
+
+Native Office bleibt vor CRM. Roadmap 309 / PLANS 170 ist unter ADR-0126 implementiert. Der bestehende sichere
+PNG-/JPEG-Upload und isolierte Decoder bleiben die einzige Aufnahmegrenze. Ein neues Seitenverhaeltnis berechnet bei
+aktiver Sperre die Anzeigehoehe innerhalb der bestehenden Grenzen; ein alter pixelbezogener Zuschnitt wird verworfen.
+Abbrechen, Fehler und veraltete Selektionen lassen den Entwurf unveraendert, waehrend historische Fassungen ihre
+alten Pixel behalten. Die komplette 59-teilige Bild-/Abbildungsmatrix ist auf Desktop und Mobil gruen. Ein frischer
+isolierter Restore prueft 1.642 Dokumente, 3.431 Office-Versionen, 4.561 SourceObjects, 954 Bildassets, 1.637
+gespeicherte Bildverweise und vier Austauschpaare mit frischen Pixelidentitaeten und stabiler Darstellung. Es gibt
+keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
+310. [x] Direkte barrierefreie Reihenfolge fuer Mitglieder nativer Bildgruppen umgesetzt: Das ausgewaehlte Bild kann
+     jeweils genau eine Position frueher oder spaeter gesetzt werden. Randaktionen sind deaktiviert; die Auswahl folgt
+     dem verschobenen Bild und jede Verschiebung ist ein eigener Rueckgaengig-Schritt.
+
+Native Office bleibt vor CRM. Roadmap 310 / PLANS 171 ist unter ADR-0127 implementiert. Separate eindeutig benannte
+Aktionen unterscheiden die Mitgliedsreihenfolge von der Position der kompletten Bildgruppe im Dokument. Gruppen-ID,
+Layout, Abstand sowie alle Asset-, Zuschnitt-, Transformations-, Alternativtext-, Beschriftungs-, Abbildungs- und
+Dimensionswerte bleiben exakt. Die komplette 61-teilige Bild-/Abbildungsmatrix und die finale 8-teilige
+Desktop-/Mobile-Bildgruppenmatrix sind gruen; Speichern, Reload, immutable Vorgaengerversion, Druck und Undo/Redo sind
+abgedeckt. Der abschliessende Qualitaetslauf auf `23db24a1` bestand Ruff, die Formatpruefung fuer 839 Dateien, Mypy
+fuer 605 Quelldateien und die komplette Pytest-Matrix. Die nach expliziter menschlicher Freigabe versioniert erneuerte,
+exakte Cryptography-OpenVEX-Entscheidung bestand ihren Currentness- und Reachability-Guard. Es gibt kein neues
+Datenformat, keine Datenbankmigration, Tenant-Aktivierung oder Engine-Zulassung.
+
+311. [x] Responsive Raster fuer native Bildgruppen umgesetzt: Neben Zeile und Stapel stehen kanonische Raster mit
+     zwei, drei oder vier Spalten bereit. Editor, Vergleich und Druck verwenden dieselbe Spaltenableitung; schmale
+     Ansichten begrenzen drei- und vierspaltige Gruppen auf zwei lesbare Spalten ohne horizontalen Ueberlauf.
+
+312. [x] Unabhaengige Duplizierung eines ausgewaehlten Bildgruppenmitglieds umgesetzt: Jedes Bild besitzt einen
+     fokussierbaren **Bild bearbeiten**-Zugang. **Bild duplizieren** erzeugt ueber den bestehenden autorisierten
+     Kopierpfad ein frisches dokumenteigenes Asset und fuegt es direkt hinter der Quelle in die Gruppe ein.
+
+313. [x] Atomisches Herausloesen eines Bildgruppenmitglieds umgesetzt: **Bild vor Gruppe lösen** und **Bild nach
+     Gruppe lösen** platzieren das vorhandene Bild gezielt neben der Gruppe. Restgruppe, Zwei-Bild-Aufloesung,
+     Reihenfolge und Auswahl werden in genau einem Rueckgaengig-Schritt aktualisiert.
+
+Native Office bleibt vor CRM. Roadmap 311 bis 313 / PLANS 172 bis 174 sind gemeinsam unter ADR-0128 implementiert.
+Layoutwerte und Spaltenzahlen sind zentral begrenzt; Gruppe und Mitglieder behalten beim Layoutwechsel alle Identitaeten
+und Darstellungswerte. Einzelkopien werden erst nach frischen Asset-/Versionsidentitaeten, gleichem Pixelhash und
+gleichen Quelldimensionen eingesetzt. Herausloesen erzeugt oder loescht keine Assets. Die neue kombinierte
+Desktop-/Mobile-Pruefung deckt Rastergeometrie, Fehler ohne Entwurfsaenderung, unabhaengige Kopie, Undo/Redo,
+Herausloesen, bestaetigtes Speichern, immutable Vorgaengerversion, Reload, lesbare Bytes und Druck ab. Die komplette
+Bild-/Abbildungsmatrix bestand 63/64 im ersten Lauf; der einzige bestehende mobile Druck-Timeout bestand isoliert
+1/1. Beide finalen Druckansichten bestanden die visuelle Pruefung. Es gibt keine relationale Datenbankmigration,
+Tenant-Aktivierung oder Engine-Zulassung.
+
+314. [x] Inertes natives Office-Dokumentobjekt umgesetzt: Ein atomarer Top-Level-Block speichert ausschliesslich eine
+     exakte Zielobjekt- und Zielversions-ID sowie den begrenzten Modus Momentaufnahme oder Verknuepfung. Titel,
+     Zielinhalt, URL, HTML und ausfuehrbare Nutzlast werden nicht im Quelldokument gespeichert.
+
+315. [x] Feste und explizit aktualisierbare Dokumentobjekte getrennt: Eine Momentaufnahme bleibt auf ihrer gespeicherten
+     Version. Eine Verknuepfung wechselt nur nach der sichtbaren Aktion **Auf aktuelle Version aktualisieren** auf eine
+     neue gespeicherte Zielfassung; gespeicherte Quelldokumente aktualisieren sich niemals still.
+
+316. [x] Vollstaendigen barrierefreien Dokumentobjekt-Lebenszyklus geschlossen: Einfuegen, Bearbeiten, exaktes Ziel
+     oeffnen, eine Position frueher oder spaeter verschieben, duplizieren und entfernen sind fokussierbar. Undo/Redo,
+     bestaetigtes Speichern, Reload, Vergleich, Druck, Rueckverweise und frische Ziel-ACL-Pruefung bleiben exakt.
+
+Native Office bleibt vor CRM. Roadmap 314 bis 316 / PLANS 175 bis 177 sind gemeinsam unter ADR-0129 implementiert.
+Dokumentobjekte teilen sich mit Inline-Dokumentreferenzen die bestehende Grenze von 100 Vorkommen und den autoritativen
+Referenz-/Rueckverweis-Pfad. Entzogener oder fehlender Zugriff zeigt keinen gespeicherten Titel und keine Zielinhalte.
+Der finale kombinierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4; die breitere Referenz-, Rueckverweis-, Vergleichs-
+und Druckmatrix bestand nach Start ihres isolierten Blocked-API-Hilfsdienstes vollstaendig. Beide finalen Druckansichten
+bestanden die visuelle Pruefung. Es gibt keine relationale Migration, keinen aktiven Objektpfad und keine Tenant-,
+Pilot-, Indexierungs-, Cloud-AI-, DOCX- oder Engine-Zulassung.
+
+317. [x] Inerte native Office-Diagramme umgesetzt: Ein atomarer Top-Level-Block speichert ausschliesslich einen
+     begrenzten Typ, Titel, Alternativtext, Legendenstatus, eindeutige Kategorien und kleine ganzzahlige Datenreihen.
+     Formeln, URLs, externe Datenquellen, beliebiges SVG/HTML/CSS und ausfuehrbare Nutzlast sind ausgeschlossen.
+
+318. [x] Saeulen-, Linien- und Kreisdiagramme aus einem kanonischen Modell umgesetzt: Feste Farben und Wertebereiche,
+     maximal zwoelf Kategorien, vier Reihen und zwanzig Diagramme je Dokument werden in Browser und Server identisch
+     validiert. Eine zugreifbare Datentabelle enthaelt jeden gespeicherten Wert.
+
+319. [x] Vollstaendigen fokussierbaren Diagramm-Entwurfsablauf geschlossen: Tabulator-getrennte Dateneingabe mit
+     Vorschau, Einfuegen, Bearbeiten, Duplizieren mit frischer ID, eine Position frueher oder spaeter verschieben und
+     Entfernen erzeugen jeweils genau einen isolierten Rueckgaengig-Schritt.
+
+320. [x] Diagramm-Lebenszyklus ueber bestaetigtes Speichern, immutable Vorgaengerversion, Reload, Vergleich, Druck und
+     responsive Desktop-/Mobile-Darstellung geschlossen. Editor und Druck erzeugen Darstellung ausschliesslich aus
+     dem gespeicherten validierten Modell und fuehren keinen Netzwerk- oder Berechnungspfad aus.
+
+Native Office bleibt vor CRM. Roadmap 317 bis 320 / PLANS 178 bis 181 sind gemeinsam unter ADR-0130 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4. Die kombinierte Diagramm-, Vergleichs- und Druckmatrix
+bestand 28 Faelle; ihre zwei zunaechst fehlenden isolierten Blocked-API-Faelle bestanden nach kontrolliertem Aufbau
+in der vollstaendigen Druckwiederholung 6/6. Beide finalen Druckansichten bestanden die visuelle Pruefung. Diagramme
+leben im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, Datenquelle, Formelengine,
+Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
+321. [x] Begrenzte verbundene Tabellenzellen umgesetzt: Native Kopf- und Datenzellen speichern kanonische Spalten-
+     und Zeilenspannen. Browser und Server pruefen unabhaengig ein rechteckiges logisches Raster ohne Luecken,
+     Ueberlappungen, abgeschnittene Spannen oder mehr als zwanzig Spalten und zweihundert Zeilen.
+
+322. [x] Fokussierbares Verbinden und Teilen geschlossen: **Zellen verbinden** arbeitet nur auf einer gueltigen
+     Auswahl, **Zelle teilen** nur auf einer verbundenen Zelle. Jede erfolgreiche Aenderung ist genau ein isolierter
+     Rueckgaengig-Schritt; abgelehnte Aenderungen lassen den Entwurf unveraendert.
+
+323. [x] Semantische Kopfspalten neben Kopfzeilen umgesetzt: Der getrennte **Kopfspalte**-Schalter folgt dem logischen
+     Raster auch bei verbundenen Zellen. Der Druck gibt echte `colspan`-/`rowspan`-Attribute sowie `scope="col"` und
+     `scope="row"` aus.
+
+324. [x] Vollstaendigen Tabellen-Spannen-Lebenszyklus ueber bestaetigtes Speichern, immutable Vorgaengerversion,
+     Undo/Redo, Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 321 bis 324 / PLANS 182 bis 185 sind gemeinsam unter ADR-0131 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4; die angrenzende Tabellen-, Beschriftungs- und
+Vergleichsmatrix bestand 22/22. Beide finalen Druckansichten bestanden die visuelle Pruefung ohne horizontalen
+Ueberlauf. Die Struktur lebt im bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration,
+Tabellenkalkulation, Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
+325. [x] Sicheren nativen SVG-Import mit Alpha umgesetzt: Der bestehende autorisierte Bildupload rendert begrenzte
+     inerte SVG-Dateien im netzlosen Decoder zu einem dokumenteigenen kanonischen RGBA-PNG. Teiltransparenz,
+     Seitenverhaeltnis und physische Einheiten bleiben erhalten; das Original wird nicht gespeichert.
+
+326. [x] Begrenzten EPS-Import mit transparentem Hintergrund umgesetzt: Nur EPSF mit numerischer BoundingBox wird
+     unter Ghostscript `SAFER` als erste Seite gerendert. Nicht bemalte Flaechen bleiben transparent; allgemeines
+     PostScript und ungebundene Dokumente werden abgelehnt.
+
+327. [x] Aktive und externe Vektorinhalte geschlossen: SVG-Skripte, Ereignisattribute, eingebettete aktive Elemente,
+     DTD/Entitaeten, XML-Stylesheets, CSS-Imports und externe Referenzen scheitern vor dem Renderer. Frische
+     Unterprozesse, Netzwerkfreiheit, fehlende Credentials sowie CPU-, Speicher-, Zeit- und Ausgabegrenzen bleiben
+     verpflichtend.
+
+328. [x] Vektorbild-Lebenszyklus im bestehenden Bilddialog geschlossen: Dateiauswahl, Vorschau, Einfuegen,
+     Ersetzen, bestaetigtes Speichern, Reload und responsive Desktop-/Mobile-Darstellung arbeiten auf derselben
+     kanonischen Bildstruktur wie PNG/JPEG.
+
+Native Office bleibt vor CRM. Roadmap 325 bis 328 / PLANS 186 bis 189 sind gemeinsam unter ADR-0132 implementiert.
+Der fokussierte Desktop-/Mobile-Ablauf und die vollstaendige Bilddatei bestanden 2/2 beziehungsweise 20/20. Der
+Nachweis prueft SVG-Teilalpha, transparenten EPS-Aussenbereich, deckende EPS-Farbe, kanonisches PNG, Dialog,
+Speichern und Reload. Die komplette bestehende Bilddatei deckt zusaetzlich PNG/JPEG, Rechte, Kopie, Positionierung,
+Ersetzen, Undo/Redo und PDF ab. Es gibt keine Migration, Vektorbytes im Versionsmodell, externe Ressource,
+Tenant-Aktivierung oder DOCX-/Office-Engine-Zulassung.
+
+329. [x] Begrenzte native Zellfuellungen umgesetzt: Daten- und Kopfzellen speichern optional genau eine feste graue,
+     blaue, gruene, gelbe oder rote Fuellung. Browser und Server lehnen freie Farben, CSS, URLs und unbekannte
+     Attribute unabhaengig ab; ohne Attribut bleibt die bisherige Darstellung kanonisch.
+
+330. [x] Vertikale Zellausrichtung umgesetzt: Oben bleibt die kanonische Abwesenheit, mittig und unten sind die
+     einzigen gespeicherten Werte. Editor und Druck leiten ihre Darstellung aus denselben inerten Datenattributen
+     und der festen drucksicheren Palette ab.
+
+331. [x] Zugreifbare Mehrfachauswahl geschlossen: **Zellen formatieren …** arbeitet auf Zelle, Zeile, Spalte oder
+     rechteckiger Auswahl, erhaelt gemischte Werte bis zur expliziten Aenderung und schreibt alle Zielzellen in genau
+     einem validierten Rueckgaengig-Schritt. Verbinden, Teilen und Kopfzellen behalten das exakte Format.
+
+332. [x] Vollstaendigen Zellformat-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen. Tabellenaktionen starten im
+     statischen Shell-Zustand gesperrt und bleiben in Leser- und historischen Ansichten gesperrt.
+
+Native Office bleibt vor CRM. Roadmap 329 bis 332 / PLANS 190 bis 193 sind gemeinsam unter ADR-0133 implementiert.
+Der fokussierte Modell-/Desktop-/Mobile-Ablauf bestand 4/4. Die angrenzende Tabellen-, Beschriftungs- und
+Vergleichsmatrix bestand 35/36; der einzige fehlende Fall benoetigte zunaechst den isolierten Blocked-API-Dienst und
+bestand nach dessen kontrolliertem Start und der Fail-closed-Shell-Korrektur 1/1. Beide finalen Druckansichten
+bestanden die visuelle Pruefung. Die optionalen Werte leben im bestehenden immutable Office-Versions-JSON; es gibt
+keine relationale Migration, freie Format-Engine, Tabellenkalkulation, Tenant-Aktivierung oder DOCX-Zulassung.
+
+333. [x] Feste native Tabellenstile umgesetzt: Raster bleibt kanonischer Standard; Minimal, Zeilenband und Akzent
+     sind die einzigen gespeicherten Alternativen. Freies CSS, Klassen, URLs und beliebige Farbangaben werden in
+     Browser und Server abgelehnt.
+
+334. [x] Begrenzte Tabellenbreiten und Ausrichtung umgesetzt: Volle Breite und links bleiben kanonische Abwesenheit;
+     breit oder kompakt sowie mittig oder rechts sind feste responsive Tokens ohne Pixel- oder Seitenanker.
+
+335. [x] Zugreifbare Spaltenverteilung umgesetzt: Gleichmaessig bleibt Standard; erste Spalte breit oder schmal sind
+     die einzigen Alternativen. Die Darstellung funktioniert mit semantischen Kopfzellen und verbundenen Zellen ohne
+     ein freies Spaltenraster zu speichern.
+
+336. [x] Beschriftungsposition geschlossen: Tabellenbeschriftungen koennen unten oder oben stehen. Hinzufuegen,
+     Bearbeiten und Entfernen der Beschriftung bewahrt das Layout; Layoutaenderungen bewahren stabile Tabellen-ID und
+     Beschriftung.
+
+337. [x] Gemeinsamen fokussierbaren Layoutdialog und Standard-Reset umgesetzt: Alle fuenf Dimensionen werden in
+     genau einem validierten Rueckgaengig-Schritt angewendet oder gemeinsam auf kanonische Defaults zurueckgesetzt.
+
+338. [x] Vollstaendigen Tabellenlayout-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable
+     Vorgaengerversion, Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen. Auf schmalen
+     Ansichten bleibt der Dokumentbereich erreichbar und begrenzte Tabellen nutzen automatisch die verfuegbare Breite.
+
+Native Office bleibt vor CRM. Roadmap 333 bis 338 / PLANS 194 bis 199 sind gemeinsam unter ADR-0134 implementiert.
+Der fokussierte Layout-, Zellformat- und Spannenablauf bestand 9/9. Die vollstaendige angrenzende Tabellen-,
+Beschriftungs- und Vergleichsmatrix bestand 38/39; der zusaetzliche Layoutknopf deckte dabei einen knappen mobilen
+Dokumentbereich auf. Nach der gezielten Verdichtung bestand der vollstaendige betroffene Mobilfall 1/1. Beide
+finalen Druckansichten bestanden die visuelle Pruefung. Die optionalen Werte leben im bestehenden immutable
+Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder Tabellenkalkulations-Engine,
+Tenant-Aktivierung oder DOCX-Zulassung.
+
+339. [x] Begrenzte horizontale Zellenausrichtung umgesetzt: Links bleibt kanonischer Standard; mittig und rechts
+     sind die einzigen gespeicherten Alternativen. Explizite Absatzausrichtung bleibt davon unabhängig.
+
+340. [x] Begrenzte Zelleninnenabstaende umgesetzt: Normal bleibt kanonischer Standard; kompakt und grosszuegig sind
+     feste drucksichere Mappings ohne gespeicherte Pixel-, Prozent- oder CSS-Ausdruecke.
+
+341. [x] Begrenzte Zellenrahmen umgesetzt: Der Tabellenstil bleibt kanonischer Standard; ohne Rahmen und ein fester
+     starker Rahmen sind die einzigen Alternativen. Beliebige Farben, URLs und Kantenmodelle werden abgelehnt.
+
+342. [x] Den bestehenden fokussierbaren Mehrzellen-Dialog erweitert und einen vollstaendigen Standard-Reset
+     hinzugefuegt. Gemischte Werte bleiben unangetastet; Anwenden und Reset sind jeweils genau ein Undo-Schritt.
+
+343. [x] Horizontale Ausrichtung, Innenabstand und Rahmen durch Verbinden, Teilen und Kopfzellen-Konvertierung
+     erhalten. Editor, Vergleich und Druck verwenden dieselben validierten Attribute und festen Darstellungen.
+
+344. [x] Vollstaendigen erweiterten Zellformat-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable
+     Vorgaengerversion, Reload, Vergleich, Druck, Desktop/Mobil und gesperrte Leser-/Historienansichten geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 339 bis 344 / PLANS 200 bis 205 sind gemeinsam unter ADR-0135 implementiert.
+Die fokussierten Python-, Modell-, Desktop- und Mobile-Ablaufe bestanden 34/34 und 7/7. Die vollstaendige angrenzende
+Tabellen-, Beschriftungs- und Vergleichsmatrix bestand 38/39; ihr einziger Infrastrukturfall deckte auf, dass der
+gesperrte Hilfsdienst unnoetig einen KB-Schreibruntime aktivierte. Nach der fail-closed Korrektur bestand der genaue
+Leser-/Historienfall 1/1. Beide finalen Druckansichten bestanden die visuelle Pruefung. Die optionalen Werte leben im
+bestehenden immutable Office-Versions-JSON; es gibt keine relationale Migration, freie Style- oder
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
+345. [x] Stabile native Textsortierung fuer einfache rechteckige Tabellen umgesetzt. Unicode-NFKC und eine
+     deterministische kleingeschriebene Codepoint-Reihenfolge vermeiden browser- oder locale-abhaengige Ergebnisse.
+
+346. [x] Strikte Zahlensortierung umgesetzt. Ganze Zahlen und Dezimalwerte mit Punkt oder Komma werden ohne
+     Tausendertrennzeichen akzeptiert; ungueltige oder ausserhalb der Grenze liegende Werte lassen den Entwurf unveraendert.
+
+347. [x] Strikte ISO-Datumssortierung fuer reale Kalenderdaten im Format `JJJJ-MM-TT` umgesetzt. Leere Zellen stehen
+     bei auf- und absteigender Sortierung am Ende; gleiche Werte behalten stabil ihre bisherige Reihenfolge.
+
+348. [x] Kopfzeile, komplette Zeilenobjekte und saemtliche Zellendarstellungen beim Sortieren erhalten. Verbundene oder
+     nicht rechteckige Tabellen werden fail-closed abgelehnt.
+
+349. [x] Einen barrierearmen kompakten Sortierdialog fuer Spalte, Datentyp und Richtung umgesetzt. Eine erfolgreiche
+     Sortierung ist genau ein Undo-Schritt; Fehler, Abbruch und veraltete Auswahl sind No-ops mit sichtbarem Status.
+
+350. [x] Vollstaendigen Sortierlebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck, Desktop/Mobil sowie gesperrte Leser- und Historienansichten geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 345 bis 350 / PLANS 206 bis 211 sind gemeinsam unter ADR-0136 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 7/7; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat- und Vergleichsmatrix bestand 44/44. Der Sortierdialog und das gespeicherte Ergebnis bestanden die
+visuelle Desktop-Pruefung. Sortieren veraendert ausschliesslich die Reihenfolge bestehender Tabellenzeilen im immutable
+Office-Versions-JSON; es gibt keine relationale Migration, automatische Typinferenz, Formel- oder
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
+351. [x] Direktes Verschieben einer zusammenhaengenden Zeilenauswahl um genau eine Position nach oben oder unten
+     umgesetzt. Randaktionen sind deaktiviert und abgelehnte Befehle lassen den Entwurf unveraendert.
+
+352. [x] Direktes Verschieben einer zusammenhaengenden Spaltenauswahl um genau eine Position nach links oder rechts
+     umgesetzt. Jede vollstaendige Zelle bleibt mit ihrem Inhalt und ihrer Darstellung erhalten.
+
+353. [x] Semantische Kopfzeile und Kopfspalte als feste Bereiche geschuetzt. Auswahlen, die einen geschuetzten Bereich
+     beruehren, sowie verbundene oder nicht rechteckige Tabellen werden fail-closed abgelehnt.
+
+354. [x] Komplette Zeilen-, Zell-, Markierungs- und Praesentationsdaten sowie die rechteckige Auswahl beim Umordnen
+     erhalten. Jede erfolgreiche Bewegung ist genau ein validierter Undo-Schritt.
+
+355. [x] Barrierearme Umordnungsaktionen in die bestehenden Zeilen- und Spaltenmenues integriert. Nicht verfuegbare
+     Richtungen sind sichtbar deaktiviert; veraltete Auswahlen, Leser und Historienansichten bleiben No-ops.
+
+356. [x] Vollstaendigen Umordnungslebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 351 bis 356 / PLANS 212 bis 217 sind gemeinsam unter ADR-0137 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 5/5; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat-, Sortier- und Vergleichsmatrix bestand 49/49. Die kompakte Live-Ansicht mit direkten Zeilen- und
+Spaltenaktionen bestand die visuelle Pruefung. Umordnen veraendert ausschliesslich die Reihenfolge bestehender kompletter
+Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration, Drag-and-drop-Schicht,
+Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
+357. [x] Direkte Duplizierung einer zusammenhaengenden Datenzeilenauswahl unter ADR-0138 umgesetzt. Der vollstaendige
+     Block wird unmittelbar unter seinem Original eingefuegt.
+
+358. [x] Direkte Duplizierung einer zusammenhaengenden Datenspaltenauswahl unter ADR-0138 umgesetzt. Alle zugehoerigen
+     Zellen werden unmittelbar rechts neben ihrem Original eingefuegt.
+
+359. [x] Semantische Kopfzeile und Kopfspalte beim Duplizieren geschuetzt sowie verbundene oder nicht rechteckige
+     Tabellen fail-closed abgelehnt. Die bestehenden Grenzen von 200 Zeilen und 20 Spalten gelten vor jeder Mutation.
+
+360. [x] Vollstaendige Inhalte, Marks, Zelltypen und begrenzte Praesentationsattribute in die Kopie uebernommen, den
+     neuen Block ausgewaehlt und jede erfolgreiche Duplizierung als genau einen validierten Undo-Schritt umgesetzt.
+
+361. [x] Barrierearme Duplizierungsaktionen in die bestehenden Zeilen- und Spaltenmenues integriert. Geschuetzte
+     Bereiche, Groessenlimits, veraltete Auswahlen, Leser und Historienansichten bleiben sichtbar deaktiviert oder No-ops.
+
+362. [x] Vollstaendigen Duplizierungslebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 357 bis 362 / PLANS 218 bis 223 sind gemeinsam unter ADR-0138 implementiert.
+Der fokussierte Modell-, Desktop- und Mobile-Ablauf bestand 7/7; die breite Tabellen-, Beschriftungs-, Spannen-,
+Layout-, Zellformat-, Sortier-, Umordnungs- und Vergleichsmatrix bestand 54/54. Die gespeicherte Live-Ansicht mit
+5 x 5 Zellen und direkt sichtbaren Zeilen-/Spaltenaktionen bestand die visuelle Pruefung. Duplizieren erzeugt nur
+kanonische vollstaendige Zeilen oder Zellen im immutable Office-Versions-JSON; es gibt keine relationale Migration,
+Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zulassung.
+
+363. [x] Sicheren strukturierten HTML-Tabellenimport aus Word-/Excel-Zwischenablagen unter ADR-0139 umgesetzt. Aktive,
+     eingebettete und externe Inhalte werden entfernt; genau eine Tabelle wird in kanonische native Zellen uebersetzt.
+
+364. [x] Begrenzten quoted-TSV-Fallback mit 200 Zeilen, 20 Spalten und bestehenden Dokumentlimits umgesetzt. Unregelmaessige,
+     uebergrosse oder nicht unterstuetzte Eingaben lassen den Entwurf unveraendert.
+
+365. [x] Semantische Kopfzellen, begrenzte Spannen und feste Zellpraesentation aus der Zwischenablage erhalten. Fremde
+     Excel-Formeldialekte werden nicht ausgefuehrt; ihr angezeigter Wert bleibt als inert uebernommener Zellinhalt erhalten.
+
+366. [x] Begrenzte lokale Tabellenformeln mit A1- bis T200-Bezuegen, Arithmetik, Bereichen sowie SUM, AVERAGE, MIN, MAX
+     und COUNT umgesetzt. Deutsche Funktionsnamen und Semikolon werden kanonisch normalisiert.
+
+367. [x] Deterministische Ergebnisse, feste Fehlerwerte, Zykluserkennung und Live-Neuberechnung umgesetzt. Der Server
+     parst und berechnet jede gespeicherte Formel unabhaengig und lehnt veraltete oder gefaelschte Ergebnisse ab.
+
+368. [x] Barrierearmen Formel-Dialog mit Setzen und Entfernen sowie sichtbare Formelzellmarkierung integriert. Externe
+     Arbeitsmappen, Makros, Netzwerke, beliebige Bezeichner und mehr als 1.000 Formelzellen bleiben ausgeschlossen.
+
+369. [x] Formel-Neuberechnung auf minimale Zellaktualisierungen begrenzt, damit Quellbearbeitung und Ergebnis gemeinsam
+     sauber rueckgaengig und wiederholbar bleiben. Vergleich und Druck zeigen Quelle und kanonisches Ergebnis inert an.
+
+370. [x] Vollstaendigen Clipboard-/Formellebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload, Vergleich, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+371. [x] Sicheres Einfuegen rechteckiger Word-/Excel-Zellbereiche in bestehende einfache Tabellen unter ADR-0140
+     umgesetzt. Eine einzelne Zielzelle dient als Ursprung; rechteckige Auswahlen verlangen passende Dimensionen.
+
+372. [x] Begrenzte Tabellenerweiterung vom Einfuegeursprung bis maximal 200 Zeilen und 20 Spalten umgesetzt. Vollstaendige
+     Kopfzeilen und Kopfspalten bleiben semantisch erhalten; verbundene oder unregelmaessige Raster bleiben unveraendert.
+
+373. [x] Lokale Formeln beim Einfuegen relativ auf die Zielkoordinaten verschoben und danach gemeinsam neu berechnet.
+     Bezuege ausserhalb A1:T200, externe Dialekte und nicht unterstuetzte Ausdruecke lassen die Aktion atomar scheitern.
+
+374. [x] Sichere Inline-Formatuebernahme fuer Fett, Kursiv, Unterstrichen, Durchgestrichen und Code umgesetzt. Links
+     werden zu Text; Skripte, Stylesheets, Medien, Frames, Formulare, Objekte und verschachtelte Tabellen bleiben entfernt.
+
+375. [x] Bereichseinfuegen als genau eine validierte Undo-Transaktion mit anschliessender Zielauswahl integriert. Leser,
+     historische Fassungen, veraltete Sitzungen, Dimensionsfehler und Grenzwertverletzungen bleiben fail closed.
+
+376. [x] Vollstaendigen Zellbereichs-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, immutable Vorgaengerversion,
+     Reload sowie responsive Desktop-/Mobile-Darstellung geschlossen.
+
+377. [x] Referenzsichere Strukturabbildung fuer lokale Tabellenformeln unter ADR-0141 umgesetzt. Einfuegen und Loeschen
+     von Zeilen oder Spalten fuehrt jeden ueberlebenden A1-Bezug zur logischen Quellzelle statt zur alten Koordinate.
+
+378. [x] Geloeschte direkte und Bereichsbezuege kanonisch als `#BEZUG!` erhalten. Browser und Server akzeptieren nur
+     dieses exakte Fehlertoken, berechnen das Ergebnis unabhaengig neu und lehnen andere `#`-/`!`-Formen ab.
+
+379. [x] Direkte Zeilen-/Spaltenbewegung und stabiles Sortieren formelbewusst gemacht. Vollstaendige Zellidentitaeten
+     folgen der Strukturbewegung; die bestehenden geschuetzten Kopf- und Einfachrastergrenzen bleiben unveraendert.
+
+380. [x] Zeilen- und Spaltenduplikate tief getrennt und mit relativer Kopiersemantik versehen. Die Kopie verschiebt ihre
+     relativen Bezuege, waehrend Original und nachfolgende Zellen unabhaengige Inhalte und logische Ziele behalten.
+
+381. [x] Jede Strukturmutation als genau eine validierte Tabellenersetzung mit sauberer Auswahl und Undo/Redo integriert.
+     Leser, historische Fassungen, veraltete Sitzungen, verbundene Formelraster und Grenzwertverletzungen bleiben fail closed.
+
+382. [x] Vollstaendigen Strukturformel-Lebenszyklus ueber Undo/Redo, bestaetigtes Speichern, Reload, Vergleich, Druck und
+     responsive Desktop-/Mobile-Darstellung geschlossen.
+
+383. [x] Absolute und gemischte lokale Tabellenbezuege unter ADR-0142 umgesetzt. `A1`, `$A1`, `A$1` und `$A$1`
+     bleiben innerhalb A1:T200 kanonisch erhalten; wiederholte oder frei stehende `$`-Anker werden abgelehnt.
+
+384. [x] Browser- und Servergrammatik fuer feste Zeilen- und Spaltenanker unabhaengig erweitert. Beide Seiten parsen,
+     berechnen und validieren dieselbe Quelle und denselben deterministischen Ergebniswert.
+
+385. [x] Word-/Excel-Bereichseinfuegen formelankerbewusst gemacht. Beim Kopieren verschieben sich nur relative Achsen;
+     jeder Bereichsendpunkt wird einzeln behandelt und globale Grenzverletzungen scheitern atomar.
+
+386. [x] Strukturabbildung fuer feste und gemischte Bezuege geschlossen. Einfuegen, Loeschen, Verschieben und Sortieren
+     folgen weiter der logischen Quellzelle, erhalten die `$`-Marker und verwenden bei Loeschung `#BEZUG!`.
+
+387. [x] Zeilen- und Spaltenduplikate mit achsenweiser Kopiersemantik integriert. Vollstaendig feste Bezuege bleiben
+     unveraendert, gemischte Bezuege verschieben nur ihre relative Achse und Originale bleiben unabhaengig.
+
+388. [x] Vollstaendigen Formelanker-Lebenszyklus ueber Dialog, Undo/Redo, bestaetigtes Speichern, Reload, Vergleich,
+     Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+389. [x] Begrenztes Ausfuellen lokaler Tabellenformeln ueber eine rechteckige Datenzellauswahl unter ADR-0143
+     umgesetzt. Die Eingabe gilt als Vorlage fuer die linke obere Zelle und wird auf jede Zielzelle uebertragen.
+
+390. [x] Relative, absolute und gemischte Bezuge beim Ausfuellen achsenweise verschoben. Jeder Zieloffset wird aus der
+     unveraenderten Vorlage berechnet; ein Bezug ausserhalb A1:T200 verwirft die gesamte Aktion.
+
+391. [x] Gemeinsames Entfernen von Formeln fuer die aktuelle Auswahl integriert. Letzte sichtbare Ergebnisse bleiben
+     als normale Zellinhalte erhalten und verbleibende Formeln werden gegen das vollstaendige Ergebnis neu berechnet.
+
+392. [x] Bereichsdialog, Auswahlzusammenfassung und wiederhergestellte Rechteckauswahl als eine atomare Undo-Aktion
+     geschlossen. Einzelzellen behalten den bisherigen Ablauf; Zeilen, Spalten und Rechtecke verwenden denselben Dialog.
+
+393. [x] Kopfzellen, verbundene Raster, ungueltige Grenzen und Formelueberlauf fail closed gehalten. Formelanzahl,
+     Dokumentgroesse, Autorisierung, veraltete Sitzungen, Leser und historische Fassungen bleiben unveraendert begrenzt.
+
+394. [x] Vollstaendigen Bereichsformel-Lebenszyklus ueber Undo/Redo, gemeinsames Entfernen, bestaetigtes Speichern,
+     Reload, Druck und responsive Desktop-/Mobile-Darstellung geschlossen.
+
+395. [x] Vierstufige native Dokumentklassifizierung unter ADR-0144 eingefuehrt: Oeffentlich, Intern, Vertraulich und
+     Streng vertraulich als eigener Office-Vertrag getrennt von regulatorischen Runtime-Datenklassen.
+
+396. [x] Schutzstufe auf Dokumentkopf und jeder unveraenderlichen Version mit Migration 0086 gespeichert. Datenbank-
+     Trigger bindet den Kopf an die aktuelle Version; Restore-Kontrollen pruefen Spalte, Grant und ersetzte Funktion.
+
+397. [x] Klassifizierung in Create/Save-Kommandos, actor-bound Idempotenzhash, Listen-, Content- und History-Views sowie
+     inhaltsfreies Audit-Metadatum aufgenommen. SourceObject-Klasse, Retention, Legal Hold und KMS bleiben getrennt.
+
+398. [x] Rollenregeln geschlossen: autorisierte Schreiber duerfen Schutz beibehalten oder erhoehen; Oeffentlich und jede
+     Herabstufung verlangen Tenant-Administration. Keine Schutzstufe gewaehrt selbst ACL-Rechte.
+
+399. [x] Responsive Auswahl beim Anlegen und Bearbeiten integriert. Historische Fassungen, Wiederverwendung und
+     Wiederherstellung behalten die jeweilige versionierte Schutzstufe; Speichern bleibt explizit bestaetigt und CAS-gebunden.
+
+400. [x] Schutzstufenwechsel im Versionsvergleich sichtbar gemacht und die gespeicherte Stufe in Druck- und PDF-
+     Oberflaechen gekennzeichnet. Unbekannte Serverwerte scheitern im Browser fail closed.
+
+401. [x] Vollstaendigen Klassifizierungslebenszyklus ueber Rechte, Migration, Audit, History, Vergleich, Druck,
+     PostgreSQL-Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+402. [x] Native direkte Dokumentfreigabe unter ADR-0145 eingefuehrt: aktuelle Benutzerfreigaben lesen, `read` oder
+     `write` vergeben und direkte Benutzerfreigaben widerrufen.
+
+403. [x] Freigabeverzeichnis auf aktive Principals mit aktiver Mitgliedschaft desselben Tenants begrenzt. Unbekannte,
+     deaktivierte und tenant-fremde Ziele scheitern geschlossen.
+
+404. [x] Freigabeverwaltung auf aktuelle direkte `admin`-Benutzerrechte begrenzt und den unveraenderlichen Owner-
+     Grant geschuetzt. Rollen und Gruppen vermitteln weiterhin Zugriff, aber keine direkten Freigabemutationen.
+
+405. [x] Jede Aenderung als vollstaendigen monoton versionierten ACL-Snapshot mit optimistischer
+     `expected_acl_version`-Pruefung gespeichert; veraltete Dialoge koennen keine neuere Freigabe ueberschreiben.
+
+406. [x] Explizite menschliche Bestaetigung, eindeutige Mutationsreferenz, inhaltsfreies Audit und append-only
+     Entscheidungsbelege fuer Vergabe, Aenderung und Widerruf geschlossen.
+
+407. [x] Responsive Freigabeoberflaeche mit aktueller Tenant-Benutzerauswahl, Rechtewahl, Owner-Schutz,
+     Widerrufsbestaetigung und fail-closed Antwortvalidierung in den Office-Editor integriert.
+
+408. [x] Aktuelle ACLs fuer aktuelle und historische Inhalte autoritativ gehalten und den beim Speichern aktuellen
+     ACL-Snapshot zur unveraenderlichen Versions-, Restore- und Audit-Nachverfolgung gebunden.
+
+409. [x] Vollstaendigen Freigabelebenszyklus ueber Service, API, PostgreSQL-Funktionen, Migration, Restore sowie
+     responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+410. [x] Befristete direkte Dokumentfreigaben unter ADR-0146 eingefuehrt. `read` und `write` koennen dauerhaft oder
+     mit einem exakten UTC-Ablauf erteilt werden; Owner- und Verwaltungsrechte bleiben unbefristet.
+
+411. [x] Ablaufwerte serverseitig auf zeitzonenbehaftete Zukunftswerte bis maximal 366 Tage begrenzt. Die Oberflaeche
+     bietet bewusst nur dauerhaft, einen, sieben oder 30 Tage an.
+
+412. [x] Ablaufzeit mit Migration 0088 in autoritativen ACL-Zeilen und append-only Freigabeentscheidungen gespeichert
+     und bei jeder Aenderung im vollstaendigen naechsten ACL-Snapshot fuer alle unveraenderten Grants erhalten.
+
+413. [x] Abgelaufene Grants sowohl im zentralen PostgreSQL-Principal-Verzeichnis als auch im Office-Repository bei
+     jeder Listen-, Lese-, Schreib-, History- und Freigabeautorisierung fail closed ausgeschlossen.
+
+414. [x] Responsive Gültigkeitsauswahl und sichtbare Ablaufanzeige in den Freigabedialog integriert. Permanente und
+     befristete Rechte koennen durch dieselbe bestaetigte, konfliktgeschuetzte Mutation gewechselt werden.
+
+415. [x] Exaktes Ablaufdatum in inhaltsfreies Audit, ACL-Snapshot, Entscheidungsbeleg, Migrationskatalog und
+     PostgreSQL-Restore-Vertrag aufgenommen; ein Scheduler ist fuer die Zugriffssperre nicht erforderlich.
+
+416. [x] Vollstaendigen Ablauflebenszyklus ueber Modell, API, zentrale Principal-Aufloesung, PostgreSQL, Migration,
+     Restore und responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+417. [x] Typisierte Office-Freigabeziele unter ADR-0147 auf aktive Tenant-Benutzer, Rollen und Gruppen erweitert.
+
+418. [x] Zieltyp in API-Vertrag, Freigabezustand und append-only Entscheidungsbeleg aufgenommen, sodass gleiche IDs
+     verschiedener Subjektnamensraeume nicht kollidieren.
+
+419. [x] Migration 0089 mit subject-aware Security-Definer-Funktionen eingefuehrt. PostgreSQL validiert Tenant,
+     direkten Admin-Akteur, aktives Ziel, Owner-Grenze, ACL-Version, Mutation und optionalen Ablauf erneut.
+
+420. [x] Vollstaendige monotone ACL-Snapshots fuer Benutzer-, Rollen- und Gruppengrants samt unveraenderten
+     Ablaufzeiten erhalten; die Anwendung besitzt weiterhin kein direktes ACL-Schreibrecht.
+
+421. [x] Rollen- und Gruppenrechte an die vorhandene autoritative Request-Time-Aufloesung gebunden. Aktive
+     Mitgliedschaften koennen lesen oder schreiben, aber keine Dokumentfreigaben verwalten.
+
+422. [x] Responsive Zielauswahl und Freigabeliste mit eindeutigen Kennzeichnungen fuer Person, Rolle und Gruppe,
+     Bestaetigung, Ablaufwahl, Widerruf und fail-closed Antwortvalidierung umgesetzt.
+
+423. [x] In-Memory-, API-, PostgreSQL-, Migrations- und E2E-Vertraege um typisierte Ziele, direkte Admin-Grenze,
+     Gruppenmitgliedschaft, Rollenauflösung und tenant-sichere Ablehnung erweitert.
+
+424. [x] Vollstaendigen Rollen-/Gruppenfreigabelebenszyklus ueber Modell, API, PostgreSQL, Migration, Restore und
+     responsive Desktop-/Mobile-Browserpruefung geschlossen.
+
+425. [x] Native Absatzpaginierung unter ADR-0148 mit den drei festen booleschen Regeln „mit nächstem Absatz
+     zusammenhalten“, „Zeilen zusammenhalten“ und „Seitenumbruch davor“ eingefuehrt. Fehlende Werte bewahren die
+     exakten Legacy-Bytes; explizites `false` kann eine geerbte Formatvorlage aufheben.
+
+426. [x] Server- und Browservalidierung auf echte boolesche Werte begrenzt. Zahlen, Strings, Nullwerte im gespeicherten
+     JSON, freie CSS-Ausdruecke und unbekannte Attribute scheitern vor Persistenz oder Darstellung.
+
+427. [x] Bestehenden responsiven Mehrfachauswahl-Dialog um Standard-, Aktiv- und Inaktiv-Zustaende samt gemischter
+     Auswahl erweitert und dieselben festen Werte in dokumenteigene Formatvorlagen integriert.
+
+428. [x] Paginierungswerte durch Texttypwechsel, Absatzteilung, Formatuebertragung, Undo/Redo, Vergleich, Reviews,
+     Vorschlaege, bestaetigtes CAS-Speichern, History und unveraenderliche Vorgaengerversionen erhalten.
+
+429. [x] Editor und inerten Druckrenderer auf feste `data-office-*`-Attribute gebunden. Statisches vertrauenswuerdiges
+     CSS setzt `break-after`, `break-inside` und `break-before` samt Legacy-Druckaliasen um, ohne Seitensimulation oder
+     Inhaltsmutation.
+
+430. [x] Absatz- und Named-Style-Recovery um eine exakte Version mit allen drei Paginierungsregeln erweitert; keine
+     SQL-Migration, kein neuer Endpunkt und kein neuer Restore-Speicher wurden benoetigt.
+
+431. [x] Vollstaendigen Absatzpaginierungszyklus ueber Schema, Editor, Formatvorlagen, Druck, Recovery sowie responsive
+     Desktop-/Mobile-Browser- und reale PDF-Evidence geschlossen.
+
+432. [x] Sichere native automatische Linkerkennung unter ADR-0149 fuer vollstaendige HTTPS-Adressen, explizite
+     `mailto:`-Ziele und einfache E-Mail-Adressen beim Tippen und Einfuegen eingefuehrt.
+
+433. [x] Satzzeichen und nicht ausgeglichene schliessende Klammern vom Ziel getrennt, ausgeglichene URL-Klammern
+     erhalten und jedes Zeichen des sichtbaren Textes unveraendert bewahrt.
+
+434. [x] Ausschliesslich Kandidaten des bestehenden strikten Linkvalidators markiert. HTTP, Zugangsdaten, aktive und
+     lokale Schemata, vorbereitete Mailnachrichten, Steuerzeichen, fehlerhafte Domains und Ueberlaengen bleiben Text.
+
+435. [x] Automatische Erkennung fuer Code, bestehende Links, Querverweise und Dokumentverweise gesperrt. Dokumentladen
+     scannt oder veraendert bestehende Inhalte nicht; kein Ziel wird aufgeloest, abgerufen oder automatisch geoeffnet.
+
+436. [x] Mehrfach-Link-Paste als eigenen Undo-Schritt von vorherigem Tippen getrennt und exaktes Undo/Redo sowie den
+     bestehenden bestaetigten CAS-Save-, History-, Vergleichs-, Wiederverwendungs- und Druckvertrag erhalten.
+
+437. [x] Reine Modelltests sowie responsive Desktop-/Mobile-Browserpruefung fuer Tippen, Paste, Satzzeichen, unsicheren
+     Text, Undo/Redo, unveraenderliche Vorgaengerversion, Reload und semantischen PDF-Link ergaenzt.
+
+438. [x] Vollstaendigen Auto-Link-Lebenszyklus unter ADR-0149 ohne Migration, neuen Endpunkt, Netzwerklookup,
+     URL-Vorschau, Provider, Worker, Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+439. [x] Begrenzte native Schriftfamilien unter ADR-0150 eingefuehrt: direkte Zeichenformatierung speichert optional
+     ausschliesslich `sans`, `serif` oder `mono`; Abwesenheit bleibt der kanonische Legacy-Standard.
+
+440. [x] Freie Fontnamen, CSS, URLs, Dateien, eingebettete Schriften und unbekannte Tokens in Browser und Server
+     abgewiesen und die drei Werte nur auf feste lokale, druckfaehige CSS-Fallbackstapel abgebildet.
+
+441. [x] Responsive Zeichenformatierung um Standard, Sans Serif, Serif und Monospace samt Mischzustand, Cursorformat,
+     kanonischem Reset und einem isolierten Undo-Schritt erweitert.
+
+442. [x] Dokumenteigene Formatvorlagen um denselben Schriftfamilienvertrag erweitert. Gebundene Absaetze und
+     Ueberschriften erben die Familie, waehrend direkte Zeichenmarken weiterhin Vorrang behalten.
+
+443. [x] Schriftfamilien durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+444. [x] Identische inerte Darstellung in Editor, Vorlagenvorschau und semantischem Druck/PDF sowie exakte
+     Einbindung in den vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+445. [x] Vollstaendigen Schriftfamilien-Lebenszyklus unter ADR-0150 ohne Migration, Endpunkt, Abhaengigkeit,
+     Fontdownload, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+446. [x] Begrenzte native Texthervorhebung unter ADR-0151 eingefuehrt: direkte Zeichenformatierung speichert optional
+     ausschliesslich `yellow`, `lime`, `cyan`, `pink`, `lavender` oder `gray`; Abwesenheit bleibt der Standard.
+
+447. [x] Freie Farben, CSS, Alpha, Verlaeufe, URLs, Dateien und unbekannte Tokens in Browser und Server abgewiesen und
+     die sechs Werte nur auf feste deckende, druckfaehige CSS-Farben abgebildet.
+
+448. [x] Responsive Zeichenformatierung um Standard, sechs Hervorhebungen, Mischzustand, Cursorformat, kanonischen
+     Reset und einen isolierten Undo-Schritt erweitert.
+
+449. [x] Hervorhebung als direkte Zeichenformatierung von Absatzvorlagen getrennt, damit sie nicht als vollbreite
+     Absatzschattierung erscheint; Vorlagen lehnen den Wert in Browser und Server ab.
+
+450. [x] Hervorhebung durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+451. [x] Identische inerte Darstellung im Editor und semantischen Druck/PDF sowie exakte Einbindung in den vorhandenen
+     Zeichenformat-Recovery-Fixture nachgewiesen.
+
+452. [x] Vollstaendigen Texthervorhebungs-Lebenszyklus unter ADR-0151 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+453. [x] Begrenzte native Hoch-/Tiefstellung und Zeichenabstaende unter ADR-0152 eingefuehrt: direkte
+     Zeichenformatierung speichert optional `superscript` oder `subscript` sowie `tight` oder `wide`; Abwesenheit
+     bleibt der kanonische Standard.
+
+454. [x] Numerische Offsets, Masse, Prozentwerte, beliebiges CSS, URLs und unbekannte Tokens in Browser und Server
+     abgewiesen und akzeptierte Werte ausschliesslich auf festes druckfaehiges CSS abgebildet.
+
+455. [x] Responsiven Zeichendialog um Standard, Mischzustand, Hochgestellt, Tiefgestellt, Eng und Weit fuer Auswahl
+     und Cursorformat, kanonischen Reset und einen isolierten Undo-Schritt erweitert.
+
+456. [x] Baseline-Werte auf direkte Textbereiche begrenzt und aus Absatzvorlagen ausgeschlossen; den
+     Zeichenabstand sicher in Dokumentvorlagen zugelassen und direkte Zeichenwerte vorrangig gehalten.
+
+457. [x] Neue Typografie durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+458. [x] Identische inerte Darstellung in Editor und semantischem Druck/PDF sowie exakte Hoch-/Tiefstellungs- und
+     Abstandsprofile im vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+459. [x] Vollstaendigen Typografie-Lebenszyklus unter ADR-0152 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher oder DOCX-Zulassung geschlossen.
+
+460. [x] Begrenzte native Schreibweisen unter ADR-0153 eingefuehrt: direkte Zeichenformatierung und
+     Dokumentvorlagen speichern optional ausschliesslich `uppercase` oder `smallCaps`; Abwesenheit bleibt der
+     kanonische Standard und der literal gespeicherte Text bleibt unveraendert.
+
+461. [x] Kleinschreibung, Titelschreibung, Locale-/Scriptsteuerung, beliebiges CSS, URLs und unbekannte Tokens in
+     Browser und Server abgewiesen und akzeptierte Werte ausschliesslich auf festes druckfaehiges CSS abgebildet.
+
+462. [x] Responsiven Zeichendialog um Standard, Mischzustand, Grossbuchstaben und Kapitaelchen fuer Auswahl und
+     Cursorformat, kanonischen Reset und einen isolierten Undo-Schritt erweitert.
+
+463. [x] Beide Schreibweisen in Dokumentvorlagen zugelassen, direkte Zeichenwerte vorrangig gehalten und dabei die
+     jeweils andere geerbte CSS-Eigenschaft explizit neutralisiert.
+
+464. [x] Schreibweisen durch Formatuebertragung, Texttypwechsel, Listen, Tabellen, Suche/Ersetzung, Vergleich,
+     Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload und unabhaengige Wiederverwendung erhalten.
+
+465. [x] Identische inerte Darstellung in Editor und semantischem Druck/PDF sowie exakte Grossbuchstaben- und
+     Kapitaelchenprofile im vorhandenen Zeichenformat-Recovery-Fixture nachgewiesen.
+
+466. [x] Vollstaendigen Schreibweisen-Lebenszyklus unter ADR-0153 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, Textmutation oder DOCX-Zulassung geschlossen.
+
+467. [x] Machbarkeit eines abschnittsweisen Seitennummern-Neustarts im echten Chromium-Druckpfad fail-closed
+     geprueft. `@page`-Reset erzeugt innerhalb des Abschnitts konstant `4, 4`, Element-Reset behaelt global `3, 4`.
+     Kein unzuverlaessiges Restart-Attribut wurde geoeffnet; ein segmentierter PDF-Render-/Merge-Pfad bleibt
+     Voraussetzung fuer die getrennte spaetere Funktion.
+
+468. [x] Begrenzte native Absatzeinzuege unter ADR-0154 eingefuehrt: linke und rechte Einzuege speichern optional
+     ausschliesslich 0, 18, 36, 54 oder 72 pt; Sondereinzug speichert `none`, Erstzeile 18/36 pt oder haengend
+     18/36 pt. Abwesenheit bleibt kanonischer Standard.
+
+469. [x] Andere Zahlen, Bruchteile, negative Werte, freie Masse, Prozente, CSS, URLs und unbekannte Tokens in Browser
+     und Server abgewiesen und akzeptierte Werte ausschliesslich auf feste logische Rand-, Padding- und
+     Text-Indent-Regeln abgebildet.
+
+470. [x] Responsiven Absatzdialog um Standard, Mischzustand, explizite Nullwerte und alle festen Einzuege erweitert;
+     Mobile bleibt einspaltig vollstaendig scrollbar, Desktop und Tablet bleiben kompakt zweispaltig.
+
+471. [x] Dokumenteigene Formatvorlagen um dieselben Einzuege erweitert. Direkte Absatzwerte behalten Vorrang;
+     Standard kehrt zur verbundenen Vorlage oder zum Texttyp-Grundformat zurueck.
+
+472. [x] Einzuege durch Texttypwechsel, Absatzteilung, Listen, Zitate, ausgewaehlte Tabellenzellen,
+     Formatuebertragung, Suche/Ersetzung, Vergleich, Vorschlaege, bestaetigten CAS-Save, immutable Historie, Reload
+     und unabhaengige Wiederverwendung erhalten.
+
+473. [x] Identische inerte Darstellung in Editor, Vorlagenvorschau und semantischem Druck/PDF sowie exakte
+     Erstzeilen- und Haengeprofile im vorhandenen Absatz-Recovery-Fixture nachgewiesen.
+
+474. [x] Vollstaendigen Absatzeinzugs-Lebenszyklus unter ADR-0154 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, freie Masse, Seitennummern-Neustart oder DOCX-Zulassung
+     geschlossen.
+
+475. [x] Begrenzte native Textspalten unter ADR-0155 eingefuehrt: Dokument- und vollstaendige Abschnittsprofile
+     unterstuetzen exakt eine, zwei oder drei Spalten; Abwesenheit bleibt der kanonische einspaltige Standard.
+
+476. [x] Andere Zahlen, Tokens, Masse, CSS, URLs und unerwartete Objektschluessel unabhaengig in Browser und Server
+     abgewiesen; akzeptierte Werte werden ausschliesslich auf feste lokale CSS-Regeln abgebildet.
+
+477. [x] Responsive Seiten- und Abschnittsdialoge um eine verstaendliche Spaltenwahl und proportionale Vorschau
+     erweitert; kompaktes Editieren bleibt einspaltig erreichbar, waehrend die Druckausgabe exakt bleibt.
+
+478. [x] Dokumentweiten Editorfluss ohne Abschnittsmarker fuer zwei und drei Spalten umgesetzt und Tabellen, Bilder,
+     Code, Zitate, Karten und Objektgruppen vor unkontrollierten Spaltenumbruechen geschuetzt.
+
+479. [x] Drucksegmente an Seiten- und Abschnittsumbruechen mit dem jeweils aktiven exakten Spaltenprofil verbunden;
+     manuelle Seitenumbrueche behalten die Abschnittsspalten und Abschnittsmarker wechseln deterministisch.
+
+480. [x] Spalten durch bestaetigten CAS-Save, immutable Historie, Vergleich, Reload, unabhaengige Wiederverwendung
+     und Recovery erhalten sowie zwei- und dreispaltige Dokument-/Abschnittsprofile in Version zwei und drei gebunden.
+
+481. [x] Vollstaendigen Textspalten-Lebenszyklus unter ADR-0155 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, freie Spaltenbreiten, kontinuierliche Abschnittspaginierung
+     oder DOCX-Zulassung geschlossen.
+
+482. [x] Abschnittseigene Erstseitenvarianten nach einem realen Vierseiten-Chromium-PDF-Test fail-closed gehalten:
+     `@page <abschnitt>:first` greift nur auf der ersten Seite des Gesamtdokuments. Der zweite benannte Abschnitt
+     erhielt auf seiner ersten Seite bereits das allgemeine Profil. Abschnittsmetadaten bleiben deshalb abgewiesen,
+     bis ein separat nachgewiesener segmentierter Render- und Merge-Pfad echte Abschnittserstseiten garantiert.
+
+483. [x] Beliebige ganzzahlige Formdrehungen unter ADR-0156 eingefuehrt: native Formen speichern optional exakt 1 bis
+     359 Grad; 0 Grad bleibt die kanonische Abwesenheit und die bisherigen Vierteldrehungen bleiben gueltig.
+
+484. [x] Boolesche Werte, Bruchteile, negative Werte, 360 und groessere Werte, CSS, Transformationsmatrizen, URLs und
+     unbekannte Attribute unabhaengig in Browser und Server abgewiesen.
+
+485. [x] Responsiven Formdialog und direkten fokussierbaren Drehgriff auf exakte Winkel erweitert: Zeiger und Touch
+     folgen dem Formzentrum, Pfeiltasten drehen um ein Grad, Umschalt plus Pfeil um 15 Grad, Pos1 setzt auf null und
+     ein Klick behaelt den 90-Grad-Komfortschritt. Jede abgeschlossene Geste bildet einen isolierten Undo-Schritt.
+
+486. [x] Exakte achsenparallele Aussenmasse fuer beliebige Winkel berechnet und fuer normale, umflossene und
+     gruppierte Formen responsiv reserviert; schmale Ansichten bleiben ohne horizontalen Ueberlauf bedienbar.
+
+487. [x] Beliebige Winkel in der semantischen Druck-/PDF-Ausgabe mit derselben validierten Geometrie erhalten;
+     frei positionierte Formen bewahren ihren logischen Anker und Gruppenmitglieder ihre Reihenfolge.
+
+488. [x] Exakte Winkel durch bestaetigten CAS-Save, immutable Historie, Vergleich, Rueckgaengig/Wiederholen sowie
+     unabhaengige Form- und Gruppenkopien erhalten, ohne einen zweiten Darstellungs- oder Speichervertrag einzufuehren.
+
+489. [x] Vollstaendigen Lebenszyklus beliebiger Formwinkel unter ADR-0156 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher, Transformationsmatrix, getrennte Textdrehung,
+     physische Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
+
+490. [x] Frei positionierbare native Formgruppen unter ADR-0157 eingefuehrt: eine Wurzelgruppe kann optional exakt
+     eine Ebene vor oder hinter Text, eine normalisierte ganzzahlige X-Position von 0 bis 1000 und einen ganzzahligen
+     Y-Versatz von -1200 bis 1200 Pixeln besitzen; Abwesenheit bleibt der kanonische normale Dokumentfluss.
+
+491. [x] Boolesche Werte, Bruchteile, freie CSS- oder Z-Index-Werte, URLs, unbekannte Positionsschluessel sowie
+     Positionierung und Umfluss einzelner Gruppenmitglieder unabhaengig in Browser und Server abgewiesen.
+
+492. [x] Responsiven Gruppendialog und direkten fokussierbaren Gruppenanker umgesetzt: Zeiger und Touch verschieben
+     die komplette Gruppe live, Pfeiltasten um ein Pixel, Umschalt plus Pfeil um zehn Pixel und Pos1 auf den Ursprung;
+     jede abgeschlossene Geste bildet genau einen isolierten Undo-Schritt.
+
+493. [x] Exakte achsenparallele Gruppenmasse aus Reihen-/Stapel-Layout, Abstand und beliebig gedrehten Mitgliedern
+     berechnet und dieselbe validierte Geometrie fuer Editor, Vergleich sowie semantischen Druck/PDF vor oder hinter
+     Text verwendet, ohne Dokumentinhalte als Stil-Ausdruecke auszuwerten.
+
+494. [x] Positionierte Gruppen mit frischen Gruppen- und Mitglieds-IDs unabhaengig dupliziert und mit begrenztem
+     25/24-Versatz sichtbar getrennt; Aufloesen verlangt zuvor normalen Fluss, waehrend das Entfernen des vorletzten
+     Mitglieds den verbleibenden Inhalt atomar als eigenstaendige Form am Gruppenanker erhaelt.
+
+495. [x] Gruppenpositionen durch bestaetigten CAS-Save, immutable Historie, Vergleich, Rueckgaengig/Wiederholen,
+     Druck, Reload, unabhaengige Wiederverwendung und Recovery im bestehenden nativen Dokument-JSON erhalten.
+
+496. [x] Vollstaendigen Lebenszyklus frei positionierter Formgruppen unter ADR-0157 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, physische Seitenanker, beliebige
+     Z-Indizes, gemischte Mitgliedsanker, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+497. [x] Individuelle Verbindungen je Strecke einer nativen Formgruppe unter ADR-0158 eingefuehrt. Neben der
+     bestehenden einheitlichen Verbindung kann eine Gruppe exakt eine Verbindung oder Leerstelle pro geordneter
+     Mitgliedsluecke speichern; beide Darstellungen schliessen sich gegenseitig aus.
+
+498. [x] Listenlaenge, Nullstellen sowie die festen Linien-, Pfeil-, Farb- und Staerkenwerte unabhaengig in Browser und
+     Server validiert. Unbekannte Schluessel, Boolesche Staerken, freie Pfade, SVG, CSS, URLs und uneindeutige
+     Kombinationen werden fail-closed abgewiesen.
+
+499. [x] Responsiven Gruppendialog um **Alle Verbindungen** und nummerierte Strecken wie **1 → 2** erweitert. Beim
+     Wechsel von einheitlicher zu einzelner Bearbeitung bleiben unberuehrte Strecken erhalten; Farbe und Staerke sind
+     ohne Verbindung deaktiviert.
+
+500. [x] Einheitliche und individuelle Verbindungen im Editor sowie semantischen Druck/PDF aus derselben exakten
+     Streckenfolge gerendert. Reihen nutzen horizontale, Stapel und kompakte Reihen vertikale Darstellung aus
+     ausschliesslich vertrauenswuerdigen statischen Stilzuordnungen.
+
+501. [x] Gruppenoperationen deterministisch geschlossen: Einfuegen und Mitgliedsduplizierung ergaenzen eine leere
+     Strecke, Entfernen beseitigt genau eine angrenzende Strecke, Umordnen behaelt die Darstellung am geordneten
+     Zwischenraum und Gruppenduplizierung kopiert die exakte Folge mit frischen Identitaeten.
+
+502. [x] Individuelle Strecken durch isoliertes Rueckgaengig/Wiederholen, bestaetigten CAS-Save, immutable
+     Vorgaengerversion, Vergleich, Reload, Druck, unabhaengige Wiederverwendung und Recovery im bestehenden nativen
+     Dokument-JSON erhalten.
+
+503. [x] Vollstaendigen Lebenszyklus individueller Formgruppen-Verbindungen unter ADR-0158 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie Pfade, beliebige Endpunkte,
+     Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+504. [x] Direkte achsenbezogene Ausrichtung nativer Formgruppen unter ADR-0159 eingefuehrt. Der kanonisch
+     weggelassene Beginn sowie Mitte und Ende richten Reihen oben/mittig/unten und Stapel links/mittig/rechts aus.
+
+505. [x] Gleichmaessige Verteilung ueber eine begrenzte Gesamtflaeche von 160 bis 2400 Pixeln eingefuehrt. Der
+     bestehende Abstand bleibt Mindestabstand; aus gedrehten Mitgliedsmassen, Reihenfolge und Zielflaeche entsteht
+     ein einziger deterministischer effektiver Abstand.
+
+506. [x] Ausrichtung und Verteilung unabhaengig in Browser und Server validiert. Unbekannte Werte, explizites
+     `start`, Boolesche oder gebrochene Flaechen, Werte ausserhalb der Grenzen und freie CSS-Ausdruecke werden
+     fail-closed abgewiesen; bestehende Dokumente bleiben byte-kompatibel.
+
+507. [x] Responsiven Gruppendialog um kontextbezogene Ausrichtung, feste oder gleichmaessige Verteilung und eine
+     begrenzte Pixel-Flaeche erweitert. Nicht anwendbare Regler sind deaktiviert und erklaeren die Reihen-/
+     Stapelsemantik sowie den Mindestabstand.
+
+508. [x] Editor und semantischen Druck/PDF aus derselben Layoutfunktion gespeist. Exakte beliebig gedrehte
+     Mitgliedsmasse, einheitlicher effektiver Abstand, kompakter Reihen-Fallback und individuelle Verbindungen
+     bleiben gemeinsam ausgerichtet, begrenzt und ohne Auswertung gespeicherter Stil-Ausdruecke.
+
+509. [x] Ausrichtung und Verteilung durch isoliertes Rueckgaengig/Wiederholen, bestaetigten CAS-Save, immutable
+     Vorgaengerversion, Reload, Druck, unabhaengige Wiederverwendung und Recovery im bestehenden nativen
+     Dokument-JSON erhalten.
+
+510. [x] Vollstaendigen Lebenszyklus der Formgruppen-Ausrichtung und -Verteilung unter ADR-0159 ohne Migration,
+     Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie CSS-Geometrie,
+     Mehrfachauswahl, Verschachtelung oder DOCX-DrawingML-Zulassung geschlossen.
+
+511. [x] Transiente native Mehrfachauswahl fuer bis zu 20 eigenstaendige Formen und ganze Formgruppen auf der
+     Dokumentwurzel unter ADR-0160 eingefuehrt. Stabile Objekt-IDs halten die Auswahl ueber DOM-Neuaufbau fest;
+     Gruppenmitglieder waehlen immer ihre besitzende Gruppe.
+
+512. [x] Expliziten Maus-/Touch-Auswahlmodus sowie Strg-/Cmd-Klick, Umschalt-Bereichsauswahl, sichtbare Markierungen,
+     Live-Status und Escape zum Aufheben umgesetzt. Dokument-, Fassungs- und Sitzungswechsel verwerfen die Auswahl.
+
+513. [x] Zwei oder mehr ausgewaehlte Formen und Gruppen atomar duplizierbar gemacht. Jede Kopie erhaelt frische
+     Gruppen- und Mitglieds-IDs, frei positionierte Objekte einen begrenzten sichtbaren Versatz und der gesamte
+     Vorgang genau einen Rueckgaengig-Schritt; Dokument- und Gruppenlimits werden vorher geprueft.
+
+514. [x] Zwei oder mehr ausgewaehlte Wurzelobjekte atomar aus dem Entwurf entfernbar gemacht, mit genau einem
+     Rueckgaengig-Schritt und ohne Speicherung vor dem bestehenden bestaetigten CAS-Save.
+
+515. [x] Zwei bis acht benachbarte eigenstaendige Formen im normalen Textfluss aus der Mehrfachauswahl atomar
+     gruppierbar gemacht. Positionierte oder umflossene Formen, bestehende Gruppen, Zwischenbloecke und
+     Verschachtelungen bleiben abgewiesen.
+
+516. [x] Resultierende Formen und Gruppen durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion,
+     Reload, semantischen Druck und unabhaengige Wiederverwendung erhalten. Die Auswahl selbst bleibt ungespeichert.
+
+517. [x] Vollstaendigen Mehrfachauswahl-Lebenszyklus unter ADR-0160 ohne Migration, Endpunkt, Abhaengigkeit, externen
+     Abruf, Provider, Worker, neuen Recovery-Speicher, verschachtelte Gruppen, persistierte UI-Auswahl oder
+     DOCX-DrawingML-Zulassung geschlossen.
+
+518. [x] Begrenztes Ausrichten mehrerer ausgewaehlter, positionierter Wurzelobjekte unter ADR-0161 fuer eigenstaendige
+     Formen und ganze Formgruppen umgesetzt. Nur bereits vorhandene, vollstaendig validierte logische Positionen sind
+     zugelassen; Textfluss- und Umflussobjekte erhalten nie implizit eine Position.
+
+519. [x] Sechs Ausrichtungsarten fuer minimale, mittlere oder maximale horizontale beziehungsweise vertikale Anker
+     bereitgestellt. Der Mittelpunkt wird deterministisch ganzzahlig gerundet; Ebene und orthogonale Koordinate jedes
+     Objekts bleiben unveraendert.
+
+520. [x] Zwei oder mehr Zwischenobjekte zwischen unveraenderten Extremankern horizontal oder vertikal gleichmaessig
+     verteilt. Mindestens drei positionierte Wurzelobjekte sind erforderlich; Koordinate, Dokumentreihenfolge und
+     stabile ID bilden eine eindeutige Sortierung.
+
+521. [x] Zugaengliche responsive Ausrichtungs- und Verteilungsfelder in der Werkzeugleiste umgesetzt. Unzureichende
+     oder gemischte Auswahlen bleiben deaktiviert und koennen keine Teilmutation ausloesen.
+
+522. [x] Jede Ausrichtung oder Verteilung als genau eine validierte Transaktion und einen Rueckgaengig-Schritt ueber
+     die gesamte Auswahl ausgefuehrt. Objekt-IDs, Ebenen und transiente Auswahl bleiben erhalten.
+
+523. [x] Resultierende Positionen durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Reload,
+     semantischen Druck und unabhaengige Wiederverwendung erhalten. Die Mehrfachauswahl selbst bleibt ungespeichert.
+
+524. [x] Vollstaendigen Mehrfachanordnungs-Lebenszyklus unter ADR-0161 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie CSS-Geometrie, physische Seitenanker,
+     verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+525. [x] Gemeinsame Vorder-/Hinter-Text-Ebene fuer mindestens zwei ausgewaehlte positionierte Wurzelformen oder ganze
+     Formgruppen unter ADR-0162 umgesetzt. Beide Koordinaten bleiben unveraendert; Textfluss- und Umflussobjekte
+     erhalten nie implizit eine Position.
+
+526. [x] Gemeinsames praezises Verschieben mit Pfeiltasten um eine logische Einheit und mit Umschalt-Pfeiltaste um
+     zehn Einheiten bereitgestellt. Vier zugaengliche responsive Richtungsbuttons bieten denselben Einerschritt fuer
+     Maus und Touch.
+
+527. [x] Fuer jede Bewegung genau einen gemeinsamen begrenzten Delta-Wert aus allen ausgewaehlten Ankern abgeleitet.
+     Erreicht ein Objekt die angeforderte X- oder Y-Grenze, stoppt die ganze Auswahl und behaelt alle relativen
+     Abstaende, IDs, Ebenen und die Dokumentreihenfolge.
+
+528. [x] Ebenen- und Verschiebesteuerung nur bei mindestens zwei vollstaendig positionierten Wurzelobjekten aktiviert.
+     Dialoge, Textfelder, schreibgeschuetzte, historische, speichernde, unsichere und veraltete Sitzungen bleiben
+     abgewiesen.
+
+529. [x] Jeden Ebenenwechsel und Verschiebeschritt als genau eine validierte Transaktion und einen Rueckgaengig-Schritt
+     ueber die vollstaendige Auswahl ausgefuehrt; die transiente Mehrfachauswahl bleibt danach aktiv.
+
+530. [x] Resultierende Ebenen und Positionen durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion,
+     Reload, semantischen Druck und unabhaengige Wiederverwendung erhalten. Die Auswahl selbst bleibt ungespeichert.
+
+531. [x] Vollstaendigen Mehrfachverschiebe-Lebenszyklus unter ADR-0162 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie Bewegungswerte, physische Seitenanker,
+     verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 531 / PLANS 224 bis 392 sind unter ADR-0139 bis ADR-0162 implementiert
+beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
+Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
+Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
+bestehende immutable Office-Versions-JSON uebersetzt; Arbeitsmappen-Runtime, externe Formelreferenz,
+Tenant-Aktivierung und DOCX-Zulassung bleiben geschlossen.
+
+## Persistente Backend-Runtime: Stand und Nachweise
+
+- [x] Standard-API auf PostgreSQL fuer SourceObject-Metadaten und S3-kompatiblen Object Storage fuer Inhaltsbytes umgestellt.
+- [x] MinIO-Bucket-Bootstrap mit Versionierung, Object Lock und Legal-Hold-Providerprofil zum API-Startgate gemacht.
+- [x] `persistent_source_object_runtime_report.v1` fuer idempotentes Dev-Seeding, frische Repository-Instanz, exakte Versions-Reads und tenant-sichere Content-Reconciliation implementiert.
+- [x] Test- und Quality-Datenbank vom Runtime-PostgreSQL getrennt, damit append-only Testevidenz keinen Produktzustand mehr verschmutzt.
+- [x] Isolierten Compose-Nachweis mit drei SourceObjects, zwei Tenants, null fehlenden/orphaned Objekten und erfolgreichem tenant-/ACL-geprueftem API-Read erbracht.
+- [x] Exakten Object-Storage-Backup/Restore-Drill fuer alle Bucket-Profile samt Version IDs, Retention, Object Lock und Legal Hold auf einem unabhaengigen Ziel operationalisiert.
+- [x] Storage-Anteil des Backend-Completion-Gates mit frischem Restore-/Runtime-Hash-Binding, Tenant-Scope und metadata-only Evidence als `backend_storage_foundation_gate.v1` abgenommen.
+- [x] Gesamt-Backend-Completion-Gate ueber Tenant/IAM, Audit, Module Registry, SourceObjects, PostgreSQL-Backup-Verifikation und Object-Storage-Restore als zusammenhaengenden Releasepfad abgenommen.
+- [x] Tasks & Activities und Zeiterfassung mit tenant-sicheren APIs, atomaren Write-Vertraegen, autoritativen ACL-Reads und verpflichtender Restore-Pruefung operationalisiert.
+- [x] Task-Status und Time-Approval als append-only, datenbankseitig validierte Workflows mit UI-Aktionen operationalisiert; Basisdatensaetze bleiben unveraendert.
+- [x] Daily-Work-Oberflaeche mit 41 isolierten Browserfaellen ueber Desktop und Mobile abgenommen; alle sieben Fachquellen, partielle Fehler, Route-Policy, Neuzuweisung, Korrektur/Neueinreichung, Knowledge-Base-Create/Edit und Kontextwechsel sind reproduzierbar geprueft.
+
+Bewusst nicht jetzt: weiterer ERP-/Legacy-SQL-Tiefenausbau, RAG-Provider-Ausfuehrung, Rich-Content-Viewer und Vollclients. Diese Pfade konsumieren erst das abgenommene Backend-Fundament.
+
+Erster Office-Produktzug auf dem abgenommenen Backend-Fundament:
+
+- [x] Ersten Renderer-/Viewer-Adapter hinter Release-Gate vorbereiten: providerneutraler Adapter-Port mit ausgewaehlter
+  Canonical-PDF-/LibreOffice-/PDF.js-Strategie, statischer Registry, frischem tenant-gebundenem Wiring-Guard und
+  metadata-only Dry-Run; kein Renderer, Viewer, WOPI, Inhaltszugriff oder Output ist aktiviert.
+- [x] Digest-gepinnten, credential-losen LibreOffice-/QPDF-Conversion-Worker und Derived-Preview-SourceObject-Lifecycle
+  hinter ein separates Execution-Gate gesetzt: staerkere Runtime wird erzwungen, Malware/CDR-Preflight,
+  Ressourcenlimits, PDF-Revalidierung, Font-Baseline und Restore-/Viewer-Bindungen sind Teil des unveraenderlichen
+  Auftrags; abgeleitete PDFs erben ACL, Klassifikation, Retention, Legal Hold, KMS- und Source-Version-Lineage.
+- [x] Metadata-only Conversion-Job-Evidence und Derived-Preview-Restore-Reconciliation implementiert: Command,
+  Preflight, Worker-Result, SourceObject-Write-Receipt, Lineage-Receipt und Execution-Gate werden atomar gebunden und auf
+  isolierten PostgreSQL-/Object-Storage-Zielen hashgenau abgeglichen; leere Restores erzeugen keine
+  Produktionsfreigabe und der Drill aktiviert weder Dispatch noch Preview-Serving.
+- [x] Kontrollierte nicht-leere Entwicklungs-Proof-Kette implementiert: ein credential-loser/no-egress
+  `runsc`-Engine-Preflight blockiert vor jedem Write; danach folgen atomarer synthetischer Source-/Gate-Write,
+  isolierter Conversion-Worker, unabhaengig revalidierter Derived-Preview-Commit und sichere Vernichtung beider
+  transienten Workspaces. Frei gesetzte Runtime-Evidence wird nicht akzeptiert.
+- [x] Proof-Kette auf `dev001` mit registrierter `runsc`-Runtime ausgefuehrt und den Proof-Tenant anschliessend ueber
+  frisches PostgreSQL-Backup, isolierten Restore, unabhaengigen Exact-Version-Object-Restore und nicht-leere
+  Derived-Preview-Reconciliation nachgewiesen: Proof-Report
+  `sha256:25a26caf230ed6588877db2d6332a0d42fb4128a74254d62c2cac272c45c5cc8`, Backend-Gate
+  `sha256:ce2438da232f71d20e710aee7e53c497ed51ac212450e29edca4f6e0a91f71c1` und Recovery-Report
+  `sha256:df53b16d2cb5093025bc7d362fb4aa63458e0307a28d1c436f3641c21b2a5d5f`; Production-Admission blieb deaktiviert.
+- [x] Fail-closed Production-Admission-Grenze implementiert: tenant-, Execution-Gate-, Recovery- und Image-Digest-
+  Bindung, maximal 24 Stunden frische Runtime-/Malware-/CDR-/Supply-Chain-/Viewer-Evidence, drei getrennte
+  Ed25519-Rollen in DSSE/in-toto, erneute Worker-Pruefung und unveraenderliche Vererbung des Gate-Hashs in Command und
+  Result. Das Release publiziert und attestiert Runtime und Preview-Renderer mit jeweils eigener SBOM und Provenance.
+  Die Gate schaltet ausschliesslich Conversion-Dispatch; Preview-Serving bleibt separat gesperrt.
+- [x] Collabio-eigenen realen ClamAV-Scanpfad als ersten externen Production-Admission-Eingang operationalisiert:
+  digest-gepinnter unprivilegierter Dienst ohne Host-Port im internen Compose-Netz, begrenztes `INSTREAM`-Protokoll,
+  tenant-/SourceObject-/Versions-/Content-Hash-gebundene metadata-only Evidence, frischer Clean-/EICAR-Smoke und
+  Einbindung in die nicht-leere `runsc`-Proof-Stager. Scannerfehler und Evidence-Drift quarantinieren; signierte
+  Signaturdatenbank-Provenance und Production-Admission bleiben weiterhin geschlossen.
+- [x] Realen ClamAV-/`runsc`-Pfad samt Schemaevolution und Recovery auf `dev001` nachgewiesen: Clean/EICAR-Smoke
+  `sha256:e5d6c5b200ef04259c16622e9b2cc7ea1129721deaea2515571a0efeaf3d34c1`, aktueller nicht-leerer Proof
+  `sha256:77c6105833ff427fc0d28e846c41871b97508bb634150aa70f75f516e13be723`, frisches Backup
+  `sha256:aeacc5f9cc4c14898d395bbb8eca4a50779c6a4e776a3c5c5a601c298bcdb405` und Recovery
+  `sha256:5dbcaeafc177e0c5f658e31f0082291e04025f1d7e84b0114db1b5d722fb6faa` mit `3/3/3` Evidence-/Receipt-/Item-
+  Reconciliation. Historische Command-/Result-`v1`- und `v2`-Hashes bleiben lesbar; aktuelle Evidence verwendet den
+  separaten CDR-Vertrag in Result `v3`.
+- [x] Fail-closed Pixel-CDR als getrennte Vertrauensgrenze implementiert: ein credential-loser/no-egress
+  `runsc`-Renderer verarbeitet die Source und emittiert ausschliesslich exakt validierte rohe RGB-Seiten samt
+  hashgebundenem Manifest; ein zweiter `runsc`-Rebuilder ohne Source-Mount rekonstruiert das PDF und durchlaeuft QPDF,
+  PDFInfo sowie aktive Objektpruefungen erneut. Fehlende, zusaetzliche, manipulierte oder ungebundene CDR-Dateien
+  blockieren den Job. Pillow 12.3.0 ist in einem eigenen universellen SHA-256-Lock isoliert und wird in CI/Release auf
+  Drift geprueft.
+- [x] Office-Edit-Architektur als dritten, von Preview und WOPI getrennten Port festgelegt: `OfficeEditAdapter.v1`,
+  Collabio-native Quick-Edit-Kandidatenversion, separater WOPI-Pfad fuer Vollkollaboration und Local-LLM-Gateway fuer
+  ausschliesslich bestaetigungspflichtige AI-Drafts. Ein metadata-only API-Gate bindet Tenant, ACL, SourceObject-Version,
+  Policy-Hash, Adapter-Hash und Upstream-Commit, ohne Content, Import, Engine, Session, Netzwerk oder Write zu oeffnen.
+- [x] GenOffice selektiv und fail-closed in die Roadmap aufgenommen: kein Fork; exakter Upstream-Commit
+  `fd33934dab1fdf8666af3f88b9794e7b4e19474a`; ausschliesslich `packages/docx-engine/**` als spaeterer Importkandidat;
+  Tabellen-/Praesentationsengines nur als Referenz; `ee/**`, Shell und Cloud-AI-Quellpfade verboten. Die
+  maschinenlesbare Evaluation-Policy blockiert Import und Produktion bis alle Gates erfuellt sind.
+- [x] Reproduzierbare GenOffice-Source-Evidence fuer den DOCX-Kandidaten geschlossen: Codeload-Archiv des exakten
+  Commits mit SHA-256 gebunden, ohne Extraktion geprueft, ausgewaehlte Dateien einzeln gehasht, verbotene Scopes aus dem
+  Manifest ausgeschlossen, npm-v3-Lock rekursiv auf 21 Runtime-Pakete samt Registry-Integritaet und Lizenzmetadaten
+  aufgeloest sowie vendored EMF-Converter und Root-`postinstall` sichtbar gemacht. Der no-network/read-only Verifier
+  fuehrt weder npm/Node noch Upstream-Code aus und oeffnet weiterhin keinen Import.
+- [x] Automatisierte GenOffice-Pre-Build-Supply-Chain geschlossen: vendorten `emf-converter@2.0.2` gegen das gepinnte
+  npm-Tarball bytegenau verifiziert, 23 Komponenten als deterministisches CycloneDX-1.6-SBOM inventarisiert, mit
+  digest-gepinntem CycloneDX CLI validiert und mit Trivy 0.73.0 gegen eine frisch und getrennt geladene DB vollstaendig
+  netzlos gescannt. Exakter 23-PURL-Abgleich, null Findings und ein hashgebundener Admission-Report sind nachgewiesen;
+  Import, Engine und Produktion bleiben geschlossen.
+- [x] Kryptografische npm-Provenance des vendorten EMF-Konverters geschlossen: digest-gepinntes Node 24.18.0/npm
+  11.16.0 verifiziert credential-los Registrysignatur, npm-Publish-Attestierung und SLSA v1; der getrennte netzlose
+  Admission-Gate bindet exakten SHA-512-Subject, GitHub-hosted Workflow, Source-Commit `9aca5abf...`, Fulcio-Zertifikat
+  und zwei Rekor-Inclusion-Proofs. Import, Engine und Produktion bleiben geschlossen.
+- [x] Reproduzierbares GenOffice-Legal-Dossier technisch geschlossen: separater credential-loser Collector laedt alle
+  21 exakten Runtime-Paketarchive ausschliesslich von den bereits gepinnten npm-URLs und akzeptiert nur die Lockfile-
+  `sha512`-Bytes; ein zweiter no-network/read-only Gate hasht Root-LICENSE/NOTICE, Markenhinweis, ausgeschlossene
+  Enterprise-Lizenz, Vendor-Lizenz und jedes Paket-Lizenzmaterial. Der im npm-Paket fehlende MIT-Volltext von
+  `@nodable/entities@3.0.0` ist ueber npm-`gitHead`, exakten Source-Commit und Codeload-SHA-256 nachgezogen.
+  Der reproduzierte Lauf bindet 21/21 Archive, 42 Rechtsdateien, Collection-Report `sha256:2a75877f...`, Offline-
+  Dossier `sha256:eb523d13...` und Decision-Schema `sha256:f4e8c757...`. `OR`-/`AND`-Semantik, sechs verpflichtende
+  Rechtsfragen und ein separat signierbarer `genoffice_legal_decision_record.v1` sind maschinenlesbar. Das System
+  erzeugt bewusst keine menschliche Freigabe; Import, Build, Image-SBOM und Ausfuehrung bleiben geschlossen.
+- [x] Nicht verfuegbare externe Rechtspruefung durch eine ehrliche interne OSS-Admission fuer den Development-Kandidaten
+  ersetzt: deterministisches `THIRD_PARTY_NOTICES`, exakte Apache-/NOTICE-/Trademark-/Enterprise- und Dependency-
+  Entscheidungen, zwei verschiedene interne Rollen, Ed25519-Pruefung hinter dem KMS-Adapter, hashgebundene Signer-Policy
+  und automatische Neubewertung bei jeder relevanten Aenderung. Das Gate kann ausschliesslich
+  `development_evaluation` oeffnen. Das reale 23-Komponenten-/27-Dateien-NOTICE wurde zweimal bytegleich als
+  `sha256:e6dada57...` reproduziert; Report `sha256:878e93a1...` und beide Schema-Hashes sind versioniert. Hosted Service,
+  On-Prem, Produktion, Tenant-Content und Engine-Ausfuehrung bleiben zu.
+- [x] Ehrlichen Solo-Founder-Ausnahmepfad als kompensierende Kontrolle vorbereitet: eine benannte
+  `founder_risk_owner`-Identitaet signiert extern einen an Public-Evidence, Scope, Risikoreferenz, Change-Control und
+  alle geschlossenen Grenzen gebundenen Request. Die Ausnahme gilt hoechstens 30 Tage, wird bei jeder Materialisierung
+  erneut auf Aktivitaet geprueft und meldet ausdruecklich `two_person_control_verified=false`. Sie oeffnet nur den
+  no-network Development-Build-Context; Import, Engine, Tenant-Content, Hosted Service, On-Prem und Produktion bleiben
+  geschlossen. Policy, Request, Message und Report sind privat und write-once; Private-Key-Ingestion bleibt verboten.
+- [x] Reale Solo-Founder-Ausnahme abgeschlossen: dedizierter Ed25519-Schluessel ausserhalb von Collabio und `dev001`
+  erzeugt und lokal per Windows-DPAPI geschuetzt; nur der rohe 32-Byte-Public-Key mit
+  `sha256:13cd5f64e63a8e9ae0bb8ca683f30d2db0377cfe8f819a8e7fe869cb98fa4647` wurde eingebracht. Die reale
+  `founder_risk_owner`-Signatur bindet Policy, Request `sha256:b6e307e7...3230e`, Legal-/NOTICE-Evidence,
+  Risikoreferenz und Commit `7652e3f`. Ausnahmebericht `sha256:c9cbc425...e7f53` ist vom 11. bis 18. August 2026
+  aktiv und erlaubt ausschliesslich die no-network Development-Build-Context-Materialisierung. Der reproduzierte
+  95-Dateien-Context ist `sha256:55822a9c...5fcad`; Import, Engine, Tenant-Content, Hosted Service, On-Prem und
+  Produktion bleiben geschlossen, `two_person_control_verified=false`.
+- [ ] Zwei-Personen-GenOffice-Entscheid vor jeder Runtime-, Pilot-, Distributions- oder Produktionsgrenze abschliessen:
+  zwei benannte Verantwortliche als `product_owner` und `security_compliance_owner` aufnehmen und den exakten Payload
+  unabhaengig signieren. Der vorbereitete Request v2 bleibt maximal 72 Stunden gueltig und bindet Personen, Rollen,
+  Keys, Request und Message. Die Solo-Ausnahme ersetzt diese spaetere Trennung nicht.
+- [x] Deterministischen Development-Build-Context hinter exakt einer Autorisierung vorbereitet: der no-network/read-only
+  Materializer liest das Archiv ohne Extraktion, prueft alle 93 ausgewaehlten Dateien erneut gegen Pfad, Groesse und
+  SHA-256 und erzeugt ein nach UID/GID, Modus, Reihenfolge und `SOURCE_DATE_EPOCH` normalisiertes TAR mit NOTICE und
+  eingebettetem Evidence-Manifest. Report und Manifest v2 akzeptieren entweder eine regulaere Zwei-Personen-Admission
+  oder eine aktive Solo-Founder-Ausnahme, niemals beide. Ohne reale Signatur entsteht kein Context; npm, Build, Engine
+  und Import bleiben geschlossen.
+- [x] Reproduzierbaren, signierten Worker-Build mit autoritativem Image-SBOM und Vulnerability Review erstellt:
+  Generation 05 bindet Build-Context, identischen Dual-Build, Image-Archiv, 41-Komponenten-CycloneDX-SBOM, frischen
+  Offline-Scan ohne Findings und externe Founder-Signatur. Der Status-Entrypoint und alle Runtime-/Tenant-/Produktions-
+  Grenzen bleiben geschlossen; die Admission endet am 19. August 2026.
+- [x] Synthetische Runtime-Vorstufe ohne Engine-Ausfuehrung implementiert: fuenf deterministische OOXML-Fixtures,
+  kanonisches `runsc-kvm`-/No-Egress-Profil, Docker-HostConfig-/In-Container-Probevertrag sowie eine maximal 24 Stunden
+  gueltige Zwei-Personen-Ceremony binden Image, SBOM, Scan, Korpus und Sandbox. Das Probe-Schema meldet ausdruecklich
+  `engine_executed=false`; die fehlende zweite reale Person wird weder simuliert noch durch die Solo-Ausnahme ersetzt.
+- [x] Reale `runsc-kvm`-In-Container-Probe auf `dev001` geschlossen: die additive KVM-Runtime laesst die bestehende
+  `runsc`-Registrierung unveraendert; AppArmor-Userns-Hauptschutz bleibt aktiv. Der eng begrenzte Access-Preparer
+  prueft Eigentum, Symlinkfreiheit, kanonische Bytes und Docker-HostConfig, bevor er nur den synthetischen Inputs
+  Gruppenleserechte fuer UID/GID `10003` gibt. Die abschliessende Generation 06 bindet Container-ID und Hostname,
+  unveraenderliches Image `sha256:b68e4ad5...92646`, imageinternen Pruefcode, exakt zwei read-only Bind-Mounts und
+  die Abwesenheit von Host-Geraeten an das write-once Inspect-Dokument. Der exakte Container `666e3f3c5b95...`
+  bestand Runtime, No-Egress, DNS-Blockade, read-only Root/Korpus, alle in `/proc/self/status` sichtbaren leeren
+  Capability-Sets, no-new-privileges-HostConfig, Ressourcenlimits und Scratch-Cleanup. Inspect-Datei
+  `sha256:bb5dfc7d...1d544`, Access-Receipt-Datei `sha256:f041a27d...ac0ab`, Probebericht-Datei
+  `sha256:f7f58d21...29d1e`, interner Bericht `sha256:e87ce2ed...5cfd`. Engine, Tenant-Content, externe Netznutzung
+  und Runtime-Autorisierung blieben false. Generation 04 bleibt als engerer Vorgaengerbeleg erhalten; Generationen
+  01 bis 03 und 05 dokumentieren fail-closed Diagnosepfade. Der separate rootgebundene Host-Verifier-Beleg ist in
+  Generation 06 mit Datei-SHA-256 `ba3ad9be...31b1` abgeschlossen: Bare Metal, KVM-Geraet, paketverwaltetes
+  `runsc` `20260803.0`, geladenes AppArmor-Profil, aktiver globaler Userns-Hauptschutz und registrierte additive
+  Docker-Runtime sind verifiziert. Die zusaetzliche Unconfined-Restriktion bleibt dokumentiert false; Tenant-Content
+  und Runtime-Autorisierung bleiben false.
+- [x] Engine-unabhaengige DOCX-Quick-Edit-Vorstufe geschlossen: ein fester Preflight begrenzt Archivbytes, Parts,
+  Expansion, Kompressionsrate, XML-Groesse/-Tiefe und Relationships ohne Dateisystemextraktion. Der deterministische
+  19-Faelle-Korpus deckt drei Fidelity-Vertraege sowie Remote-Relationships/Templates, VBA, OLE, Pfadtraversal,
+  doppelte/case-kollidierende Parts, ZIP-Ressourcenangriffe, DTD/Entities, XML-Tiefe/Fehlform, Package-Signaturen,
+  Encryption-Flags und unbekannte Kompressionsmethoden ab. Signierte Originale werden als `present_unverified`
+  blockiert und muessen erhalten bleiben; jede spaetere Ableitung traegt `invalidated_by_edit`. Safe-/High-Fidelity-
+  Exportregeln, kandidat-only source-blinde Revalidierung und die CDR-Pflicht sind hashgebunden. Der Harness-Gate
+  bleibt mit fehlender Zwei-Personen-Runtime-Autorisierung, fehlendem neu attestiertem Executable-Image und dem
+  status-only Entry-Point ausdruecklich geschlossen; Engine und Tenant-Content bleiben false.
+- [x] Reproduzierbare DOCX-Fidelity-Studie vor der Engine-Ausfuehrung geschlossen: eine exakte `3 Engines x 3 Fixtures`-
+  Matrix trennt den interaktiven Windows-Word-Runner von isoliertem LibreOffice Headless und dem weiterhin zwei-
+  personenpflichtigen GenOffice-`runsc-kvm`-Runner. Drei metadata-only OOXML-Strukturbaselines, feste RGB-Messmetriken
+  bei 144 DPI, exakte Engine-/Font-/Umgebungsbindungen, enginespezifische Ed25519-Ergebnis-Signer und ein vollstaendiger
+  9er-Matrix-Intake sind schema- und hashgebunden. Selbst neun gueltige Signaturen bleiben ohne Evidenzbyte-Pruefung,
+  kalibrierte visuelle Schwellen und menschliches Review ohne Kompatibilitaets- oder Spike-Abschlusswirkung. Der aktuelle
+  write-once Readiness-Beleg fuehrt alle zehn realen Blocker und bestaetigt `engine_executed=false`.
+- [x] Source-blinde Fidelity-Evidenzpruefung geschlossen: der netzlose, enginefreie Verifier hasht jedes durch ein
+  signiertes Execution Receipt inventarisierte Artefakt, berechnet Output-Preflight und OOXML-Strukturfingerprint aus
+  den DOCX-Bytes neu, validiert strikte metadata-only Open-XML- und Font-Berichte, prueft jede Referenz-/Kandidaten-RGB-
+  Seite und reproduziert alle visuellen Messwerte. Plan, Policy, Assignment, Engine, Umgebung, Font-Baseline, CDR und
+  Receipt werden bis zur enginespezifischen Ed25519-Signatur zurueckgebunden. Ein erfolgreicher Einzelbeleg darf nun
+  `referenced_evidence_content_verified=true` melden, aber Schwellenkalibrierung, Human Review, Kompatibilitaetsclaim
+  und Spike-Abschluss bleiben false; ohne reale autorisierte Runner-Evidenz wird kein Erfolgsbeleg simuliert.
+- [x] Ersten realen Fidelity-Engine-Pfad geschlossen: ein digestgebundener LibreOffice-25.8-Runner verarbeitet unter
+  `runsc-kvm`, ohne Netzwerk, Capabilities, Credentials oder Private Key genau ein synthetisches Assignment und
+  erzeugt das vollstaendige ADR-0073-Evidence-Bundle samt externer Signaturuebergabe. Eine nach Inkrafttreten der
+  Signer-Policy erzeugte Generation deckt alle drei Fixtures ab; ihre enginespezifischen Ed25519-Envelopes und alle
+  referenzierten Evidenzbytes sind unabhaengig verifiziert. Die gleichen Engine-Render sind pixelgleich, waehrend der
+  echte `DocumentFormat.OpenXml`-3.5.1-Validator weiterhin sechs bis sieben Schemafindings pro Output festhaelt. Damit
+  ist die LibreOffice-Zeile `3/3`, die Gesamtmatrix aber erst `3/9`; Kompatibilitaet, Kalibrierung, Human Review,
+  Tenant-Content und produktive Writes bleiben geschlossen.
+- [x] Private-Key-freie Fidelity-Ergebniszeremonie geschlossen: eine vollstaendige, enginespezifische Public-Key-Policy,
+  maximal 72 Stunden gueltige Requests und extern erzeugte Ed25519-Antworten werden bis zum bestehenden ADR-0072-
+  Envelope revalidiert. Kein `sign`-Modus und kein Private-Key-Mount existiert; getrennte Engine-Schluessel belegen im
+  Solo-Betrieb keine getrennten Personen. Erst der nachgelagerte ADR-0073-Verifier darf Evidenzbytes als geprueft
+  melden. Der Operationsbeleg ist fuer alle drei LibreOffice-Ergebnisse abgeschlossen: die drei privaten Fidelity-
+  Schluessel liegen ausschliesslich als Windows-CurrentUser-DPAPI-Ciphertext auf der Operator-Workstation; auf `dev001`
+  wurden nur Public Keys und Signaturantworten verarbeitet. Word- und GenOffice-Ergebnisse bleiben ausstehend.
+- [x] Interaktiven Microsoft-Word-Referenzpfad technisch geschlossen: ein dediziertes lokales Windows-Konto ohne
+  Office-Identitaet, ohne Zugriff auf die Fidelity-Signing-Custody und mit gepruefter `WINWORD.EXE`-Outbound-Sperre
+  erzeugt nach sichtbarem Read-only-Open, erzwungen deaktivierten Makros und expliziter menschlicher Bestaetigung ein
+  exaktes oeffentliches Vier-Dateien-Handoff. Vorbereitung und source-blinde Auswertung bleiben getrennte netzlose
+  `dev001`-Container; der Collector laeuft unter `runsc-kvm`, erzeugt ADR-0073-Evidenz und uebergibt nur eine kanonische
+  Signaturmessage an ADR-0075. Der Pfad ist implementiert und vertraglich getestet, aber noch nicht real ausgefuehrt:
+  Word bleibt `0/3`, die authentifizierte Gesamtmatrix `3/9`, und kein Kompatibilitaetsclaim ist erlaubt.
+- [ ] DOCX-Quick-Edit-Spike mit boesartigem OOXML- und Fidelity-Korpus umsetzen: Word/LibreOffice/GenOffice-Vergleich,
+  Makro/OLE/Remote-Relationship-/ZIP-Bomb-Grenzen, signierte Originale, Safe-/High-Fidelity-Export, no-egress `runsc`
+  oder MicroVM, source-blinde Revalidierung und bestehende CDR-Vorschau. Der Spike schreibt noch keine produktiven
+  Tenant-Versionen.
+- [ ] Produktiven Quick-Edit-Save erst nach atomarem Kandidatenversions-Write, frischer ACL-/Tenant-Pruefung,
+  expliziter Nutzerbestaetigung, append-only Edit-Receipt sowie nicht-leerem Backup-/Restore-/Failover-Drill oeffnen.
+  Draft-Journal, Kandidatenversion, Engine-/Policy-Hashes und Receipt muessen wiederherstellbar sein; Scratch und Tokens
+  duerfen nicht im Backup landen.
+- [ ] WOPI-Vollkollaboration als eigenen Architektur- und Releasepfad evaluieren. Collabora Online ist der bevorzugte
+  erste Kandidat, ONLYOFFICE die Alternative; Proof Keys, Locks, Token-Laufzeit, Callback-Validierung, Save-As,
+  Co-Authoring-Recovery und Write-Receipts werden nicht in Quick Edit oder Preview versteckt.
+- [x] Getrennten CDR-Pfad auf `dev001` samt Backup und Failover nachgewiesen: Image
+  `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`, CDR-Manifest
+  `sha256:5e70931345ebc3b7d003f568bbd351e2986d7f8036f8659404159df44a2ba7dd`, Proof
+  `sha256:e4df54a791145737fb4ea3fc72ab8f6948aed03faa6a5a0ce2a461094a44fe71` und Recovery
+  `sha256:e4d725bf14596cb49884ad97abe03bdd46df4bd0609bc3a1653a8059a4e5cfae` mit `4/4/4`-Reconciliation. RGB-,
+  Control-, Input- und Output-Scratch waren anschliessend leer; Production-Admission, Dispatch und Serving blieben aus.
+- [ ] Produktiven Conversion-Dispatch erst nach unabhaengig nachgewiesenem gVisor-/MicroVM-Hostprofil, produktiver
+  Malware-/CDR-HA- und Failover-Evidence, kryptografisch verifiziertem Preview-Image-Digest samt SBOM/Provenance,
+  erneut erfolgreichem nicht-leerem Recovery-Report, separatem gehaertetem PDF.js-Origin, unabhaengigen boesartigen
+  Active-Content-Fixtures und realer Drei-Rollen-Signaturzeremonie ausfuehren. Keine dieser externen
+  Production-Evidenzen wird im Repository simuliert; bis zu ihrem Vorliegen bleibt
+  die Produktion trotz funktionsfaehigem Engine-Smoke geschlossen.
 
 ## Release-Strategie
 
@@ -1339,6 +3195,56 @@ Enthaelt:
 - [ ] Optionales CRM/ERP Modul als erster Business-Modulnachweis.
 - [ ] Vorbereitete Modulpfade fuer Wissensdatenbank, LMS, Aufgaben, Tickets und Zeiterfassung.
 
+## Aktueller Umsetzungsstand: Backend-Fundament
+
+- [x] Isolierter PostgreSQL-Restore mit Checksumme, Restore-Katalog und Loader-Receipt.
+- [x] Exakter Quell-/Zielvergleich fuer aktuell 85 Migrationen und 95 Tabellen inklusive Row Counts, RLS, Policies, Rollen und Grants ohne Nutzdaten im Report.
+- [x] Unabhaengiger Exact-Version-MinIO-Restore fuer zwei Tenants und drei SourceObjects.
+- [x] Gemeinsames metadata-only `backend_foundation_completion_gate.v1` fuer Tenant/IAM, append-only Audit, Module Registry, Migrationen, PostgreSQL, SourceObjects und Object Storage.
+- [x] Host-Neustart-Recovery fuer die dauerhaften Entwicklungsdienste geschlossen: PostgreSQL, MinIO und API starten per `unless-stopped` wieder an; Migrationen, Backups, Drills, Gates und Maintenance-Worker bleiben explizite Einmaljobs.
+- [x] Lieferkettennachweis als Release-Fundament geschlossen: unveraenderlich gepinnte Actions, Runtime-Image-Scans, verbotene Lizenz-Gates, CycloneDX-SBOM, SHA-256-Checksummen und schluessellose Provenance-/SBOM-Attestierungen fuer versionierte Release-Artefakte.
+- [x] Reproduzierbare Dependency- und Image-Promotion-Grenze geschlossen: direkte Python-Constraints werden in digest-gepinnten Compose-Werkzeugcontainern als universelle transitive SHA-256-Locks aufgeloest; Docker installiert ausschliesslich mit Hashpflicht, CI blockiert Lock-Drift, getaggte Releases publizieren exakt das gepruefte Image nach GHCR und attestieren den OCI-Digest.
+- [x] Getrennte Staging-/Production-Promotion geschlossen: geschuetzte GitHub Environments, main-only Ausfuehrung, exakte Tag-/Digest-Bindung, Release-Provenance- und CycloneDX-Verifikation sowie signierte metadata-only Promotion-Admission; Produktion verlangt zusaetzlich eine gueltige Staging-Attestierung desselben Digests.
+- [ ] Repository-Administratoren aktivieren Required Reviewer, Self-Review-Sperre, Branch-Restriktion und Bypass-Sperre fuer die GitHub Environments **staging** und **production** und setzen erst danach deren Variable **PROMOTION_POLICY_CONFIGURED=true**.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Tasks-Slice erneut gruen: Task, initiale Activity, zwei Objekt-ACLs, ein append-only Receipt, idempotenter Replay, exakter unabhaengiger Restore (`1|1|2|1`), 59 Migrationen, 63 Tabellen und Backend-Gate-Hash `sha256:66d6b7d91ce2d2fdb8f9d21f90a38797e3c637d59ffc0ec2eff25fe6b2f25836`.
+- [x] Runtime-Proof am 2026-07-30 nach produktivem Time-Tracking-Slice gruen: Entry, initiales Approval `not_submitted`, zwei Objekt-ACLs, ein metadata-only Receipt, autorisierte Reads (`1|1`) und atomare PostgreSQL-Zaehlung (`1|1|2|1`); isolierter Restore mit Time-Tracking-Schreibkontrollen, 60 Migrationen, 66 Tabellen und Backend-Gate-Hash `sha256:690d59e7515854c3a6dc79bb6f817b739a249cbcd6a7a43abc74732d08f3071d`.
+- [x] Fail-closed Deployment-Gate fuer produktives PITR/WAL-Archiv, verschluesselte immutable Offsite-Backups, gefencete HA-Promotion und standortgetrennte PostgreSQL-/Object-Storage-/KMS-Recovery umgesetzt; Policy `backup_failover_policy.v4`, frische hash-only Operator-Evidenz, RPO/RTO, drei getrennte Ed25519-signierte in-toto/DSSE-Attestierungen und Runtime-Reverifikation gegen eine separate Signer-Policy werden geprueft, ohne Deployment, Promotion, Traffic-Switch oder Business-Write auszufuehren. Reale Produktionsevidenz bleibt bewusst offen.
+- [x] Security-Admin-Bedienpfad fuer Production Continuity geschlossen: tenant-gebundene Requirements- und Gate-Status-Read-APIs leiten Schwellenwerte aus der aktuellen Policy ab, normalisieren `missing`, `invalid`, `expired`, `blocked` und `ready`, auditieren nur Metadaten und besitzen bewusst keinen Evidenz-Upload-, Report-Mutations- oder Ausfuehrungspfad.
+- [x] Private-key-freie Offline-Signaturzeremonie fuer Production Continuity geschlossen: Ein gehaerteter No-Network-Compose-Pfad erzeugt kanonische, evidenz-, deployment-, policy- und rollen-gebundene DSSE-Signierauftraege, akzeptiert exakt drei extern erzeugte Ed25519-Antworten und schreibt den Envelope erst nach erneuter kryptografischer Verifikation. Es existieren bewusst kein Signierbefehl, kein Private-Key-Modell und kein Provider-Credential-Pfad.
+- [x] CRM Accounts, Contacts, Activities und Notes auf den PostgreSQL-RLS-Laufzeitpfad umgestellt und als gemeinsamer ACL-gepruefter Account Workspace operationalisiert; CRM-Bootstrap ist idempotent und laeuft vor API und Backup.
+- [x] Atomaren CRM-Schreibpfad fuer Fachdaten, Objekt-ACL und Audit-Receipt inklusive Upgrade-Evidence fuer bestehende Tenants geschlossen.
+- [x] Zeiterfassung als produktiven Fundament-Slice geschlossen: Modulvertrag, Registry, Objektregeln, Migration `0060`, atomarer Entry/Approval/ACL/Receipt-Write, tenant- und feature-gated API sowie Restore-Gate.
+- [x] Task-Lifecycle mit Migration `0077` geschlossen: atomare Aktivitaet plus hash-verkettete Transition, optimistische Zustandskontrolle, exakte Bestaetigung fuer Abbruch/Archivierung und Restore-Triggernachweis.
+- [x] Time-Approval mit Migration `0078` geschlossen: Einreichung und finale Vier-Augen-Entscheidung als hash-verkettete Evidenz, hash-only Human-Bestaetigung und Restore-Triggernachweis.
+- [x] Task-Neuzuweisung und Faelligkeitsaenderung mit Migration `0079` geschlossen: append-only Vorher/Nachher-Evidenz, optimistische Kontrolle, aktiver Zielprincipal, gezielte ACL-Umschreibung ohne Verlust manueller Grants, API und Work UI.
+- [x] Task-Mutationsrennen mit additiver Migration `0081` geschlossen: Lifecycle-Transitionen und Amendments verwenden denselben tenant- und task-gebundenen Advisory Lock; ein Datenbank-Trigger erzwingt die Serialisierung auch fuer direkte Schreiber und der Restore-Nachweis prueft beide Trigger.
+- [x] Zeiterfassungskorrektur und Neueinreichung mit Migration `0080` geschlossen: vollstaendige unveraenderliche Revision, Bindung an den exakten Korrekturauftrag sowie Revision/Hash-Bindung der Neueinreichung, API und Work UI.
+- [x] Runtime-Proof am 2026-09-17 nach dem vollstaendigen ersten Daily-Work-Loop und der Mutationsserialisierung gruen: 81 Migrationen, 89 Tabellen, Backup `sha256:060a533512494089917ad8adb0eb52926c906c9c7ac09ac65126ee4507c45857`, Restore `sha256:ae43607cf60f1e775873cf928758c9a74dd41a0e9a572bb7925f9b95550317cb`, Foundation `sha256:9df727336638f1ed9ce5cfb784f3147c7745b1cc2db3e20c8cb938a526bda8f5`, Business Gate `sha256:14a680363d1d2c8d6be29c8796f3bbb63577e8a7eaaf2deb68845ea0e8ea1300` und nicht-ausfuehrender Pilot-Preflight `sha256:c98754c0dcb114483bfcc7bab8404494b7b70cb576108e68cb321e502fef8789`.
+- [x] Definierte Modul-Familien-Queue geschlossen: Knowledge Base, LMS, Tasks, Tickets und Zeiterfassung besitzen den gemeinsamen Modul-, Rechte-, Daten- und Continuity-Vertrag; produktive Tiefen bleiben risikobasiert getrennt.
+- [x] Gemeinsame Backend-Release-Readiness geschlossen: `business_backend_release_gate.v1` bindet den hash-verifizierten Fundamentnachweis an Live-Health/OpenAPI, installierte Modulpakete, Migrationen, PostgreSQL-Backends und Restore-Kontrollen; isolierter Runtime-Proof `3/3`, Gate-Hash `sha256:37328062224d4f3cff5060b2de5e5042795ad697dae2777b494adf59f673ce5a`.
+- [x] Kontrollierten Pilot-Preflight geschlossen: `tenant-demo` ist metadata-only fuer `3/3` produktive Slices, sieben API-Operationen, fuenf Monitoring- und vier nicht-destruktive Rollback-Kontrollen geprueft; `pilot_start_allowed=false`, Gate-Hash `sha256:19dc7038db5167b28604bbebf221f6325aa0d8009312653383aa79833454ada0`.
+- [x] Productivity-Pilot-Startfreigabe operational: Migration `0063`, tenant-sicheres append-only RLS-Ledger, Security-Admin-Vier-Augen-Prinzip, exakt fuenf Monitoring- und vier Rollback-Nachweise, maximal acht Stunden, per Request gepruefter Ablauf und default-closed Runtime-Kill-Switch.
+- [x] Technischer Runtime-Proof geschlossen: vier freigegebene Reads `200`, Fremdroute `403`, nach Kill-Switch `423`, Business-Row-Counts unveraendert, Start-Evidenz `sha256:9306b1e1d2e0706d1236c99792f9a6531747cd73f4acdc3fc399e70fcef32fd7`, 63 Migrationen, 70 Tabellen, exakter isolierter Restore und Backend-Gate `sha256:633fcd6cd938ce355964a721b74c363d983041a32f90a93e8eb7a1a9ca93202c`.
+- [x] Technische Runtime-Window-Grenze geschlossen: Migration `0064`, tenant-sichere append-only RLS-Ledger fuer designierte Nutzer und inhaltsfreie Zugriffsbeobachtungen, separates Tenant-Admin-Vier-Augen-Prinzip sowie per Request gepruefte Nutzer-, Zeit-, Start- und Routenbindung.
+- [x] Kontrollierter Entwicklungs-Pilotnachweis auf `dev001` geschlossen: vier getrennte Kontrollakteure, ein synthetisch designierter Fachnutzer, exakt sieben erfolgreiche Operationen, sieben eindeutige append-only Beobachtungen, Fremdprincipal `403`, geschlossener Kill-Switch `423`, Backup `sha256:6852be0dabed8de26734d29b71dc7914a1b70268c4b7c77a29aabc98f2dbabcf`, isolierter Restore und Backend-Gate `sha256:df5a61c6ebb3d653c5e855278928b67d0189fb8a1e0abadfebf29177c47aa53b`.
+- [x] Append-only Closure-Report geschlossen: Migration `0065`, Security-Admin-Vier-Augen-Abschluss bei geschlossenem Switch, sieben autoritative Beobachtungen, drei Domain-Receipts, Closure-Evidenz `sha256:902a47ed16ab0e8a1a8de9e9a501b873da25b9a32caae38a4a021005a740d4b3` und hashgleicher isolierter Restore; Post-Closure-Gates `sha256:a13ac0d300562853cf8b9b4f23bedc1102f039ccbfca601a941ffb399293ff47` und `sha256:9745878212d8d443a6e8d5b51bac32c4b2241507b79366fe55d65e490fe38d2e` gruen.
+- [x] Realnutzer-Aufnahmegrenze implementiert: Migration `0066`, autoritative IAM-/Rollenpruefung, pseudonymisierte Teilnehmerbelege, Zweck-/Rechtsgrundlagen-/Privacy-/Retention-Bindung, bedingte DPIA-/Betriebsratsnachweise, frische Preflight-/Backup-/Restore-Evidenz und Tenant-Admin/Security-Admin-Vier-Augen-Prinzip; Runtime und Traffic bleiben technisch unfreigegeben.
+- [x] Hash-only Realnutzer-Runtime vorbereitet: Migrationen `0067`, `0068` und `0071`, Principal-IDs nur transient gegen Tenant-IAM, ausschliesslich tenant-gebundene Hashes im Window- und Observation-Ledger, Rollen-Revalidierung bei Aktivierung und Zugriff, frische Admission-/Start-Bindung, automatischer Request-Gate-Wechsel und technisches Verbot von Runtime v1 nach Realnutzer-Admission. Der deploymentweite Kill-Switch bleibt geschlossen.
+- [x] Separaten hash-only Realnutzer-Closure-Pfad implementiert: Migrationen `0069` und `0070`, Security-Admin-Vier-Augen-Abschluss bei geschlossenem Switch, vollstaendige hash-only Observation- und Receipt-Manifeste, sicherer Nullaktivitaets-Abschluss, frische Recovery-Bindung, tenant-sichere API und verpflichtender isolierter Restore-Vertrag.
+- [ ] Naechster Fokus: benannte Principals, Zweck, Rollen, aktuelle Privacy-/Workforce-Kontrollnachweise und neue Vier-Augen-Freigaben fuer einen echten Pilotlauf durch verantwortliche Tenant-Stellen aufnehmen. Keine Platzhalter erzeugen, Entwicklungsbelege nicht wiederverwenden und den Kill-Switch bis zur gemeinsamen Abnahme geschlossen halten.
+- [ ] Parallel ueber den Security-Admin-Read-Pfad die aktuellen Anforderungen und den fail-closed Status pruefen; verantwortliche Operations-Stellen liefern danach reale Produktions-Topologie-, PITR-, Offsite-Restore-, HA-Promotion- und Cross-Site-Failover-Evidenz samt drei extern erzeugten Signaturen fuer `production_continuity_deployment_gate.v2`. Ohne gruenen kryptografisch verifizierten Report und passende aktuelle Signer-Policy bleibt selbst ein gesetzter Runtime-Schalter wirkungslos.
+
+## Aktueller Umsetzungsstand: Tickets & Incidents
+
+- [x] Modulvertrag, Feature Registry, Objektregeln und Catalog-Discovery.
+- [x] Migrationen `0051` bis `0054` plus `0074` fuer Catalog, Ticket/Event-Metadaten, persistente append-only Human-/Ausfuehrungsfreigaben und Pilot-Receipts.
+- [x] Tenant-sichere produktive API-Vertikale fuer Ticketanlage, autorisierte Reads, Statuswechsel und Ereigniskette.
+- [x] Atomare Ticket/Event-Writes, optimistische Statuspruefung, Audit, PostgreSQL-RLS-Adapter und Legal-Hold-Schutz.
+- [x] Expliziter Human-Approval-Record ohne Aktivierungs- oder Worker-Seiteneffekt.
+- [x] Backup/Restore-Vertrag fuer Ticket-, Event-, Approval-, Modul- und Feature-Zustand.
+- [x] Konsolidierter tenant-sicherer Pilotstatus mit kryptografisch gebundener Ausfuehrungsfreigabe, Receipt-Chain-Pruefung und genau einer naechsten Human-Aktion; keine Aktivierung oder Inhaltsdaten.
+- [ ] Kontrollierter Pilot: Paket installieren, einen Test-Tenant provisionieren, Read/Write-Features explizit aktivieren und Restore-/API-Nachweise abnehmen.
+- [ ] Nach Pilotfreigabe naechste produktive Modulfamilie anhand des Masterfahrplans auswaehlen.
 ## Kritische Fallstricke
 
 - DSGVO-Loeschung vs. GoBD-Aufbewahrung: nie direkter Delete ohne Policy Engine.

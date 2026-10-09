@@ -10,7 +10,14 @@ from suite.ai_control_plane.models import DataClass
 from suite.persistence.migrator import apply_migrations
 from suite.storage.adapter_policy import load_storage_adapter_policy
 from suite.storage.retention import load_retention_manifest_policy
-from suite.storage.source_object_storage import InMemorySourceObjectContentStore, PgSourceObjectRepository
+from suite.storage.source_object_storage import (
+    InMemorySourceObjectContentStore,
+    PgSourceObjectRepository,
+    SourceObjectContentReconciliationAction,
+    SourceObjectContentReconciliationWorker,
+    SourceObjectContentRecoveryStatus,
+    build_source_object_content_recovery_evidence_hash,
+)
 from suite.storage.source_objects import (
     LegalHoldState,
     SourceLifecycleState,
@@ -136,6 +143,30 @@ def test_pg_source_object_repository_bridges_metadata_storage_manifest_and_conte
     assert manifest_count is not None
     assert int(metadata_count[0]) == 1
     assert int(manifest_count[0]) == 1
+
+    recovery_evidence = repository.build_content_recovery_evidence(
+        tenant_id=tenant_id,
+        restore_drill_report_hash="sha256:" + "b" * 64,
+        checked_at_utc="2026-06-12T11:02:00Z",
+    )
+    assert recovery_evidence.reconciliation_status == SourceObjectContentRecoveryStatus.READY
+    assert recovery_evidence.stored_object_count == 1
+    assert recovery_evidence.storage_manifest_count == 1
+    assert recovery_evidence.verified_content_count == 1
+    assert recovery_evidence.orphaned_content_count == 0
+    assert recovery_evidence.missing_content_count == 0
+    assert recovery_evidence.source_content_recovery_required is False
+    assert recovery_evidence.api_wiring_allowed is True
+    assert recovery_evidence.evidence_hash == build_source_object_content_recovery_evidence_hash(recovery_evidence)
+    assert "Source object storage bridge content" not in recovery_evidence.model_dump_json()
+    reconciliation_run = SourceObjectContentReconciliationWorker(repository).run(
+        tenant_id=tenant_id,
+        restore_drill_report_hash="sha256:" + "b" * 64,
+        checked_at_utc="2026-06-12T11:02:00Z",
+    )
+    assert reconciliation_run.evidence_hash == recovery_evidence.evidence_hash
+    assert reconciliation_run.recommended_action == SourceObjectContentReconciliationAction.READY_FOR_API_WIRING
+    assert reconciliation_run.api_wiring_allowed is True
 
     with pytest.raises(ValueError, match="already exists"):
         repository.add(record)

@@ -1,0 +1,208 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "active_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Active Content Allowed",
+      "type": "boolean"
+    },
+    "allowed_compression_methods": {
+      "default": [
+        0,
+        8
+      ],
+      "items": {
+        "enum": [
+          0,
+          8
+        ],
+        "type": "integer"
+      },
+      "title": "Allowed Compression Methods",
+      "type": "array"
+    },
+    "authoritative_signature_validation_available": {
+      "const": false,
+      "default": false,
+      "title": "Authoritative Signature Validation Available",
+      "type": "boolean"
+    },
+    "embedded_objects_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Embedded Objects Allowed",
+      "type": "boolean"
+    },
+    "engine_execution_enabled": {
+      "const": false,
+      "default": false,
+      "title": "Engine Execution Enabled",
+      "type": "boolean"
+    },
+    "external_relationships_allowed": {
+      "const": false,
+      "default": false,
+      "title": "External Relationships Allowed",
+      "type": "boolean"
+    },
+    "fidelity_claims_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Fidelity Claims Allowed",
+      "type": "boolean"
+    },
+    "fidelity_comparison_targets": {
+      "default": [
+        "microsoft_word",
+        "libreoffice",
+        "genoffice",
+        "collabio_revalidator"
+      ],
+      "items": {
+        "enum": [
+          "microsoft_word",
+          "libreoffice",
+          "genoffice",
+          "collabio_revalidator"
+        ],
+        "type": "string"
+      },
+      "title": "Fidelity Comparison Targets",
+      "type": "array"
+    },
+    "high_fidelity_export_rules": {
+      "default": [
+        "preserve_safe_unknown_parts_only",
+        "never_preserve_active_or_external_content",
+        "require_explicit_human_confirmation",
+        "require_source_blind_revalidation",
+        "require_independent_cdr_preview"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "High Fidelity Export Rules",
+      "type": "array"
+    },
+    "max_archive_bytes": {
+      "const": 8388608,
+      "default": 8388608,
+      "title": "Max Archive Bytes",
+      "type": "integer"
+    },
+    "max_compression_ratio": {
+      "const": 100,
+      "default": 100,
+      "title": "Max Compression Ratio",
+      "type": "integer"
+    },
+    "max_part_uncompressed_bytes": {
+      "const": 16777216,
+      "default": 16777216,
+      "title": "Max Part Uncompressed Bytes",
+      "type": "integer"
+    },
+    "max_parts": {
+      "const": 128,
+      "default": 128,
+      "title": "Max Parts",
+      "type": "integer"
+    },
+    "max_relationships": {
+      "const": 128,
+      "default": 128,
+      "title": "Max Relationships",
+      "type": "integer"
+    },
+    "max_total_uncompressed_bytes": {
+      "const": 67108864,
+      "default": 67108864,
+      "title": "Max Total Uncompressed Bytes",
+      "type": "integer"
+    },
+    "max_xml_bytes": {
+      "const": 8388608,
+      "default": 8388608,
+      "title": "Max Xml Bytes",
+      "type": "integer"
+    },
+    "max_xml_depth": {
+      "const": 64,
+      "default": 64,
+      "title": "Max Xml Depth",
+      "type": "integer"
+    },
+    "network_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Network Allowed",
+      "type": "boolean"
+    },
+    "original_bytes_retention_required_for_signed_packages": {
+      "const": true,
+      "default": true,
+      "title": "Original Bytes Retention Required For Signed Packages",
+      "type": "boolean"
+    },
+    "persistent_document_writes_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Document Writes Allowed",
+      "type": "boolean"
+    },
+    "policy_hash": {
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "policy_id": {
+      "const": "genoffice-docx-quick-edit-preflight-v1",
+      "default": "genoffice-docx-quick-edit-preflight-v1",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "safe_export_rules": {
+      "default": [
+        "remove_external_relationships",
+        "remove_active_content_and_embedded_objects",
+        "remove_invalidated_package_signatures",
+        "require_source_blind_revalidation",
+        "require_independent_cdr_preview"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Safe Export Rules",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_quick_edit_preflight_policy.v1",
+      "default": "genoffice_docx_quick_edit_preflight_policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signed_packages_engine_eligible": {
+      "const": false,
+      "default": false,
+      "title": "Signed Packages Engine Eligible",
+      "type": "boolean"
+    },
+    "source_blind_revalidation_required": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Required",
+      "type": "boolean"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "policy_hash"
+  ],
+  "title": "GenOfficeDocxQuickEditPreflightPolicy",
+  "type": "object"
+}

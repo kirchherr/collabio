@@ -11,6 +11,10 @@ from suite.platform.erp_products import (
     ErpProductService,
     InMemoryErpProductRepository,
 )
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
+)
 
 
 def test_erp_product_records_require_internal_compliance_metadata() -> None:
@@ -84,6 +88,8 @@ def test_erp_product_service_returns_only_current_tenant_and_audits_metadata_onl
         "object_type": ERP_PRODUCT_OBJECT_TYPE,
         "candidate_count": 2,
         "result_contract": "metadata_only",
+        "persistent_metadata_contract": PERSISTENT_OBJECT_METADATA_SCHEMA_VERSION,
+        "persistent_metadata_required_fields": PERSISTENT_OBJECT_REQUIRED_FIELDS,
         "result_count": 2,
     }
 
