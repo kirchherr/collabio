@@ -74,29 +74,38 @@ export function officeShapeGroupExtension() {
         control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
         anchor.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); selectGroup(); });
         let drag = null;
-        anchor.addEventListener("pointerdown", (event) => {
-          if (event.button !== 0 || node.attrs.position == null) return;
-          const bounds = editor.view.dom.getBoundingClientRect();
-          drag = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
-            start: node.attrs.position, next: node.attrs.position };
-          anchor.setPointerCapture(event.pointerId); event.preventDefault(); event.stopPropagation();
-        });
-        anchor.addEventListener("pointermove", (event) => {
+        const dragTarget = anchor.ownerDocument.defaultView;
+        const move = (event) => {
           if (!drag || drag.id !== event.pointerId) return;
           drag.next = { ...drag.start,
             x: Math.max(0, Math.min(1000, Math.round(drag.start.x + (event.clientX - drag.clientX) / drag.width * 1000))),
             y: Math.max(-1200, Math.min(1200, Math.round(drag.start.y + event.clientY - drag.clientY))) };
           setPosition(drag.next);
-        });
+        };
+        const removeDragListeners = () => {
+          dragTarget?.removeEventListener("pointermove", move);
+          dragTarget?.removeEventListener("pointerup", finish);
+          dragTarget?.removeEventListener("pointercancel", cancel);
+        };
         const finish = (event, cancel = false) => {
           if (!drag || (event.pointerId != null && drag.id !== event.pointerId)) return;
+          removeDragListeners();
           if (anchor.hasPointerCapture(drag.id)) anchor.releasePointerCapture(drag.id);
           const { next, start } = drag; drag = null;
           if (cancel) { paint(node); return; }
           if (next.x !== start.x || next.y !== start.y) commitPosition(next);
         };
-        anchor.addEventListener("pointerup", (event) => finish(event));
-        anchor.addEventListener("pointercancel", (event) => finish(event, true));
+        const cancel = (event) => finish(event, true);
+        anchor.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0 || node.attrs.position == null) return;
+          const bounds = editor.view.dom.getBoundingClientRect();
+          drag = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
+            start: node.attrs.position, next: node.attrs.position };
+          dragTarget?.addEventListener("pointermove", move);
+          dragTarget?.addEventListener("pointerup", finish);
+          dragTarget?.addEventListener("pointercancel", cancel);
+          anchor.setPointerCapture(event.pointerId); event.preventDefault(); event.stopPropagation();
+        });
         anchor.addEventListener("keydown", (event) => {
           if (event.key === "Home" && node.attrs.position != null) {
             event.preventDefault(); commitPosition({ ...node.attrs.position, x: 0, y: 0 }); return;
@@ -113,6 +122,7 @@ export function officeShapeGroupExtension() {
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
           stopEvent(event) { return event.target === control || control.contains(event.target) || event.target === anchor || anchor.contains(event.target); },
           ignoreMutation(mutation) { return eventTarget(control, mutation.target) || eventTarget(anchor, mutation.target); },
+          destroy() { removeDragListeners(); drag = null; },
         };
       };
     },
