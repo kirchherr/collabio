@@ -5,7 +5,7 @@ import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupCon
 import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiResize, officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiRotate,
-  officeShapeMultiTranslate,
+  officeShapeMultiTransform, officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -289,4 +289,32 @@ test("Office positioned root objects rotate through one shared relative angle", 
   expect(() => officeShapeMultiRotate([first, group], 360)).toThrow();
   expect(() => officeShapeMultiRotate([first, group], 1.5)).toThrow();
   expect(() => officeShapeMultiRotate([first, group], true)).toThrow();
+});
+
+test("Office positioned root objects combine exact bounded transforms atomically", () => {
+  const first = { id: attrs.id, type: "shape", rootIndex: 0,
+    node: { attrs: { ...attrs, rotation: 350, position: { layer: "front", x: 500, y: 0 } } } };
+  const groupAttrs = { id: "shape-group-" + "d".repeat(24), layout: "row", gap: 16,
+    position: { layer: "front", x: 800, y: 400 } };
+  const group = { id: groupAttrs.id, type: "shapeGroup", rootIndex: 1,
+    node: { attrs: groupAttrs, content: { content: [
+      { attrs: { ...attrs, id: "shape-" + "b".repeat(24), rotation: 15 } },
+      { attrs: { ...attrs, id: "shape-" + "c".repeat(24), rotation: null } },
+    ] } } };
+  const options = { deltaX: 500, deltaY: -700, scaleX: 2000, scaleY: 1500,
+    lockAspect: false, rotation: 25, layer: "behind" };
+  const result = officeShapeMultiTransform([first, group], options);
+  expect(result).toMatchObject({ deltaX: 200, deltaY: -700, scaleX: 2000, scaleY: 1500,
+    rotation: 25, layer: "behind" });
+  expect(result.changes[0].attrs).toMatchObject({ width: 640, height: 240, rotation: 15,
+    position: { layer: "behind", x: 700, y: -700 } });
+  expect(result.changes[1].attrs).toEqual({ ...groupAttrs,
+    position: { layer: "behind", x: 1000, y: -300 } });
+  expect(result.changes[1].members.map((member) => [member.width, member.height, member.rotation ?? 0]))
+    .toEqual([[640, 240, 40], [640, 240, 25]]);
+
+  expect(() => officeShapeMultiTransform([first, group], { ...options, scaleX: 99 })).toThrow();
+  expect(() => officeShapeMultiTransform([first, group], { ...options, rotation: 1.5 })).toThrow();
+  expect(() => officeShapeMultiTransform([first, group], { ...options, layer: "middle" })).toThrow();
+  expect(() => officeShapeMultiTransform([first, group], { ...options, style: "transform" })).toThrow();
 });

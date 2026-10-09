@@ -789,19 +789,75 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
     entry.querySelector(".office-shape").dataset.shapeRotation))).toEqual(Array(3).fill("45"));
   await editor.press("Control+z"); await editor.press("Control+Shift+z");
 
+  const exactSize = {
+    width: Math.round((scaledSize.width + 1) * 1.1),
+    height: Math.round(scaledSize.height * 0.9),
+  };
+  const fillExactTransform = async () => {
+    await page.locator("#shape-multi-transform-x").fill("50");
+    await page.locator("#shape-multi-transform-y").fill("-25");
+    await page.locator("#shape-multi-transform-layer").selectOption("behind");
+    await page.locator("#shape-multi-transform-width").fill("110");
+    await page.locator("#shape-multi-transform-height").fill("90");
+    await page.locator("#shape-multi-transform-rotation").fill("-15");
+  };
+  await page.locator("#shape-multi-transform").click();
+  await expect(page.locator("#shape-multi-transform-dialog")).toBeVisible();
+  await expect(page.locator("#shape-multi-transform-title")).toHaveText("Auswahl exakt transformieren");
+  await expect(page.locator("#shape-multi-transform-selection"))
+    .toHaveText("3 positionierte Objekte werden gemeinsam und in einem Rückgängig-Schritt transformiert.");
+  await fillExactTransform();
+  await expect(editor.locator("[data-office-multi-transforming]")).toHaveCount(3);
+  await expect(page.locator("#shape-multi-transform-status"))
+    .toHaveText("3 Objekte · X +50 · Y -25 · Breite 110 % · Höhe 90 % · Drehung -15°");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) => ({
+    x: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"),
+    y: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"),
+    layer: entry.querySelector(".office-shape").dataset.shapePosition,
+    width: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-width"),
+    height: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-height"),
+    rotation: entry.querySelector(".office-shape").dataset.shapeRotation,
+  })))).toEqual([
+    { x: "63.1%", y: "-275px", layer: "behind", width: String(exactSize.width), height: String(exactSize.height), rotation: "30" },
+    { x: "63.1%", y: "325px", layer: "behind", width: String(exactSize.width), height: String(exactSize.height), rotation: "30" },
+    { x: "63.1%", y: "925px", layer: "behind", width: String(exactSize.width), height: String(exactSize.height), rotation: "30" },
+  ]);
+  await page.locator("#shape-multi-transform-cancel").click();
+  await expect(editor.locator("[data-office-multi-transforming]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) => ({
+    x: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-x"),
+    y: entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-position-y"),
+    layer: entry.querySelector(".office-shape").dataset.shapePosition,
+    rotation: entry.querySelector(".office-shape").dataset.shapeRotation,
+  })))).toEqual([
+    { x: "58.1%", y: "-250px", layer: "front", rotation: "45" },
+    { x: "58.1%", y: "350px", layer: "front", rotation: "45" },
+    { x: "58.1%", y: "950px", layer: "front", rotation: "45" },
+  ]);
+  await page.locator("#shape-multi-transform").click(); await fillExactTransform();
+  await page.locator("#shape-multi-transform-apply").click();
+  await expect(page.locator("#shape-multi-transform-dialog")).not.toBeVisible();
+  await expect(editor.locator("[data-office-multi-transforming]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeRotation))).toEqual(Array(3).fill("30"));
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeRotation))).toEqual(Array(3).fill("45"));
+  await editor.press("Control+Shift+z");
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
-  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([581, 581, 581]);
-  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-250, 350, 950]);
-  expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "front", "front"]);
+  expect(stored.map((entry) => entry.attrs.position.x)).toEqual([631, 631, 631]);
+  expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-275, 325, 925]);
+  expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["behind", "behind", "behind"]);
   expect(stored.map((entry) => [entry.attrs.width, entry.attrs.height]))
-    .toEqual(Array(3).fill([scaledSize.width + 1, scaledSize.height]));
-  expect(stored.map((entry) => entry.attrs.rotation)).toEqual(Array(3).fill(45));
+    .toEqual(Array(3).fill([exactSize.width, exactSize.height]));
+  expect(stored.map((entry) => entry.attrs.rotation)).toEqual(Array(3).fill(30));
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(3);
   await expect.poll(() => page.locator("#print-preview .office-print-shape").evaluateAll((entries) =>
-    entries.map((entry) => entry.dataset.shapeRotation))).toEqual(Array(3).fill("45"));
+    entries.map((entry) => entry.dataset.shapeRotation))).toEqual(Array(3).fill("30"));
   await page.locator("#print-close").click();
   await page.locator("#document-reload").click();
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);

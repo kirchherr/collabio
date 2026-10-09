@@ -132,6 +132,37 @@ export function officeShapeMultiRotate(entries, delta) {
   return { delta, changes };
 }
 
+export function officeShapeMultiTransform(entries, options) {
+  const keys = ["deltaX", "deltaY", "scaleX", "scaleY", "lockAspect", "rotation", "layer"];
+  if (!options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).length !== keys.length || keys.some((key) => !Object.hasOwn(options, key)) ||
+      !Number.isSafeInteger(options.deltaX) || options.deltaX < -1000 || options.deltaX > 1000 ||
+      !Number.isSafeInteger(options.deltaY) || options.deltaY < -2400 || options.deltaY > 2400 ||
+      !Number.isSafeInteger(options.scaleX) || options.scaleX < 100 || options.scaleX > 5000 ||
+      !Number.isSafeInteger(options.scaleY) || options.scaleY < 100 || options.scaleY > 5000 ||
+      typeof options.lockAspect !== "boolean" || !Number.isSafeInteger(options.rotation) ||
+      options.rotation < -359 || options.rotation > 359 ||
+      (options.layer !== null && !OFFICE_SHAPE_MULTI_LAYERS.includes(options.layer))) {
+    throw new Error("shape-multi-transform");
+  }
+  const translated = officeShapeMultiTranslate(entries, options.deltaX, options.deltaY);
+  const resized = officeShapeMultiResize(entries, options.scaleX, options.scaleY, options.lockAspect);
+  const rotated = officeShapeMultiRotate(entries, options.rotation);
+  const changes = resized.changes.map((change, index) => {
+    const position = officeShapePosition({ ...translated[index].position,
+      layer: options.layer ?? translated[index].position.layer });
+    if (change.type === "shape") return { ...change,
+      attrs: officeShapeAttributes({ ...change.attrs, rotation: rotated.changes[index].attrs.rotation, position }) };
+    return { ...change, attrs: officeShapeGroupAttributes({ ...change.attrs, position }),
+      members: change.members.map((member, memberIndex) => officeShapeAttributes({ ...member,
+        rotation: rotated.changes[index].members[memberIndex].rotation })) };
+  });
+  return { deltaX: translated[0].position.x - entries[0].node.attrs.position.x,
+    deltaY: translated[0].position.y - entries[0].node.attrs.position.y,
+    scaleX: resized.scaleX, scaleY: resized.scaleY, rotation: options.rotation,
+    layer: options.layer, changes };
+}
+
 function scaleRange(values, minimum, maximum) {
   return {
     minimum: Math.max(...values.map((value) => Math.ceil(minimum * OFFICE_SHAPE_MULTI_SCALE_BASE / value))),

@@ -7,7 +7,8 @@ import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiResize, officeShapeMultiRotate,
-  officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiSelection, officeShapeMultiTranslate,
+  officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiSelection, officeShapeMultiTransform,
+  officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
@@ -41,7 +42,7 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null;
+    suppressedClick = null, transformSnapshot = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -99,6 +100,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
     $("shape-multi-layer").disabled = !writable || !officeShapeMultiCanArrange(current);
+    $("shape-multi-transform").disabled = !writable || !officeShapeMultiCanArrange(current);
     const positions = current.map((entry) => entry.node?.attrs.position).filter(Boolean);
     const movable = writable && officeShapeMultiCanArrange(current);
     $("shape-multi-nudge-left").disabled = !movable || positions.some((position) => position.x <= 0);
@@ -162,6 +164,11 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     const layout = officeShapeGroupLayout(change.attrs, change.members);
     root.style.setProperty("--shape-group-gap", `${layout.gap}px`);
     root.style.setProperty("--shape-group-bound-width", String(layout.width));
+    const position = change.attrs.position;
+    root.dataset.shapeGroupPosition = position.layer;
+    root.style.setProperty("--shape-group-position-x", `${position.x / 10}%`);
+    root.style.setProperty("--shape-group-position-shift", `${-position.x / 10}%`);
+    root.style.setProperty("--shape-group-position-y", `${position.y}px`);
   };
   const previewResize = (entry, change, resizing = true) =>
     previewShapeChange(entry, change, "data-office-multi-resizing", resizing);
@@ -530,6 +537,80 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   for (const button of document.querySelectorAll("[data-shape-multi-nudge]")) {
     button.addEventListener("click", () => nudge(button.dataset.axis, Number(button.dataset.amount)));
   }
+  const transformDialog = $("shape-multi-transform-dialog"), transformForm = $("shape-multi-transform-form");
+  const transformOptions = () => ({
+    deltaX: Number($("shape-multi-transform-x").value),
+    deltaY: Number($("shape-multi-transform-y").value),
+    scaleX: Number($("shape-multi-transform-width").value) * 10,
+    scaleY: Number($("shape-multi-transform-height").value) * 10,
+    lockAspect: $("shape-multi-transform-lock").checked,
+    rotation: Number($("shape-multi-transform-rotation").value),
+    layer: $("shape-multi-transform-layer").value || null,
+  });
+  const restoreTransformPreview = () => {
+    if (!transformSnapshot) return;
+    for (const entry of transformSnapshot.entries) {
+      previewShapeChange(entry, originalShapeChange(entry), "data-office-multi-transforming", false);
+    }
+  };
+  const refreshTransformPreview = () => {
+    if (!transformSnapshot || !transformForm.checkValidity()) {
+      restoreTransformPreview(); $("shape-multi-transform-apply").disabled = true;
+      $("shape-multi-transform-status").textContent = "Bitte alle Werte innerhalb der angegebenen Grenzen eingeben.";
+      return null;
+    }
+    try {
+      const result = officeShapeMultiTransform(transformSnapshot.entries, transformOptions());
+      const byId = new Map(result.changes.map((change) => [change.id, change]));
+      for (const entry of transformSnapshot.entries) {
+        previewShapeChange(entry, byId.get(entry.id), "data-office-multi-transforming", true);
+      }
+      $("shape-multi-transform-apply").disabled = false;
+      $("shape-multi-transform-status").textContent =
+        `${transformSnapshot.entries.length} Objekte · X ${result.deltaX >= 0 ? "+" : ""}${result.deltaX} · Y ${result.deltaY >= 0 ? "+" : ""}${result.deltaY} · Breite ${Math.round(result.scaleX / 10)} % · Höhe ${Math.round(result.scaleY / 10)} % · Drehung ${result.rotation >= 0 ? "+" : ""}${result.rotation}°`;
+      return result;
+    } catch {
+      restoreTransformPreview(); $("shape-multi-transform-apply").disabled = true;
+      $("shape-multi-transform-status").textContent = "Diese Kombination überschreitet die gemeinsamen Objektgrenzen.";
+      return null;
+    }
+  };
+  const closeTransform = () => {
+    restoreTransformPreview(); transformSnapshot = null;
+    if (transformDialog.open) transformDialog.close(); paint();
+  };
+  $("shape-multi-transform").addEventListener("click", () => {
+    const current = selectedEntries();
+    if (!allowed() || !officeShapeMultiCanArrange(current) || document.querySelector("dialog[open]")) return;
+    transformForm.reset();
+    transformSnapshot = { session: state.session, doc: state.editor.state.doc, entries: current,
+      ids: current.map((entry) => entry.id) };
+    $("shape-multi-transform-selection").textContent =
+      `${current.length} positionierte Objekte werden gemeinsam und in einem Rückgängig-Schritt transformiert.`;
+    transformDialog.showModal(); refreshTransformPreview(); $("shape-multi-transform-x").focus();
+  });
+  for (const input of transformForm.querySelectorAll("input, select")) {
+    input.addEventListener("input", refreshTransformPreview); input.addEventListener("change", refreshTransformPreview);
+  }
+  $("shape-multi-transform-close").addEventListener("click", closeTransform);
+  $("shape-multi-transform-cancel").addEventListener("click", closeTransform);
+  transformDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeTransform(); });
+  transformForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const current = selectedEntries(), snapshot = transformSnapshot;
+    const fresh = snapshot && snapshot.session === state.session && snapshot.doc === state.editor?.state.doc && allowed() &&
+      current.length === snapshot.ids.length && current.every((entry, index) => entry.id === snapshot.ids[index]);
+    const result = fresh ? refreshTransformPreview() : null;
+    if (!result) {
+      closeTransform(); notice("Die exakte Transformation wurde wegen eines ungültigen oder geänderten Dokumentzustands verworfen.", true);
+      return;
+    }
+    restoreTransformPreview(); transformSnapshot = null; transformDialog.close(); paint();
+    commitShapeChanges(result.changes,
+      `${current.length} positionierte Objekte atomar exakt transformiert. Rückgängig ist möglich.`,
+      "Die ausgewählten Objekte besitzen bereits diese Transformation.",
+      "Die ausgewählten Objekte konnten nicht exakt transformiert werden.");
+  });
   const resizeKey = (event) => {
     const handle = event.target.closest?.(".office-shape-resize, .office-shape-group-resize");
     const direction = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
@@ -590,6 +671,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (drag && (drag.session !== state.session || !allowed())) finishDrag(null, true);
     if (resizeDrag && (resizeDrag.session !== state.session || !allowed())) finishResize(null, true);
     if (rotateDrag && (rotateDrag.session !== state.session || !allowed())) finishRotate(null, true);
+    if (transformSnapshot && (transformSnapshot.session !== state.session ||
+        transformSnapshot.doc !== state.editor?.state.doc || !allowed())) closeTransform();
     if (session !== state.session) { session = state.session; mode = false; selectedIds.clear(); anchorId = null; }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);
