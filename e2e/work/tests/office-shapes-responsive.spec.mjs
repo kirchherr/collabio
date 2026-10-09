@@ -561,6 +561,7 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
   await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte ausgewählt");
   await expect(page.locator("#shape-multi-group")).toBeDisabled();
+  await expect(page.locator("#shape-multi-ungroup")).toBeDisabled();
   await expect(page.locator("#shape-multi-duplicate")).toBeEnabled(); await page.locator("#shape-multi-duplicate").click();
   await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(2);
   await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(2);
@@ -626,23 +627,43 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await editor.press("Control+Shift+z"); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
   await editor.press("Control+z"); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(3);
 
-  const saved = await saveOffice(page, { objectId }), groups = saved.content.content.filter((entry) => entry.type === "shapeGroup");
-  expect(saved.version.previous_version_id).toBe(baseline.version.version_id); expect(groups).toHaveLength(3);
-  expect(groups.flatMap((group) => group.content)).toHaveLength(6);
-  expect(new Set(groups.flatMap((group) => group.content.map((entry) => entry.attrs.id))).size).toBe(6);
+  await controls.nth(0).dispatchEvent("mousedown", { button: 0 });
+  await controls.nth(1).dispatchEvent("mousedown", { button: 0 });
+  await expect(page.locator("#shape-multi-ungroup")).toBeEnabled();
+  await page.locator("#shape-multi-ungroup").click();
+  await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(4);
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
+  await editor.press("Control+z");
+  await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(3);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(0);
+  await editor.press("Control+Shift+z");
+  await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(4);
+
+  const saved = await saveOffice(page, { objectId });
+  const groups = saved.content.content.filter((entry) => entry.type === "shapeGroup");
+  const standalone = saved.content.content.filter((entry) => entry.type === "shape");
+  expect(saved.version.previous_version_id).toBe(baseline.version.version_id); expect(groups).toHaveLength(1);
+  expect(standalone).toHaveLength(4); expect(groups[0].content).toHaveLength(2);
+  expect(new Set([...standalone.map((entry) => entry.attrs.id),
+    ...groups.flatMap((group) => group.content.map((entry) => entry.attrs.id))]).size).toBe(6);
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
-  await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape-group")).toHaveCount(3);
+  await page.locator("#document-print").click(); await expect(page.locator("#print-preview .office-print-shape-group")).toHaveCount(1);
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(6); await page.locator("#print-close").click();
-  await page.locator("#document-reload").click(); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(3);
+  await page.locator("#document-reload").click(); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(4);
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
   await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "false");
-  await controls.nth(0).dispatchEvent("mousedown", { button: 0, ctrlKey: true });
-  await controls.nth(2).dispatchEvent("mousedown", { button: 0, shiftKey: true });
-  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(3);
+  const standaloneControls = editor.locator(":scope > .office-shape-node .office-shape");
+  await standaloneControls.nth(0).dispatchEvent("mousedown", { button: 0, ctrlKey: true });
+  await standaloneControls.nth(3).dispatchEvent("mousedown", { button: 0, shiftKey: true });
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(4);
   await page.keyboard.press("Escape"); await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
   await openReuse(page, saved, "Independent multi-selection result");
   await submitReuse(page, saved); await expectReuseDraft(page, "Independent multi-selection result");
-  await expect(officeEditor(page).locator(":scope > .office-shape-group")).toHaveCount(3);
+  await expect(officeEditor(page).locator(":scope > .office-shape-group")).toHaveCount(1);
+  await expect(officeEditor(page).locator(":scope > .office-shape-node")).toHaveCount(4);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-multi-selection-${testInfo.project.name}.png`, fullPage: true });
 });
 

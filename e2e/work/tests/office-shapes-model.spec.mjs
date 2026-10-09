@@ -4,10 +4,11 @@ import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, offic
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
-  officeShapeMultiDistribution,
+  officeShapeMultiCanUngroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
+  officeShapeMultiUngroup,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -200,6 +201,26 @@ test("Office shape multi-selection reorders complete roots atomically and stably
   expect(() => officeShapeMultiOrder(7, selected, "middle")).toThrow();
   expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 1 }], "last")).toThrow();
   expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 7 }], "last")).toThrow();
+});
+
+test("Office shape multi-selection ungroups only complete normal-flow groups", () => {
+  const member = (suffix) => ({ attrs: { ...attrs, id: `shape-${suffix.repeat(24)}` } });
+  const group = (suffix, rootIndex, position = null) => ({
+    id: `shape-group-${suffix.repeat(24)}`, type: "shapeGroup", rootIndex,
+    node: { attrs: { id: `shape-group-${suffix.repeat(24)}`, layout: "row", gap: 16, position },
+      content: { content: [member(`${Number(suffix) * 2 - 1}`), member(`${Number(suffix) * 2}`)] } },
+  });
+  const groups = [group("1", 1), group("2", 4)];
+  expect(officeShapeMultiCanUngroup(groups)).toBe(true);
+  expect(officeShapeMultiUngroup(groups)).toEqual({ groups: [
+    { id: groups[0].id, rootIndex: 1, memberIds: groups[0].node.content.content.map((entry) => entry.attrs.id) },
+    { id: groups[1].id, rootIndex: 4, memberIds: groups[1].node.content.content.map((entry) => entry.attrs.id) },
+  ], memberIds: groups.flatMap((entry) => entry.node.content.content.map((memberNode) => memberNode.attrs.id)) });
+  expect(officeShapeMultiCanUngroup(groups.slice(0, 1))).toBe(false);
+  expect(officeShapeMultiCanUngroup([groups[0], { ...groups[1], type: "shape" }])).toBe(false);
+  expect(officeShapeMultiCanUngroup([groups[0], group("2", 4, { layer: "front", x: 500, y: 0 })])).toBe(false);
+  expect(() => officeShapeMultiUngroup([groups[0], { ...groups[1], node: { ...groups[1].node,
+    content: { content: [member("3"), { attrs: { ...attrs, id: "shape-invalid" } }] } } }])).toThrow();
 });
 
 test("Office positioned root objects align and distribute through bounded integer anchors", () => {

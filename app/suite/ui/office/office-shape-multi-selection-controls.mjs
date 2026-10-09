@@ -7,10 +7,11 @@ import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanOrder, officeShapeMultiCanStyle,
+  officeShapeMultiCanUngroup,
   officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
-  officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
+  officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate, officeShapeMultiUngroup,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
@@ -98,6 +99,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-duplicate").disabled = !doc || !writable || !enough || shapeCount(doc) + duplicateShapes > OFFICE_SHAPE_LIMIT ||
       groupCount(doc) + duplicateGroups > OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-remove").disabled = !writable || !enough;
+    $("shape-multi-ungroup").disabled = !writable || !officeShapeMultiCanUngroup(current);
     for (const button of document.querySelectorAll("[data-shape-multi-order]")) {
       button.disabled = !doc || !writable ||
         !officeShapeMultiCanOrder(doc.childCount, current, button.dataset.shapeMultiOrder);
@@ -500,6 +502,20 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
       clear(); focus(editor); updateEditor(); notice(`${current.length} Objekte atomar aus dem Entwurf entfernt. Rückgängig ist möglich.`);
     } catch { notice("Die Mehrfachauswahl konnte nicht entfernt werden.", true); }
+  });
+  $("shape-multi-ungroup").addEventListener("click", () => {
+    const editor = state.editor, current = selectedEntries();
+    if (!editor || !allowed()) return;
+    try {
+      const plan = officeShapeMultiUngroup(current); let tr = editor.state.tr;
+      for (const entry of [...current].reverse()) {
+        tr = tr.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, entry.node.content.content);
+      }
+      tr.setSelection(NodeSelection.create(tr.doc, current[0].pos)); validate(tr.doc);
+      editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      clear(); focus(editor); updateEditor();
+      notice(`${plan.groups.length} Formgruppen wurden atomar in ${plan.memberIds.length} eigenständige Formen aufgelöst. Rückgängig ist möglich.`);
+    } catch { notice("Nur mindestens zwei vollständige normal fließende Formgruppen können gemeinsam aufgelöst werden.", true); }
   });
   $("shape-multi-group").addEventListener("click", () => {
     const editor = state.editor, current = selectedEntries(); if (!editor || !allowed() || !officeShapeMultiCanGroup(current)) return;

@@ -147,6 +147,24 @@ function officeShapeMultiMembers(entry) {
   return entry.node.content.content.map((member) => officeShapeAttributes(member?.attrs));
 }
 
+export function officeShapeMultiCanUngroup(entries) {
+  if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
+  try {
+    return entries.every((entry) => {
+      if (entry?.type !== "shapeGroup" || entry.node?.attrs.position != null) return false;
+      const members = officeShapeMultiMembers(entry);
+      return members.length >= 2 && members.length <= OFFICE_SHAPE_GROUP_MEMBER_LIMIT;
+    });
+  } catch { return false; }
+}
+
+export function officeShapeMultiUngroup(entries) {
+  if (!officeShapeMultiCanUngroup(entries)) throw new Error("shape-multi-ungroup");
+  const groups = entries.map((entry) => ({ id: entry.id, rootIndex: entry.rootIndex,
+    memberIds: entry.node.content.content.map((member) => member.attrs.id) }));
+  return { groups, memberIds: groups.flatMap((group) => group.memberIds) };
+}
+
 export function officeShapeMultiCanStyle(entries) {
   if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
   try { entries.forEach(officeShapeMultiMembers); return true; } catch { return false; }
