@@ -2710,7 +2710,30 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      erhielt auf seiner ersten Seite bereits das allgemeine Profil. Abschnittsmetadaten bleiben deshalb abgewiesen,
      bis ein separat nachgewiesener segmentierter Render- und Merge-Pfad echte Abschnittserstseiten garantiert.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 482 / PLANS 224 bis 343 sind unter ADR-0139 bis ADR-0155 implementiert
+483. [x] Beliebige ganzzahlige Formdrehungen unter ADR-0156 eingefuehrt: native Formen speichern optional exakt 1 bis
+     359 Grad; 0 Grad bleibt die kanonische Abwesenheit und die bisherigen Vierteldrehungen bleiben gueltig.
+
+484. [x] Boolesche Werte, Bruchteile, negative Werte, 360 und groessere Werte, CSS, Transformationsmatrizen, URLs und
+     unbekannte Attribute unabhaengig in Browser und Server abgewiesen.
+
+485. [x] Responsiven Formdialog und direkten fokussierbaren Drehgriff auf exakte Winkel erweitert: Zeiger und Touch
+     folgen dem Formzentrum, Pfeiltasten drehen um ein Grad, Umschalt plus Pfeil um 15 Grad, Pos1 setzt auf null und
+     ein Klick behaelt den 90-Grad-Komfortschritt. Jede abgeschlossene Geste bildet einen isolierten Undo-Schritt.
+
+486. [x] Exakte achsenparallele Aussenmasse fuer beliebige Winkel berechnet und fuer normale, umflossene und
+     gruppierte Formen responsiv reserviert; schmale Ansichten bleiben ohne horizontalen Ueberlauf bedienbar.
+
+487. [x] Beliebige Winkel in der semantischen Druck-/PDF-Ausgabe mit derselben validierten Geometrie erhalten;
+     frei positionierte Formen bewahren ihren logischen Anker und Gruppenmitglieder ihre Reihenfolge.
+
+488. [x] Exakte Winkel durch bestaetigten CAS-Save, immutable Historie, Vergleich, Rueckgaengig/Wiederholen sowie
+     unabhaengige Form- und Gruppenkopien erhalten, ohne einen zweiten Darstellungs- oder Speichervertrag einzufuehren.
+
+489. [x] Vollstaendigen Lebenszyklus beliebiger Formwinkel unter ADR-0156 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, neuen Recovery-Speicher, Transformationsmatrix, getrennte Textdrehung,
+     physische Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 489 / PLANS 224 bis 350 sind unter ADR-0139 bis ADR-0156 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

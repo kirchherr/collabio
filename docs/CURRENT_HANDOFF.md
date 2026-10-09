@@ -2,6 +2,31 @@
 
 Updated: 2026-10-09
 
+Roadmap 483 through 489 / PLANS 344 through 350 are complete under ADR-0156. Native Office shapes now store any
+whole-degree rotation from 1 through 359; zero remains the canonical absence and every existing quarter-turn value
+stays valid. Browser and server reject booleans, fractions, negative and out-of-range values, matrices, CSS, URLs and
+unknown keys.
+
+The responsive dialog accepts exact degrees. The direct focusable handle follows pointer/touch movement around the
+shape center, uses one-degree arrow steps, 15-degree Shift steps, Home reset and a 90-degree click. Normal-flow,
+wrapped and grouped shapes reserve the exact axis-aligned bounds; positioned shapes retain their logical anchor.
+Editor and semantic print/PDF consume the same validated geometry. Confirmed save, history, undo/redo and independent
+shape/group copies preserve the exact angle in the existing immutable JSON.
+
+Focused server schema coverage passed 36/36. The model plus complete existing shape desktop/mobile matrix passed
+22/22, including exact 37/359-degree values, invalid 360-degree rejection, keyboard and pointer movement, undo/redo,
+confirmed save, history, groups, copies and print. Desktop and mobile screenshots passed visual review without clipping
+or horizontal overflow; their SHA-256 values are
+`0f61dab4ca6a856bb7cd5251bb0ec52f1698acad7fb116023cc2375f92b97d3e` and
+`082f045d6547b3da8039662c670932b3d5e8f9fd50ef2772344d98331e4832a8`.
+
+Product commit `509806e9` is published on `kirchherr/kb-write-unit-of-work`. The isolated review API was rebuilt from
+that source and is healthy at `http://192.168.0.108:42880/office?review=shape-arbitrary-rotation-509806e9`; the regular
+API and persistent stores were unchanged. The first browser attempt began before the recreated API accepted
+connections: all six pure model checks passed and the browser cases failed only with connection refusal. After
+confirmed health, the unchanged 22-case matrix passed. No migration, endpoint, dependency, external request, provider,
+worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
+
 Roadmap 482 / PLANS 343 closes the per-section first-page feasibility gate without opening unsupported metadata. A
 real four-page Chromium PDF used two two-page named sections. Page one rendered `ALPHA-FIRST`, page two
 `ALPHA-GENERAL`, and both pages of the later section rendered `BETA-GENERAL`; `BETA-FIRST` never appeared. Chromium's

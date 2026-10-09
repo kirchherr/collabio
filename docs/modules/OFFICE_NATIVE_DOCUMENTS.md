@@ -67,6 +67,18 @@ closed from the initial static shell state.
 
 ## Bounded native shapes (Roadmap 292)
 
+Roadmap 483 extends the earlier quarter-turn contract to every whole-degree angle from 1 through 359 under
+[ADR-0156](../../ARCHITECTURE_DECISIONS/ADR-0156-arbitrary-angle-native-office-shape-rotation.md). Zero remains the
+canonical absence. The responsive dialog accepts an exact value, while the selected shape's direct handle supports
+pointer/touch movement around the form center, one-degree arrow steps, 15-degree Shift steps, Home reset and the
+existing 90-degree click. A completed gesture is one isolated undo unit.
+
+Normal-flow, wrapped and grouped shapes reserve the exact axis-aligned bounds derived from the validated dimensions
+and angle; compact views remain contained. Semantic print/PDF uses the same trusted geometry, while positioned forms
+retain their logical anchor. Browser and server reject fractions, booleans, out-of-range values, matrices and style
+strings. Confirmed save, history, comparison and independent shape/group copies retain the exact angle in the existing
+immutable JSON, without a migration, new store, endpoint, dependency or DOCX DrawingML admission.
+
 Roadmap 305 adds direct earlier/later controls for a selected standalone shape. Each action swaps the complete shape
 with exactly one adjacent top-level document node and keeps selection on the moved shape. Boundary actions are
 disabled, while grouped shapes continue to use member ordering. The isolated undo transaction preserves the stable
