@@ -247,6 +247,7 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(printMembers.nth(2)).not.toHaveAttribute("data-shape-group-connection", /.+/);
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape")).toHaveCount(3);
   await expect(page.locator("#print-preview .office-print-shape-group .office-print-shape").nth(2)).toHaveCSS("font-size", "24px");
+  await page.locator("#print-preview .office-print-shape-group").screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-alignment-print-${testInfo.project.name}.png` });
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
   await editor.locator(".office-shape-group").screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-per-edge-${testInfo.project.name}.png` });
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-shape-group-${testInfo.project.name}.png`, fullPage: true });
