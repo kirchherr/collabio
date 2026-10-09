@@ -2,6 +2,27 @@
 
 Updated: 2026-10-09
 
+Roadmap 525 through 531 / PLANS 386 through 392 are complete under ADR-0162. Native Office can assign one common
+front/behind-text layer to at least two selected positioned root shapes or complete groups while retaining both
+coordinates. Arrow keys move the complete selection by one logical unit and Shift plus an arrow by ten. Four
+accessible responsive direction buttons provide one-unit movement for pointer and touch.
+
+Every move derives one shared delta from the complete selected anchor range. If any member has reached the requested
+X or Y boundary, the complete selection stops, preserving relative distances, stable IDs, layers and document order.
+Layer changes and movement steps each form one validated transaction and undo unit. Mixed flow/wrapped selections,
+dialogs, text inputs and non-writable sessions fail closed.
+
+The exact model plus desktop/mobile workflow passed 3/3 in 36.9 seconds. It covers common layer, one-unit and ten-unit
+keyboard movement, boundary preservation, isolated undo/redo, confirmed CAS save, immutable predecessor history,
+semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix passed
+33/33 in 4.3 minutes. Product commit `1e261474` is published and synchronized to `dev001`; the isolated review API is
+healthy on port 42880 and the live review is available at
+`http://192.168.0.108:42880/office?review=shape-multi-nudge-1e261474`.
+
+Only existing bounded logical positions enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX engine or
+production admission. Full repository quality and final documentation-contract evidence follow in this closure pass.
+
 Roadmap 518 through 524 / PLANS 379 through 385 are complete under ADR-0161. Native Office can align selected
 positioned root shapes and complete groups to their minimum, rounded midpoint or maximum horizontal or vertical
 logical anchor. Selections of at least three objects can be distributed equally on either axis while retaining both

@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–524 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 524 / PLANS 385 native shape multi-object arrangement
+Status: Roadmap 252–531 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 531 / PLANS 392 native shape multi-object layer and nudge
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0161; current arrangement: `ARCHITECTURE_DECISIONS/ADR-0161-bounded-native-office-shape-multi-object-arrangement.md`
+Decisions: ADR-0079 through ADR-0162; current movement: `ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -100,6 +100,21 @@ left/middle/right. An optional 160 through 2400 pixel extent derives one determi
 member bounds while retaining the existing gap as a minimum. Editor and semantic print/PDF use the same layout
 function, including compact-row fallback and uniform or per-edge connections. Browser and server reject arbitrary
 values, CSS and non-integer extents; existing documents remain byte-compatible.
+
+Roadmap 525 through 531 adds bounded common layer and collective nudge under
+[ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).
+At least two selected positioned root shapes or complete groups can move together to the front/behind-text layer
+without changing coordinates. Arrow keys move the complete selection by one logical unit and Shift plus an arrow by
+ten; four responsive, accessible direction buttons expose one-unit movement to pointer and touch users.
+
+One shared delta is clamped against every selected X/Y anchor, so the complete selection stops when any member has
+reached a requested boundary. Relative geometry, stable IDs, layers and document order remain intact. Keyboard input
+is intercepted only in the active editor or multi-selection tools and never from a dialog or text-entry control.
+
+Each accepted action validates the full candidate and forms exactly one transaction and undo unit. Confirmed CAS
+save, predecessor history, reload, semantic print/PDF and independent reuse preserve the resulting established
+positions while selection remains transient. No migration, endpoint, dependency, external request, provider, worker,
+recovery store, arbitrary movement value, physical page anchor, nested group or DOCX admission is added.
 
 Roadmap 518 through 524 adds bounded multi-object arrangement under
 [ADR-0161](../../ARCHITECTURE_DECISIONS/ADR-0161-bounded-native-office-shape-multi-object-arrangement.md).

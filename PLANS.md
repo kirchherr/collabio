@@ -1086,12 +1086,34 @@ semantic print and independent reuse while keeping the selection itself transien
 external request, provider, worker, new recovery store, free CSS geometry, physical page anchors, nested groups or
 DOCX DrawingML admission.
 
+386. [x] Add one common front/behind-text layer action for at least two selected positioned root shapes or complete
+groups under ADR-0162 while preserving both coordinates and never positioning flow or wrapped objects implicitly.
+
+387. [x] Move the complete eligible selection by one logical unit with an arrow key or ten units with Shift plus an
+arrow, and expose four accessible responsive one-unit direction buttons for pointer and touch use.
+
+388. [x] Derive one shared bounded delta from all selected anchors so the complete selection stops at X/Y limits and
+retains every relative distance, stable ID, layer and document order.
+
+389. [x] Enable layer and movement controls only for at least two fully positioned roots and reject dialogs, text
+inputs, readers, historical views, saving, uncertain and stale sessions.
+
+390. [x] Commit every common layer change or movement step as exactly one validated transaction and undo unit while
+retaining the transient multi-selection.
+
+391. [x] Preserve resulting layers and positions through undo/redo, confirmed CAS save, immutable predecessor
+history, reload, semantic print and independent reuse while keeping selection state transient.
+
+392. [x] Close the multi-object layer and nudge lifecycle under ADR-0162 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, arbitrary movement values, physical page anchors, nested
+groups or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 524 / PLANS 385. Preserve bounded transient root-object multi-selection and atomic logical-anchor alignment/equal distribution with deterministic integer geometry, fixed extremes, stable IDs, retained layers, one-step history and no implicit positioning, alongside bounded group alignment and equal distribution, freely positioned root shape groups, arbitrary-angle bounds, direct pointer/touch/keyboard control, fresh copy identities and existing shape/group limits. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded common layer changes and collective keyboard nudging for selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 531 / PLANS 392. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes and collective one-/ten-unit keyboard movement with shared boundary clamping, stable IDs, retained relative geometry, one-step history and no implicit positioning. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded collective pointer/touch dragging of selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
