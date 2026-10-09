@@ -3055,7 +3055,35 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, Clipboard-/Browser-Persistenz, freie
      Darstellungswerte, physische Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 573 / PLANS 224 bis 434 sind unter ADR-0139 bis ADR-0168 implementiert
+574. [x] Gemeinsame Dokumentreihenfolge fuer zwei bis zwanzig ausgewaehlte Wurzelformen oder vollstaendige
+     Formgruppen unter ADR-0169 ergaenzt. Positionierte, umflossene und normal fliessende Wurzeln bleiben zulaessig,
+     weil ausschliesslich die kanonische oberste Dokumentreihenfolge geaendert wird.
+
+575. [x] Vier responsive, zugaenglich als Dokumentreihenfolge bezeichnete Aktionen fuer Anfang, eine Position
+     frueher, eine Position spaeter und Ende bereitgestellt. Verlorenes Schreibrecht, unvollstaendige/stale Auswahl
+     und Grenzlagen deaktivieren die jeweilige Aktion fail-closed.
+
+576. [x] Ein-Schritt-Bewegungen als Tausch jedes ausgewaehlten Laufs ueber hoechstens einen benachbarten nicht
+     ausgewaehlten Knoten definiert; Anfang/Ende bilden einen ausgewaehlten Block. Relative Reihenfolgen der
+     ausgewaehlten und der nicht ausgewaehlten Knoten bleiben jeweils stabil.
+
+577. [x] Vollstaendige Gruppen als eine Wurzel verschoben und Gruppenidentitaet, Mitgliedsreihenfolge, Verbindungen,
+     IDs, Text, Darstellung, Geometrie, Verankerung, Umfluss, Position und Vor-/Hinter-Text-Ebene unveraendert
+     erhalten. Die Ebenenfunktion bleibt von der Dokumentreihenfolge getrennt.
+
+578. [x] Jede wirksame Reihenfolgeaktion als genau eine validierte Dokumenttransaktion und einen Rueckgaengig-Schritt
+     umgesetzt. Die stabilen IDs bleiben ausgewaehlt; wirkungslose Grenzaktionen erzeugen weder Transaktion noch
+     Historie.
+
+579. [x] Reine Permutationsmodelle, echte responsive Desktop-/Mobile-Aktionen, Grenzdeaktivierung, Auswahlstabilitaet,
+     Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Druck, Reload und Wiederverwendung abgedeckt. Der
+     fokussierte Lauf bestand 3/3, die vollstaendige native Formmatrix 38/38 in 4,7 Minuten.
+
+580. [x] Den begrenzten Mehrfach-Dokumentreihenfolge-Lebenszyklus unter ADR-0169 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, beliebigen z-index, Drag-Reihenfolge,
+     physische Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 580 / PLANS 224 bis 441 sind unter ADR-0139 bis ADR-0169 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

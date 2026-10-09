@@ -140,6 +140,25 @@ immutable history, semantic print, reload clearing and independent reuse. The co
 37/37. No migration, endpoint, dependency, external request, provider, worker, recovery store, clipboard/browser
 persistence, arbitrary value, physical page anchor, nested group or DOCX DrawingML admission is added.
 
+Roadmap 574 through 580 adds bounded collective top-level document ordering under
+[ADR-0169](../../ARCHITECTURE_DECISIONS/ADR-0169-bounded-native-office-multi-object-document-order.md).
+Two through twenty selected standalone root shapes or complete root groups can move to the document beginning, one
+position earlier, one position later or to the document end. Positioned, wrapped and normal-flow roots remain
+eligible because the operation changes canonical top-level order only; it does not change the separate
+front/behind-text layer.
+
+One-step actions move each selected run across at most one adjacent unselected node. Beginning/end actions form one
+selected block. Selected roots keep their relative order and every unselected node keeps its relative order. A
+complete group remains one root with unchanged identity, member order and connections. Content, IDs, text,
+appearance, geometry, anchors, wrap, position and layer are retained.
+
+The four responsive actions revalidate current write permission, selection and boundaries. One effective action is
+one validated transaction and undo unit; the same stable IDs remain selected, while a boundary no-op stays disabled
+and creates no history. Confirmed CAS save, immutable predecessor history, print, reload and reuse preserve the
+resulting existing Office JSON order. The focused model plus desktop/mobile workflow passes 3/3 and the complete
+native-shape matrix passes 38/38. No migration, endpoint, dependency, external request, provider, worker, recovery
+store, arbitrary z-index, drag ordering, physical page anchor, nested group or DOCX DrawingML admission is added.
+
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).
 At least two selected positioned root shapes or complete groups can move together to the front/behind-text layer

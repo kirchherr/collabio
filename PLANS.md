@@ -1254,12 +1254,36 @@ the complete 37-case native-shape matrix.
 request, provider, worker, recovery store, clipboard/browser persistence, arbitrary appearance value, physical page
 anchor, nested group or DOCX DrawingML admission.
 
+435. [x] Add collective document ordering for two through twenty selected standalone root shapes or complete root
+shape groups under ADR-0169, allowing positioned, wrapped and normal-flow roots because only canonical top-level
+document order changes.
+
+436. [x] Expose four responsive accessible actions, explicitly grouped as document order: beginning, one position
+earlier, one position later and end. Recalculate eligibility from current write permission, selection and boundaries.
+
+437. [x] Define one-step movement as moving each selected run across at most one adjacent unselected node, and
+beginning/end movement as one selected block, preserving the relative order of selected and unselected nodes.
+
+438. [x] Move each complete group as one root while retaining group identity and member order, connections, stable
+IDs, text, appearance, geometry, anchors, wrap, position and front/behind-text layer.
+
+439. [x] Commit every effective order action as one validated document transaction and undo unit, retain the same
+selected IDs and make boundary no-ops disabled without history.
+
+440. [x] Cover pure permutations, responsive desktop/mobile controls, boundary disabling, selection retention,
+undo/redo, confirmed CAS save, immutable history, print, reload and independent reuse. Pass the focused 3/3 workflow
+and complete 38/38 native-shape matrix.
+
+441. [x] Close bounded collective document ordering under ADR-0169 without a migration, endpoint, dependency,
+external request, provider, worker, recovery store, arbitrary z-index, drag ordering, physical page anchor, nested
+group or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 573 / PLANS 434. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance and current-session appearance copy/paste with stable IDs, retained group structure, one-step history, no implicit positioning and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 580 / PLANS 441. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste and stable collective top-level document ordering with stable IDs, retained group structure, one-step history, no implicit positioning and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

@@ -1,6 +1,32 @@
 # Current Project Handoff
 
-Updated: 2026-10-09
+Updated: 2026-10-10
+
+Roadmap 574 through 580 / PLANS 435 through 441 are complete under ADR-0169. Two through twenty selected root
+standalone shapes or complete shape groups can now move to the document beginning, one top-level position earlier,
+one position later or to the document end. Positioned, wrapped and normal-flow roots are eligible because only the
+canonical top-level document order changes; front/behind-text layer remains a separate established operation.
+
+One-step movement carries each selected run across at most one adjacent unselected node. Beginning/end movement
+forms one selected block. Selected roots retain their relative order, unselected nodes retain theirs and complete
+groups remain indivisible with unchanged group/member identities and connections. Content, text, appearance,
+geometry, anchors, wrap, positions, layers, dimensions and rotations remain intact. Every effective action is one
+validated transaction and undo unit, keeps the stable IDs selected and disables boundary no-ops without history.
+
+The focused pure model plus desktop/mobile workflow passed 3/3 in 41.4 seconds. The complete native-shape model and
+responsive matrix passed 38/38 in 4.7 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-multi-order-v2` visibly confirmed the explicitly labelled document-order
+group, two selected complete groups, boundary-disabled beginning/earlier actions and enabled later/end actions. No
+content version was saved during review.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+z-index, drag ordering, physical page anchor, nested group, DOCX engine or production admission. Complete repository
+quality passed with Ruff, 898 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known
+Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts passed. The
+exact `collabio-postgres-test-1` container and transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed. GitHub publication remains pending under the previously reported explicit-approval
+requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
 
 Roadmap 567 through 573 / PLANS 428 through 434 are complete under ADR-0168. One selected standalone root shape or a
 complete group whose members share the same normalized appearance can provide exactly seven established values:
