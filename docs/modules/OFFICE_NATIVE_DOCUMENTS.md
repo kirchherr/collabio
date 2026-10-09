@@ -134,6 +134,25 @@ CAS save, predecessor history, reload, semantic print/PDF and independent reuse 
 This adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary transform,
 physical page anchor, nested group or DOCX DrawingML admission.
 
+Roadmap 553 through 559 adds the bounded exact multi-object transform inspector under
+[ADR-0166](../../ARCHITECTURE_DECISIONS/ADR-0166-bounded-native-office-shape-multi-object-transform-inspector.md).
+At least two selected positioned standalone shapes or complete groups can combine relative logical X and pixel Y
+movement, independent or aspect-locked scaling, relative whole-degree rotation and an optional common text layer.
+
+The pure command accepts exactly seven typed keys and rejects extra keys, fractions, numeric booleans and values
+outside the established X/Y, 10-500 percent, -359/359-degree and front/behind bounds. Existing common translate and
+resize constraints derive one effective clamped result for the complete selection. Stable IDs, group membership and
+order, connections, gaps, literal text and typography remain intact.
+
+Every valid input change previews complete root position/layer plus all affected member sizes and rotations in
+editor-owned DOM. Invalid input disables apply and restores the source view. Cancel, close, Escape, document/session
+change, read-only state and stale selection restore all source values without history. Apply performs one validated
+transaction and undo unit. Confirmed CAS save, immutable predecessor history, undo/redo, reload, semantic print/PDF
+and independent reuse preserve the established canonical attributes while selection, dialog and preview stay
+transient. The responsive dialog uses three two-field rows and an inline aspect lock; CSS asset `v=2` prevents stale
+long-lived tabs from retaining the previous layout. No migration, endpoint, dependency, external request, provider,
+worker, recovery store, arbitrary transform/CSS value, physical page anchor, nested group or DOCX admission is added.
+
 Roadmap 539 through 545 adds bounded collective resizing under
 [ADR-0164](../../ARCHITECTURE_DECISIONS/ADR-0164-bounded-native-office-shape-multi-object-resize.md).
 Dragging the resize handle of any selected positioned root shape or complete group scales the complete eligible

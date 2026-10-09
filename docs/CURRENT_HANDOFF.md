@@ -2,6 +2,36 @@
 
 Updated: 2026-10-09
 
+Roadmap 553 through 559 / PLANS 414 through 420 are complete under ADR-0166. At least two selected positioned root
+shapes or complete groups can now combine exact relative X/Y movement, independent or aspect-locked scaling,
+whole-degree relative rotation and an optional common front/behind-text layer in one accessible inspector and one
+undo unit. The command accepts exactly seven typed bounded values and derives one shared effective movement/scale
+range from every selected root and group member.
+
+The dialog previews complete standalone objects and groups in editor-owned DOM, including group root position/layer
+and every affected member size/rotation. Invalid values disable application and restore the source. Close, Cancel,
+Escape, document/session changes, read-only state and stale selection restore every source value without history.
+Apply rebuilds and validates the full selection before one transaction. Undo/redo, confirmed CAS save, immutable
+predecessor history, reload, semantic print and independent reuse preserve the result while selection/dialog/preview
+remain transient.
+
+The responsive layout uses three clear two-field rows and one inline aspect-lock checkbox. Visual review found and
+corrected both the initial split checkbox label and the fixed `v=1` stylesheet cache key; `/office/assets/office.css?v=2`
+now loads the accepted layout in long-lived browser sessions. The focused final model plus desktop/mobile workflow
+passed 3/3, and the complete native-shape matrix passed 36/36 in 4.5 minutes. Local product commit `c88e04bf` is active
+in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-transform-v2`; the review API is healthy on port 42880.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+transform/CSS value, physical page geometry, nested group, DOCX engine or production admission. The complete
+repository quality gate passed with Ruff, 895 format-conformant files, Mypy over 607 source files and Pytest to 100%;
+only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts
+passed separately. The exact temporary `collabio-postgres-test-1` container and all exact transfer files were removed; no
+transient quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 546 through 552 / PLANS 407 through 413 are complete under ADR-0165. Dragging the rotation handle of any
 selected positioned root shape or complete group applies one common relative integer angle to every standalone shape
 and every member of selected groups. Distinct starting angles remain distinct and normalize to canonical zero

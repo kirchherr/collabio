@@ -2971,7 +2971,36 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, Recovery-Speicher, freie Transformationswerte, physische Seitenanker,
      verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 552 / PLANS 224 bis 413 sind unter ADR-0139 bis ADR-0165 implementiert
+553. [x] Einen zugaenglichen numerischen Transformationsinspektor fuer mindestens zwei ausgewaehlte positionierte
+     Wurzelformen oder ganze Formgruppen unter ADR-0166 umgesetzt. Relative X-/Y-Bewegung, Breite, Hoehe, Drehung und
+     optionale gemeinsame Textebene werden in einer Operation kombiniert.
+
+554. [x] Den Eingabevertrag auf exakt sieben typisierte Werte begrenzt: X -1000 bis 1000, Y -2400 bis 2400,
+     Breite/Hoehe 10 bis 500 Prozent, boolesche Seitenverhaeltnissperre, Drehung -359 bis 359 Grad und Ebene
+     unveraendert/vor/hinter Text. Unbekannte Schluessel, Brueche, Boolesche Zahlen und Grenzverletzungen werden
+     abgewiesen.
+
+555. [x] Gemeinsame effektive Bewegungs- und Skalierungsgrenzen aus allen ausgewaehlten Formen und Gruppenmitgliedern
+     abgeleitet. Kein Objekt kann seine kanonischen Positions- oder Groessengrenzen verlassen; unterschiedliche
+     Ausgangswinkel und vollstaendige Gruppenstruktur bleiben erhalten.
+
+556. [x] DOM-exklusive Live-Vorschau fuer Einzelobjekte und Gruppen einschliesslich Wurzelposition, Ebene,
+     Mitgliedsgroessen und Mitgliedsdrehungen mit effektiver Statuszeile bereitgestellt. Ungueltige Werte deaktivieren
+     Anwenden und stellen den Ausgangszustand ohne Dokumenttransaktion wieder her.
+
+557. [x] Anwenden als genau eine vollstaendig validierte Transaktion und einen Rueckgaengig-Schritt geschlossen.
+     Abbrechen, Escape, Dokument-/Sitzungswechsel, Schreibschutz und veraltete Auswahl stellen alle Ausgangswerte
+     wieder her; Auswahl, Dialog und Vorschau bleiben ungespeichert.
+
+558. [x] Resultierende Werte durch Undo/Redo, bestaetigten CAS-Save, immutable Vorgaengerversion, Reload,
+     semantischen Druck und unabhaengige Wiederverwendung erhalten. Der responsive Dialog nutzt drei klare
+     Zweierzeilen und eine inline Seitenverhaeltnissperre; CSS-Asset `v=2` verhindert veraltete Browserdarstellung.
+
+559. [x] Vollstaendigen exakten Mehrfachtransformationslebenszyklus unter ADR-0166 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Transformations-/CSS-Werte, physische
+     Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 559 / PLANS 224 bis 420 sind unter ADR-0139 bis ADR-0166 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
