@@ -76,7 +76,7 @@ export function officeShapeGroupExtension() {
         let drag = null;
         const dragTarget = anchor.ownerDocument.defaultView;
         const move = (event) => {
-          if (!drag || drag.id !== event.pointerId) return;
+          if (!drag || (event.pointerId != null && drag.id != null && drag.id !== event.pointerId)) return;
           drag.next = { ...drag.start,
             x: Math.max(0, Math.min(1000, Math.round(drag.start.x + (event.clientX - drag.clientX) / drag.width * 1000))),
             y: Math.max(-1200, Math.min(1200, Math.round(drag.start.y + event.clientY - drag.clientY))) };
@@ -86,26 +86,35 @@ export function officeShapeGroupExtension() {
           dragTarget?.removeEventListener("pointermove", move);
           dragTarget?.removeEventListener("pointerup", finish);
           dragTarget?.removeEventListener("pointercancel", cancel);
+          dragTarget?.removeEventListener("mousemove", move);
+          dragTarget?.removeEventListener("mouseup", finish);
         };
         const finish = (event, cancel = false) => {
           if (!drag || (event.pointerId != null && drag.id !== event.pointerId)) return;
           removeDragListeners();
-          if (anchor.hasPointerCapture(drag.id)) anchor.releasePointerCapture(drag.id);
+          if (drag.id != null && anchor.hasPointerCapture(drag.id)) anchor.releasePointerCapture(drag.id);
           const { next, start } = drag; drag = null;
           if (cancel) { paint(node); return; }
           if (next.x !== start.x || next.y !== start.y) commitPosition(next);
         };
         const cancel = (event) => finish(event, true);
-        anchor.addEventListener("pointerdown", (event) => {
-          if (event.button !== 0 || node.attrs.position == null) return;
+        const startDrag = (event, id = null) => {
+          if (drag || event.button !== 0 || node.attrs.position == null) return;
           const bounds = editor.view.dom.getBoundingClientRect();
-          drag = { id: event.pointerId, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
+          drag = { id, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
             start: node.attrs.position, next: node.attrs.position };
           dragTarget?.addEventListener("pointermove", move);
           dragTarget?.addEventListener("pointerup", finish);
           dragTarget?.addEventListener("pointercancel", cancel);
-          anchor.setPointerCapture(event.pointerId); event.preventDefault(); event.stopPropagation();
+          dragTarget?.addEventListener("mousemove", move);
+          dragTarget?.addEventListener("mouseup", finish);
+          event.preventDefault(); event.stopPropagation();
+        };
+        anchor.addEventListener("pointerdown", (event) => {
+          startDrag(event, event.pointerId);
+          if (drag?.id === event.pointerId) anchor.setPointerCapture(event.pointerId);
         });
+        anchor.addEventListener("mousedown", (event) => startDrag(event));
         anchor.addEventListener("keydown", (event) => {
           if (event.key === "Home" && node.attrs.position != null) {
             event.preventDefault(); commitPosition({ ...node.attrs.position, x: 0, y: 0 }); return;
