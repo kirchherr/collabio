@@ -546,7 +546,7 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(6); await page.locator("#print-close").click();
   await page.locator("#document-reload").click(); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(3);
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
-  await page.locator("#shape-multi-toggle").click(); await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "false");
   await controls.nth(0).click({ modifiers: ["Control"] }); await controls.nth(2).click({ modifiers: ["Shift"] });
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(3);
   await page.keyboard.press("Escape"); await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
