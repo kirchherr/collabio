@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–531 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 531 / PLANS 392 native shape multi-object layer and nudge
+Status: Roadmap 252–538 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 538 / PLANS 399 native shape multi-object pointer and touch drag
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0162; current movement: `ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md`
+Decisions: ADR-0079 through ADR-0163; current movement: `ARCHITECTURE_DECISIONS/ADR-0163-bounded-native-office-shape-multi-object-pointer-drag.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -115,6 +115,23 @@ Each accepted action validates the full candidate and forms exactly one transact
 save, predecessor history, reload, semantic print/PDF and independent reuse preserve the resulting established
 positions while selection remains transient. No migration, endpoint, dependency, external request, provider, worker,
 recovery store, arbitrary movement value, physical page anchor, nested group or DOCX admission is added.
+
+Roadmap 532 through 538 adds bounded collective pointer and touch dragging under
+[ADR-0163](../../ARCHITECTURE_DECISIONS/ADR-0163-bounded-native-office-shape-multi-object-pointer-drag.md).
+Dragging the position anchor of any selected positioned root shape or complete group moves the complete eligible
+selection. Horizontal pointer movement maps through the current editor width to the existing integer X scale;
+vertical movement becomes an integer pixel delta. One shared dual-axis delta is clamped against every selected
+anchor, preserving relative geometry, stable IDs, layers and document order.
+
+The editor shows a DOM-only live preview, effective X/Y status, common dragging markers and an accessible anchor label
+for the whole selection. Pointer cancellation, Escape, a changed document or session and non-writable or stale state
+restore the original preview without a transaction. The collective capture path suppresses individual anchor drag
+and its following click.
+
+One effective pointer release validates the complete candidate and creates exactly one undo unit; no movement creates
+none. Confirmed CAS save, predecessor history, reload, semantic print/PDF and independent reuse preserve only the
+resulting established positions. No migration, endpoint, dependency, external request, provider, worker, recovery
+store, free coordinate field, physical page anchor, nested group or DOCX admission is added.
 
 Roadmap 518 through 524 adds bounded multi-object arrangement under
 [ADR-0161](../../ARCHITECTURE_DECISIONS/ADR-0161-bounded-native-office-shape-multi-object-arrangement.md).

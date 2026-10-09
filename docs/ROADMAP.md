@@ -2890,7 +2890,33 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, neuen Recovery-Speicher, freie Bewegungswerte, physische Seitenanker,
      verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 531 / PLANS 224 bis 392 sind unter ADR-0139 bis ADR-0162 implementiert
+532. [x] Gemeinsames Ziehen mindestens zweier ausgewaehlter positionierter Wurzelformen oder ganzer Formgruppen unter
+     ADR-0163 ueber den Anker eines ausgewaehlten Objekts fuer Maus und Touch umgesetzt. Textfluss- und Umflussobjekte
+     erhalten nie implizit eine Position.
+
+533. [x] Horizontale Zeigerbewegung anhand der aktuellen Editorbreite in die vorhandene ganzzahlige X-Skala und die
+     vertikale Bewegung in einen ganzzahligen Pixelversatz uebersetzt. Die gesamte Geste verwendet genau ein
+     gemeinsames X/Y-Delta.
+
+534. [x] Beide Bewegungsachsen gegen den gemeinsamen zulaessigen Bereich aller ausgewaehlten Anker begrenzt. Die
+     Auswahl stoppt als Einheit an jeder Grenze und behaelt relative Geometrie, stabile IDs, Ebenen und Reihenfolge.
+
+535. [x] DOM-exklusive Live-Vorschau mit gemeinsamem Ziehmarker, effektivem X/Y-Status und zugaenglicher
+     Ankerbeschreibung fuer die ganze Auswahl bereitgestellt. Auswahl und Gestenzustand bleiben ungespeichert.
+
+536. [x] Pointer-Abbruch, Escape, Dokument- oder Sitzungswechsel, Schreibschutz und veralteten Zustand ohne Mutation
+     auf die Ausgangspositionen zurueckgesetzt. Einzelobjekt-Ziehen und der folgende Klick werden waehrend der
+     gemeinsamen Geste unterdrueckt.
+
+537. [x] Erfolgreiches Loslassen als genau eine vollstaendig validierte Transaktion und einen Rueckgaengig-Schritt
+     ausgefuehrt; eine Geste ohne effektive Bewegung erzeugt keinen Historieneintrag. Save, Historie, Reload, Druck
+     und Wiederverwendung erhalten nur die resultierenden Positionen.
+
+538. [x] Vollstaendigen gemeinsamen Pointer-/Touch-Ziehlebenszyklus unter ADR-0163 ohne Migration, Endpunkt,
+     Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, freie Koordinatenfelder, physische
+     Seitenanker, verschachtelte Gruppen oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 538 / PLANS 224 bis 399 sind unter ADR-0139 bis ADR-0163 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

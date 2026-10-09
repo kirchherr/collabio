@@ -2,6 +2,29 @@
 
 Updated: 2026-10-09
 
+Roadmap 532 through 538 / PLANS 393 through 399 are complete under ADR-0163. Dragging the position anchor of any one
+selected root shape or complete group moves the complete eligible selection with mouse or touch. Horizontal movement
+maps through the current editor width to the established integer X scale; vertical movement uses integer pixels.
+One shared dual-axis delta is clamped against every selected anchor, preserving relative geometry, stable IDs, layers
+and document order.
+
+The editor provides a live DOM-only preview, effective X/Y status, common dragging markers and accessible anchor
+labels for the whole selection. Pointer cancellation, Escape, session/document changes and non-writable or stale
+state restore the original positions without a transaction. A completed effective gesture creates exactly one
+validated transaction and undo unit; no movement creates no history.
+
+The pure model plus exact desktop/mobile workflow passed 3/3 in 38.1 seconds. It covers mouse and touch pointer types,
+accessible anchors, live preview, cancellation, isolated undo/redo, confirmed CAS save, immutable predecessor
+history, semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix
+passed 33/33 in 4.3 minutes. Product and focused-test commits through `add05b45` are published and synchronized to
+`dev001`; the isolated review API is healthy on port 42880 and the live review is available at
+`http://192.168.0.108:42880/office?review=shape-multi-drag-add05b45`.
+
+Only resulting existing bounded logical positions enter immutable Office JSON. The change adds no migration,
+endpoint, dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX
+engine or production admission. Full repository quality and final documentation-contract evidence follow in this
+closure pass.
+
 Roadmap 525 through 531 / PLANS 386 through 392 are complete under ADR-0162. Native Office can assign one common
 front/behind-text layer to at least two selected positioned root shapes or complete groups while retaining both
 coordinates. Arrow keys move the complete selection by one logical unit and Shift plus an arrow by ten. Four
