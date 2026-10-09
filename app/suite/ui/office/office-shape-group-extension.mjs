@@ -22,8 +22,10 @@ export function officeShapeGroupExtension() {
         anchor.setAttribute("contenteditable", "false");
         const resize = document.createElement("button"); resize.type = "button"; resize.className = "office-shape-group-resize";
         resize.setAttribute("contenteditable", "false"); resize.textContent = "Gruppe skalieren";
+        const rotate = document.createElement("button"); rotate.type = "button"; rotate.className = "office-shape-group-rotate";
+        rotate.setAttribute("contenteditable", "false"); rotate.textContent = "Gruppe drehen";
         const contentDOM = document.createElement("div"); contentDOM.className = "office-shape-group-content";
-        dom.append(control, anchor, resize, contentDOM);
+        dom.append(control, anchor, resize, rotate, contentDOM);
         const setPosition = (value) => {
           dom.toggleAttribute("data-shape-group-positioned", value != null);
           if (value == null) {
@@ -59,6 +61,8 @@ export function officeShapeGroupExtension() {
           dom.style.setProperty("--shape-group-bound-width", String(bounds.width));
           resize.hidden = attrs.position == null;
           resize.setAttribute("aria-label", `Formgruppengröße ${bounds.width} mal ${bounds.height} Pixel; in einer Mehrfachauswahl ziehen oder mit Pfeiltasten ändern`);
+          rotate.hidden = attrs.position == null;
+          rotate.setAttribute("aria-label", "Formgruppe in einer Mehrfachauswahl ziehen oder mit Pfeiltasten drehen");
           setPosition(attrs.position ?? null);
           const connections = officeShapeGroupConnections(attrs, current.childCount);
           if (attrs.connection) {
@@ -100,6 +104,7 @@ export function officeShapeGroupExtension() {
         control.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); });
         anchor.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); selectGroup(); });
         resize.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); selectGroup(); });
+        rotate.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); selectGroup(); });
         let drag = null;
         const dragTarget = anchor.ownerDocument.defaultView;
         const move = (event) => {
@@ -162,10 +167,11 @@ export function officeShapeGroupExtension() {
           selectNode() { dom.classList.add("ProseMirror-selectednode"); },
           deselectNode() { dom.classList.remove("ProseMirror-selectednode"); },
           stopEvent(event) { return event.target === control || control.contains(event.target) || event.target === anchor ||
-            anchor.contains(event.target) || event.target === resize || resize.contains(event.target); },
+            anchor.contains(event.target) || event.target === resize || resize.contains(event.target) ||
+            event.target === rotate || rotate.contains(event.target); },
           ignoreMutation(mutation) {
             return eventTarget(control, mutation.target) || eventTarget(anchor, mutation.target) || eventTarget(resize, mutation.target)
-              || (mutation.type === "attributes" && mutation.target === dom);
+              || eventTarget(rotate, mutation.target) || (mutation.type === "attributes" && mutation.target === dom);
           },
           destroy() { removeDragListeners(); drag = null; },
         };

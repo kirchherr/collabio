@@ -112,6 +112,26 @@ export function officeShapeMultiRootSize(entry) {
   return entry.type === "shape" ? officeShapeBounds(members[0]) : officeShapeGroupBounds(entry.node.attrs, members);
 }
 
+export function officeShapeMultiRootRotation(entry) {
+  return officeShapeMultiMembers(entry)[0].rotation || 0;
+}
+
+export function officeShapeMultiRotate(entries, delta) {
+  if (!officeShapeMultiCanArrange(entries) || !Number.isSafeInteger(delta) || Math.abs(delta) > 359) {
+    throw new Error("shape-multi-rotate");
+  }
+  const members = entries.map(officeShapeMultiMembers);
+  const changes = entries.map((entry, index) => {
+    const rotated = members[index].map((shape) => {
+      const rotation = ((shape.rotation || 0) + delta + 360) % 360;
+      return officeShapeAttributes({ ...shape, rotation: rotation || null });
+    });
+    return entry.type === "shape" ? { id: entry.id, type: entry.type, attrs: rotated[0] } :
+      { id: entry.id, type: entry.type, attrs: officeShapeGroupAttributes(entry.node.attrs), members: rotated };
+  });
+  return { delta, changes };
+}
+
 function scaleRange(values, minimum, maximum) {
   return {
     minimum: Math.max(...values.map((value) => Math.ceil(minimum * OFFICE_SHAPE_MULTI_SCALE_BASE / value))),

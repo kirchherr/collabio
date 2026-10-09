@@ -319,6 +319,32 @@ test("Office shape groups move freely as one object with history print and offse
     elements.map((element) => Number(element.style.getPropertyValue("--office-shape-width")))))
     .toEqual([beforeGroupWidth, beforeGroupWidth, beforeGroupWidth, beforeGroupWidth]);
   await editor.press("Control+Shift+z");
+  const groupRotate = editor.locator(":scope > .office-shape-group .office-shape-group-rotate").first();
+  await expect(groupRotate).toBeVisible();
+  await expect(groupRotate).toHaveAttribute("aria-label", /2 ausgewählte Objekte gemeinsam drehen/);
+  const groupCenter = await editor.locator(":scope > .office-shape-group .office-shape-group-content").first()
+    .evaluate((element) => { const box = element.getBoundingClientRect(); return {
+      x: box.left + box.width / 2, y: box.top + box.height / 2,
+    }; });
+  const groupPointerType = testInfo.project.name.includes("mobile") ? "touch" : "mouse";
+  await groupRotate.dispatchEvent("pointerdown", { pointerId: 71, pointerType: groupPointerType, isPrimary: true,
+    button: 0, buttons: 1, clientX: groupCenter.x + 100, clientY: groupCenter.y });
+  await editor.dispatchEvent("pointermove", { pointerId: 71, pointerType: groupPointerType, isPrimary: true,
+    button: 0, buttons: 1, clientX: groupCenter.x + Math.cos(Math.PI / 12) * 100,
+    clientY: groupCenter.y + Math.sin(Math.PI / 12) * 100, shiftKey: true });
+  await expect(editor.locator("[data-office-multi-rotating]")).toHaveCount(2);
+  await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte · Drehung +15°");
+  await editor.dispatchEvent("pointerup", { pointerId: 71, pointerType: groupPointerType, isPrimary: true,
+    button: 0, buttons: 0, clientX: groupCenter.x + Math.cos(Math.PI / 12) * 100,
+    clientY: groupCenter.y + Math.sin(Math.PI / 12) * 100, shiftKey: true });
+  await expect(editor.locator("[data-office-multi-rotating]")).toHaveCount(0);
+  const groupRotations = [15, 52, 15, 52];
+  await expect.poll(() => editor.locator(":scope > .office-shape-group .office-shape").evaluateAll((elements) =>
+    elements.map((element) => Number(element.dataset.shapeRotation || 0)))).toEqual(groupRotations);
+  await editor.press("Control+z");
+  await expect.poll(() => editor.locator(":scope > .office-shape-group .office-shape").evaluateAll((elements) =>
+    elements.map((element) => Number(element.dataset.shapeRotation || 0)))).toEqual([0, 37, 0, 37]);
+  await editor.press("Control+Shift+z");
   await page.locator("#shape-multi-clear").click(); await page.locator("#shape-multi-toggle").click();
   const saved = await saveOffice(page, { objectId }), groups = saved.content.content.filter((entry) => entry.type === "shapeGroup");
   expect(groups).toHaveLength(2); expect(groups[0].attrs.position.layer).toBe("front");
@@ -326,6 +352,7 @@ test("Office shape groups move freely as one object with history print and offse
   expect(groups[1].attrs.position).toEqual({ layer: "front", x: groups[0].attrs.position.x + 25, y: 117 });
   expect(groups[1].attrs.id).not.toBe(groups[0].attrs.id);
   expect(groups.flatMap((entry) => entry.content).map((entry) => entry.attrs.width)).toEqual(afterGroupWidths);
+  expect(groups.flatMap((entry) => entry.content).map((entry) => entry.attrs.rotation ?? 0)).toEqual(groupRotations);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group[data-shape-group-positioned]")).toHaveCount(2);
   await expect(page.locator("#print-preview .office-print-shape-group").first()).toHaveAttribute("data-shape-group-position", "front");
@@ -727,6 +754,41 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
     .toEqual(Array(3).fill(String(scaledSize.width + 1)));
   await editor.press("Control+z"); await editor.press("Control+Shift+z");
 
+  const rotateHandle = shapes.nth(1).locator(".office-shape-rotate");
+  await expect(rotateHandle).toBeVisible();
+  await expect(rotateHandle).toHaveAttribute("aria-label", /3 ausgewählte Objekte gemeinsam drehen; Maus, Touch oder Pfeiltasten/);
+  const rotateGeometry = await shapes.nth(1).locator(".office-shape").evaluate((element) => {
+    const box = element.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+  });
+  const rotate = async (pointerId, endType) => {
+    await rotateHandle.dispatchEvent("pointerdown", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: rotateGeometry.x + 100, clientY: rotateGeometry.y });
+    await editor.dispatchEvent("pointermove", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: rotateGeometry.x + Math.cos(Math.PI / 6) * 100,
+      clientY: rotateGeometry.y + Math.sin(Math.PI / 6) * 100, shiftKey: true });
+    await expect(editor.locator("[data-office-multi-rotating]")).toHaveCount(3);
+    await expect(page.locator("#shape-multi-status")).toHaveText("3 Objekte · Drehung +30°");
+    await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+      entry.querySelector(".office-shape").dataset.shapeRotation))).toEqual(Array(3).fill("30"));
+    await editor.dispatchEvent(endType, { pointerId, pointerType, isPrimary: true, button: 0, buttons: 0,
+      clientX: rotateGeometry.x + Math.cos(Math.PI / 6) * 100,
+      clientY: rotateGeometry.y + Math.sin(Math.PI / 6) * 100, shiftKey: true });
+  };
+  await rotate(61, "pointercancel");
+  await expect(editor.locator("[data-office-multi-rotating]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeRotation ?? null))).toEqual(Array(3).fill(null));
+  await rotate(62, "pointerup");
+  await expect(editor.locator("[data-office-multi-rotating]")).toHaveCount(0);
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeRotation ?? null))).toEqual(Array(3).fill(null));
+  await editor.press("Control+Shift+z");
+  await rotateHandle.focus(); await rotateHandle.press("Shift+ArrowRight");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeRotation))).toEqual(Array(3).fill("45"));
+  await editor.press("Control+z"); await editor.press("Control+Shift+z");
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
   expect(stored.map((entry) => entry.attrs.position.x)).toEqual([581, 581, 581]);
@@ -734,9 +796,12 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
   expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "front", "front"]);
   expect(stored.map((entry) => [entry.attrs.width, entry.attrs.height]))
     .toEqual(Array(3).fill([scaledSize.width + 1, scaledSize.height]));
+  expect(stored.map((entry) => entry.attrs.rotation)).toEqual(Array(3).fill(45));
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(3);
+  await expect.poll(() => page.locator("#print-preview .office-print-shape").evaluateAll((entries) =>
+    entries.map((entry) => entry.dataset.shapeRotation))).toEqual(Array(3).fill("45"));
   await page.locator("#print-close").click();
   await page.locator("#document-reload").click();
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);

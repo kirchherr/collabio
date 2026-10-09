@@ -4,7 +4,8 @@ import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, offic
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
-  officeShapeMultiResize, officeShapeMultiRootSize, officeShapeMultiTranslate,
+  officeShapeMultiResize, officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiRotate,
+  officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -259,4 +260,33 @@ test("Office positioned root objects resize through one bounded shared scale", (
   expect(() => officeShapeMultiResize([first, group], 0, 1000)).toThrow();
   expect(() => officeShapeMultiResize([first, group], 1000.5, 1000)).toThrow();
   expect(() => officeShapeMultiResize([first, group], 1000, 1000, "locked")).toThrow();
+});
+
+test("Office positioned root objects rotate through one shared relative angle", () => {
+  const position = { layer: "front", x: 500, y: 0 };
+  const first = { id: attrs.id, type: "shape", rootIndex: 0,
+    node: { attrs: { ...attrs, rotation: 350, position } } };
+  const groupAttrs = { id: "shape-group-" + "d".repeat(24), layout: "row", gap: 16,
+    position: { layer: "behind", x: 800, y: 400 } };
+  const group = { id: groupAttrs.id, type: "shapeGroup", rootIndex: 1,
+    node: { attrs: groupAttrs, content: { content: [
+      { attrs: { ...attrs, id: "shape-" + "b".repeat(24), rotation: 15 } },
+      { attrs: { ...attrs, id: "shape-" + "c".repeat(24), rotation: null } },
+    ] } } };
+
+  expect(officeShapeMultiRootRotation(first)).toBe(350);
+  expect(officeShapeMultiRootRotation(group)).toBe(15);
+  const clockwise = officeShapeMultiRotate([first, group], 25);
+  expect(clockwise.delta).toBe(25);
+  expect(clockwise.changes[0].attrs).toMatchObject({ rotation: 15, position });
+  expect(clockwise.changes[1].attrs).toEqual(groupAttrs);
+  expect(clockwise.changes[1].members.map((member) => member.rotation ?? 0)).toEqual([40, 25]);
+  const counterClockwise = officeShapeMultiRotate([first, group], -15);
+  expect(counterClockwise.changes[0].attrs.rotation).toBe(335);
+  expect(counterClockwise.changes[1].members.map((member) => member.rotation ?? 0)).toEqual([0, 345]);
+
+  expect(() => officeShapeMultiRotate([first], 15)).toThrow();
+  expect(() => officeShapeMultiRotate([first, group], 360)).toThrow();
+  expect(() => officeShapeMultiRotate([first, group], 1.5)).toThrow();
+  expect(() => officeShapeMultiRotate([first, group], true)).toThrow();
 });
