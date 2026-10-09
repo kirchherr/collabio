@@ -581,6 +581,16 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   const controls = editor.locator(":scope > .office-shape-group .office-shape-group-control");
   await controls.nth(0).dispatchEvent("mousedown", { button: 0 });
   await controls.nth(1).dispatchEvent("mousedown", { button: 0 });
+  await expect(page.locator("#shape-multi-appearance")).toBeEnabled();
+  await page.locator("#shape-multi-appearance").click();
+  await page.locator("#shape-multi-appearance-fill").selectOption("red");
+  await expect(editor.locator("[data-office-multi-appearance]")).toHaveCount(2);
+  await expect(page.locator("#shape-multi-appearance-status"))
+    .toHaveText("2 Objekte · 4 Formen · 7 gemeinsame Werte");
+  await expect.poll(() => editor.locator("[data-office-multi-selected] .office-shape").evaluateAll((entries) =>
+    entries.map((entry) => entry.dataset.shapeFill))).toEqual(Array(4).fill("red"));
+  await page.locator("#shape-multi-appearance-cancel").click();
+  await expect(editor.locator("[data-office-multi-appearance]")).toHaveCount(0);
   await expect(page.locator("#shape-multi-remove")).toBeEnabled(); await page.locator("#shape-multi-remove").click();
   await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
   await editor.press("Control+z"); await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(3);
@@ -890,6 +900,34 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
   await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
     entry.querySelector(".office-shape").dataset.shapeFill))).toEqual(Array(3).fill("blue"));
 
+  await page.locator("#shape-multi-clear").click();
+  await selectionAnchors.nth(0).dispatchEvent("mousedown", { button: 0 });
+  await expect(page.locator("#shape-multi-status")).toHaveText("1 Objekt ausgewählt");
+  await expect(page.locator("#shape-multi-copy-appearance")).toBeEnabled();
+  await expect(page.locator("#shape-multi-paste-appearance")).toBeDisabled();
+  await page.locator("#shape-multi-copy-appearance").click();
+  await expect(page.locator("#shape-multi-style-status")).toHaveText("Darstellung gemerkt");
+  await page.locator("#shape-multi-clear").click();
+  await selectionAnchors.nth(1).dispatchEvent("mousedown", { button: 0 });
+  await selectionAnchors.nth(2).dispatchEvent("mousedown", { button: 0 });
+  await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte ausgewählt");
+  await page.locator("#shape-multi-appearance").click();
+  await page.locator("#shape-multi-appearance-fill").selectOption("red");
+  await page.locator("#shape-multi-appearance-apply").click();
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeFill))).toEqual(["blue", "red", "red"]);
+  await expect(page.locator("#shape-multi-style-status")).toHaveText("Darstellung gemerkt");
+  await expect(page.locator("#shape-multi-paste-appearance")).toBeEnabled();
+  await page.locator("#shape-multi-paste-appearance").click();
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeFill))).toEqual(Array(3).fill("blue"));
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeFill))).toEqual(["blue", "red", "red"]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").dataset.shapeFill))).toEqual(Array(3).fill("blue"));
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
   expect(stored.map((entry) => entry.attrs.position.x)).toEqual([631, 631, 631]);
@@ -914,6 +952,8 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
   await page.locator("#document-reload").click();
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(0);
   await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#shape-multi-style-status")).toHaveText("Keine Darstellung gemerkt");
+  await expect(page.locator("#shape-multi-paste-appearance")).toBeDisabled();
   await openReuse(page, saved, "Independent arranged objects"); await submitReuse(page, saved);
   await expectReuseDraft(page, "Independent arranged objects");
   await expect(officeEditor(page).locator(":scope > .office-shape-node")).toHaveCount(3);

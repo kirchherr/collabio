@@ -5,11 +5,12 @@ import { OFFICE_SHAPE_LIMIT, applyOfficeShapeDOM, applyOfficeShapeLayoutDOM,
 import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
   officeShapeGroupLayout } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
-  officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiCanArrange,
-  officeShapeMultiCanStyle, officeShapeMultiDistribution,
+  officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
+  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanStyle,
+  officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiResize, officeShapeMultiRotate,
-  officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiSelection, officeShapeMultiTransform,
-  officeShapeMultiTranslate,
+  officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
+  officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
@@ -43,7 +44,7 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null;
+    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -103,6 +104,10 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-layer").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-transform").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-appearance").disabled = !writable || !officeShapeMultiCanStyle(current);
+    const copiedHere = appearanceClipboard?.session === state.session;
+    $("shape-multi-copy-appearance").disabled = !writable || !officeShapeMultiCanCopyAppearance(current);
+    $("shape-multi-paste-appearance").disabled = !writable || !copiedHere || !officeShapeMultiCanStyle(current);
+    $("shape-multi-style-status").textContent = copiedHere ? "Darstellung gemerkt" : "Keine Darstellung gemerkt";
     const positions = current.map((entry) => entry.node?.attrs.position).filter(Boolean);
     const movable = writable && officeShapeMultiCanArrange(current);
     $("shape-multi-nudge-left").disabled = !movable || positions.some((position) => position.x <= 0);
@@ -167,10 +172,17 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     root.style.setProperty("--shape-group-gap", `${layout.gap}px`);
     root.style.setProperty("--shape-group-bound-width", String(layout.width));
     const position = change.attrs.position;
-    root.dataset.shapeGroupPosition = position.layer;
-    root.style.setProperty("--shape-group-position-x", `${position.x / 10}%`);
-    root.style.setProperty("--shape-group-position-shift", `${-position.x / 10}%`);
-    root.style.setProperty("--shape-group-position-y", `${position.y}px`);
+    if (position) {
+      root.dataset.shapeGroupPosition = position.layer;
+      root.style.setProperty("--shape-group-position-x", `${position.x / 10}%`);
+      root.style.setProperty("--shape-group-position-shift", `${-position.x / 10}%`);
+      root.style.setProperty("--shape-group-position-y", `${position.y}px`);
+    } else {
+      delete root.dataset.shapeGroupPosition;
+      root.style.removeProperty("--shape-group-position-x");
+      root.style.removeProperty("--shape-group-position-shift");
+      root.style.removeProperty("--shape-group-position-y");
+    }
   };
   const previewResize = (entry, change, resizing = true) =>
     previewShapeChange(entry, change, "data-office-multi-resizing", resizing);
@@ -519,6 +531,27 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       focus(editor); updateEditor(); notice(message);
     } catch { notice(failureMessage, true); }
   };
+  $("shape-multi-copy-appearance").addEventListener("click", () => {
+    const current = selectedEntries();
+    if (!allowed() || !officeShapeMultiCanCopyAppearance(current)) return;
+    try {
+      appearanceClipboard = { session: state.session, sourceId: current[0].id,
+        options: officeShapeMultiAppearanceSample(current[0]) };
+      paint(); focus(state.editor);
+      notice("Die sieben Darstellungswerte sind für dieses Dokument gemerkt. Wählen Sie mindestens zwei Zielobjekte.");
+    } catch { appearanceClipboard = null; paint(); notice("Diese Gruppe besitzt keine einheitliche kopierbare Darstellung.", true); }
+  });
+  $("shape-multi-paste-appearance").addEventListener("click", () => {
+    const current = selectedEntries();
+    if (!allowed() || appearanceClipboard?.session !== state.session || !officeShapeMultiCanStyle(current)) return;
+    try {
+      const result = officeShapeMultiPasteAppearance(current, appearanceClipboard.options);
+      commitShapeChanges(result.changes,
+        `${current.length} Objekte haben die gemerkte Darstellung atomar erhalten. Rückgängig ist möglich.`,
+        "Die Zielobjekte besitzen bereits die gemerkte Darstellung.",
+        "Die gemerkte Darstellung konnte nicht auf die Zielobjekte übertragen werden.");
+    } catch { appearanceClipboard = null; paint(); notice("Die gemerkte Darstellung ist nicht mehr gültig.", true); }
+  });
   $("shape-multi-align").addEventListener("change", (event) => {
     const value = event.target.value; event.target.value = ""; if (!value) return;
     const [axis, alignment] = value.split(":");
@@ -782,7 +815,10 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
         transformSnapshot.doc !== state.editor?.state.doc || !allowed())) closeTransform();
     if (appearanceSnapshot && (appearanceSnapshot.session !== state.session ||
         appearanceSnapshot.doc !== state.editor?.state.doc || !allowed())) closeAppearance();
-    if (session !== state.session) { session = state.session; mode = false; selectedIds.clear(); anchorId = null; }
+    if (appearanceClipboard && (appearanceClipboard.session !== state.session || !allowed())) appearanceClipboard = null;
+    if (session !== state.session) {
+      session = state.session; mode = false; selectedIds.clear(); anchorId = null; appearanceClipboard = null;
+    }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);
     $("shape-multi-toggle").disabled = !allowed(); paint();

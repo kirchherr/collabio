@@ -2,11 +2,12 @@ import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
-import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiCanArrange,
-  officeShapeMultiCanGroup, officeShapeMultiDistribution,
+import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
+  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup,
+  officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
-  officeShapeMultiResize, officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiRotate,
-  officeShapeMultiTransform, officeShapeMultiTranslate,
+  officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
+  officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
@@ -338,6 +339,27 @@ test("Office selected shapes and complete groups share bounded appearance values
   expect(result.changes[1].members).toHaveLength(2);
   expect(result.changes[1].members.every((member) => Object.entries(options)
     .every(([key, value]) => member[key] === value))).toBe(true);
+
+  const sample = officeShapeMultiAppearanceSample(first);
+  expect(sample).toEqual({ fill: "yellow", stroke: "slate", strokeWidth: 2, fontSize: 16,
+    textColor: "auto", textStyle: "normal", textAlign: "right" });
+  expect(officeShapeMultiCanCopyAppearance([first])).toBe(true);
+  expect(officeShapeMultiCanCopyAppearance([first, group])).toBe(false);
+  expect(officeShapeMultiCanCopyAppearance([group])).toBe(false);
+  expect(() => officeShapeMultiAppearanceSample(group)).toThrow();
+  const uniform = { ...group, node: { ...group.node, content: { content: [
+    { attrs: { ...attrs, id: "shape-" + "b".repeat(24), fill: "red", fontSize: 24 } },
+    { attrs: { ...attrs, id: "shape-" + "c".repeat(24), fill: "red", fontSize: 24 } },
+  ] } } };
+  expect(officeShapeMultiCanCopyAppearance([uniform])).toBe(true);
+  expect(officeShapeMultiAppearanceSample(uniform)).toMatchObject({ fill: "red", fontSize: 24 });
+  const pasted = officeShapeMultiPasteAppearance([first, group], sample);
+  expect(pasted.changes[0].attrs).toMatchObject({ fill: "yellow", stroke: "slate", strokeWidth: 2, textAlign: "right" });
+  expect(pasted.changes[0].attrs).not.toHaveProperty("fontSize");
+  expect(pasted.changes[1].members.every((member) => member.fill === "yellow" &&
+    member.textAlign === "right" && !Object.hasOwn(member, "fontSize"))).toBe(true);
+  expect(() => officeShapeMultiPasteAppearance([first, group], { ...sample, fill: null })).toThrow();
+  expect(() => officeShapeMultiPasteAppearance([first, group], { ...sample, css: "fill:red" })).toThrow();
 
   const reset = officeShapeMultiAppearance([first, group], { fill: null, stroke: null, strokeWidth: null,
     fontSize: 16, textColor: "auto", textStyle: "normal", textAlign: null });
