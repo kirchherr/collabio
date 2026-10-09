@@ -9,6 +9,7 @@ export const OFFICE_SHAPE_MULTI_AXES = ["horizontal", "vertical"];
 export const OFFICE_SHAPE_MULTI_ALIGNMENTS = ["start", "center", "end"];
 export const OFFICE_SHAPE_MULTI_LAYERS = ["front", "behind"];
 export const OFFICE_SHAPE_MULTI_NUDGE_AMOUNTS = [-10, -1, 1, 10];
+export const OFFICE_SHAPE_MULTI_ORDER_ACTIONS = ["previous", "next", "first", "last"];
 export const OFFICE_SHAPE_MULTI_SCALE_BASE = 1000;
 const OFFICE_SHAPE_MULTI_APPEARANCE_KEYS = [
   "fill", "stroke", "strokeWidth", "fontSize", "textColor", "textStyle", "textAlign",
@@ -26,6 +27,40 @@ export function officeShapeMultiRange(entries, anchorId, targetId) {
   const anchor = entries.findIndex((entry) => entry.id === anchorId), target = entries.findIndex((entry) => entry.id === targetId);
   if (anchor < 0 || target < 0) return [targetId];
   return entries.slice(Math.min(anchor, target), Math.max(anchor, target) + 1).map((entry) => entry.id);
+}
+
+export function officeShapeMultiOrder(rootCount, entries, action) {
+  if (!Number.isSafeInteger(rootCount) || rootCount < 1 || !Array.isArray(entries) || entries.length < 2 ||
+      entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT || !OFFICE_SHAPE_MULTI_ORDER_ACTIONS.includes(action) ||
+      entries.some((entry) => !["shape", "shapeGroup"].includes(entry?.type) ||
+        !Number.isSafeInteger(entry.rootIndex) || entry.rootIndex < 0 || entry.rootIndex >= rootCount)) {
+    throw new Error("shape-multi-order");
+  }
+  const indexes = entries.map((entry) => entry.rootIndex);
+  if (new Set(indexes).size !== indexes.length) throw new Error("shape-multi-order");
+  const selected = new Set(indexes), order = Array.from({ length: rootCount }, (_, index) => index);
+  if (action === "previous") {
+    for (let index = 1; index < order.length; index += 1) {
+      if (selected.has(order[index]) && !selected.has(order[index - 1])) {
+        [order[index - 1], order[index]] = [order[index], order[index - 1]];
+      }
+    }
+  } else if (action === "next") {
+    for (let index = order.length - 2; index >= 0; index -= 1) {
+      if (selected.has(order[index]) && !selected.has(order[index + 1])) {
+        [order[index], order[index + 1]] = [order[index + 1], order[index]];
+      }
+    }
+  } else {
+    const picked = order.filter((index) => selected.has(index));
+    const remainder = order.filter((index) => !selected.has(index));
+    order.splice(0, order.length, ...(action === "first" ? [...picked, ...remainder] : [...remainder, ...picked]));
+  }
+  return { action, order, changed: order.some((rootIndex, index) => rootIndex !== index) };
+}
+
+export function officeShapeMultiCanOrder(rootCount, entries, action) {
+  try { return officeShapeMultiOrder(rootCount, entries, action).changed; } catch { return false; }
 }
 
 export function officeShapeMultiCanGroup(entries) {

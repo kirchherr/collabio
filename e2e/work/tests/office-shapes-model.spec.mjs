@@ -3,9 +3,9 @@ import { compareOfficeDocuments, describeOfficeBlock } from "../office-compariso
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
-  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup,
+  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
   officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
@@ -178,6 +178,28 @@ test("Office shape multi-selection is bounded ordered and groups only adjacent f
     node: { attrs: { position: { layer: "front", x: 0, y: 0 }, wrap: null } } }])).toBe(false);
   expect(() => officeShapeMultiSelection(nodes, [nodes[0].id, nodes[0].id])).toThrow();
   expect(() => officeShapeMultiSelection(nodes, Array(21).fill(0).map((_, index) => `shape-${String(index).padStart(24, "0")}`))).toThrow();
+});
+
+test("Office shape multi-selection reorders complete roots atomically and stably", () => {
+  const selected = [
+    { id: "shape-" + "1".repeat(24), type: "shape", rootIndex: 1 },
+    { id: "shape-group-" + "3".repeat(24), type: "shapeGroup", rootIndex: 3 },
+    { id: "shape-" + "4".repeat(24), type: "shape", rootIndex: 4 },
+  ];
+  expect(officeShapeMultiOrder(7, selected, "previous")).toEqual({
+    action: "previous", order: [1, 0, 3, 4, 2, 5, 6], changed: true,
+  });
+  expect(officeShapeMultiOrder(7, selected, "next").order).toEqual([0, 2, 1, 5, 3, 4, 6]);
+  expect(officeShapeMultiOrder(7, selected, "first").order).toEqual([1, 3, 4, 0, 2, 5, 6]);
+  expect(officeShapeMultiOrder(7, selected, "last").order).toEqual([0, 2, 5, 6, 1, 3, 4]);
+  expect(officeShapeMultiCanOrder(7, [{ ...selected[0], rootIndex: 0 },
+    { ...selected[1], rootIndex: 1 }], "previous")).toBe(false);
+  expect(officeShapeMultiCanOrder(7, [{ ...selected[0], rootIndex: 5 },
+    { ...selected[1], rootIndex: 6 }], "next")).toBe(false);
+  expect(officeShapeMultiCanOrder(7, selected, "first")).toBe(true);
+  expect(() => officeShapeMultiOrder(7, selected, "middle")).toThrow();
+  expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 1 }], "last")).toThrow();
+  expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 7 }], "last")).toThrow();
 });
 
 test("Office positioned root objects align and distribute through bounded integer anchors", () => {

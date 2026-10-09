@@ -581,6 +581,35 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   const controls = editor.locator(":scope > .office-shape-group .office-shape-group-control");
   await controls.nth(0).dispatchEvent("mousedown", { button: 0 });
   await controls.nth(1).dispatchEvent("mousedown", { button: 0 });
+  const groupIds = await controls.evaluateAll((entries) => entries.map((entry) =>
+    entry.closest(".office-shape-group").dataset.shapeGroup));
+  const rootOrder = () => editor.locator(":scope > *").evaluateAll((entries) => entries.map((entry) =>
+    entry.matches(".office-shape-group") ? entry.dataset.shapeGroup : entry.tagName.toLowerCase()));
+  await expect(page.locator("#shape-multi-move-previous")).toBeEnabled();
+  await expect(page.locator("#shape-multi-move-next")).toBeEnabled();
+  await expect(page.locator("#shape-multi-move-first")).toBeEnabled();
+  await expect(page.locator("#shape-multi-move-last")).toBeEnabled();
+  await page.locator("#shape-multi-move-previous").click();
+  await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
+  await expect(page.locator("#shape-multi-move-previous")).toBeDisabled();
+  await expect(page.locator("#shape-multi-move-first")).toBeDisabled();
+  await editor.press("Control+z");
+  await expect.poll(rootOrder).toEqual(["p", ...groupIds]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
+  await page.locator("#shape-multi-move-next").click();
+  await expect.poll(rootOrder).toEqual(["p", ...groupIds]);
+  await page.locator("#shape-multi-move-last").click();
+  await expect.poll(rootOrder).toEqual(["p", groupIds[2], groupIds[0], groupIds[1]]);
+  await expect(page.locator("#shape-multi-move-next")).toBeDisabled();
+  await expect(page.locator("#shape-multi-move-last")).toBeDisabled();
+  await editor.press("Control+z");
+  await expect.poll(rootOrder).toEqual(["p", ...groupIds]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(rootOrder).toEqual(["p", groupIds[2], groupIds[0], groupIds[1]]);
+  await page.locator("#shape-multi-move-first").click();
+  await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
   await expect(page.locator("#shape-multi-appearance")).toBeEnabled();
   await page.locator("#shape-multi-appearance").click();
   await page.locator("#shape-multi-appearance-fill").selectOption("red");

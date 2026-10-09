@@ -6,9 +6,9 @@ import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
   officeShapeGroupLayout } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
-  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanStyle,
+  officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanOrder, officeShapeMultiCanStyle,
   officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiResize, officeShapeMultiRotate,
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
   officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
@@ -98,6 +98,10 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-duplicate").disabled = !doc || !writable || !enough || shapeCount(doc) + duplicateShapes > OFFICE_SHAPE_LIMIT ||
       groupCount(doc) + duplicateGroups > OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-remove").disabled = !writable || !enough;
+    for (const button of document.querySelectorAll("[data-shape-multi-order]")) {
+      button.disabled = !doc || !writable ||
+        !officeShapeMultiCanOrder(doc.childCount, current, button.dataset.shapeMultiOrder);
+    }
     $("shape-multi-group").disabled = !doc || !writable || !officeShapeMultiCanGroup(current) || groupCount(doc) >= OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
@@ -455,6 +459,27 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   };
   $("shape-multi-toggle").addEventListener("click", () => { mode = !mode; paint(); focus(state.editor); });
   $("shape-multi-clear").addEventListener("click", () => { clear(); focus(state.editor); });
+  for (const button of document.querySelectorAll("[data-shape-multi-order]")) {
+    button.addEventListener("click", () => {
+      const editor = state.editor, current = selectedEntries(), action = button.dataset.shapeMultiOrder;
+      if (!editor || !allowed()) return;
+      try {
+        const plan = officeShapeMultiOrder(editor.state.doc.childCount, current, action);
+        if (!plan.changed) { paint(); return; }
+        const nodes = plan.order.map((index) => editor.state.doc.child(index));
+        let tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, nodes);
+        const wanted = new Set(current.map((entry) => entry.id)); let firstPos = null;
+        tr.doc.forEach((node, pos) => { if (firstPos == null && wanted.has(node.attrs?.id)) firstPos = pos; });
+        if (firstPos == null) throw new Error("shape-multi-order-selection");
+        tr = tr.setSelection(NodeSelection.create(tr.doc, firstPos)); validate(tr.doc);
+        editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+        focus(editor); updateEditor(); paint();
+        const labels = { previous: "einen Schritt nach vorn", next: "einen Schritt nach hinten",
+          first: "an den Anfang", last: "an das Ende" };
+        notice(`${current.length} Objekte wurden atomar ${labels[action]} verschoben. Rückgängig ist möglich.`);
+      } catch { notice("Die ausgewählten Objekte konnten nicht gemeinsam in der Dokumentreihenfolge verschoben werden.", true); }
+    });
+  }
   $("shape-multi-duplicate").addEventListener("click", () => {
     const editor = state.editor, current = selectedEntries(); if (!editor || current.length < 2 || !allowed()) return;
     const copies = current.map((entry) => ({ source: entry, node: clone(editor, entry) })); let tr = editor.state.tr;
