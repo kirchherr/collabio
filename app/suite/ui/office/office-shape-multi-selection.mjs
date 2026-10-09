@@ -1,11 +1,13 @@
-import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
-import { officeShapePosition } from "./office-shapes.mjs";
+import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes,
+  officeShapeGroupBounds } from "./office-shape-groups.mjs";
+import { officeShapeAttributes, officeShapeBounds, officeShapePosition } from "./office-shapes.mjs";
 
 export const OFFICE_SHAPE_MULTI_SELECTION_LIMIT = 20;
 export const OFFICE_SHAPE_MULTI_AXES = ["horizontal", "vertical"];
 export const OFFICE_SHAPE_MULTI_ALIGNMENTS = ["start", "center", "end"];
 export const OFFICE_SHAPE_MULTI_LAYERS = ["front", "behind"];
 export const OFFICE_SHAPE_MULTI_NUDGE_AMOUNTS = [-10, -1, 1, 10];
+export const OFFICE_SHAPE_MULTI_SCALE_BASE = 1000;
 
 export function officeShapeMultiSelection(entries, ids) {
   if (!Array.isArray(entries) || !Array.isArray(ids) || ids.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT ||
@@ -94,4 +96,51 @@ export function officeShapeMultiNudge(entries, axis, amount) {
   }
   const coordinate = arrangementCoordinate(axis);
   return officeShapeMultiTranslate(entries, coordinate === "x" ? amount : 0, coordinate === "y" ? amount : 0);
+}
+
+function officeShapeMultiMembers(entry) {
+  if (entry?.type === "shape") return [officeShapeAttributes(entry.node?.attrs)];
+  if (entry?.type !== "shapeGroup" || !Array.isArray(entry.node?.content?.content)) {
+    throw new Error("shape-multi-size-entry");
+  }
+  officeShapeGroupAttributes(entry.node.attrs);
+  return entry.node.content.content.map((member) => officeShapeAttributes(member?.attrs));
+}
+
+export function officeShapeMultiRootSize(entry) {
+  const members = officeShapeMultiMembers(entry);
+  return entry.type === "shape" ? officeShapeBounds(members[0]) : officeShapeGroupBounds(entry.node.attrs, members);
+}
+
+function scaleRange(values, minimum, maximum) {
+  return {
+    minimum: Math.max(...values.map((value) => Math.ceil(minimum * OFFICE_SHAPE_MULTI_SCALE_BASE / value))),
+    maximum: Math.min(...values.map((value) => Math.floor(maximum * OFFICE_SHAPE_MULTI_SCALE_BASE / value))),
+  };
+}
+
+export function officeShapeMultiResize(entries, scaleX, scaleY, lockAspect = false) {
+  if (!officeShapeMultiCanArrange(entries) || !Number.isSafeInteger(scaleX) || !Number.isSafeInteger(scaleY) ||
+      scaleX < 1 || scaleY < 1 || typeof lockAspect !== "boolean") throw new Error("shape-multi-resize");
+  const members = entries.map(officeShapeMultiMembers), flat = members.flat();
+  const horizontal = scaleRange(flat.map((shape) => shape.width), 80, 1200);
+  const vertical = scaleRange(flat.map((shape) => shape.height), 40, 800);
+  if (lockAspect) {
+    const requested = Math.abs(scaleX - OFFICE_SHAPE_MULTI_SCALE_BASE) >=
+      Math.abs(scaleY - OFFICE_SHAPE_MULTI_SCALE_BASE) ? scaleX : scaleY;
+    const bounded = Math.max(Math.max(horizontal.minimum, vertical.minimum),
+      Math.min(requested, Math.min(horizontal.maximum, vertical.maximum)));
+    scaleX = bounded; scaleY = bounded;
+  } else {
+    scaleX = Math.max(horizontal.minimum, Math.min(scaleX, horizontal.maximum));
+    scaleY = Math.max(vertical.minimum, Math.min(scaleY, vertical.maximum));
+  }
+  const changes = entries.map((entry, index) => {
+    const resized = members[index].map((shape) => officeShapeAttributes({ ...shape,
+      width: Math.round(shape.width * scaleX / OFFICE_SHAPE_MULTI_SCALE_BASE),
+      height: Math.round(shape.height * scaleY / OFFICE_SHAPE_MULTI_SCALE_BASE) }));
+    return entry.type === "shape" ? { id: entry.id, type: entry.type, attrs: resized[0] } :
+      { id: entry.id, type: entry.type, attrs: officeShapeGroupAttributes(entry.node.attrs), members: resized };
+  });
+  return { scaleX, scaleY, changes };
 }

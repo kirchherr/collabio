@@ -299,11 +299,33 @@ test("Office shape groups move freely as one object with history print and offse
   await page.locator("#shape-group-duplicate").click(); await expect(editor.locator(".office-shape-group")).toHaveCount(2);
   await editor.press("Control+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(1);
   await editor.press("Control+Shift+z"); await expect(editor.locator(".office-shape-group")).toHaveCount(2);
+  await page.locator("#shape-multi-toggle").click();
+  for (const control of await editor.locator(":scope > .office-shape-group .office-shape-group-control").all()) {
+    await control.dispatchEvent("click");
+  }
+  await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte ausgewählt");
+  const groupResize = editor.locator(":scope > .office-shape-group .office-shape-group-resize").first();
+  await expect(groupResize).toBeVisible();
+  await expect(groupResize).toHaveAttribute("aria-label", /2 ausgewählte Objekte gemeinsam skalieren/);
+  const beforeGroupWidth = Number(await editor.locator(":scope > .office-shape-group .office-shape").first()
+    .evaluate((element) => element.style.getPropertyValue("--office-shape-width")));
+  await groupResize.focus(); await groupResize.press("Shift+ArrowRight");
+  const afterGroupWidths = await editor.locator(":scope > .office-shape-group .office-shape").evaluateAll((elements) =>
+    elements.map((element) => Number(element.style.getPropertyValue("--office-shape-width"))));
+  expect(afterGroupWidths).toHaveLength(4);
+  expect(new Set(afterGroupWidths).size).toBe(1); expect(afterGroupWidths[0]).toBeGreaterThan(beforeGroupWidth);
+  await editor.press("Control+z");
+  await expect.poll(() => editor.locator(":scope > .office-shape-group .office-shape").evaluateAll((elements) =>
+    elements.map((element) => Number(element.style.getPropertyValue("--office-shape-width")))))
+    .toEqual([beforeGroupWidth, beforeGroupWidth, beforeGroupWidth, beforeGroupWidth]);
+  await editor.press("Control+Shift+z");
+  await page.locator("#shape-multi-clear").click(); await page.locator("#shape-multi-toggle").click();
   const saved = await saveOffice(page, { objectId }), groups = saved.content.content.filter((entry) => entry.type === "shapeGroup");
   expect(groups).toHaveLength(2); expect(groups[0].attrs.position.layer).toBe("front");
   expect(groups[0].attrs.position.y).toBe(93);
   expect(groups[1].attrs.position).toEqual({ layer: "front", x: groups[0].attrs.position.x + 25, y: 117 });
   expect(groups[1].attrs.id).not.toBe(groups[0].attrs.id);
+  expect(groups.flatMap((entry) => entry.content).map((entry) => entry.attrs.width)).toEqual(afterGroupWidths);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape-group[data-shape-group-positioned]")).toHaveCount(2);
   await expect(page.locator("#print-preview .office-print-shape-group").first()).toHaveAttribute("data-shape-group-position", "front");
@@ -663,11 +685,55 @@ test("Office positioned root objects align distribute layer nudge and drag atomi
     .toEqual(["50.1%", "50.1%", "50.1%"]);
   await editor.press("Control+Shift+z");
 
+  const resizeHandle = shapes.nth(1).locator(".office-shape-resize");
+  await expect(resizeHandle).toBeVisible();
+  await expect(resizeHandle).toHaveAttribute("aria-label", /3 ausgewählte Objekte gemeinsam skalieren; Maus, Touch oder Pfeiltasten/);
+  const baseSize = await shapes.nth(1).locator(".office-shape").evaluate((element) => ({
+    width: Number(element.style.getPropertyValue("--office-shape-width")),
+    height: Number(element.style.getPropertyValue("--office-shape-height")),
+  }));
+  const scaledSize = { width: Math.round(baseSize.width * 1.1), height: Math.round(baseSize.height * 1.1) };
+  const resize = async (pointerId, endType) => {
+    await resizeHandle.dispatchEvent("pointerdown", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: 300, clientY: 300 });
+    await editor.dispatchEvent("pointermove", { pointerId, pointerType, isPrimary: true, button: 0, buttons: 1,
+      clientX: 300 + baseSize.width * 0.1, clientY: 300 + baseSize.height * 0.1, shiftKey: true });
+    await expect(editor.locator("[data-office-multi-resizing]")).toHaveCount(3);
+    await expect(page.locator("#shape-multi-status")).toHaveText("3 Objekte · Breite 110 % · Höhe 110 %");
+    await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+      entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-width"))))
+      .toEqual(Array(3).fill(String(scaledSize.width)));
+    await editor.dispatchEvent(endType, { pointerId, pointerType, isPrimary: true, button: 0, buttons: 0,
+      clientX: 300 + baseSize.width * 0.1, clientY: 300 + baseSize.height * 0.1, shiftKey: true });
+  };
+  await resize(51, "pointercancel");
+  await expect(editor.locator("[data-office-multi-resizing]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-width"))))
+    .toEqual(Array(3).fill(String(baseSize.width)));
+  await resize(52, "pointerup");
+  await expect(editor.locator("[data-office-multi-resizing]")).toHaveCount(0);
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-height"))))
+    .toEqual(Array(3).fill(String(scaledSize.height)));
+  await editor.press("Control+z");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-width"))))
+    .toEqual(Array(3).fill(String(baseSize.width)));
+  await editor.press("Control+Shift+z");
+  await resizeHandle.focus(); await resizeHandle.press("ArrowRight");
+  await expect.poll(() => shapes.evaluateAll((entries) => entries.map((entry) =>
+    entry.querySelector(".office-shape").style.getPropertyValue("--office-shape-width"))))
+    .toEqual(Array(3).fill(String(scaledSize.width + 1)));
+  await editor.press("Control+z"); await editor.press("Control+Shift+z");
+
   const saved = await saveOffice(page, { objectId });
   const stored = saved.content.content.filter((entry) => entry.type === "shape");
   expect(stored.map((entry) => entry.attrs.position.x)).toEqual([581, 581, 581]);
   expect(stored.map((entry) => entry.attrs.position.y)).toEqual([-250, 350, 950]);
   expect(stored.map((entry) => entry.attrs.position.layer)).toEqual(["front", "front", "front"]);
+  expect(stored.map((entry) => [entry.attrs.width, entry.attrs.height]))
+    .toEqual(Array(3).fill([scaledSize.width + 1, scaledSize.height]));
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
   await page.locator("#document-print").click();
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(3);

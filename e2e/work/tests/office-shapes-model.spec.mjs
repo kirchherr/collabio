@@ -4,7 +4,8 @@ import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, offic
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
 import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
-  officeShapeMultiTranslate, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
+  officeShapeMultiResize, officeShapeMultiRootSize, officeShapeMultiTranslate,
+  OFFICE_SHAPE_MULTI_SCALE_BASE, OFFICE_SHAPE_MULTI_SELECTION_LIMIT } from "../office-shape-multi-selection.mjs";
 
 const attrs = { id: "shape-" + "a".repeat(24), kind: "roundedRectangle", width: 320, height: 160,
   fill: "teal", stroke: "slate", strokeWidth: 2, text: "Literal <script> text 😀", textAlign: "center" };
@@ -222,4 +223,40 @@ test("Office positioned root objects align and distribute through bounded intege
   expect(() => officeShapeMultiNudge(positioned, "horizontal", 2)).toThrow();
   expect(() => officeShapeMultiTranslate(positioned, 1.5, 2)).toThrow();
   expect(() => officeShapeMultiTranslate(positioned, 1, Number.POSITIVE_INFINITY)).toThrow();
+});
+
+test("Office positioned root objects resize through one bounded shared scale", () => {
+  const position = { layer: "front", x: 500, y: 0 };
+  const first = { id: attrs.id, type: "shape", rootIndex: 0,
+    node: { attrs: { ...attrs, position } } };
+  const wide = { ...attrs, id: "shape-" + "b".repeat(24), width: 800, height: 400 };
+  const small = { ...attrs, id: "shape-" + "c".repeat(24), width: 100, height: 50 };
+  const groupAttrs = { id: "shape-group-" + "d".repeat(24), layout: "row", gap: 16,
+    position: { layer: "behind", x: 800, y: 400 } };
+  const group = { id: groupAttrs.id, type: "shapeGroup", rootIndex: 1,
+    node: { attrs: groupAttrs, content: { content: [{ attrs: wide }, { attrs: small }] } } };
+  expect(OFFICE_SHAPE_MULTI_SCALE_BASE).toBe(1000);
+  expect(officeShapeMultiRootSize(first)).toEqual({ width: 320, height: 160 });
+  expect(officeShapeMultiRootSize(group)).toEqual({ width: 916, height: 400 });
+
+  const independent = officeShapeMultiResize([first, group], 2000, 2000);
+  expect(independent).toMatchObject({ scaleX: 1500, scaleY: 2000 });
+  expect(independent.changes[0].attrs).toMatchObject({ width: 480, height: 320, position });
+  expect(independent.changes[1].attrs).toEqual(groupAttrs);
+  expect(independent.changes[1].members.map((member) => [member.width, member.height]))
+    .toEqual([[1200, 800], [150, 100]]);
+
+  const proportional = officeShapeMultiResize([first, group], 2000, 1300, true);
+  expect(proportional).toMatchObject({ scaleX: 1500, scaleY: 1500 });
+  expect(proportional.changes[1].members.map((member) => [member.width, member.height]))
+    .toEqual([[1200, 600], [150, 75]]);
+  const minimum = officeShapeMultiResize([first, group], 1, 1);
+  expect(minimum).toMatchObject({ scaleX: 800, scaleY: 800 });
+  expect(minimum.changes[1].members.map((member) => [member.width, member.height]))
+    .toEqual([[640, 320], [80, 40]]);
+
+  expect(() => officeShapeMultiResize([first], 1000, 1000)).toThrow();
+  expect(() => officeShapeMultiResize([first, group], 0, 1000)).toThrow();
+  expect(() => officeShapeMultiResize([first, group], 1000.5, 1000)).toThrow();
+  expect(() => officeShapeMultiResize([first, group], 1000, 1000, "locked")).toThrow();
 });

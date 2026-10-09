@@ -1,11 +1,14 @@
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { OFFICE_SHAPE_LIMIT, officeShapeAttributes } from "./office-shapes.mjs";
-import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes } from "./office-shape-groups.mjs";
+import { OFFICE_SHAPE_LIMIT, applyOfficeShapeDOM, applyOfficeShapeLayoutDOM,
+  officeShapeAttributes } from "./office-shapes.mjs";
+import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
+  officeShapeGroupLayout } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
   officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiSelection,
-  officeShapeMultiTranslate } from "./office-shape-multi-selection.mjs";
+  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiResize,
+  officeShapeMultiRootSize, officeShapeMultiSelection, officeShapeMultiTranslate,
+  OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
 function freshId(prefix) {
   const bytes = new Uint8Array(12); crypto.getRandomValues(bytes);
@@ -37,7 +40,7 @@ function groupCount(doc) {
 
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
-  let mode = false, anchorId = null, session = null, bound = null, drag = null, suppressedClick = null;
+  let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, suppressedClick = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -49,6 +52,10 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       element.setAttribute("aria-label", element.dataset.officeMultiAnchorLabel);
       delete element.dataset.officeMultiAnchorLabel;
     });
+    if (editor) editor.view.dom.querySelectorAll("[data-office-multi-resize-label]").forEach((element) => {
+      element.setAttribute("aria-label", element.dataset.officeMultiResizeLabel);
+      delete element.dataset.officeMultiResizeLabel;
+    });
     for (const entry of selectedEntries()) {
       const selector = entry.type === "shapeGroup" ? `.office-shape-group[data-shape-group="${entry.id}"]` :
         `.office-shape-node:has(>.office-shape[data-office-shape="${entry.id}"])`;
@@ -59,6 +66,11 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
         if (handle && selectedIds.size >= 2) {
           handle.dataset.officeMultiAnchorLabel = handle.getAttribute("aria-label") || "Objektanker";
           handle.setAttribute("aria-label", `${selectedIds.size} ausgewählte Objekte gemeinsam ziehen; Maus oder Touch`);
+        }
+        const resize = element.querySelector(":scope > .office-shape-resize, :scope > .office-shape-group-resize");
+        if (resize && selectedIds.size >= 2 && entry.node.attrs.position != null) {
+          resize.dataset.officeMultiResizeLabel = resize.getAttribute("aria-label") || "Objektgröße ändern";
+          resize.setAttribute("aria-label", `${selectedIds.size} ausgewählte Objekte gemeinsam skalieren; Maus, Touch oder Pfeiltasten; Umschalt beim Ziehen behält das Seitenverhältnis bei`);
         }
       }
     }
@@ -119,6 +131,31 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   const restorePreview = (entriesToRestore) => {
     for (const entry of entriesToRestore) previewPosition(entry, entry.node.attrs.position, false);
   };
+  const originalResizeChange = (entry) => entry.type === "shape" ?
+    { id: entry.id, type: entry.type, attrs: officeShapeAttributes(entry.node.attrs) } :
+    { id: entry.id, type: entry.type, attrs: officeShapeGroupAttributes(entry.node.attrs),
+      members: entry.node.content.content.map((member) => officeShapeAttributes(member.attrs)) };
+  const previewResize = (entry, change, resizing = true) => {
+    const root = rootElement(entry); if (!root) return;
+    root.toggleAttribute("data-office-multi-resizing", resizing);
+    if (entry.type === "shape") {
+      const shape = root.querySelector(":scope > .office-shape");
+      if (shape) applyOfficeShapeDOM(shape, change.attrs);
+      applyOfficeShapeLayoutDOM(root, change.attrs); return;
+    }
+    const memberRoots = root.querySelectorAll(":scope > .office-shape-group-content > .office-shape-node");
+    for (const [index, memberRoot] of Array.from(memberRoots).entries()) {
+      const attrs = change.members[index], shape = memberRoot.querySelector(":scope > .office-shape");
+      if (!attrs || !shape) continue;
+      applyOfficeShapeDOM(shape, attrs); applyOfficeShapeLayoutDOM(memberRoot, attrs);
+    }
+    const layout = officeShapeGroupLayout(change.attrs, change.members);
+    root.style.setProperty("--shape-group-gap", `${layout.gap}px`);
+    root.style.setProperty("--shape-group-bound-width", String(layout.width));
+  };
+  const restoreResizePreview = (entriesToRestore) => {
+    for (const entry of entriesToRestore) previewResize(entry, originalResizeChange(entry), false);
+  };
   const sameDragSource = (active) => {
     const current = selectedEntries();
     return active.session === state.session && active.doc === state.editor?.state.doc && allowed() &&
@@ -175,6 +212,55 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       $("shape-multi-status").textContent = `${drag.entries.length} Objekte · X ${actualX >= 0 ? "+" : ""}${actualX} · Y ${actualY >= 0 ? "+" : ""}${actualY}`;
     } catch { finishDrag(event, true); }
   };
+  const finishResize = (event, cancel = false) => {
+    if (!resizeDrag || (event?.pointerId != null && resizeDrag.pointerId !== event.pointerId)) return;
+    const active = resizeDrag; resizeDrag = null;
+    try { if (bound?.hasPointerCapture?.(active.pointerId)) bound.releasePointerCapture(active.pointerId); } catch { /* capture may be synthetic */ }
+    event?.preventDefault?.(); event?.stopImmediatePropagation?.();
+    suppressedClick = { id: active.sourceId, until: performance.now() + 500 };
+    const changed = active.result.changes.some((change, index) => {
+      const original = active.entries[index];
+      if (change.type === "shape") return change.attrs.width !== original.node.attrs.width || change.attrs.height !== original.node.attrs.height;
+      return change.members.some((member, memberIndex) => member.width !== original.node.child(memberIndex).attrs.width ||
+        member.height !== original.node.child(memberIndex).attrs.height);
+    });
+    restoreResizePreview(active.entries); paint();
+    if (cancel || !changed || !sameDragSource(active)) {
+      if (!cancel && changed) notice("Die gemeinsame Größenänderung wurde wegen eines geänderten Dokumentzustands verworfen.", true);
+      return;
+    }
+    commitResize(active.result.changes,
+      `${active.entries.length} positionierte Objekte atomar auf ${Math.round(active.result.scaleX / 10)} % Breite und ${Math.round(active.result.scaleY / 10)} % Höhe skaliert. Rückgängig ist möglich.`);
+  };
+  const cancelResize = (event) => finishResize(event, true);
+  const startResize = (event) => {
+    const handle = event.target.closest?.(".office-shape-resize, .office-shape-group-resize");
+    const sourceId = targetId(event.target), current = selectedEntries();
+    if (!handle || !sourceId || !selectedIds.has(sourceId) || event.button !== 0 || event.isPrimary === false ||
+        event.ctrlKey || event.metaKey || event.altKey || drag || resizeDrag || !allowed() ||
+        document.querySelector("dialog[open]") || !officeShapeMultiCanArrange(current)) return;
+    const source = current.find((entry) => entry.id === sourceId), sourceSize = officeShapeMultiRootSize(source);
+    resizeDrag = { pointerId: event.pointerId, sourceId, clientX: event.clientX, clientY: event.clientY,
+      sourceSize, entries: current, result: officeShapeMultiResize(current, OFFICE_SHAPE_MULTI_SCALE_BASE,
+        OFFICE_SHAPE_MULTI_SCALE_BASE), session: state.session, doc: state.editor.state.doc };
+    for (const entry of current) rootElement(entry)?.toggleAttribute("data-office-multi-resizing", true);
+    try { bound?.setPointerCapture?.(event.pointerId); } catch { /* synthetic pointer events cannot capture */ }
+    event.preventDefault(); event.stopImmediatePropagation();
+  };
+  const moveResize = (event) => {
+    if (!resizeDrag || resizeDrag.pointerId !== event.pointerId) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    try {
+      const width = Math.max(1, resizeDrag.sourceSize.width + event.clientX - resizeDrag.clientX);
+      const height = Math.max(1, resizeDrag.sourceSize.height + event.clientY - resizeDrag.clientY);
+      const scaleX = Math.max(1, Math.round(width / resizeDrag.sourceSize.width * OFFICE_SHAPE_MULTI_SCALE_BASE));
+      const scaleY = Math.max(1, Math.round(height / resizeDrag.sourceSize.height * OFFICE_SHAPE_MULTI_SCALE_BASE));
+      resizeDrag.result = officeShapeMultiResize(resizeDrag.entries, scaleX, scaleY, event.shiftKey);
+      const byId = new Map(resizeDrag.result.changes.map((change) => [change.id, change]));
+      for (const entry of resizeDrag.entries) previewResize(entry, byId.get(entry.id));
+      $("shape-multi-status").textContent = `${resizeDrag.entries.length} Objekte · Breite ${Math.round(resizeDrag.result.scaleX / 10)} % · Höhe ${Math.round(resizeDrag.result.scaleY / 10)} %`;
+    } catch { finishResize(event, true); }
+  };
   const selectTarget = (event) => {
     const id = targetId(event.target), additive = event.ctrlKey || event.metaKey, ranged = event.shiftKey;
     if (id && suppressedClick?.id === id && performance.now() <= suppressedClick.until) {
@@ -197,17 +283,28 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     const next = state.editor?.view.dom ?? null;
     if (bound === next) return;
     if (drag) finishDrag(null, true);
+    if (resizeDrag) finishResize(null, true);
     bound?.removeEventListener("click", selectTarget, true);
+    bound?.removeEventListener("pointerdown", startResize, true);
     bound?.removeEventListener("pointerdown", startDrag, true);
+    bound?.removeEventListener("pointermove", moveResize, true);
     bound?.removeEventListener("pointermove", moveDrag, true);
+    bound?.removeEventListener("pointerup", finishResize, true);
     bound?.removeEventListener("pointerup", finishDrag, true);
+    bound?.removeEventListener("pointercancel", cancelResize, true);
     bound?.removeEventListener("pointercancel", cancelDrag, true);
+    bound?.removeEventListener("keydown", resizeKey, true);
     bound = next;
     bound?.addEventListener("click", selectTarget, true);
+    bound?.addEventListener("pointerdown", startResize, true);
     bound?.addEventListener("pointerdown", startDrag, true);
+    bound?.addEventListener("pointermove", moveResize, true);
     bound?.addEventListener("pointermove", moveDrag, true);
+    bound?.addEventListener("pointerup", finishResize, true);
     bound?.addEventListener("pointerup", finishDrag, true);
+    bound?.addEventListener("pointercancel", cancelResize, true);
     bound?.addEventListener("pointercancel", cancelDrag, true);
+    bound?.addEventListener("keydown", resizeKey, true);
   };
   const clone = (editor, entry) => {
     if (entry.type === "shape") return editor.schema.nodes.shape.create(officeShapeAttributes({ ...entry.node.attrs,
@@ -270,6 +367,31 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       focus(editor); updateEditor(); notice(message);
     } catch { notice("Die ausgewählten Objekte konnten nicht gemeinsam angeordnet werden.", true); }
   };
+  const commitResize = (changes, message) => {
+    const editor = state.editor, current = selectedEntries();
+    if (!editor || !allowed() || changes.length !== current.length) return;
+    const byId = new Map(changes.map((change) => [change.id, change]));
+    let tr = editor.state.tr;
+    try {
+      for (const entry of [...current].reverse()) {
+        const change = byId.get(entry.id);
+        if (!change || change.type !== entry.type) throw new Error("shape-multi-resize-change");
+        if (entry.type === "shape") tr = tr.setNodeMarkup(entry.pos, undefined, officeShapeAttributes(change.attrs));
+        else {
+          if (change.members.length !== entry.node.childCount) throw new Error("shape-multi-resize-members");
+          const members = entry.node.content.content.map((member, index) =>
+            member.type.create(officeShapeAttributes(change.members[index])));
+          const group = entry.node.type.create(officeShapeGroupAttributes(change.attrs), members);
+          tr = tr.replaceWith(entry.pos, entry.pos + entry.node.nodeSize, group);
+        }
+      }
+      if (!tr.docChanged || tr.doc.eq(editor.state.doc)) {
+        notice("Die ausgewählten Objekte besitzen bereits diese Größe."); return;
+      }
+      validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); notice(message);
+    } catch { notice("Die ausgewählten Objekte konnten nicht gemeinsam skaliert werden.", true); }
+  };
   $("shape-multi-align").addEventListener("change", (event) => {
     const value = event.target.value; event.target.value = ""; if (!value) return;
     const [axis, alignment] = value.split(":");
@@ -301,7 +423,26 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   for (const button of document.querySelectorAll("[data-shape-multi-nudge]")) {
     button.addEventListener("click", () => nudge(button.dataset.axis, Number(button.dataset.amount)));
   }
+  const resizeKey = (event) => {
+    const handle = event.target.closest?.(".office-shape-resize, .office-shape-group-resize");
+    const direction = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
+      ArrowUp: ["vertical", -1], ArrowDown: ["vertical", 1] }[event.key];
+    const sourceId = targetId(event.target), current = selectedEntries();
+    if (!handle || !direction || !sourceId || !selectedIds.has(sourceId) || event.ctrlKey || event.metaKey || event.altKey ||
+        !allowed() || document.querySelector("dialog[open]") || !officeShapeMultiCanArrange(current)) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    try {
+      const source = current.find((entry) => entry.id === sourceId), size = officeShapeMultiRootSize(source);
+      const step = (event.shiftKey ? 10 : 1) * direction[1];
+      const scaleX = direction[0] === "horizontal" ? Math.max(1, Math.round((size.width + step) / size.width * OFFICE_SHAPE_MULTI_SCALE_BASE)) : OFFICE_SHAPE_MULTI_SCALE_BASE;
+      const scaleY = direction[0] === "vertical" ? Math.max(1, Math.round((size.height + step) / size.height * OFFICE_SHAPE_MULTI_SCALE_BASE)) : OFFICE_SHAPE_MULTI_SCALE_BASE;
+      const result = officeShapeMultiResize(current, scaleX, scaleY);
+      commitResize(result.changes,
+        `${current.length} positionierte Objekte atomar per Tastatur skaliert. Rückgängig ist möglich.`);
+    } catch { notice("Für die gemeinsame Größenänderung müssen mindestens zwei frei positionierte Objekte ausgewählt sein.", true); }
+  };
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && resizeDrag) { event.preventDefault(); finishResize(null, true); return; }
     if (event.key === "Escape" && drag) { event.preventDefault(); finishDrag(null, true); return; }
     if (event.key === "Escape" && selectedIds.size && !document.querySelector("dialog[open]")) { event.preventDefault(); clear(); return; }
     const arrow = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
@@ -318,6 +459,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   const update = () => {
     bind();
     if (drag && (drag.session !== state.session || !allowed())) finishDrag(null, true);
+    if (resizeDrag && (resizeDrag.session !== state.session || !allowed())) finishResize(null, true);
     if (session !== state.session) { session = state.session; mode = false; selectedIds.clear(); anchorId = null; }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);
