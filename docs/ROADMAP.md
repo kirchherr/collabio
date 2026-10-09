@@ -3110,7 +3110,40 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, Recovery-Speicher, abgeleitete Position/Ebene, Mitgliedsumschreibung,
      verschachtelte Gruppen, freie Verbindungen oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 587 / PLANS 224 bis 448 sind unter ADR-0139 bis ADR-0170 implementiert
+588. [x] Die exakten Gruppenhuellen der letzten erfolgreichen gemeinsamen Aufloesung fuer das aktuell autorisierte
+     Dokument und die aktuelle Editor-Sitzung im Arbeitsspeicher vorgemerkt. Zwei bis zwanzig zuvor gemeinsam
+     aufgeloeste normal fliessende Gruppen mit jeweils zwei bis acht Mitgliedern koennen wiederhergestellt werden.
+
+589. [x] Vor jeder Wiederherstellung Gruppen- und Mitglieds-IDs, aktuelle eigenstaendige Wurzelknoten, exakte
+     Mitgliedsreihenfolge und zusammenhaengende Dokumentpositionen, normale Flussanker, Verbindungen,
+     Gruppen-/Mitgliedsgrenzen und ID-Kollisionen erneut validiert. Veraltete oder unvollstaendige Vormerkungen
+     werden fail-closed abgewiesen.
+
+590. [x] Die urspruenglichen Gruppen-IDs, Layouts, Abstaende, Ausrichtung, Verteilung und Verbindungen wiederhergestellt,
+     zugleich aber die aktuellen Mitgliedsknoten verwendet, damit zwischenzeitliche erlaubte Formbearbeitungen
+     erhalten bleiben. Nicht betroffene Dokumentknoten behalten Reihenfolge und Inhalt.
+
+591. [x] Eine responsive zugaengliche Aktion `Gruppen wiederherstellen` ohne erneute Objektauswahl bereitgestellt. Sie
+     ist nur bei einer sitzungsgebundenen Vormerkung sichtbar und nur bei aktuell gueltigem Plan aktiv, uebersteht
+     einen bestaetigten Save derselben Sitzung und wird bei Dokument-/Sitzungswechsel, historischem Modus oder
+     verlorenem Schreibrecht geloescht.
+
+592. [x] Alle vorgemerkten Gruppen vom Dokumentende zum Anfang in genau einer validierten Dokumenttransaktion und
+     einem Rueckgaengig-Schritt wiederhergestellt. Undo/Redo schaltet die Wiederherstellbarkeit dynamisch; unzulaessige
+     Aktionen erzeugen weder Transaktion noch Historie.
+
+593. [x] Reines Wiederherstellungsmodell, responsive Desktop-/Mobile-Aktion, kanonische Gruppenattribute,
+     Verbindungs-, Reihenfolge- und Kollisionserkennung, Bearbeitungserhalt, Undo/Redo, Aufloesen-Save,
+     Wiederherstellen-Save, immutable Versionskette, Druck, Reload, Sitzungsbereinigung und Wiederverwendung
+     abgedeckt. Der korrigierte fokussierte Lauf bestand 4/4 in 46,2 Sekunden, die vollstaendige native Formmatrix
+     40/40 in 4,8 Minuten; der erste Lauf mit drei Fehlern ist als Diagnose im Betriebsprotokoll erhalten.
+
+594. [x] Den begrenzten sitzungsgebundenen Gruppen-Wiederherstellungslebenszyklus unter ADR-0171 ohne Migration,
+     Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, Browser-/Clipboard-Persistenz,
+     dokument- oder tenantuebergreifende Uebertragung, positionierte Gruppe, verschachtelte Gruppe oder
+     DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 594 / PLANS 224 bis 455 sind unter ADR-0139 bis ADR-0171 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

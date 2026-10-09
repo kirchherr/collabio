@@ -1304,12 +1304,41 @@ reload, range selection and independent reuse. Pass the focused 3/3 workflow and
 request, provider, worker, recovery store, inferred position or layer, member rewrite, nested group, arbitrary
 connector or DOCX DrawingML admission.
 
+449. [x] Remember the exact wrappers from the latest successful collective ungroup in memory for the current
+authorized document and editor session, covering two through twenty previously ungrouped normal-flow groups with the
+established two-through-eight member bound.
+
+450. [x] Revalidate group and member IDs, current standalone root nodes, exact member order and contiguous document
+ranges, normal-flow anchors, connections, group/member limits and ID collisions before every regroup. Fail closed for
+stale, partial, moved, positioned, unknown or otherwise invalid remembered state.
+
+451. [x] Restore the original group IDs, layout, gap, alignment, distribution and connections while consuming the
+current member nodes so allowed member edits made after ungroup remain intact. Preserve all unrelated node order and
+content.
+
+452. [x] Expose one accessible responsive `Regroup groups` action without requiring a new object selection. Show it
+only while current-session memory exists, enable it only for a currently valid plan, preserve it across a confirmed
+save in the same session and clear it on document/session change, historical mode or lost write permission.
+
+453. [x] Replace every remembered member range from the document end toward the beginning in exactly one validated
+transaction and undo unit. Let undo/redo dynamically re-enable or disable regrouping and create no transaction or
+history for invalid state.
+
+454. [x] Cover the pure regroup model, responsive desktop/mobile controls, canonical wrapper attributes, connection,
+order and collision validation, member-edit preservation, undo/redo, ungroup-save and regroup-save version chains,
+semantic print, reload/session clearing and independent reuse. Retain the diagnostic first failed run; pass the
+corrected focused 4/4 workflow in 46.2 seconds and the complete 40/40 native-shape matrix in 4.8 minutes.
+
+455. [x] Close bounded current-session regrouping under ADR-0171 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, browser or clipboard persistence, cross-document or cross-tenant transfer,
+positioned or nested group support or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 587 / PLANS 448. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering and atomic collective ungrouping of complete normal-flow groups with stable member IDs, one-step history, no implicit positioning and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, positioned-group ungrouping without an explicit anchor-mapping design, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 594 / PLANS 455. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, atomic collective ungrouping of complete normal-flow groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, no implicit positioning and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, positioned-group ungrouping/regrouping without an explicit anchor-mapping design, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

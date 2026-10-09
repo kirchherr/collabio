@@ -2,6 +2,39 @@
 
 Updated: 2026-10-10
 
+Roadmap 588 through 594 / PLANS 449 through 455 are complete under ADR-0171. After collective ungrouping, Native
+Office now remembers the exact original normal-flow group wrappers for the current authorized document session and
+offers **Gruppen wiederherstellen** without a renewed selection. The action revalidates stable group/member IDs,
+current standalone roots, exact member order and contiguous ranges, normal-flow anchors, connections, limits and ID
+collisions before rebuilding all remembered groups atomically.
+
+Regrouping restores the original group IDs, layouts, gaps, alignment, distribution and connections while using the
+current member nodes, so permitted edits between ungroup and regroup remain intact. All replacements run from the
+document end toward the beginning in one validated transaction and undo unit. Undo/redo dynamically changes
+eligibility. Memory survives transient save-disabled state and a confirmed save in the same session; document/session
+changes, historical mode and lost write permission clear it. No memory enters Office JSON, browser storage, clipboard,
+an API request, another document or another tenant.
+
+The first focused run failed 3/4 and exposed two useful defects: the model expected a noncanonical null position, and
+the control cleared memory during the transient disabled state of a save. Canonical omission and actual
+session/write-state clearing corrected both. The final focused model plus desktop/mobile workflow passed 4/4 in 46.2
+seconds, and the complete native-shape model and responsive matrix passed 40/40 in 4.8 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-regroup` visibly shows two collectively dissolved groups and the active
+**Gruppen wiederherstellen** action; the draft remains deliberately unsaved for direct inspection.
+
+Product commit `ee7d6332` is local on `kirchherr/kb-write-unit-of-work`. Complete repository quality passed with Ruff,
+900 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning
+remains. All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, positioned or nested group support, inferred
+anchor mapping, arbitrary connector, DOCX engine or production admission. GitHub publication remains pending under
+the previously reported explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations
+record.
+
 Roadmap 581 through 587 / PLANS 442 through 448 are complete under ADR-0170. Two through twenty selected complete
 root shape groups can now be dissolved together when every group is in normal flow. One group, mixed or partial
 selections, positioned or nested groups and invalid or stale entries fail closed; positioned groups remain excluded

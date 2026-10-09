@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–587 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 587 / PLANS 448 native collective shape-group ungrouping
+Status: Roadmap 252–594 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 594 / PLANS 455 current-session native shape-group regrouping
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0170; current movement: `ARCHITECTURE_DECISIONS/ADR-0170-bounded-native-office-multi-group-ungroup.md`
+Decisions: ADR-0079 through ADR-0171; current movement: `ARCHITECTURE_DECISIONS/ADR-0171-bounded-native-office-shape-regroup-memory.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -177,6 +177,30 @@ eligibility, atomic wrapper removal, undo/redo, confirmed save, immutable histor
 selection and independent reuse. The focused workflow passes 3/3 and the complete native-shape matrix passes 39/39.
 No migration, endpoint, dependency, external request, provider, worker, recovery store, inferred position or layer,
 member rewrite, nested group, arbitrary connector or DOCX DrawingML admission is added.
+
+Roadmap 588 through 594 adds bounded current-session group restoration under
+[ADR-0171](../../ARCHITECTURE_DECISIONS/ADR-0171-bounded-native-office-shape-regroup-memory.md).
+After a successful collective ungroup, the editor remembers the exact original normal-flow group wrappers for the
+current authorized document session. **Gruppen wiederherstellen** needs no renewed object selection and restores two
+through twenty remembered groups, each with the established two-through-eight member bound.
+
+Every invocation revalidates original group and member IDs, current standalone root shapes, exact member order,
+contiguous document ranges, normal-flow anchors, connections, limits and ID collisions. It uses the current member
+nodes so permitted edits made after ungroup remain intact, while restoring the original group ID, layout, gap,
+alignment, distribution and connections. Unrelated node order and content remain unchanged. Stale, partial, moved,
+positioned or otherwise invalid state fails closed.
+
+The memory remains inside the current authorized editor session, survives a normal confirmed save and is cleared by
+a document/session change, historical mode or lost write permission. It does not enter Office JSON, browser storage,
+the clipboard, an API request or another document or tenant. All remembered ranges are replaced from the end toward
+the beginning in one validated transaction and undo unit; undo/redo dynamically controls renewed eligibility.
+
+The corrected pure-model and desktop/mobile workflow passes 4/4 in 46.2 seconds and the complete native-shape matrix
+passes 40/40 in 4.8 minutes. Tests cover wrapper and current-member preservation, connections, order, collisions,
+undo/redo, confirmed ungroup and regroup saves with immutable predecessor versions, print, reload/session clearing and
+independent reuse. The initial three failures remain recorded as diagnostic evidence. No migration, endpoint,
+dependency, external request, provider, worker, recovery store, browser/clipboard persistence, cross-document or
+cross-tenant transfer, positioned or nested group, or DOCX DrawingML admission is added.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).
