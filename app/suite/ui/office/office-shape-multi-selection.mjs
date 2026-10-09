@@ -1,6 +1,8 @@
 import { OFFICE_SHAPE_GROUP_MEMBER_LIMIT, officeShapeGroupAttributes,
   officeShapeGroupBounds } from "./office-shape-groups.mjs";
-import { officeShapeAttributes, officeShapeBounds, officeShapePosition } from "./office-shapes.mjs";
+import { OFFICE_SHAPE_COLORS, OFFICE_SHAPE_TEXT_ALIGNMENTS, OFFICE_SHAPE_TEXT_COLORS,
+  OFFICE_SHAPE_TEXT_STYLES, officeShapeAttributes, officeShapeBounds,
+  officeShapePosition } from "./office-shapes.mjs";
 
 export const OFFICE_SHAPE_MULTI_SELECTION_LIMIT = 20;
 export const OFFICE_SHAPE_MULTI_AXES = ["horizontal", "vertical"];
@@ -105,6 +107,45 @@ function officeShapeMultiMembers(entry) {
   }
   officeShapeGroupAttributes(entry.node.attrs);
   return entry.node.content.content.map((member) => officeShapeAttributes(member?.attrs));
+}
+
+export function officeShapeMultiCanStyle(entries) {
+  if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
+  try { entries.forEach(officeShapeMultiMembers); return true; } catch { return false; }
+}
+
+export function officeShapeMultiAppearance(entries, options) {
+  const keys = ["fill", "stroke", "strokeWidth", "fontSize", "textColor", "textStyle", "textAlign"];
+  if (!officeShapeMultiCanStyle(entries) || !options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).length !== keys.length || keys.some((key) => !Object.hasOwn(options, key)) ||
+      (options.fill !== null && !OFFICE_SHAPE_COLORS.includes(options.fill)) ||
+      (options.stroke !== null && !OFFICE_SHAPE_COLORS.includes(options.stroke)) ||
+      (options.strokeWidth !== null && (!Number.isSafeInteger(options.strokeWidth) ||
+        options.strokeWidth < 0 || options.strokeWidth > 8)) ||
+      (options.fontSize !== null && (!Number.isSafeInteger(options.fontSize) ||
+        options.fontSize < 10 || options.fontSize > 72)) ||
+      (options.textColor !== null && options.textColor !== "auto" &&
+        !OFFICE_SHAPE_TEXT_COLORS.includes(options.textColor)) ||
+      (options.textStyle !== null && options.textStyle !== "normal" &&
+        !OFFICE_SHAPE_TEXT_STYLES.includes(options.textStyle)) ||
+      (options.textAlign !== null && !OFFICE_SHAPE_TEXT_ALIGNMENTS.includes(options.textAlign))) {
+    throw new Error("shape-multi-appearance");
+  }
+  const style = (shape) => officeShapeAttributes({ ...shape,
+    fill: options.fill ?? shape.fill,
+    stroke: options.stroke ?? shape.stroke,
+    strokeWidth: options.strokeWidth ?? shape.strokeWidth,
+    fontSize: options.fontSize === null ? shape.fontSize ?? null : options.fontSize === 16 ? null : options.fontSize,
+    textColor: options.textColor === null ? shape.textColor ?? null : options.textColor === "auto" ? null : options.textColor,
+    textStyle: options.textStyle === null ? shape.textStyle ?? null : options.textStyle === "normal" ? null : options.textStyle,
+    textAlign: options.textAlign ?? shape.textAlign,
+  });
+  const changes = entries.map((entry) => {
+    const members = officeShapeMultiMembers(entry).map(style);
+    return entry.type === "shape" ? { id: entry.id, type: entry.type, attrs: members[0] } :
+      { id: entry.id, type: entry.type, attrs: officeShapeGroupAttributes(entry.node.attrs), members };
+  });
+  return { options: { ...options }, changes };
 }
 
 export function officeShapeMultiRootSize(entry) {

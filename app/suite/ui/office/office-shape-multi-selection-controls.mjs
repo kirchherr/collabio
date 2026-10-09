@@ -5,7 +5,8 @@ import { OFFICE_SHAPE_LIMIT, applyOfficeShapeDOM, applyOfficeShapeLayoutDOM,
 import { OFFICE_SHAPE_GROUP_LIMIT, officeShapeGroupAttributes,
   officeShapeGroupLayout } from "./office-shape-groups.mjs";
 import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeShapeMultiRange,
-  officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiDistribution,
+  officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiCanArrange,
+  officeShapeMultiCanStyle, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiSelection, officeShapeMultiTransform,
   officeShapeMultiTranslate,
@@ -42,7 +43,7 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null, transformSnapshot = null;
+    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
   const paint = () => {
@@ -101,6 +102,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
     $("shape-multi-layer").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-transform").disabled = !writable || !officeShapeMultiCanArrange(current);
+    $("shape-multi-appearance").disabled = !writable || !officeShapeMultiCanStyle(current);
     const positions = current.map((entry) => entry.node?.attrs.position).filter(Boolean);
     const movable = writable && officeShapeMultiCanArrange(current);
     $("shape-multi-nudge-left").disabled = !movable || positions.some((position) => position.x <= 0);
@@ -380,6 +382,13 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     }
     focus(state.editor);
   };
+  const selectDirectTarget = (event) => {
+    if (event.type === "pointerdown" && event.pointerType === "mouse") return;
+    const id = targetId(event.target), additive = event.ctrlKey || event.metaKey, ranged = event.shiftKey;
+    if (event.button !== 0 || event.isPrimary === false || !id || (!mode && !additive && !ranged) ||
+        document.querySelector("dialog[open]")) return;
+    selectTarget(event);
+  };
   const bind = () => {
     const next = state.editor?.view.dom ?? null;
     if (bound === next) return;
@@ -391,6 +400,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     bound?.removeEventListener("pointerdown", startRotate, true);
     bound?.removeEventListener("pointerdown", startResize, true);
     bound?.removeEventListener("pointerdown", startDrag, true);
+    bound?.removeEventListener("pointerdown", selectDirectTarget, true);
+    bound?.removeEventListener("mousedown", selectDirectTarget, true);
     bound?.removeEventListener("pointermove", moveRotate, true);
     bound?.removeEventListener("pointermove", moveResize, true);
     bound?.removeEventListener("pointermove", moveDrag, true);
@@ -408,6 +419,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     bound?.addEventListener("pointerdown", startRotate, true);
     bound?.addEventListener("pointerdown", startResize, true);
     bound?.addEventListener("pointerdown", startDrag, true);
+    bound?.addEventListener("pointerdown", selectDirectTarget, true);
+    bound?.addEventListener("mousedown", selectDirectTarget, true);
     bound?.addEventListener("pointermove", moveRotate, true);
     bound?.addEventListener("pointermove", moveResize, true);
     bound?.addEventListener("pointermove", moveDrag, true);
@@ -611,6 +624,100 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       "Die ausgewählten Objekte besitzen bereits diese Transformation.",
       "Die ausgewählten Objekte konnten nicht exakt transformiert werden.");
   });
+  const appearanceDialog = $("shape-multi-appearance-dialog"), appearanceForm = $("shape-multi-appearance-form");
+  const appearanceInteger = (id) => $(id).value === "" ? null : Number($(id).value);
+  const appearanceChoice = (id) => $(id).value || null;
+  const appearanceOptions = () => ({
+    fill: appearanceChoice("shape-multi-appearance-fill"),
+    stroke: appearanceChoice("shape-multi-appearance-stroke"),
+    strokeWidth: appearanceInteger("shape-multi-appearance-stroke-width"),
+    fontSize: appearanceInteger("shape-multi-appearance-font-size"),
+    textColor: appearanceChoice("shape-multi-appearance-text-color"),
+    textStyle: appearanceChoice("shape-multi-appearance-text-style"),
+    textAlign: appearanceChoice("shape-multi-appearance-text-align"),
+  });
+  const appearanceMembers = (current) => current.flatMap((entry) => entry.type === "shape" ?
+    [officeShapeAttributes(entry.node.attrs)] :
+    entry.node.content.content.map((member) => officeShapeAttributes(member.attrs)));
+  const commonAppearanceValue = (members, key, fallback = null) => {
+    const values = members.map((member) => member[key] ?? fallback);
+    return values.every((value) => value === values[0]) ? String(values[0]) : "";
+  };
+  const restoreAppearancePreview = () => {
+    if (!appearanceSnapshot) return;
+    for (const entry of appearanceSnapshot.entries) {
+      previewShapeChange(entry, originalShapeChange(entry), "data-office-multi-appearance", false);
+    }
+  };
+  const refreshAppearancePreview = () => {
+    const options = appearanceOptions();
+    if (!appearanceSnapshot || !appearanceForm.checkValidity() || Object.values(options).every((value) => value === null)) {
+      restoreAppearancePreview(); $("shape-multi-appearance-apply").disabled = true;
+      $("shape-multi-appearance-status").textContent = "Mindestens einen gültigen Darstellungswert auswählen.";
+      return null;
+    }
+    try {
+      const result = officeShapeMultiAppearance(appearanceSnapshot.entries, options);
+      const byId = new Map(result.changes.map((change) => [change.id, change]));
+      for (const entry of appearanceSnapshot.entries) {
+        previewShapeChange(entry, byId.get(entry.id), "data-office-multi-appearance", true);
+      }
+      const changed = Object.values(options).filter((value) => value !== null).length;
+      $("shape-multi-appearance-apply").disabled = false;
+      $("shape-multi-appearance-status").textContent =
+        `${appearanceSnapshot.entries.length} Objekte · ${appearanceSnapshot.memberCount} Formen · ${changed} gemeinsame Werte`;
+      return result;
+    } catch {
+      restoreAppearancePreview(); $("shape-multi-appearance-apply").disabled = true;
+      $("shape-multi-appearance-status").textContent = "Diese Darstellung enthält einen unzulässigen Wert.";
+      return null;
+    }
+  };
+  const closeAppearance = () => {
+    restoreAppearancePreview(); appearanceSnapshot = null;
+    if (appearanceDialog.open) appearanceDialog.close(); paint();
+  };
+  $("shape-multi-appearance").addEventListener("click", () => {
+    const current = selectedEntries();
+    if (!allowed() || !officeShapeMultiCanStyle(current) || document.querySelector("dialog[open]")) return;
+    appearanceForm.reset();
+    const members = appearanceMembers(current);
+    $("shape-multi-appearance-fill").value = commonAppearanceValue(members, "fill");
+    $("shape-multi-appearance-stroke").value = commonAppearanceValue(members, "stroke");
+    $("shape-multi-appearance-stroke-width").value = commonAppearanceValue(members, "strokeWidth");
+    $("shape-multi-appearance-font-size").value = commonAppearanceValue(members, "fontSize", 16);
+    $("shape-multi-appearance-text-color").value = commonAppearanceValue(members, "textColor", "auto");
+    $("shape-multi-appearance-text-style").value = commonAppearanceValue(members, "textStyle", "normal");
+    $("shape-multi-appearance-text-align").value = commonAppearanceValue(members, "textAlign");
+    appearanceSnapshot = { session: state.session, doc: state.editor.state.doc, entries: current,
+      ids: current.map((entry) => entry.id), memberCount: members.length };
+    $("shape-multi-appearance-selection").textContent =
+      `${current.length} Objekte mit ${members.length} Formen werden gemeinsam und in einem Rückgängig-Schritt formatiert.`;
+    appearanceDialog.showModal(); refreshAppearancePreview(); $("shape-multi-appearance-fill").focus();
+  });
+  for (const input of appearanceForm.querySelectorAll("input, select")) {
+    input.addEventListener("input", refreshAppearancePreview);
+    input.addEventListener("change", refreshAppearancePreview);
+  }
+  $("shape-multi-appearance-close").addEventListener("click", closeAppearance);
+  $("shape-multi-appearance-cancel").addEventListener("click", closeAppearance);
+  appearanceDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeAppearance(); });
+  appearanceForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const current = selectedEntries(), snapshot = appearanceSnapshot;
+    const fresh = snapshot && snapshot.session === state.session && snapshot.doc === state.editor?.state.doc && allowed() &&
+      current.length === snapshot.ids.length && current.every((entry, index) => entry.id === snapshot.ids[index]);
+    const result = fresh ? refreshAppearancePreview() : null;
+    if (!result) {
+      closeAppearance(); notice("Die gemeinsame Darstellung wurde wegen eines ungültigen oder geänderten Dokumentzustands verworfen.", true);
+      return;
+    }
+    restoreAppearancePreview(); appearanceSnapshot = null; appearanceDialog.close(); paint();
+    commitShapeChanges(result.changes,
+      `${current.length} Objekte atomar gemeinsam formatiert. Rückgängig ist möglich.`,
+      "Die ausgewählten Objekte besitzen bereits diese Darstellung.",
+      "Die ausgewählten Objekte konnten nicht gemeinsam formatiert werden.");
+  });
   const resizeKey = (event) => {
     const handle = event.target.closest?.(".office-shape-resize, .office-shape-group-resize");
     const direction = { ArrowLeft: ["horizontal", -1], ArrowRight: ["horizontal", 1],
@@ -673,6 +780,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (rotateDrag && (rotateDrag.session !== state.session || !allowed())) finishRotate(null, true);
     if (transformSnapshot && (transformSnapshot.session !== state.session ||
         transformSnapshot.doc !== state.editor?.state.doc || !allowed())) closeTransform();
+    if (appearanceSnapshot && (appearanceSnapshot.session !== state.session ||
+        appearanceSnapshot.doc !== state.editor?.state.doc || !allowed())) closeAppearance();
     if (session !== state.session) { session = state.session; mode = false; selectedIds.clear(); anchorId = null; }
     const available = new Set(entries().map((entry) => entry.id));
     for (const id of selectedIds) if (!available.has(id)) selectedIds.delete(id);

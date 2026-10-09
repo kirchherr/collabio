@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeShapeAttributes, officeShapeBounds, officeShapeDescription, officeShapePosition, officeShapeWrap, OFFICE_SHAPE_LIMIT } from "../office-shapes.mjs";
 import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupConnection, officeShapeGroupConnections, officeShapeGroupDescription, officeShapeGroupInsertMember, officeShapeGroupLayout, officeShapeGroupRemoveMember, OFFICE_SHAPE_GROUP_LIMIT, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "../office-shape-groups.mjs";
-import { officeShapeMultiAlignment, officeShapeMultiCanArrange, officeShapeMultiCanGroup, officeShapeMultiDistribution,
+import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiCanArrange,
+  officeShapeMultiCanGroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiResize, officeShapeMultiRootRotation, officeShapeMultiRootSize, officeShapeMultiRotate,
   officeShapeMultiTransform, officeShapeMultiTranslate,
@@ -317,4 +318,35 @@ test("Office positioned root objects combine exact bounded transforms atomically
   expect(() => officeShapeMultiTransform([first, group], { ...options, rotation: 1.5 })).toThrow();
   expect(() => officeShapeMultiTransform([first, group], { ...options, layer: "middle" })).toThrow();
   expect(() => officeShapeMultiTransform([first, group], { ...options, style: "transform" })).toThrow();
+});
+
+test("Office selected shapes and complete groups share bounded appearance values atomically", () => {
+  const first = { id: attrs.id, type: "shape", rootIndex: 0,
+    node: { attrs: { ...attrs, fill: "yellow", textAlign: "right" } } };
+  const groupAttrs = { id: "shape-group-" + "d".repeat(24), layout: "row", gap: 16 };
+  const group = { id: groupAttrs.id, type: "shapeGroup", rootIndex: 1,
+    node: { attrs: groupAttrs, content: { content: [
+      { attrs: { ...attrs, id: "shape-" + "b".repeat(24), fontSize: 28, textColor: "purple" } },
+      { attrs: { ...attrs, id: "shape-" + "c".repeat(24), textStyle: "italic" } },
+    ] } } };
+  const options = { fill: "blue", stroke: "black", strokeWidth: 6, fontSize: 24,
+    textColor: "white", textStyle: "boldItalic", textAlign: "left" };
+  const result = officeShapeMultiAppearance([first, group], options);
+  expect(result.options).toEqual(options);
+  expect(result.changes[0].attrs).toMatchObject(options);
+  expect(result.changes[1].attrs).toEqual(groupAttrs);
+  expect(result.changes[1].members).toHaveLength(2);
+  expect(result.changes[1].members.every((member) => Object.entries(options)
+    .every(([key, value]) => member[key] === value))).toBe(true);
+
+  const reset = officeShapeMultiAppearance([first, group], { fill: null, stroke: null, strokeWidth: null,
+    fontSize: 16, textColor: "auto", textStyle: "normal", textAlign: null });
+  expect(reset.changes[0].attrs).not.toHaveProperty("fontSize");
+  expect(reset.changes[1].members[0]).not.toHaveProperty("textColor");
+  expect(reset.changes[1].members[1]).not.toHaveProperty("textStyle");
+  expect(reset.changes[0].attrs.fill).toBe("yellow");
+  expect(() => officeShapeMultiAppearance([first], options)).toThrow();
+  expect(() => officeShapeMultiAppearance([first, group], { ...options, strokeWidth: 2.5 })).toThrow();
+  expect(() => officeShapeMultiAppearance([first, group], { ...options, textColor: "#fff" })).toThrow();
+  expect(() => officeShapeMultiAppearance([first, group], { ...options, css: "color:red" })).toThrow();
 });
