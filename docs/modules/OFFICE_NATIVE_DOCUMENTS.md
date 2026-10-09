@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–517 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 517 / PLANS 378 native shape multi-selection
+Status: Roadmap 252–524 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 524 / PLANS 385 native shape multi-object arrangement
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0160; current multi-selection: `ARCHITECTURE_DECISIONS/ADR-0160-bounded-native-office-shape-multi-selection.md`
+Decisions: ADR-0079 through ADR-0161; current arrangement: `ARCHITECTURE_DECISIONS/ADR-0161-bounded-native-office-shape-multi-object-arrangement.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -100,6 +100,21 @@ left/middle/right. An optional 160 through 2400 pixel extent derives one determi
 member bounds while retaining the existing gap as a minimum. Editor and semantic print/PDF use the same layout
 function, including compact-row fallback and uniform or per-edge connections. Browser and server reject arbitrary
 values, CSS and non-integer extents; existing documents remain byte-compatible.
+
+Roadmap 518 through 524 adds bounded multi-object arrangement under
+[ADR-0161](../../ARCHITECTURE_DECISIONS/ADR-0161-bounded-native-office-shape-multi-object-arrangement.md).
+Two or more selected positioned root shapes or complete groups can align to their minimum, rounded midpoint or
+maximum horizontal or vertical logical anchor. Three or more can be distributed equally on either axis while the
+extreme anchors remain fixed. Coordinate, root order and stable ID make every result deterministic.
+
+The responsive toolbar remains disabled if the selection is too small or contains a normal-flow or wrapped object.
+An accepted action validates the complete candidate and commits one transaction and undo unit while retaining IDs,
+layers, untouched coordinates and the transient selection. The editor uses only the established bounded integer
+logical anchors; it does not derive layout from DOM rectangles, CSS or physical page geometry.
+
+Confirmed CAS save, predecessor history, reload, semantic print/PDF and independent reuse preserve the resulting
+existing positions. Selection state remains transient. This adds no migration, endpoint, dependency, external
+request, provider, worker, recovery store, physical page anchor, arbitrary geometry, nested group or DOCX admission.
 
 Roadmap 511 through 517 adds bounded transient root-object multi-selection under
 [ADR-0160](../../ARCHITECTURE_DECISIONS/ADR-0160-bounded-native-office-shape-multi-selection.md).

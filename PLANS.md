@@ -1063,12 +1063,35 @@ reload, semantic print and independent reuse while keeping the selection itself 
 external request, provider, worker, new recovery store, persisted UI selection, nested groups or DOCX DrawingML
 admission.
 
+379. [x] Add bounded multi-object alignment for selected positioned root standalone shapes and complete shape groups
+under ADR-0161. Accept only existing fully validated logical positions and never position flow or wrapped objects
+implicitly.
+
+380. [x] Provide minimum, rounded midpoint and maximum alignment for horizontal and vertical anchors while preserving
+every object's layer and orthogonal coordinate.
+
+381. [x] Equally distribute at least three selected positioned roots horizontally or vertically while preserving the
+extreme anchors and sorting deterministically by coordinate, root order and stable ID.
+
+382. [x] Expose accessible responsive alignment and distribution controls that remain disabled for insufficient or
+mixed selections and cannot apply a partial mutation.
+
+383. [x] Commit each alignment or distribution across the entire selection as exactly one validated transaction and
+undo unit while retaining IDs, layers and the transient selection.
+
+384. [x] Preserve resulting positions through undo/redo, confirmed CAS save, immutable predecessor history, reload,
+semantic print and independent reuse while keeping the selection itself transient.
+
+385. [x] Close the multi-object arrangement lifecycle under ADR-0161 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, free CSS geometry, physical page anchors, nested groups or
+DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 517 / PLANS 378. Preserve bounded transient root-object multi-selection with explicit touch mode, desktop modifiers, stable IDs, atomic duplicate/remove/group transactions, fresh copy identities, one-step history and existing document/group limits alongside bounded group alignment and equal distribution with deterministic gaps, freely positioned root shape groups with bounded front/behind-text anchors, exact rotated-member bounds, pointer/touch/keyboard control, offset independent copies and safe survivor promotion. Preserve the complete existing native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded multi-object alignment and distribution for selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 524 / PLANS 385. Preserve bounded transient root-object multi-selection and atomic logical-anchor alignment/equal distribution with deterministic integer geometry, fixed extremes, stable IDs, retained layers, one-step history and no implicit positioning, alongside bounded group alignment and equal distribution, freely positioned root shape groups, arbitrary-angle bounds, direct pointer/touch/keyboard control, fresh copy identities and existing shape/group limits. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with bounded common layer changes and collective keyboard nudging for selected positioned root objects as the next coherent Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

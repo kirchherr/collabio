@@ -2,6 +2,28 @@
 
 Updated: 2026-10-09
 
+Roadmap 518 through 524 / PLANS 379 through 385 are complete under ADR-0161. Native Office can align selected
+positioned root shapes and complete groups to their minimum, rounded midpoint or maximum horizontal or vertical
+logical anchor. Selections of at least three objects can be distributed equally on either axis while retaining both
+extreme anchors. Deterministic ordering uses the active coordinate, root document order and stable object ID.
+
+The accessible responsive toolbar enables the six alignment choices for at least two eligible roots and horizontal
+or vertical distribution for at least three. Normal-flow and wrapped objects remain ineligible and are never
+positioned implicitly. Each accepted action validates and replaces the complete selected set in one transaction and
+undo unit while preserving IDs, front/behind-text layers, the orthogonal coordinate and transient selection.
+
+The pure arrangement model plus exact desktop/mobile workflow passed 3/3 in 34.6 seconds. The workflow covers center
+alignment, equal vertical distribution, isolated undo/redo, confirmed CAS save, immutable predecessor history,
+semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix passed
+33/33 in 4.3 minutes. Product and focused-test commits through `b89c06ce` are published and synchronized to `dev001`;
+the isolated review API is healthy on port 42880 and the review is available at
+`http://192.168.0.108:42880/office?review=shape-arrange-b89c06ce`.
+
+Only existing bounded logical positions enter immutable Office JSON. The implementation never measures rendered
+edges or physical pages and adds no migration, endpoint, dependency, external request, provider, worker, recovery
+store, nested group, arbitrary geometry, DOCX engine or production admission. Full repository quality and final
+documentation-contract evidence follow in this closure pass.
+
 Roadmap 511 through 517 / PLANS 372 through 378 are complete under ADR-0160. Native Office now supports transient
 multi-selection of up to 20 root-level standalone shapes and complete shape groups. Authors can use an explicit
 mouse/touch mode, Ctrl/Cmd-click and Shift range selection; stable object IDs preserve the selection across editor
