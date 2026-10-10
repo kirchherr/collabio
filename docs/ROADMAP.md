@@ -641,7 +641,7 @@ Aufgaben:
 
 - [x] Native Dokument-Metadaten- und Version-APIs erstellen (Roadmap 252/253).
 - [ ] Weitergehende Kollaborations- und Interchange-Vertraege fuer Dokumente ausbauen.
-- [ ] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren.
+- [x] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren (Roadmap 641-647 / PLANS 502-508).
 - [ ] CRDT Service vorbereiten.
 - [ ] WebSocket Gateway vorbereiten.
 - [ ] Commenting, Mentions und Change Attribution modellieren.
@@ -659,7 +659,7 @@ Aufgaben:
 - [ ] Quellen suchen und versioniert anzeigen.
 - [ ] Diktat in Dokumente ueber Voice Transcript Flow.
 - [ ] Text-to-Speech Adapter Interface.
-- [ ] Tests: AI darf Business Record nicht automatisch committen.
+- [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).
 - [ ] Lasttest-Ziel: 50 gleichzeitige Bearbeiter pro Dokument.
 
 Exit-Kriterien:
@@ -3338,7 +3338,35 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      gespeicherter Version, ersetzen aber weder ACL, optimistic Version-CAS, CRDT, WebSocket, Presence, Merge,
      Coauthoring noch DOCX-Lock-Interoperabilitaet.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 640 / PLANS 224 bis 501 sind unter ADR-0139 bis ADR-0177 implementiert
+641. [x] Einen autoritativen, rein lesenden Office-Lebenszyklusvertrag fuer Working Data, browserlokalen Draft,
+     Lease-basierten Collaborative State, aktuelle immutable Saved Version, Business Record und WORM Evidence Record
+     eingefuehrt. Dokumentinhalt wird dabei weder dupliziert noch in Audit-Metadaten aufgenommen.
+
+642. [x] Den beobachteten kollaborativen Zustand an Tenant, Dokument, aktuelle Version, autoritative ACL und dieselbe
+     gehashte Browser-Sitzung wie die Bearbeitungs-Lease gebunden. Leser ohne Schreibrecht erhalten keinen
+     Bearbeitungsstatus; fremde Principal- oder Sitzungskennungen bleiben verborgen.
+
+643. [x] Gespeicherte Versionen als einzigen aktuellen persistenten Dokumentzustand ausgewiesen. Business-Record-
+     und WORM-Uebergaenge bleiben explizit geschlossen, brauchen spaeter eine eigene menschliche Bestaetigung und
+     koennen weder durch AI noch durch diesen read-only Endpunkt ausgeloest werden.
+
+644. [x] Einen responsiven Dialog **Dokumentstatus** hinzugefuegt, der lokalen Entwurf, aktuelle Lease, exakte
+     immutable Versions-ID und die geschlossenen Record-Uebergaenge gemeinsam erklaert. Ungespeicherte Aenderungen
+     bleiben sichtbar und unveraendert, waehrend der Status autoritativ nachgeladen wird.
+
+645. [x] API und Service fail-closed auf das feste Browser-Sitzungsformat, aktuelle Leseberechtigung und unveraenderte
+     Versionsbindung festgelegt. Lifecycle-Reads werden metadata-only auditiert; rohe Sitzungskennung und Inhalt
+     erscheinen weder in Antwort noch Audit.
+
+646. [x] Ruff, Format und fokussiertes Mypy bestanden; die vollstaendigen Office-Dokument-Service-/API-Dateien
+     bestanden 62/62 Tests. Der echte responsive Desktop-/Mobile-Workflow bestand 2/2 in 10,1 Sekunden und prueft
+     lokalen Entwurf, Lease, Versions-ID, geschlossene Record-Uebergaenge und das ausdrueckliche AI-Verbot.
+
+647. [x] Das begrenzte native Office-Datenzustandsmodell unter ADR-0178 ohne Migration, schreibenden Lifecycle-
+     Endpunkt, Record-Promotion, Retention-Aenderung, Object-Lock-Umschaltung, AI-Aktion, externen Provider oder
+     produktive Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 647 / PLANS 224 bis 508 sind unter ADR-0139 bis ADR-0178 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

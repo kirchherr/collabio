@@ -2,6 +2,48 @@
 
 Updated: 2026-10-10
 
+Roadmap 641 through 647 / PLANS 502 through 508 are complete under ADR-0178. Native Office now exposes one
+authoritative read-only lifecycle contract: working data is request-transient, drafts remain browser-memory only,
+collaborative state is metadata-only edit-lease state, and the current saved version is the sole persistent document
+state. Business-record and WORM evidence-record transitions remain explicitly closed.
+
+The lifecycle read requires the fixed browser-session format and current tenant/document authorization. It returns
+collaborative status only with current write access and otherwise reports it unavailable. The existing repository then
+uses the hashed session binding and current-version lease. Responses and audit contain no foreign holder, raw session
+identifier or document body. Save still requires human confirmation and exact version compare-and-swap; future record
+promotion also requires human confirmation, AI is explicitly forbidden from committing it and no writable lifecycle
+route exists.
+
+The responsive **Dokumentstatus** dialog shows local unsaved-draft state, current collaboration status, exact immutable
+version ID and both closed record transitions without altering editor content. Product commit `86be7f11` is local on
+`kirchherr/kb-write-unit-of-work`. Ruff, format and focused Mypy passed; the complete Office document service/API
+files passed 62/62 tests. The real responsive browser workflow passed desktop and mobile, 2/2 in 10.1 seconds, and
+confirmed that the dialog preserves the unsaved draft.
+
+The complete final quality gate passed Ruff, found 908 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final Work-E2E, review API and
+quality image IDs are `sha256:364a65119cdee183c24b1a9155272c46305c67d79a3975b457fee736a05e7fac`,
+`sha256:69c07ac90fa86b4fb444332d95969aa690031b6ee267ff3bc66be1befe8a74aa` and
+`sha256:eb97f782a0468a3c749bf395af83e0c8196fe2a417b730d6d9f458fc10edf47a`.
+
+The final review API recreate again used its normal extended cold-start interval, then reached healthy with failing
+streak zero. Both `http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The
+review surface is `http://192.168.0.108:42880/office?review=lifecycle-86be7f11`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container, the transient blocked-API test container and five inventoried remote transfer files were removed, together
+with all three local transfer archives. No transient quality, test or Work-E2E runner remains. Review PostgreSQL,
+MinIO, image decoder and API remain available; main persistent services and unrelated projects were unchanged.
+
+The first browser invocation used invalid project aliases and stopped before any test. The second passed a nested
+`npx playwright test` command to an image that already owns that entrypoint, unintentionally starting the broad
+matrix; it was interrupted by exact container/session identity after 39 unrelated tests. The corrected exact
+Lifecycle spec then passed. These diagnostics are retained and do not represent product failures.
+
+This slice adds no migration, persistent draft, collaborative content log, record promotion, retention change,
+object-lock transition, WORM object, AI action, external provider or productive admission. GitHub publication remains
+pending under the content-specific approval requirement.
+
 Roadmap 632 through 640 / PLANS 493 through 501 are complete under ADR-0177. Native Office now has one bounded,
 tenant/document advisory edit lease for the current immutable version. Migration 0090 stores a 90-second expiry,
 lease revision, version binding, release timestamp, takeover count and audit reference under forced tenant RLS,

@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–640 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 640 / PLANS 501 advisory edit leases
+Status: Roadmap 252–647 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 647 / PLANS 508 lifecycle-state model
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0177; current movement: `ARCHITECTURE_DECISIONS/ADR-0177-bounded-native-office-advisory-edit-leases.md`
+Decisions: ADR-0079 through ADR-0178; current movement: `ARCHITECTURE_DECISIONS/ADR-0178-bounded-native-office-lifecycle-state-model.md`
+
+## Bounded lifecycle-state model (Roadmap 641–647)
+
+The authenticated read-only lifecycle endpoint names the platform states without promoting content: working data is
+request-transient, drafts remain browser-memory only, collaborative state is advisory lease metadata for the current
+immutable version, and the saved version is the only persistent document state. Business-record and WORM evidence-
+record transitions remain closed.
+
+The fixed browser session format, current tenant/document authorization and Office feature gates apply. Collaboration
+state is returned only with current write access and uses the existing hashed lease binding; readers receive
+`unavailable`. No response or audit event includes another holder, raw session value or document content. Saving
+continues to require explicit human confirmation and exact current-version compare-and-swap. A later business-record
+transition also requires human confirmation, `ai_may_commit_business_record` is false and no writable lifecycle route
+exists.
+
+The responsive **Dokumentstatus** dialog combines local unsaved-draft state with authoritative lease state, exact
+immutable version ID and the two closed record transitions. Opening or refreshing it does not alter the editor. Ruff,
+format and focused Mypy pass; the complete Office document service/API files pass 62/62 tests, and the real
+desktop/mobile browser workflow passes 2/2 in 10.1 seconds. The slice adds no migration, durable draft, collaborative
+content log, record promotion, retention change, object-lock transition, WORM object, AI action or production
+admission.
 
 ## Bounded advisory edit leases (Roadmap 632–640)
 
