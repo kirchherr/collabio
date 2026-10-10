@@ -3143,7 +3143,43 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      dokument- oder tenantuebergreifende Uebertragung, positionierte Gruppe, verschachtelte Gruppe oder
      DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 594 / PLANS 224 bis 455 sind unter ADR-0139 bis ADR-0171 implementiert
+595. [x] Die gemeinsame Aufloesung auf zwei bis zwanzig vollstaendige frei positionierte Formgruppen erweitert,
+     sofern alle ausgewaehlten Gruppen dieselbe Ankerart besitzen. Gemischte Fluss-/Positionsanker, Einzelgruppen,
+     Teilgruppen, verschachtelte oder bereits positionierte Mitglieder werden fail-closed abgewiesen.
+
+596. [x] Fuer jedes Gruppenmitglied aus der gerenderten sichtbaren Mitte einen expliziten bestehenden Einzelanker
+     abgeleitet: gemeinsame Gruppenebene, begrenztes X 0 bis 1000 und Y -1200 bis 1200. Kanonische Groesse, Drehung,
+     Text und Darstellung bleiben exakt; responsive Verkleinerung, Auswahlaufweitung und neue Wurzelknoten werden
+     beruecksichtigt. An Grenzen wird nur die naechste darstellbare Position mit hoechstens vier Pixeln Abweichung
+     zugelassen, sonst bricht die gesamte Aktion ohne Dokumentaenderung ab.
+
+597. [x] Beim erfolgreichen Aufloesen nur die etablierten eigenstaendigen Formknoten mit ihren abgeleiteten
+     Positionsattributen in die normale Office-Transaktion geschrieben. Die urspruenglichen Gruppenhuellen und die
+     exakten abgeleiteten Anker bleiben ausschliesslich als sitzungsgebundene Wiederherstellungsvormerkung im Speicher.
+
+598. [x] Vor der Wiederherstellung IDs, eigenstaendige Wurzelknoten, Reihenfolge, zusammenhaengende Bereiche, exakte
+     abgeleitete Positionen, gemeinsame Ebene, Gruppen-/Mitgliedsgrenzen, Verbindungen und Kollisionen erneut geprueft.
+     Ein verschobenes, fehlendes, dupliziertes oder anders positioniertes Mitglied deaktiviert die Aktion fail-closed.
+
+599. [x] Beim Wiederherstellen die abgeleiteten Einzelpositionen entfernt und die urspruenglichen positionierten
+     Gruppen-IDs, Anker, Ebene, Layouts, Abstaende, Ausrichtung, Verteilung und Verbindungen rekonstruiert. Andere
+     erlaubte Mitgliedsbearbeitungen bleiben erhalten; nicht betroffene Dokumentknoten bleiben unveraendert.
+
+600. [x] Aufloesen und Wiederherstellen jeweils in genau einer validierten Transaktion und einem Rueckgaengig-Schritt
+     ausgefuehrt. Dieselben zugaenglichen responsiven Aktionen gelten fuer eine einheitliche Ankerart; Undo/Redo,
+     bestaetigte Saves, immutable Vorgaenger, Reload, Druck und unabhaengige Wiederverwendung bleiben konsistent.
+
+601. [x] Reines Modell und Desktop-/Mobile-Workflow um positionierte Gruppen, exakte Anker, Bewegungserkennung,
+     Grenz-Clamping und einen schmalen Desktop-Viewport erweitert. Der fokussierte Lauf bestand 3/3 in 33,7 Sekunden,
+     die vollstaendige native Formmatrix 40/40 in 4,9 Minuten. Der erste Kantenfehler und der anschliessend im
+     Live-Review gefundene Rotations-/Viewport-Randfall bleiben als Diagnose im Betriebsprotokoll erhalten.
+
+602. [x] Den begrenzten Lebenszyklus fuer gemeinsames Aufloesen und sitzungsgebundenes Wiederherstellen positionierter
+     Formgruppen unter ADR-0172 ohne Migration, Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker,
+     Recovery-Speicher, Browser-/Clipboard-Persistenz, dokument- oder tenantuebergreifende Uebertragung,
+     verschachtelte Gruppe, beliebige physische Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 602 / PLANS 224 bis 463 sind unter ADR-0139 bis ADR-0172 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

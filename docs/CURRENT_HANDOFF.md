@@ -2,6 +2,40 @@
 
 Updated: 2026-10-10
 
+Roadmap 595 through 602 / PLANS 456 through 463 are complete under ADR-0172. Two through twenty complete freely
+positioned shape groups can now be dissolved together when every selected group has the same anchor kind. Each member
+receives an explicit established standalone position derived from its visible rendered center while retaining the
+group layer and exact canonical dimensions, rotation, text and appearance. Mixed anchor kinds, partial or nested
+groups, non-finite geometry and mappings outside the established bounds fail closed.
+
+The mapping accounts for responsive member shrink, selection expansion and inserted root nodes. At X/Y boundaries it
+accepts only the nearest representable anchor within four pixels. This rule closed a real live-review defect where a
+rotated member in a narrow desktop layout produced an X value just above 1000. The corrected UI now dissolves the two
+groups into four independently positioned shapes and exposes **Gruppen wiederherstellen** without saving the draft.
+
+Regroup memory binds the original wrappers and exact derived member positions to the current authorized editor
+session. Regroup revalidates IDs, order, contiguous ranges, every position, layer, limits, connections and collisions,
+then strips the derived member positions and restores the original group IDs, anchors, layout, gap, alignment,
+distribution and connections. Other permitted member edits remain intact. A moved, missing or duplicated member
+disables the action. No transient geometry enters browser storage, clipboard, another document or another tenant.
+
+Product commit `6ad92c25` is local on `kirchherr/kb-write-unit-of-work`. The final focused model plus narrow-desktop
+and mobile workflow passed 3/3 in 33.7 seconds; the complete native-shape model and responsive matrix passed 40/40 in
+4.9 minutes. Live review at `http://192.168.0.108:42880/office?review=positioned-ungroup` visibly shows four freely
+positioned standalone shapes, the success notice and active **Gruppen wiederherstellen** action. The review draft is
+deliberately unsaved for direct inspection.
+
+Complete repository quality passed with Ruff, 901 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. The exact `collabio-postgres-test-1` container and verified transfer directory were removed; no
+transient quality, test or Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API
+returns `ok` and unrelated projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, nested group, arbitrary physical page anchor,
+DOCX engine or production admission. GitHub publication remains pending under the previously reported
+explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 588 through 594 / PLANS 449 through 455 are complete under ADR-0171. After collective ungrouping, Native
 Office now remembers the exact original normal-flow group wrappers for the current authorized document session and
 offers **Gruppen wiederherstellen** without a renewed selection. The action revalidates stable group/member IDs,

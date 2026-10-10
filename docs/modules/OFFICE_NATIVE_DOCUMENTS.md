@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–594 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 594 / PLANS 455 current-session native shape-group regrouping
+Status: Roadmap 252–602 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 602 / PLANS 463 positioned shape-group ungrouping and regrouping
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0171; current movement: `ARCHITECTURE_DECISIONS/ADR-0171-bounded-native-office-shape-regroup-memory.md`
+Decisions: ADR-0079 through ADR-0172; current movement: `ARCHITECTURE_DECISIONS/ADR-0172-bounded-native-office-positioned-group-ungroup-regroup.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -201,6 +201,32 @@ undo/redo, confirmed ungroup and regroup saves with immutable predecessor versio
 independent reuse. The initial three failures remain recorded as diagnostic evidence. No migration, endpoint,
 dependency, external request, provider, worker, recovery store, browser/clipboard persistence, cross-document or
 cross-tenant transfer, positioned or nested group, or DOCX DrawingML admission is added.
+
+Roadmap 595 through 602 extends that lifecycle to complete freely positioned groups under
+[ADR-0172](../../ARCHITECTURE_DECISIONS/ADR-0172-bounded-native-office-positioned-group-ungroup-regroup.md).
+Two through twenty selected groups may be dissolved together when every selected group has the same anchor kind.
+Mixed flow/position selections, partial or nested groups and independently positioned members fail closed.
+
+For positioned groups, the control reads each rendered member's visible center immediately before the transaction and
+maps it to the existing bounded standalone position model. The group layer is retained; X remains 0 through 1000 and
+Y remains -1200 through 1200. Canonical member dimensions, rotations, text and presentation stay exact. The mapping
+accounts for responsive flex shrink, multi-selection expansion and each inserted root. When the canonical standalone
+size makes an exact edge center impossible, only the nearest bound within four pixels is accepted; larger or
+non-finite drift rejects the complete operation without history.
+
+Current-session regroup memory additionally binds every derived member position. Regroup requires the exact current
+standalone IDs, order, contiguous ranges, positions and layer and rechecks limits, connections and collisions. It
+removes only the derived standalone positions and restores the original positioned group IDs, anchors, layer,
+layout, gap, alignment, distribution and connections while retaining other permitted member edits. A moved, missing
+or duplicated member disables regrouping. Memory never enters Office JSON, browser storage, clipboard, an API
+request, another document or another tenant.
+
+The final pure-model plus narrow-desktop/mobile workflow passes 3/3 in 33.7 seconds and the complete native-shape
+matrix passes 40/40 in 4.9 minutes. Confirmed ungroup and regroup saves, immutable predecessors, semantic print,
+undo/redo, reload and independent reuse remain covered. The initial left-edge comparison, viewport-scroll diagnostic
+and live-review rotated-edge rejection remain recorded as diagnostics. No migration, endpoint, dependency, external
+request, provider, worker, recovery store, nested group, arbitrary physical page anchor or DOCX DrawingML admission
+is added.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).

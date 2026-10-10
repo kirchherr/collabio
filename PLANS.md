@@ -1333,12 +1333,43 @@ corrected focused 4/4 workflow in 46.2 seconds and the complete 40/40 native-sha
 request, provider, worker, recovery store, browser or clipboard persistence, cross-document or cross-tenant transfer,
 positioned or nested group support or DOCX DrawingML admission.
 
+456. [x] Extend collective ungrouping to two through twenty complete freely positioned shape groups when every
+selected group has the same anchor kind. Fail closed for mixed flow/position anchors, single or partial groups,
+nested groups or members that already carry independent positions.
+
+457. [x] Derive one explicit established standalone anchor from each rendered member center: retain the common group
+layer, bound X to 0 through 1000 and Y to -1200 through 1200, preserve canonical size, rotation, text and appearance,
+and account for responsive shrink, selection expansion and new root nodes. At a boundary accept only the nearest
+representable position within four pixels; otherwise reject the complete operation without a document change.
+
+458. [x] Write only established standalone shape nodes and their derived positions in the ordinary Office transaction.
+Keep original wrappers and exact derived anchors solely in current-session regroup memory.
+
+459. [x] Revalidate IDs, standalone roots, exact order, contiguous ranges, exact derived positions, common layer,
+group/member limits, connections and collisions before regroup. Disable and reject moved, missing, duplicated or
+otherwise repositioned members fail closed.
+
+460. [x] Strip derived standalone positions while restoring the original positioned group IDs, anchors, layer,
+layout, gap, alignment, distribution and connections. Preserve other allowed member edits and every unrelated node.
+
+461. [x] Perform positioned ungroup and regroup in one validated transaction and undo unit each. Reuse the accessible
+responsive same-anchor controls while keeping undo/redo, confirmed saves, immutable predecessors, reload, print and
+independent reuse consistent.
+
+462. [x] Extend pure-model and desktop/mobile coverage with positioned groups, exact anchor snapshots, moved-member
+rejection, boundary clamping and a narrow desktop viewport. Pass the final focused 3/3 workflow in 33.7 seconds and
+the complete 40/40 native-shape matrix in 4.9 minutes, retaining both earlier geometry failures as diagnostics.
+
+463. [x] Close bounded positioned-group ungrouping and current-session regrouping under ADR-0172 without a migration,
+endpoint, dependency, external request, provider, worker, recovery store, browser or clipboard persistence,
+cross-document or cross-tenant transfer, nested groups, arbitrary physical page anchors or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 594 / PLANS 455. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, atomic collective ungrouping of complete normal-flow groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, no implicit positioning and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, positioned-group ungrouping/regrouping without an explicit anchor-mapping design, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 602 / PLANS 463. Preserve bounded transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
