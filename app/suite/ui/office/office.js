@@ -56,6 +56,16 @@ function setDocumentClassification(value) {
   $("document-classification-field").dataset.classification = classification;
   return classification;
 }
+function officeEditSessionId() {
+  const key = "collabio.office.edit-session";
+  const existing = sessionStorage.getItem(key);
+  if (/^office-session-[a-f0-9]{32}$/.test(existing || "")) return existing;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const created = `office-session-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  sessionStorage.setItem(key, created);
+  return created;
+}
+const editSessionId = officeEditSessionId();
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
@@ -387,9 +397,9 @@ function restoreContext() {
   $("tenant-label").textContent = context.tenantId;
 }
 
-async function api(path, { method = "GET", body, signal } = {}, context = state.context) {
+async function api(path, { method = "GET", body, signal, keepalive = false } = {}, context = state.context) {
   const response = await fetch(path, {
-    method, cache: "no-store", signal,
+    method, cache: "no-store", signal, keepalive,
     headers: {
       "X-Tenant-Id": context.tenantId, "X-User-Id": context.userId,
       "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds,
@@ -433,6 +443,114 @@ function notice(text = "", error = false) {
   $("document-notice").textContent = text;
   $("document-notice").hidden = !text;
   $("document-notice").classList.toggle("error", error);
+}
+
+function editLeaseRequired(session = state.session) {
+  return Boolean(session?.objectId && session.canWrite && !session.historical);
+}
+
+function editLeaseGranted(session = state.session) {
+  return !editLeaseRequired(session) || session.leaseStatus === "held_by_current_session";
+}
+
+function clearEditLeaseTimer(session) {
+  if (session?.leaseTimer) clearTimeout(session.leaseTimer);
+  if (session) session.leaseTimer = null;
+}
+
+function editLeaseStateMatches(value, session) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.base_version_id === session.metadata?.current_version_id &&
+    ["available", "held_by_current_session", "held_by_other"].includes(value.status) &&
+    Number.isInteger(value.lease_revision) && value.lease_revision >= 0;
+}
+
+function renderEditLease() {
+  const session = state.session, banner = $("edit-lease-banner"), takeover = $("edit-lease-takeover"), retry = $("edit-lease-retry");
+  banner.className = "edit-lease-banner";
+  takeover.hidden = true; retry.hidden = true;
+  if (!editLeaseRequired(session)) { banner.hidden = true; $("edit-lease-message").textContent = ""; return; }
+  banner.hidden = false;
+  if (session.leaseStatus === "held_by_current_session") {
+    $("edit-lease-message").textContent = `Bearbeitung für diese Sitzung reserviert${session.leaseExpiresAt ? ` · bis ${dateLabel(session.leaseExpiresAt)}` : ""}.`;
+  } else if (session.leaseStatus === "held_by_other") {
+    banner.classList.add("warning"); takeover.hidden = false;
+    $("edit-lease-message").textContent = "Eine andere Sitzung bearbeitet diese Version. Ihr lokaler Entwurf bleibt erhalten; Speichern ist bis zur Übernahme gesperrt.";
+  } else if (session.leaseStatus === "unavailable") {
+    banner.classList.add("error"); retry.hidden = false;
+    $("edit-lease-message").textContent = "Der Bearbeitungsstatus konnte nicht bestätigt werden. Das Dokument bleibt vorsorglich schreibgeschützt; Ihr lokaler Entwurf bleibt erhalten.";
+  } else {
+    $("edit-lease-message").textContent = "Bearbeitungsstatus wird geprüft …";
+  }
+}
+
+function scheduleEditLease(session) {
+  clearEditLeaseTimer(session);
+  if (!sessionCurrent(session) || !editLeaseRequired(session) || session.leaseStatus === "unavailable") return;
+  session.leaseTimer = setTimeout(() => void acquireEditLease(session), 15000);
+}
+
+async function acquireEditLease(session = state.session, takeoverConfirmed = false) {
+  if (!sessionCurrent(session) || !editLeaseRequired(session) || session.leasePending) return;
+  const request = ++session.leaseRequest;
+  session.leasePending = true;
+  if (session.leaseStatus !== "held_by_current_session" && session.leaseStatus !== "held_by_other") session.leaseStatus = "checking";
+  updateEditorState();
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/edit-lease`, {
+      method: "POST", body: { session_id: editSessionId, expected_current_version_id: session.metadata.current_version_id,
+        takeover_confirmed: takeoverConfirmed },
+    });
+    if (!sessionCurrent(session) || request !== session.leaseRequest) return;
+    if (!editLeaseStateMatches(value, session)) throw new ApiError(502, true);
+    session.leaseStatus = value.status;
+    session.leaseRevision = value.lease_revision;
+    session.leaseExpiresAt = value.expires_at_utc || null;
+    if (value.status === "held_by_current_session" && takeoverConfirmed) notice("Bearbeitung übernommen. Zugriffsrechte und Versionsprüfung bleiben beim Speichern verbindlich.");
+    scheduleEditLease(session);
+  } catch (error) {
+    if (!sessionCurrent(session) || request !== session.leaseRequest) return;
+    session.leaseStatus = "unavailable"; session.leaseExpiresAt = null;
+    clearEditLeaseTimer(session);
+    if (error instanceof ApiError && error.status === 409) session.conflict = true;
+  } finally {
+    if (sessionCurrent(session) && request === session.leaseRequest) { session.leasePending = false; updateEditorState(); }
+  }
+}
+
+function releaseEditLease(session, context = state.context, keepalive = false) {
+  clearEditLeaseTimer(session);
+  if (!session?.objectId || session.leaseStatus !== "held_by_current_session") return;
+  session.leaseStatus = "released";
+  void api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/edit-lease/release`, {
+    method: "POST", body: { session_id: editSessionId }, keepalive,
+  }, context).catch(() => {});
+}
+
+function closeEditLeaseDialog() {
+  if ($("edit-lease-dialog").open) $("edit-lease-dialog").close();
+  $("edit-lease-confirm").checked = false;
+  $("edit-lease-submit").disabled = true;
+  $("edit-lease-dialog-status").textContent = "";
+}
+
+function openEditLeaseDialog() {
+  if (state.session?.leaseStatus !== "held_by_other" || state.session.leasePending) return;
+  closeEditLeaseDialog();
+  $("edit-lease-dialog").showModal();
+  $("edit-lease-confirm").focus();
+}
+
+async function submitEditLeaseTakeover(event) {
+  event.preventDefault();
+  const session = state.session;
+  if (!sessionCurrent(session) || session.leaseStatus !== "held_by_other" || !$("edit-lease-confirm").checked) return;
+  $("edit-lease-submit").disabled = true;
+  $("edit-lease-dialog-status").textContent = "Bearbeitung wird übernommen …";
+  await acquireEditLease(session, true);
+  if (!sessionCurrent(session)) return;
+  if (session.leaseStatus === "held_by_current_session") closeEditLeaseDialog();
+  else $("edit-lease-dialog-status").textContent = "Die Übernahme konnte nicht bestätigt werden. Bitte prüfen Sie den Bearbeitungsstatus erneut.";
 }
 
 function normalizedDocument(document) {
@@ -628,13 +746,13 @@ function updateEditorState() {
       });
     } catch { /* Invalid drafts remain blocked by the shared document guard. */ }
   }
-  const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && !session.loading &&
-    !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
+  const editable = Boolean(session && sessionCurrent(session) && editor && session.canWrite && editLeaseGranted(session) &&
+    !session.loading && !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
   if (editor && editor.isEditable !== editable) editor.setEditable(editable, false);
   $("document-title").disabled = !editable;
   $("document-classification").disabled = !editable;
   $("document-save").disabled = !session || !editor || session.loading || session.saving || session.restoring || session.historical ||
-    !session.canWrite || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || suggestionLocksDocument() || (!session.uncertain && !isDirty());
+    !session.canWrite || !editLeaseGranted(session) || session.conflict || Boolean(state.review?.saving || state.review?.uncertain) || suggestionLocksDocument() || (!session.uncertain && !isDirty());
   $("document-save").textContent = session?.uncertain ? "Speicherung prüfen" : "Version speichern";
   $("document-close").disabled = Boolean(session?.saving);
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
@@ -683,6 +801,7 @@ function updateEditorState() {
   updateSearchControls();
   updateReviewControls();
   updateSuggestionControls();
+  renderEditLease();
   const status = $("document-status");
   status.className = "document-status";
   if (!session) return;
@@ -693,6 +812,8 @@ function updateEditorState() {
   else if (session.conflict) { status.textContent = "Neuere Version vorhanden · Ihr Entwurf bleibt erhalten"; status.classList.add("error"); }
   else if (session.historical) status.textContent = "Frühere Version · Schreibgeschützt";
   else if (!session.canWrite) status.textContent = "Schreibgeschützt";
+  else if (session.leaseStatus === "held_by_other") status.textContent = "Andere Sitzung bearbeitet diese Version · Schreibgeschützt";
+  else if (!editLeaseGranted(session)) { status.textContent = "Bearbeitungsstatus nicht bestätigt · Schreibgeschützt"; status.classList.add("error"); }
   else if (isDirty()) status.textContent = "Ungespeicherte Änderungen";
   else { status.textContent = `Gespeichert · ${dateLabel(session.version?.created_at_utc)}`; status.classList.add("saved"); }
 }
@@ -734,7 +855,7 @@ function rebuildSearch(scroll = false) {
 
 function replacementAllowed() {
   const session = state.session;
-  return Boolean(session && sessionCurrent(session) && state.editor?.isEditable && session.canWrite &&
+  return Boolean(session && sessionCurrent(session) && state.editor?.isEditable && session.canWrite && editLeaseGranted(session) &&
     !session.loading && !session.historical && !session.saving && !session.uncertain && !session.restoring && !suggestionLocksDocument());
 }
 
@@ -3290,6 +3411,9 @@ function mountEditor(content, session) {
 }
 
 function clearWorkspace() {
+  const previousSession = state.session, previousContext = state.context;
+  releaseEditLease(previousSession, previousContext);
+  closeEditLeaseDialog();
   pageControls.close();
   imageControls.close();
   shapeControls.close();
@@ -3330,6 +3454,7 @@ function clearWorkspace() {
   $("history-selected").textContent = ""; $("history-selected").hidden = true;
   $("history-more").hidden = true; $("history-retry").hidden = true;
   $("document-status").textContent = "";
+  $("edit-lease-banner").hidden = true;
   $("document-version").textContent = "";
   $("historical-actions").hidden = true;
   $("find-query").value = "";
@@ -3556,7 +3681,9 @@ function settleDiscard(confirmed) {
 function freshSession(objectId = null) {
   return { epoch: state.epoch, objectId, revision: 0, history: freshHistory(), canWrite: false, canShare: false,
     loading: true, saving: false, historical: false, conflict: false, uncertain: false, restoring: false,
-    version: null, metadata: null, baseline: "", attempt: null, versions: [] };
+    version: null, metadata: null, baseline: "", attempt: null, versions: [],
+    leaseStatus: objectId ? "checking" : "not_required", leaseExpiresAt: null, leaseRevision: 0,
+    leaseRequest: 0, leasePending: false, leaseTimer: null };
 }
 
 function contentMatches(result, objectId, versionId = null) {
@@ -3592,6 +3719,9 @@ function acceptContent(result, session) {
   session.canWrite = result.can_write === true;
   session.canShare = result.document.can_share === true;
   session.historical = !result.is_current_version;
+  clearEditLeaseTimer(session);
+  session.leaseStatus = session.canWrite && !session.historical ? "checking" : "not_required";
+  session.leaseExpiresAt = null;
   session.conflict = false; session.uncertain = false; session.attempt = null;
   $("document-title").value = result.version.title || result.document.title;
   setDocumentClassification(result.version.information_classification);
@@ -3603,6 +3733,7 @@ function acceptContent(result, session) {
   refreshDocumentTools();
   state.documentReferenceResolutions = new Map();
   void refreshDocumentReferences(session);
+  if (editLeaseRequired(session)) void acquireEditLease(session);
 }
 
 async function openDocument(objectId, versionId = null) {
@@ -5691,6 +5822,19 @@ $("new-document-form").addEventListener("submit", beginDraft);
 $("document-save").addEventListener("click", showSave);
 $("save-form").addEventListener("submit", saveDocument);
 $("save-confirm").addEventListener("change", () => { $("save-submit").disabled = !$("save-confirm").checked; });
+$("edit-lease-takeover").addEventListener("click", openEditLeaseDialog);
+$("edit-lease-retry").addEventListener("click", () => {
+  const session = state.session;
+  if (!sessionCurrent(session) || session.leasePending) return;
+  session.leaseStatus = "checking";
+  void acquireEditLease(session);
+});
+$("edit-lease-form").addEventListener("submit", submitEditLeaseTakeover);
+$("edit-lease-confirm").addEventListener("change", () => {
+  $("edit-lease-submit").disabled = !$("edit-lease-confirm").checked || Boolean(state.session?.leasePending);
+});
+$("edit-lease-cancel").addEventListener("click", closeEditLeaseDialog);
+$("edit-lease-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeEditLeaseDialog(); });
 $("document-title").addEventListener("input", () => { if (state.session) contentChanged(state.session); });
 $("document-classification").addEventListener("change", () => {
   setDocumentClassification($("document-classification").value);
@@ -6171,6 +6315,7 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("beforeunload", (event) => {
   if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving || hasSuggestionDraft() || state.suggestions?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
+window.addEventListener("pagehide", () => releaseEditLease(state.session, state.context, true));
 
 const pageControls = installOfficePageControls({ state, allowed: paragraphAllowed, actionCurrent: characterActionCurrent,
   sessionCurrent, validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });

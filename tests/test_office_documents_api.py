@@ -200,6 +200,70 @@ def test_office_create_version_read_history_and_exact_retry_are_bound_and_noncac
     assert SECRET not in caplog.text
 
 
+def test_office_edit_lease_api_coordinates_sessions_and_requires_explicit_takeover(
+    office_api: OfficeApiHarness,
+) -> None:
+    created = create_document(office_api)
+    object_id = created["document"]["object_id"]
+    version_id = created["version"]["version_id"]
+    path = f"{BASE}/{object_id}/edit-lease"
+    first_session = "office-session-" + "1" * 32
+    second_session = "office-session-" + "2" * 32
+
+    first = office_api.client.post(
+        path,
+        headers=office_api.headers,
+        json={"session_id": first_session, "expected_current_version_id": version_id},
+    )
+    assert first.status_code == 200
+    assert first.headers["Cache-Control"] == "no-store"
+    assert first.json()["status"] == "held_by_current_session"
+
+    blocked = office_api.client.post(
+        path,
+        headers=office_api.headers,
+        json={"session_id": second_session, "expected_current_version_id": version_id},
+    )
+    assert blocked.status_code == 200
+    assert blocked.json()["status"] == "held_by_other"
+    assert blocked.json()["can_take_over"] is True
+
+    takeover = office_api.client.post(
+        path,
+        headers=office_api.headers,
+        json={
+            "session_id": second_session,
+            "expected_current_version_id": version_id,
+            "takeover_confirmed": True,
+        },
+    )
+    assert takeover.status_code == 200
+    assert takeover.json()["status"] == "held_by_current_session"
+    assert takeover.json()["takeover_performed"] is True
+    assert (
+        office_api.client.get(path, params={"session_id": first_session}, headers=office_api.headers).json()["status"]
+        == "held_by_other"
+    )
+
+    released = office_api.client.post(
+        f"{path}/release", headers=office_api.headers, json={"session_id": second_session}
+    )
+    assert released.status_code == 200 and released.json()["status"] == "available"
+    assert released.json()["release_performed"] is True
+    denied_release = office_api.client.post(
+        f"{path}/release", headers=office_api.headers, json={"session_id": first_session}
+    )
+    assert denied_release.status_code == 200 and denied_release.json()["release_performed"] is False
+    malformed = office_api.client.post(
+        path,
+        headers=office_api.headers,
+        json={"session_id": "raw-browser-token", "expected_current_version_id": version_id},
+    )
+    assert malformed.status_code == 422
+    events = json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+    assert first_session not in events and second_session not in events
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

@@ -147,7 +147,7 @@ def seed_synthetic_crm_records(connection: psycopg.Connection[Any]) -> int:
             raise RuntimeError("Outside synthetic CRM fixture")
         values = record.model_dump(mode="json")
         connection.execute(
-            sql.SQL("INSERT INTO {} ({}) VALUES ({})").format(
+            sql.SQL("INSERT INTO {} ({}) VALUES ({}) ON CONFLICT DO NOTHING").format(
                 sql.Identifier("crm", table_by_type[record.object_type]),
                 sql.SQL(", ").join(sql.Identifier(column) for column in values),
                 sql.SQL(", ").join(sql.Placeholder() for _ in values),
@@ -161,6 +161,7 @@ def seed_synthetic_crm_records(connection: psycopg.Connection[Any]) -> int:
                     tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
                     permission, acl_version, status, audit_chain_ref
                 ) VALUES (%s, %s, %s, 'user', %s, 'read', 1, 'active', %s)
+                ON CONFLICT DO NOTHING
                 """,
                 (
                     WORK_E2E_TENANT_ID,

@@ -59,6 +59,25 @@ def main() -> int:
     )
     database_dsn = os.environ["SUITE_MIGRATION_DATABASE_DSN"]
     with psycopg.connect(database_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, true)", (WORK_E2E_TENANT_ID,))
+        completed = connection.execute(
+            "SELECT EXISTS (SELECT 1 FROM office.document_versions "
+            "WHERE tenant_id = %s AND mutation_reference = 'work-e2e-document-reference-target-2')",
+            (WORK_E2E_TENANT_ID,),
+        ).fetchone()
+        if completed and completed[0] is True:
+            print(
+                json.dumps(
+                    {
+                        "schema_version": "work_e2e_seed.v1",
+                        "tenant_id": WORK_E2E_TENANT_ID,
+                        "fixture_reused": True,
+                        "tenant_content_included": False,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 0
         for user_id in SYNTHETIC_PRINCIPALS:
             issuer = f"https://work-e2e.invalid/{user_id}"
             subject = f"subject-{user_id}"
@@ -67,6 +86,7 @@ def main() -> int:
                 INSERT INTO collabio.tenant_principals (
                     tenant_id, issuer, subject, user_id, display_name, audit_chain_ref
                 ) VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
                 """,
                 (
                     WORK_E2E_TENANT_ID,
@@ -82,6 +102,7 @@ def main() -> int:
                 INSERT INTO collabio.tenant_principal_memberships (
                     tenant_id, issuer, subject, audit_chain_ref
                 ) VALUES (%s, %s, %s, %s)
+                ON CONFLICT DO NOTHING
                 """,
                 (
                     WORK_E2E_TENANT_ID,
@@ -93,7 +114,7 @@ def main() -> int:
 
         connection.execute(
             "INSERT INTO collabio.tenant_roles (tenant_id, role_id, display_name, audit_chain_ref) "
-            "VALUES (%s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
             (
                 WORK_E2E_TENANT_ID,
                 WORK_E2E_OFFICE_READER_ROLE_ID,
@@ -103,7 +124,7 @@ def main() -> int:
         )
         connection.execute(
             "INSERT INTO collabio.tenant_groups (tenant_id, group_id, display_name, audit_chain_ref) "
-            "VALUES (%s, %s, %s, %s)",
+            "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
             (
                 WORK_E2E_TENANT_ID,
                 WORK_E2E_OFFICE_REVIEWER_GROUP_ID,
@@ -115,7 +136,8 @@ def main() -> int:
         reader_subject = f"subject-{WORK_E2E_READER_ID}"
         connection.execute(
             "INSERT INTO collabio.tenant_principal_role_assignments "
-            "(tenant_id, issuer, subject, role_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s)",
+            "(tenant_id, issuer, subject, role_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s) "
+            "ON CONFLICT DO NOTHING",
             (
                 WORK_E2E_TENANT_ID,
                 reader_issuer,
@@ -126,7 +148,8 @@ def main() -> int:
         )
         connection.execute(
             "INSERT INTO collabio.tenant_principal_group_memberships "
-            "(tenant_id, issuer, subject, group_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s)",
+            "(tenant_id, issuer, subject, group_id, audit_chain_ref) VALUES (%s, %s, %s, %s, %s) "
+            "ON CONFLICT DO NOTHING",
             (
                 WORK_E2E_TENANT_ID,
                 reader_issuer,

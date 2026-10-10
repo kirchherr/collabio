@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import RLock
 from typing import Any, Literal, cast
 from uuid import uuid4
@@ -19,9 +19,13 @@ from suite.platform.office_document_schema import (
 from suite.platform.office_documents import (
     OFFICE_DOCUMENT_OBJECT_TYPE,
     OFFICE_DOCUMENT_SOURCE_SYSTEM,
+    OFFICE_EDIT_LEASE_SECONDS,
     OfficeDocumentCommit,
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
+    OfficeDocumentEditLeaseCommand,
+    OfficeDocumentEditLeaseReleaseCommand,
+    OfficeDocumentEditLeaseState,
     OfficeDocumentHistoryPage,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
@@ -82,6 +86,19 @@ def _model_values(values: dict[str, Any]) -> dict[str, Any]:
         key: value.astimezone(UTC).isoformat().replace("+00:00", "Z") if isinstance(value, datetime) else value
         for key, value in values.items()
     }
+
+
+def _edit_lease_session_hash(user: UserContext, object_id: str, session_id: str) -> str:
+    return stable_hash(
+        canonical_json(
+            {
+                "tenant_id": user.tenant_id,
+                "object_id": object_id,
+                "principal_id": user.user_id,
+                "session_id": session_id,
+            }
+        )
+    )
 
 
 def _validated_history_page(
@@ -601,6 +618,172 @@ class PgOfficeDocumentRepository:
             )
 
     @staticmethod
+    def _edit_lease_row(connection: psycopg.Connection[Any], tenant_id: str, object_id: str) -> dict[str, Any] | None:
+        with connection.cursor(row_factory=dict_row) as cursor:
+            row = cursor.execute(
+                "SELECT * FROM office.document_edit_leases WHERE tenant_id = %s AND object_id = %s",
+                (tenant_id, object_id),
+            ).fetchone()
+        return dict(row) if row is not None else None
+
+    @staticmethod
+    def _edit_lease_state(
+        *,
+        document: OfficeDocumentRecord,
+        user_context: UserContext,
+        session_hash: str,
+        row: dict[str, Any] | None,
+    ) -> OfficeDocumentEditLeaseState:
+        active = bool(
+            row
+            and row["released_at_utc"] is None
+            and row["expires_at_utc"].astimezone(UTC) > datetime.now(UTC)
+            and row["base_version_id"] == document.current_version_id
+        )
+        if not active:
+            return OfficeDocumentEditLeaseState(
+                tenant_id=document.tenant_id,
+                object_id=document.object_id,
+                status="available",
+                base_version_id=document.current_version_id,
+                lease_revision=int(row["lease_revision"]) if row else 0,
+                can_acquire=True,
+            )
+        assert row is not None
+        current = row["holder_principal_id"] == user_context.user_id and row["holder_session_hash"] == session_hash
+        return OfficeDocumentEditLeaseState(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            status="held_by_current_session" if current else "held_by_other",
+            base_version_id=str(row["base_version_id"]),
+            lease_revision=int(row["lease_revision"]),
+            expires_at_utc=row["expires_at_utc"].astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            can_acquire=current,
+            can_take_over=not current,
+        )
+
+    def edit_lease(self, *, user_context: UserContext, object_id: str, session_id: str) -> OfficeDocumentEditLeaseState:
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, user_context.tenant_id)
+            document = self._authorized_document(connection, user_context, object_id, write=True)
+            return self._edit_lease_state(
+                document=document,
+                user_context=user_context,
+                session_hash=_edit_lease_session_hash(user_context, object_id, session_id),
+                row=self._edit_lease_row(connection, user_context.tenant_id, object_id),
+            )
+
+    def acquire_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseCommand
+    ) -> OfficeDocumentEditLeaseState:
+        now = datetime.now(UTC)
+        expires = now + timedelta(seconds=OFFICE_EDIT_LEASE_SECONDS)
+        session_hash = _edit_lease_session_hash(user_context, object_id, command.session_id)
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, user_context.tenant_id)
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"office-document-edit-lease:{user_context.tenant_id}:{object_id}",),
+            )
+            document = self._authorized_document(connection, user_context, object_id, write=True)
+            if document.current_version_id != command.expected_current_version_id:
+                raise OfficeDocumentConflictError("The document has a newer saved version")
+            row = self._edit_lease_row(connection, user_context.tenant_id, object_id)
+            state = self._edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            if state.status == "held_by_other" and not command.takeover_confirmed:
+                return state
+            takeover = state.status == "held_by_other"
+            if row is None:
+                connection.execute(
+                    """
+                    INSERT INTO office.document_edit_leases (
+                        tenant_id, object_id, lease_revision, holder_principal_id, holder_session_hash,
+                        base_version_id, acquired_at_utc, renewed_at_utc, expires_at_utc, released_at_utc,
+                        takeover_count, audit_chain_ref
+                    ) VALUES (%s, %s, 1, %s, %s, %s, %s, %s, %s, NULL, 0, %s)
+                    """,
+                    (
+                        user_context.tenant_id,
+                        object_id,
+                        user_context.user_id,
+                        session_hash,
+                        document.current_version_id,
+                        now,
+                        now,
+                        expires,
+                        f"audit:office-edit-lease-{uuid4().hex}",
+                    ),
+                )
+            else:
+                acquired = now if state.status != "held_by_current_session" else row["acquired_at_utc"]
+                connection.execute(
+                    """
+                    UPDATE office.document_edit_leases
+                    SET lease_revision = lease_revision + 1, holder_principal_id = %s,
+                        holder_session_hash = %s, base_version_id = %s, acquired_at_utc = %s,
+                        renewed_at_utc = %s, expires_at_utc = %s, released_at_utc = NULL,
+                        takeover_count = takeover_count + %s, audit_chain_ref = %s
+                    WHERE tenant_id = %s AND object_id = %s
+                    """,
+                    (
+                        user_context.user_id,
+                        session_hash,
+                        document.current_version_id,
+                        acquired,
+                        now,
+                        expires,
+                        1 if takeover else 0,
+                        f"audit:office-edit-lease-{uuid4().hex}",
+                        user_context.tenant_id,
+                        object_id,
+                    ),
+                )
+            updated = self._edit_lease_row(connection, user_context.tenant_id, object_id)
+            result = self._edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=updated
+            )
+            return result.model_copy(update={"takeover_performed": takeover})
+
+    def release_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseReleaseCommand
+    ) -> OfficeDocumentEditLeaseState:
+        session_hash = _edit_lease_session_hash(user_context, object_id, command.session_id)
+        with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+            self._set_tenant(connection, user_context.tenant_id)
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"office-document-edit-lease:{user_context.tenant_id}:{object_id}",),
+            )
+            document = self._authorized_document(connection, user_context, object_id, write=True)
+            row = self._edit_lease_row(connection, user_context.tenant_id, object_id)
+            state = self._edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            released = state.status == "held_by_current_session"
+            if released:
+                now = datetime.now(UTC)
+                connection.execute(
+                    """
+                    UPDATE office.document_edit_leases
+                    SET lease_revision = lease_revision + 1, released_at_utc = %s, audit_chain_ref = %s
+                    WHERE tenant_id = %s AND object_id = %s
+                    """,
+                    (
+                        now,
+                        f"audit:office-edit-lease-{uuid4().hex}",
+                        user_context.tenant_id,
+                        object_id,
+                    ),
+                )
+                row = self._edit_lease_row(connection, user_context.tenant_id, object_id)
+            result = self._edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            return result.model_copy(update={"release_performed": released})
+
+    @staticmethod
     def _acl_rows(connection: psycopg.Connection[Any], tenant_id: str, object_id: str) -> list[tuple[Any, ...]]:
         return connection.execute(
             "SELECT acl_subject_type, acl_subject_id, permission, acl_version "
@@ -780,6 +963,7 @@ class InMemoryOfficeDocumentRepository:
         self.roles: dict[tuple[str, str], str] = {}
         self.groups: dict[tuple[str, str], str] = {}
         self.group_memberships: dict[tuple[str, str], set[str]] = {}
+        self.edit_leases: dict[tuple[str, str], dict[str, Any]] = {}
         self._lock = RLock()
 
     @staticmethod
@@ -1028,6 +1212,112 @@ class InMemoryOfficeDocumentRepository:
             return self.saved_versions[(user_context.tenant_id, object_id, version_id)]
         except KeyError as exc:
             raise OfficeDocumentNotFoundError("Document not found") from exc
+
+    @staticmethod
+    def _memory_edit_lease_state(
+        *,
+        document: OfficeDocumentRecord,
+        user_context: UserContext,
+        session_hash: str,
+        row: dict[str, Any] | None,
+    ) -> OfficeDocumentEditLeaseState:
+        active = bool(
+            row
+            and row["released_at_utc"] is None
+            and row["expires_at_utc"] > datetime.now(UTC)
+            and row["base_version_id"] == document.current_version_id
+        )
+        if not active:
+            return OfficeDocumentEditLeaseState(
+                tenant_id=document.tenant_id,
+                object_id=document.object_id,
+                status="available",
+                base_version_id=document.current_version_id,
+                lease_revision=int(row["lease_revision"]) if row else 0,
+                can_acquire=True,
+            )
+        assert row is not None
+        current = row["holder_principal_id"] == user_context.user_id and row["holder_session_hash"] == session_hash
+        return OfficeDocumentEditLeaseState(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            status="held_by_current_session" if current else "held_by_other",
+            base_version_id=str(row["base_version_id"]),
+            lease_revision=int(row["lease_revision"]),
+            expires_at_utc=row["expires_at_utc"].isoformat().replace("+00:00", "Z"),
+            can_acquire=current,
+            can_take_over=not current,
+        )
+
+    def edit_lease(self, *, user_context: UserContext, object_id: str, session_id: str) -> OfficeDocumentEditLeaseState:
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            if not self.can_write(user_context=user_context, object_id=object_id):
+                raise OfficeDocumentPermissionError("Document editing is not permitted")
+            return self._memory_edit_lease_state(
+                document=document,
+                user_context=user_context,
+                session_hash=_edit_lease_session_hash(user_context, object_id, session_id),
+                row=self.edit_leases.get((user_context.tenant_id, object_id)),
+            )
+
+    def acquire_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseCommand
+    ) -> OfficeDocumentEditLeaseState:
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            if not self.can_write(user_context=user_context, object_id=object_id):
+                raise OfficeDocumentPermissionError("Document editing is not permitted")
+            if document.current_version_id != command.expected_current_version_id:
+                raise OfficeDocumentConflictError("The document has a newer saved version")
+            key = (user_context.tenant_id, object_id)
+            session_hash = _edit_lease_session_hash(user_context, object_id, command.session_id)
+            row = self.edit_leases.get(key)
+            state = self._memory_edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            if state.status == "held_by_other" and not command.takeover_confirmed:
+                return state
+            takeover = state.status == "held_by_other"
+            now = datetime.now(UTC)
+            self.edit_leases[key] = {
+                "lease_revision": (int(row["lease_revision"]) if row else 0) + 1,
+                "holder_principal_id": user_context.user_id,
+                "holder_session_hash": session_hash,
+                "base_version_id": document.current_version_id,
+                "acquired_at_utc": row["acquired_at_utc"] if row and state.status == "held_by_current_session" else now,
+                "renewed_at_utc": now,
+                "expires_at_utc": now + timedelta(seconds=OFFICE_EDIT_LEASE_SECONDS),
+                "released_at_utc": None,
+                "takeover_count": (int(row["takeover_count"]) if row else 0) + (1 if takeover else 0),
+            }
+            result = self._memory_edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=self.edit_leases[key]
+            )
+            return result.model_copy(update={"takeover_performed": takeover})
+
+    def release_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseReleaseCommand
+    ) -> OfficeDocumentEditLeaseState:
+        with self._lock:
+            document = self.get_document(user_context=user_context, object_id=object_id)
+            if not self.can_write(user_context=user_context, object_id=object_id):
+                raise OfficeDocumentPermissionError("Document editing is not permitted")
+            key = (user_context.tenant_id, object_id)
+            session_hash = _edit_lease_session_hash(user_context, object_id, command.session_id)
+            row = self.edit_leases.get(key)
+            state = self._memory_edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            released = bool(row and state.status == "held_by_current_session")
+            if released:
+                assert row is not None
+                row["lease_revision"] = int(row["lease_revision"]) + 1
+                row["released_at_utc"] = datetime.now(UTC)
+            result = self._memory_edit_lease_state(
+                document=document, user_context=user_context, session_hash=session_hash, row=row
+            )
+            return result.model_copy(update={"release_performed": released})
 
     def commit(
         self,

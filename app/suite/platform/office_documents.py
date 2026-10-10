@@ -42,6 +42,7 @@ OFFICE_DOCUMENT_OBJECT_TYPE = "office.document"
 OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
 OFFICE_BACKLINK_PAGE_MAX = 50
 OFFICE_BACKLINK_SCAN_LIMIT = 50
+OFFICE_EDIT_LEASE_SECONDS = 90
 OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
 OfficeSharePermission = Literal["read", "write"]
 OFFICE_INFORMATION_CLASSIFICATION_RANK = {
@@ -147,6 +148,37 @@ class OfficeDocumentUnshareCommand(BaseModel):
         if not self.human_confirmation:
             raise ValueError("Revoking a document share requires explicit confirmation")
         return self
+
+
+class OfficeDocumentEditLeaseCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(pattern=r"^office-session-[a-f0-9]{32}$")
+    expected_current_version_id: str = Field(pattern=r"^office-version-[a-f0-9]{32}$")
+    takeover_confirmed: bool = Field(default=False, strict=True)
+
+
+class OfficeDocumentEditLeaseReleaseCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(pattern=r"^office-session-[a-f0-9]{32}$")
+
+
+class OfficeDocumentEditLeaseState(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    status: Literal["unavailable", "available", "held_by_current_session", "held_by_other"]
+    base_version_id: str
+    lease_revision: int = Field(ge=0)
+    expires_at_utc: str | None = None
+    can_acquire: bool = False
+    can_take_over: bool = False
+    takeover_performed: bool = False
+    release_performed: bool = False
+    audit_event_id: str = ""
+    lease_seconds: int = OFFICE_EDIT_LEASE_SECONDS
 
 
 def validate_office_document_query(query: str) -> str:
@@ -386,6 +418,18 @@ class OfficeDocumentRepository(Protocol):
     ) -> OfficeDocumentHistoryPage: ...
 
     def get_version(self, *, user_context: UserContext, object_id: str, version_id: str) -> OfficeDocumentVersion: ...
+
+    def edit_lease(
+        self, *, user_context: UserContext, object_id: str, session_id: str
+    ) -> OfficeDocumentEditLeaseState: ...
+
+    def acquire_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseCommand
+    ) -> OfficeDocumentEditLeaseState: ...
+
+    def release_edit_lease(
+        self, *, user_context: UserContext, object_id: str, command: OfficeDocumentEditLeaseReleaseCommand
+    ) -> OfficeDocumentEditLeaseState: ...
 
     def commit(
         self, *, user_context: UserContext, object_id: str | None, command: OfficeDocumentCreateCommand
@@ -898,6 +942,91 @@ class OfficeDocumentService:
         if not self.writes_available or not write_enabled:
             raise OfficeDocumentPermissionError("Document saving is not permitted")
         return self._save(user_context=user_context, object_id=object_id, command=command)
+
+    def edit_lease(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        session_id: str,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentEditLeaseState:
+        command = OfficeDocumentEditLeaseReleaseCommand(session_id=session_id)
+        document = self.repository.get_document(user_context=user_context, object_id=object_id)
+        if (
+            not self.writes_available
+            or not write_enabled
+            or not self.repository.can_write(user_context=user_context, object_id=object_id)
+        ):
+            state = OfficeDocumentEditLeaseState(
+                tenant_id=user_context.tenant_id,
+                object_id=object_id,
+                status="unavailable",
+                base_version_id=document.current_version_id,
+                lease_revision=0,
+            )
+        else:
+            state = self.repository.edit_lease(
+                user_context=user_context, object_id=object_id, session_id=command.session_id
+            )
+        return self._audit_lease(user_context, state, "office.documents.edit_lease.read")
+
+    def acquire_edit_lease(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentEditLeaseCommand,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentEditLeaseState:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document editing is not permitted")
+        command = OfficeDocumentEditLeaseCommand.model_validate(command.model_dump(mode="python"))
+        state = self.repository.acquire_edit_lease(user_context=user_context, object_id=object_id, command=command)
+        return self._audit_lease(
+            user_context,
+            state,
+            "office.documents.edit_lease.taken_over"
+            if state.takeover_performed
+            else "office.documents.edit_lease.requested",
+        )
+
+    def release_edit_lease(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentEditLeaseReleaseCommand,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentEditLeaseState:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document editing is not permitted")
+        command = OfficeDocumentEditLeaseReleaseCommand.model_validate(command.model_dump(mode="python"))
+        state = self.repository.release_edit_lease(user_context=user_context, object_id=object_id, command=command)
+        return self._audit_lease(
+            user_context,
+            state,
+            "office.documents.edit_lease.released"
+            if state.release_performed
+            else "office.documents.edit_lease.release_requested",
+        )
+
+    def _audit_lease(
+        self, user_context: UserContext, state: OfficeDocumentEditLeaseState, event_type: str
+    ) -> OfficeDocumentEditLeaseState:
+        return state.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    event_type,
+                    object_id=state.object_id,
+                    lease_status=state.status,
+                    lease_revision=state.lease_revision,
+                    base_version_id=state.base_version_id,
+                    can_take_over=state.can_take_over,
+                )
+            }
+        )
 
     def share_state(self, *, user_context: UserContext, object_id: str) -> OfficeDocumentShareState:
         state = self.repository.share_state(user_context=user_context, object_id=object_id)

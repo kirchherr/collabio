@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from psycopg.rows import dict_row
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json
 from suite.ai_control_plane.models import UserContext
@@ -17,6 +18,8 @@ from suite.platform.office_document_repository import PgOfficeDocumentRepository
 from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
+    OfficeDocumentEditLeaseCommand,
+    OfficeDocumentEditLeaseReleaseCommand,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -205,6 +208,69 @@ def test_pg_create_save_read_history_receipts_and_creator_acl_are_atomic(databas
     )
     assert receipt.created_by == second_actor.user_id and receipt.owner_principal_id == user.user_id
     assert receipt.content_hash == saved.version.content_hash
+
+
+def test_pg_edit_lease_is_tenant_scoped_hashed_and_takeover_is_explicit(database: Database) -> None:
+    service = service_for(database, InMemorySourceObjectContentStore())
+    user = editor()
+    created = service.create(user_context=user, command=command("lease-create"), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    first_session = "office-session-" + "a" * 32
+    second_session = "office-session-" + "b" * 32
+
+    first = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=first_session, expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+    assert first.status == "held_by_current_session"
+    blocked = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=second_session, expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+    assert blocked.status == "held_by_other" and not blocked.takeover_performed
+
+    takeover = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=second_session,
+            expected_current_version_id=created.version.version_id,
+            takeover_confirmed=True,
+        ),
+        write_enabled=True,
+    )
+    assert takeover.status == "held_by_current_session" and takeover.takeover_performed
+    with psycopg.connect(database.admin_dsn, row_factory=dict_row) as connection:
+        set_tenant(connection, user.tenant_id)
+        row = connection.execute(
+            "SELECT holder_session_hash, takeover_count FROM office.document_edit_leases "
+            "WHERE tenant_id = %s AND object_id = %s",
+            (user.tenant_id, object_id),
+        ).fetchone()
+    assert row is not None
+    assert row["holder_session_hash"].startswith("sha256:")
+    assert first_session not in row["holder_session_hash"] and second_session not in row["holder_session_hash"]
+    assert row["takeover_count"] == 1
+
+    foreign = user.model_copy(update={"tenant_id": f"foreign-{user.tenant_id}"})
+    with pytest.raises(OfficeDocumentNotFoundError):
+        service.edit_lease(user_context=foreign, object_id=object_id, session_id=second_session, write_enabled=True)
+    released = service.release_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseReleaseCommand(session_id=second_session),
+        write_enabled=True,
+    )
+    assert released.status == "available" and released.release_performed
 
 
 def test_pg_document_sharing_grants_changes_and_revokes_authoritative_access(database: Database) -> None:

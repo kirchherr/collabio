@@ -99,6 +99,7 @@ OFFICE_DOCUMENT_TABLES = {
     "office.review_events",
     "office.text_suggestions",
     "office.text_suggestion_decisions",
+    "office.document_edit_leases",
 }
 OFFICE_OWNER_TABLE_PRIVILEGES = {
     "SELECT",
@@ -114,6 +115,18 @@ OFFICE_OWNER_COLUMN_PRIVILEGES = {"SELECT", "INSERT", "UPDATE", "REFERENCES"}
 OFFICE_UPDATE_COLUMNS = {
     "office.documents": {"title", "information_classification", "current_version_id", "updated_at_utc"},
     "office.review_threads": {"revision", "current_event_id", "status", "updated_at_utc"},
+    "office.document_edit_leases": {
+        "lease_revision",
+        "holder_principal_id",
+        "holder_session_hash",
+        "base_version_id",
+        "acquired_at_utc",
+        "renewed_at_utc",
+        "expires_at_utc",
+        "released_at_utc",
+        "takeover_count",
+        "audit_chain_ref",
+    },
 }
 OFFICE_APP_READ_ONLY_TABLES = {"office.document_share_decisions"}
 OFFICE_TRIGGER_FUNCTIONS: dict[tuple[str, str], tuple[str, str, bool]] = {
@@ -242,8 +255,38 @@ OFFICE_POLICY_DEFINITIONS: dict[tuple[str, str], tuple[str, str | None, str | No
     ),
     ("office.review_events", "office_review_events_no_update"): ("UPDATE", "false", None),
     ("office.review_events", "office_review_events_no_delete"): ("DELETE", "false", None),
+    ("office.document_edit_leases", "office_document_edit_leases_tenant_select"): (
+        "SELECT",
+        "(tenant_id = collabio.current_tenant_id())",
+        None,
+    ),
+    ("office.document_edit_leases", "office_document_edit_leases_tenant_insert"): (
+        "INSERT",
+        None,
+        "(tenant_id = collabio.current_tenant_id())",
+    ),
+    ("office.document_edit_leases", "office_document_edit_leases_tenant_update"): (
+        "UPDATE",
+        "(tenant_id = collabio.current_tenant_id())",
+        "(tenant_id = collabio.current_tenant_id())",
+    ),
+    ("office.document_edit_leases", "office_document_edit_leases_no_delete"): ("DELETE", "false", None),
 }
 OFFICE_REQUIRED_CONSTRAINTS: dict[str, set[str]] = {
+    "office.document_edit_leases": {
+        "PRIMARY KEY (tenant_id, object_id)",
+        "FOREIGN KEY (tenant_id, object_id) REFERENCES office.documents(tenant_id, object_id)",
+        "FOREIGN KEY (tenant_id, object_id, base_version_id) "
+        "REFERENCES office.document_versions(tenant_id, object_id, version_id)",
+        "CHECK ((lease_revision >= 1))",
+        "CHECK ((holder_principal_id <> ''::text))",
+        "CHECK ((holder_session_hash ~ '^sha256:[a-f0-9]{64}$'::text))",
+        "CHECK ((takeover_count >= 0))",
+        "CHECK ((audit_chain_ref ~~ 'audit:%'::text))",
+        "CHECK ((renewed_at_utc >= acquired_at_utc))",
+        "CHECK ((expires_at_utc > renewed_at_utc))",
+        "CHECK (((released_at_utc IS NULL) OR (released_at_utc >= renewed_at_utc)))",
+    },
     "office.document_share_decisions": {
         "PRIMARY KEY (tenant_id, object_id, mutation_reference)",
         "FOREIGN KEY (tenant_id, object_id) REFERENCES office.documents(tenant_id, object_id)",

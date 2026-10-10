@@ -26,6 +26,9 @@ from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
+    OfficeDocumentEditLeaseCommand,
+    OfficeDocumentEditLeaseReleaseCommand,
+    OfficeDocumentEditLeaseState,
     OfficeDocumentHistoryRequestError,
     OfficeDocumentHistoryResponse,
     OfficeDocumentListRequestError,
@@ -496,6 +499,56 @@ def register_office_routes(
     ) -> Any:
         return request.app.state.office_document_service.save(
             user_context=context.user_context, object_id=object_id, command=command, write_enabled=True
+        )
+
+    @router.get("/{object_id}/edit-lease", response_model=OfficeDocumentEditLeaseState)
+    def get_document_edit_lease(
+        object_id: str,
+        session_id: str,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.edit_lease(
+            user_context=context.user_context,
+            object_id=object_id,
+            session_id=session_id,
+            write_enabled=_write_enabled(request, context),
+        )
+
+    @router.post(
+        "/{object_id}/edit-lease",
+        response_model=OfficeDocumentEditLeaseState,
+        dependencies=[Depends(write_gate)],
+    )
+    def acquire_document_edit_lease(
+        object_id: str,
+        command: OfficeDocumentEditLeaseCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.acquire_edit_lease(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
+        )
+
+    @router.post(
+        "/{object_id}/edit-lease/release",
+        response_model=OfficeDocumentEditLeaseState,
+        dependencies=[Depends(write_gate)],
+    )
+    def release_document_edit_lease(
+        object_id: str,
+        command: OfficeDocumentEditLeaseReleaseCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.release_edit_lease(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
         )
 
     @router.get("/{object_id}/review-threads", response_model=ReviewListResponse)

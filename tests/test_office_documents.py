@@ -11,6 +11,8 @@ from suite.platform.office_document_schema import OfficeDocumentInvalidContentEr
 from suite.platform.office_documents import (
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
+    OfficeDocumentEditLeaseCommand,
+    OfficeDocumentEditLeaseReleaseCommand,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -688,6 +690,102 @@ def test_native_create_save_history_and_actor_bound_idempotency(office: Any) -> 
     assert "Private document title" not in audit_payload
     assert "New text" not in audit_payload
     assert all(event.metadata["surface"] == "api" for event in service.audit.events)
+
+
+def test_edit_lease_coordinates_sessions_without_replacing_version_cas(office: Any) -> None:
+    service, _repository, user = office
+    created = service.create(user_context=user, command=create_command("lease-create"), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    first_session = "office-session-" + "a" * 32
+    second_session = "office-session-" + "b" * 32
+
+    first = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=first_session, expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+    assert first.status == "held_by_current_session"
+    assert first.can_acquire and not first.can_take_over and not first.takeover_performed
+
+    blocked = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=second_session, expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+    assert blocked.status == "held_by_other" and blocked.can_take_over
+
+    taken = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=second_session,
+            expected_current_version_id=created.version.version_id,
+            takeover_confirmed=True,
+        ),
+        write_enabled=True,
+    )
+    assert taken.status == "held_by_current_session" and taken.takeover_performed
+    assert (
+        service.edit_lease(user_context=user, object_id=object_id, session_id=first_session, write_enabled=True).status
+        == "held_by_other"
+    )
+
+    saved = service.save(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentSaveCommand(
+            **create_command("lease-save").model_dump(), expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+    stale_lease = service.edit_lease(
+        user_context=user, object_id=object_id, session_id=first_session, write_enabled=True
+    )
+    assert stale_lease.status == "available" and stale_lease.base_version_id == saved.version.version_id
+    with pytest.raises(OfficeDocumentConflictError):
+        service.acquire_edit_lease(
+            user_context=user,
+            object_id=object_id,
+            command=OfficeDocumentEditLeaseCommand(
+                session_id=first_session, expected_current_version_id=created.version.version_id
+            ),
+            write_enabled=True,
+        )
+
+    renewed = service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=first_session, expected_current_version_id=saved.version.version_id
+        ),
+        write_enabled=True,
+    )
+    released = service.release_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseReleaseCommand(session_id=first_session),
+        write_enabled=True,
+    )
+    assert released.status == "available" and released.lease_revision == renewed.lease_revision + 1
+    assert released.release_performed
+    denied_release = service.release_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseReleaseCommand(session_id=second_session),
+        write_enabled=True,
+    )
+    assert denied_release.status == "available" and not denied_release.release_performed
+    audit_payload = canonical_json([event.model_dump() for event in service.audit.events])
+    assert first_session not in audit_payload and second_session not in audit_payload
+    assert any(event.event_type == "office.documents.edit_lease.taken_over" for event in service.audit.events)
+    assert any(event.event_type == "office.documents.edit_lease.release_requested" for event in service.audit.events)
 
 
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(

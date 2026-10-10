@@ -121,6 +121,7 @@ def test_migration_catalog_is_ordered_and_loads_pgvector_schema() -> None:
         "0087",
         "0088",
         "0089",
+        "0090",
     ]
     assert migrations[0].version == "0001"
     assert migrations[0].name == "pgvector_embeddings"
@@ -203,10 +204,11 @@ def test_migration_catalog_exposes_module_manifest_with_checksums_and_evidence()
         "0087",
         "0088",
         "0089",
+        "0090",
     ]
     assert [entry.version for entry in manifest] == [migration.version for migration in load_migrations()]
     assert manifest[-1].module_id == "office_documents"
-    assert manifest[-1].name == "office_document_subject_sharing"
+    assert manifest[-1].name == "office_document_edit_leases"
     assert all(entry.checksum.startswith("sha256:") for entry in manifest)
     assert all(entry.evidence_refs for entry in manifest)
     assert all(entry.blocks_startup for entry in manifest)
