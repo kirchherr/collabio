@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–602 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 602 / PLANS 463 positioned shape-group ungrouping and regrouping
+Status: Roadmap 252–609 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 609 / PLANS 470 exact multi-object document placement
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0172; current movement: `ARCHITECTURE_DECISIONS/ADR-0172-bounded-native-office-positioned-group-ungroup-regroup.md`
+Decisions: ADR-0079 through ADR-0173; current movement: `ARCHITECTURE_DECISIONS/ADR-0173-bounded-native-office-exact-multi-object-document-placement.md`
 
 ## Direct native table reordering (Roadmap 351–356)
 
@@ -227,6 +227,26 @@ undo/redo, reload and independent reuse remain covered. The initial left-edge co
 and live-review rotated-edge rejection remain recorded as diagnostics. No migration, endpoint, dependency, external
 request, provider, worker, recovery store, nested group, arbitrary physical page anchor or DOCX DrawingML admission
 is added.
+
+Roadmap 603 through 609 adds exact bounded placement for the established transient multi-object selection under
+[ADR-0173](../../ARCHITECTURE_DECISIONS/ADR-0173-bounded-native-office-exact-multi-object-document-placement.md).
+Two through twenty selected standalone root shapes or complete root groups can be inserted as one stable block at an
+exact one-based document start position. The target range is 1 through the number of unselected roots plus one, and
+at least one unselected document root must remain.
+
+Selected roots retain their relative order and every unselected paragraph, shape, group or other root retains its
+relative order. Complete groups move as unchanged root nodes, preserving identity, member order, connections, text,
+appearance, geometry, anchors, wrapping, position and layer. The accessible responsive **Position ...** dialog shows
+the selection and document counts, dynamic integer bounds, a stable-order explanation and explicit valid, invalid or
+no-op status.
+
+Open and submit revalidate the authorized session, exact document instance, write permission, selected IDs, root
+count and target. Stale, historical, read-only, fractional, boolean, duplicate, unsorted, unsupported and out-of-bound
+state fails closed. One effective placement is one validated transaction and undo unit, keeps the same IDs selected
+and focuses the first moved root; a no-op creates no history. The focused model plus desktop/mobile workflow passes
+3/3 in 50.4 seconds and the complete native-shape matrix passes 41/41 in 5.0 minutes. No migration, endpoint,
+dependency, external request, provider, worker, recovery store, browser/clipboard persistence, arbitrary z-index,
+drag ordering, physical page anchor, nested group or DOCX DrawingML admission is added.
 
 Roadmap 525 through 531 adds bounded common layer and collective nudge under
 [ADR-0162](../../ARCHITECTURE_DECISIONS/ADR-0162-bounded-native-office-shape-multi-object-layer-and-nudge.md).

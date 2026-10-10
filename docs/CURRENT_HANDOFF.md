@@ -2,6 +2,34 @@
 
 Updated: 2026-10-10
 
+Roadmap 603 through 609 / PLANS 464 through 470 are complete under ADR-0173. Two through twenty selected standalone
+root shapes or complete root groups can now move as one stable block to an exact one-based document start position.
+The range is 1 through the number of unselected roots plus one, and at least one other root must remain. Selected roots
+retain their order, every unselected root retains its order and complete groups move without being rebuilt.
+
+The responsive **Position ...** dialog reports the selection and document counts, sets dynamic integer bounds,
+explains the stable-order contract and distinguishes valid, invalid and already-closed targets. It snapshots and
+revalidates the authorized session, exact document instance, write permission, selected IDs and root count. Stale,
+historical, read-only, fractional, boolean, duplicate, unsorted, unsupported or out-of-range state fails closed without
+a transaction. An effective move is one validated transaction and undo unit and retains the selected IDs.
+
+Product commit `b2b111f5` is local on `kirchherr/kb-write-unit-of-work`. The focused model plus desktop/mobile workflow
+passed 3/3 in 50.4 seconds, and the complete native-shape model and responsive matrix passed 41/41 in 5.0 minutes.
+Live review at `http://192.168.0.108:42880/office?review=shape-exact-order` visibly shows two selected complete groups
+after their atomic move to position 3, the success notice, disabled end-boundary actions and enabled Undo. The review
+draft is deliberately unsaved for direct inspection.
+
+Complete repository quality passed with Ruff, 902 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. The exact `collabio-postgres-test-1` container and verified `/tmp/collabio-roadmap-603` transfer
+directory were removed; no transient quality, test or Work-E2E runner remains. The isolated review API is healthy on
+port 42880, the regular API returns `ok` and unrelated projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, arbitrary z-index, drag ordering, physical
+page anchor, nested group, DOCX engine or production admission. GitHub publication remains pending under the existing
+explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 595 through 602 / PLANS 456 through 463 are complete under ADR-0172. Two through twenty complete freely
 positioned shape groups can now be dissolved together when every selected group has the same anchor kind. Each member
 receives an explicit established standalone position derived from its visible rendered center while retaining the

@@ -3179,7 +3179,37 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Recovery-Speicher, Browser-/Clipboard-Persistenz, dokument- oder tenantuebergreifende Uebertragung,
      verschachtelte Gruppe, beliebige physische Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 602 / PLANS 224 bis 463 sind unter ADR-0139 bis ADR-0172 implementiert
+603. [x] Fuer zwei bis zwanzig ausgewaehlte eigenstaendige Wurzelformen oder vollstaendige Wurzelgruppen eine exakte
+     ganzzahlige Startposition von 1 bis `Dokumentelemente - Auswahlgroesse + 1` zugelassen. Mindestens ein anderes
+     Dokumentelement muss verbleiben; Bruchteile, Boolesche Werte und ungueltige Grenzen werden fail-closed abgewiesen.
+
+604. [x] Die ausgewaehlten Wurzeln als einen geschlossenen stabilen Block an der Zielposition eingefuegt. Ihre relative
+     Reihenfolge sowie die relative Reihenfolge aller nicht ausgewaehlten Absatz-, Form-, Gruppen- und sonstigen
+     Wurzelknoten bleiben unveraendert; vollstaendige Gruppen werden nie zerlegt oder umgeschrieben.
+
+605. [x] Einen zugaenglichen responsiven Dialog `Position ...` mit aktuellem Objekt-/Dokumentumfang, dynamischem
+     Minimum/Maximum, erklaertem Stabilitaetsvertrag, Live-Status, explizitem Abbruch und deaktivierter Anwendung fuer
+     ungueltige oder bereits geschlossene Zielpositionen bereitgestellt.
+
+606. [x] Beim Oeffnen und Anwenden Schreibrecht, Dokument- und Sitzungsidentitaet, exakte ausgewaehlte IDs, Wurzelzahl
+     und Zielgrenzen erneut validiert. Dokument-/Sitzungswechsel, historischer oder schreibgeschuetzter Zustand und
+     veraltete Auswahl schliessen den Dialog beziehungsweise verwerfen die Aktion ohne Dokumentaenderung.
+
+607. [x] Jede wirksame exakte Einordnung als eine validierte Dokumenttransaktion und einen Rueckgaengig-Schritt
+     ausgefuehrt, dieselben IDs ausgewaehlt gehalten und den ersten verschobenen Knoten fokussiert. No-ops erzeugen
+     keine Historie; Undo/Redo stellt die gesamte Wurzelreihenfolge atomar wieder her.
+
+608. [x] Reines Modell und Desktop-/Mobile-Workflow um Anfang/Mitte/Ende, stabile Auswahl-/Restreihenfolge,
+     ungueltige Werte, No-op, Abbruch, Auswahlbeibehaltung, Undo/Redo und die bestehende Save-, Historien-, Druck-,
+     Reload- und Wiederverwendungsstrecke erweitert. Der fokussierte Lauf bestand 3/3 in 50,4 Sekunden, die
+     vollstaendige native Formmatrix 41/41 in 5,0 Minuten.
+
+609. [x] Die begrenzte exakte Dokumenteinordnung fuer mehrere native Office-Objekte unter ADR-0173 ohne Migration,
+     Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, Browser-/Clipboard-Persistenz,
+     dokument- oder tenantuebergreifende Uebertragung, beliebigen Z-Index, Drag-Reihenfolge, verschachtelte Gruppe,
+     physischen Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 609 / PLANS 224 bis 470 sind unter ADR-0139 bis ADR-0173 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
