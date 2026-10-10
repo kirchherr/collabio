@@ -3209,7 +3209,36 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      dokument- oder tenantuebergreifende Uebertragung, beliebigen Z-Index, Drag-Reihenfolge, verschachtelte Gruppe,
      physischen Seitenanker oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 609 / PLANS 224 bis 470 sind unter ADR-0139 bis ADR-0173 implementiert
+610. [x] Eine zugaengliche responsive Objektliste fuer alle eigenstaendigen Wurzelformen und vollstaendigen
+     Wurzelgruppen des aktuellen Dokuments bereitgestellt. Auch hinter Text liegende oder visuell verdeckte Objekte
+     bleiben in kanonischer Dokumentreihenfolge auffindbar; hoechstens zwanzig Objekte koennen ausgewaehlt werden.
+
+611. [x] Suche ueber Formtext, Formart, Gruppenmitglieder, Dokumentposition und logischen Anker sowie einen Filter fuer
+     alle Objekte, einzelne Formen oder Gruppen umgesetzt. Alle sichtbaren Bezeichnungen werden als DOM-Text aus dem
+     validierten Dokumentmodell erzeugt und nicht als HTML interpretiert.
+
+612. [x] `Alle Treffer`, `Treffer umkehren` und `Auswahl leeren` mit einer harten Grenze von zwanzig Objekten
+     bereitgestellt. Eine Ueberschreitung verwirft die gesamte gewuenschte Aenderung statt eine Teilmenge stillschweigend
+     auszuwaehlen.
+
+613. [x] Beim Oeffnen und Anwenden Sitzungs- und Dokumentidentitaet, aktuelles Schreibrecht sowie exakte eindeutige
+     Wurzel-IDs, Typen und streng aufsteigende Dokumentindizes erneut validiert. Veraltete, unbekannte, doppelte,
+     unsortierte oder nicht mehr vollstaendige Gruppen scheitern fail-closed ohne Auswahl- oder Dokumentaenderung.
+
+614. [x] Die bestaetigte Trefferliste nur in die bestehende transiente Mehrfachauswahl uebernommen, in
+     Dokumentreihenfolge normalisiert und fuer alle bestehenden Mehrfachobjektaktionen nutzbar gemacht. Anwendung
+     schreibt weder Dokumentinhalt noch Historie; Abbruch, Schliessen und Escape erhalten die vorherige Auswahl.
+
+615. [x] Reines Planungsmodell und realen Desktop-/Mobile-Workflow um Suche, Typfilter, Trefferoperationen, Anwendung,
+     Abbruch, verdeckte Objekte und Gruppen erweitert. Nach einer kompakten Mobile-Toolbar-Korrektur bestand der
+     gezielte Rotationslauf 1/1, der fokussierte Lauf 3/3 in 51,0 Sekunden und die vollstaendige Formmatrix 42/42 in
+     5,0 Minuten; der erste 41/42-Lauf bleibt als Diagnose dokumentiert.
+
+616. [x] Den begrenzten nativen Office-Objektauswahl-Navigator unter ADR-0174 ohne Migration, Endpunkt, Abhaengigkeit,
+     externen Abruf, Provider, Worker, Recovery-Speicher, Browser-/Clipboard-Persistenz, dokument- oder
+     tenantuebergreifende Uebertragung, Inhaltsaenderung, verschachtelte Gruppe oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 616 / PLANS 224 bis 477 sind unter ADR-0139 bis ADR-0174 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

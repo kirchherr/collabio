@@ -1,9 +1,31 @@
 # Native Office Documents
 
-Status: Roadmap 252–609 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 609 / PLANS 470 exact multi-object document placement
+Status: Roadmap 252–616 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 616 / PLANS 477 bounded object selection navigator
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0173; current movement: `ARCHITECTURE_DECISIONS/ADR-0173-bounded-native-office-exact-multi-object-document-placement.md`
+Decisions: ADR-0079 through ADR-0174; current movement: `ARCHITECTURE_DECISIONS/ADR-0174-bounded-native-office-object-selection-navigator.md`
+
+## Bounded object selection navigator (Roadmap 610–616)
+
+The accessible responsive **Objektliste ...** exposes every standalone root shape and complete root shape group in
+canonical document order, including roots behind text or otherwise difficult to reach on the page. Search covers
+normalized shape text, kind, complete group-member text, document position and logical anchor. A separate type filter
+limits results to all objects, standalone shapes or complete groups. Document-derived labels enter the UI only as DOM
+text.
+
+Authors can select all visible matches, invert the visible matches or clear the candidate selection. The complete
+result must contain zero through twenty unique roots; an over-limit result fails atomically. Opening snapshots the
+authorized editor session, exact document instance and the unique root-ID/type/order tuple. Applying revalidates this
+snapshot, current write permission and every complete root. Changed, stale, unknown, duplicate or unsorted state
+fails closed.
+
+Apply normalizes the chosen roots to document order and replaces only the established transient multi-selection.
+It creates no document transaction, immutable version or history entry. Cancel, close and Escape preserve the prior
+selection. The resulting selection immediately enables the existing bounded multi-object commands. The focused
+strict model plus desktop/mobile workflow passes 3/3 in 51.0 seconds, the targeted mobile rotation regression passes
+1/1 and the complete native-shape matrix passes 42/42 in 5.0 minutes after a compact mobile-toolbar correction.
+The feature adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, nested group or DOCX DrawingML admission.
 
 ## Direct native table reordering (Roadmap 351–356)
 

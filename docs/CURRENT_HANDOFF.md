@@ -2,6 +2,45 @@
 
 Updated: 2026-10-10
 
+Roadmap 610 through 616 / PLANS 471 through 477 are complete under ADR-0174. The responsive **Objektliste ...**
+enumerates every standalone root shape and complete root group in canonical document order, including objects behind
+text or otherwise visually obscured. Authors can search text, kind, member text, document position and anchor, filter
+by shape or group, select all matches, invert matches and clear candidates. The resulting selection is atomically
+bounded to twenty roots.
+
+Opening records the authorized session, exact document instance and complete root-ID/type/order tuple. Applying
+revalidates that snapshot and current write permission; stale, unknown, duplicate, unsorted or incomplete roots fail
+closed. Accepted roots are normalized to document order and replace only the existing transient selection. No Office
+JSON, transaction, immutable version or history entry is written, while cancel, close and Escape preserve the prior
+selection.
+
+Product commit `d29049d0` is local on `kirchherr/kb-write-unit-of-work`. After a compact mobile-toolbar correction,
+the targeted pointer-rotation regression passed 1/1, the focused strict-model plus desktop/mobile workflow passed 3/3
+in 51.0 seconds and the complete native-shape matrix passed 42/42 in 5.0 minutes. The initial 41/42 run is retained as
+diagnostic evidence: the added toolbar height made the existing mobile pointer gesture unreliable; compact direct
+controls restored the established interaction without weakening the test.
+
+Live review at `http://192.168.0.108:42880/office?review=object-navigator-d29049d0` found three complete root groups,
+selected them through two search result sets and applied all three in document order. The visible notice confirms that
+content stayed unchanged, all three complete groups remain visibly selected and the existing multi-object actions are
+available. The saved document remains unchanged because the selection is transient.
+
+Complete repository quality passed with Ruff, 903 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. Final Work-E2E, review API and quality image IDs are
+`sha256:e4b4b4a76f05c94193c530b1f3e974cb7a8e22987fb52fc36ab13a9b4992db23`,
+`sha256:9a530931c8cb2f871c36031939a7048c1a932ccc497eafd218a2c578edea5180` and
+`sha256:fe51ad55cb5098077dcf2065fb9c5b64b61c956342e6ef3a6b4f30b38211c158`.
+
+The exact `collabio-postgres-test-1` container, verified `/tmp/collabio-roadmap-610` transfer directory and local
+transfer archives were removed. No transient quality, test or Work-E2E runner remains. Regular and review APIs both
+return `ok`; review PostgreSQL, MinIO, decoder and API remain healthy and unrelated projects were untouched.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, content write, nested group, DOCX engine or
+production admission. GitHub publication remains pending under the explicit content-specific approval requirement
+for the internal handoff, roadmap, ADRs and dev001 operations record.
+
 Roadmap 603 through 609 / PLANS 464 through 470 are complete under ADR-0173. Two through twenty selected standalone
 root shapes or complete root groups can now move as one stable block to an exact one-based document start position.
 The range is 1 through the number of unselected roots plus one, and at least one other root must remain. Selected roots
