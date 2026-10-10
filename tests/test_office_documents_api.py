@@ -517,6 +517,22 @@ def test_office_import_compatibility_api_is_metadata_only_noncacheable_and_close
     assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
 
 
+def test_office_interchange_corpus_api_is_metadata_only_noncacheable_and_closed(office_api: OfficeApiHarness) -> None:
+    enable_office(read=True, write=False)
+    response = office_api.client.get(f"{BASE}/import-export-test-corpus", headers=office_api.headers)
+
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo"
+    assert value["schema_version"] == "office_interchange_corpus_manifest.v1"
+    assert len(value["fixtures"]) == 9
+    assert value["fixture_bytes_returned"] is False
+    assert value["import_dispatch_allowed"] is False
+    assert value["export_engine_available"] is False
+    assert value["round_trip_fidelity_claimed"] is False
+    assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

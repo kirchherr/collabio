@@ -1139,6 +1139,24 @@ def test_import_compatibility_matrix_is_tenant_scoped_metadata_only_audited_and_
     }
 
 
+def test_interchange_corpus_manifest_is_tenant_scoped_metadata_only_audited_and_closed(office: Any) -> None:
+    service, _repository, user = office
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.interchange_corpus_manifest(user_context=user)
+
+    response = service.interchange_corpus_manifest(user_context=user, read_enabled=True)
+    assert response.tenant_id == user.tenant_id
+    assert len(response.fixtures) == 9
+    assert not response.fixture_bytes_returned and not response.import_dispatch_allowed
+    assert not response.export_engine_available and not response.round_trip_fidelity_claimed
+    event = service.audit.events[-1]
+    assert event.event_type == "office.documents.interchange_corpus_manifest.read"
+    assert event.metadata["fixture_count"] == 9
+    assert event.metadata["blocked_fixture_count"] == 3
+    assert event.metadata["marked_fixture_count"] == 3
+    assert event.metadata["fixture_bytes_returned"] is False
+
+
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
     office: Any,
 ) -> None:

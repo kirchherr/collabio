@@ -35,6 +35,10 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
     const url = new URL(response.url());
     return url.pathname === "/v1/office/documents/import-compatibility-matrix" && response.request().method() === "GET";
   });
+  const interchangeCorpus = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/v1/office/documents/import-export-test-corpus" && response.request().method() === "GET";
+  });
   await page.locator("#document-lifecycle").click();
   expect((await lifecycle).status()).toBe(200);
   const preflightResponse = await preflight;
@@ -80,6 +84,14 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   expect(compatibilityBody.import_dispatch_allowed).toBe(false);
   expect(compatibilityBody.export_allowed).toBe(false);
   expect(compatibilityBody.round_trip_fidelity_claimed).toBe(false);
+  const corpusResponse = await interchangeCorpus;
+  expect(corpusResponse.status()).toBe(200);
+  const corpusBody = await corpusResponse.json();
+  expect(corpusBody.corpus_state).toBe("deterministic_fixtures_export_closed");
+  expect(corpusBody.fixtures).toHaveLength(9);
+  expect(corpusBody.fixture_bytes_returned).toBe(false);
+  expect(corpusBody.export_engine_available).toBe(false);
+  expect(corpusBody.round_trip_fidelity_claimed).toBe(false);
   await expect(page.locator("#lifecycle-dialog")).toBeVisible();
   await expect(page.locator("#lifecycle-draft")).toContainText("ungespeicherte Änderungen vorhanden");
   await expect(page.locator("#lifecycle-collaborative")).toContainText("für diese Sitzung reserviert");
@@ -93,6 +105,8 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   await expect(page.locator("#lifecycle-macro-policy")).toContainText("Ausführung und automatisches Entfernen bleiben ausgeschlossen");
   await expect(page.locator("#lifecycle-import-compatibility")).toContainText("DOCX, ODT und PDF sind merkmalgenau bewertet");
   await expect(page.locator("#lifecycle-import-compatibility")).toContainText("Import, Export und Round-trip-Fidelity bleiben geschlossen");
+  await expect(page.locator("#lifecycle-interchange-corpus")).toContainText("Neun reproduzierbare DOCX-, ODT- und PDF-Fixtures");
+  await expect(page.locator("#lifecycle-interchange-corpus")).toContainText("Export-Engine und Rundlauf-Treue bleiben geschlossen");
   await expect(page.locator("#lifecycle-saved")).toContainText(saved.version.version_id);
   await expect(page.locator("#lifecycle-business")).toContainText("Übergang geschlossen");
   await expect(page.locator("#lifecycle-worm")).toContainText("kein WORM Evidence Record");

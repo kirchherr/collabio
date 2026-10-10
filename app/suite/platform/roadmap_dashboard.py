@@ -823,6 +823,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Eine merkmalgenaue OOXML-/ODF-/PDF-Matrix trennt erhaltenen oder abgeflachten Text, "
                         "blockierte aktive Inhalte, sichtbare Review-Hinweise und nicht unterstuetzte Merkmale; "
                         "Import, Export und Round-trip-Fidelity bleiben geschlossen. "
+                        "Ein deterministischer Neun-Fixture-Testkorpus prueft fuer DOCX, ODT und PDF jeweils erlaubte, "
+                        "sichtbar markierte und blockierte Eingaben gegen Policy und realen Entwicklungsparser; "
+                        "Fixture-Bytes, Export-Engine und Rundlauf-Treue bleiben geschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -866,6 +869,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_parser_worker_plan.py",
                         "tests/test_office_macro_policy.py",
                         "tests/test_office_import_compatibility.py",
+                        "tests/test_office_interchange_corpus.py",
                         "tests/test_office_document_discovery.py",
                         "tests/test_office_document_discovery_api.py",
                         "tests/test_office_document_discovery_pg.py",
@@ -934,6 +938,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/parser-worker-plan",
                         "/v1/office/documents/macro-policy",
                         "/v1/office/documents/import-compatibility-matrix",
+                        "/v1/office/documents/import-export-test-corpus",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
@@ -981,6 +986,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "nonexecuting_signature_and_external_link_indicators_require_visible_review",
                         "import_compatibility_is_feature_specific_and_metadata_only",
                         "unsupported_features_do_not_infer_import_export_or_round_trip_fidelity",
+                        "interchange_corpus_is_deterministic_synthetic_and_hash_bound",
+                        "corpus_metadata_does_not_return_fixture_bytes_or_open_export",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1013,7 +1020,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="build_office_import_export_test_corpus",
+                    next_action="admit_office_interchange_engine_against_corpus",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

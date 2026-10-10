@@ -26,6 +26,10 @@ from suite.platform.office_import_compatibility import (
     OfficeImportCompatibilityResponse,
     build_office_import_compatibility_matrix,
 )
+from suite.platform.office_interchange_corpus import (
+    OfficeInterchangeCorpusResponse,
+    build_office_interchange_corpus,
+)
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse, build_office_macro_policy
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse, build_office_parser_worker_plan
 from suite.storage.source_object_storage import SourceObjectStorageError
@@ -848,6 +852,37 @@ class OfficeDocumentService:
                     export_allowed=False,
                     round_trip_fidelity_claimed=False,
                     content_included=False,
+                )
+            }
+        )
+
+    def interchange_corpus_manifest(
+        self,
+        *,
+        user_context: UserContext,
+        read_enabled: bool = False,
+    ) -> OfficeInterchangeCorpusResponse:
+        if not read_enabled:
+            raise OfficeDocumentPermissionError("Office interchange corpus is not permitted")
+        response = build_office_interchange_corpus(tenant_id=user_context.tenant_id)
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.interchange_corpus_manifest.read",
+                    schema_version=response.schema_version,
+                    corpus_state=response.corpus_state,
+                    fixture_count=len(response.fixtures),
+                    blocked_fixture_count=sum(
+                        fixture.expected_policy_decision == "block" for fixture in response.fixtures
+                    ),
+                    marked_fixture_count=sum(
+                        fixture.expected_policy_decision == "allow_marked" for fixture in response.fixtures
+                    ),
+                    import_dispatch_allowed=False,
+                    export_engine_available=False,
+                    round_trip_fidelity_claimed=False,
+                    fixture_bytes_returned=False,
                 )
             }
         )

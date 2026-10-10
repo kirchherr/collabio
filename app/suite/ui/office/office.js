@@ -765,6 +765,37 @@ async function loadImportCompatibility(session, context) {
   }
 }
 
+function interchangeCorpusMatches(value) {
+  const counts = value?.fixtures?.reduce((result, fixture) => {
+    result[fixture.expected_policy_decision] = (result[fixture.expected_policy_decision] || 0) + 1;
+    return result;
+  }, {});
+  return value?.tenant_id === state.context.tenantId &&
+    value.schema_version === "office_interchange_corpus_manifest.v1" &&
+    value.corpus_state === "deterministic_fixtures_export_closed" && Array.isArray(value.fixtures) &&
+    value.fixtures.length === 9 && counts?.allow === 3 && counts?.allow_marked === 3 && counts?.block === 3 &&
+    value.fixtures.every((fixture) => fixture.synthetic_repository_fixture === true &&
+      fixture.export_expected === "blocked_no_engine" && fixture.round_trip_fidelity_expected === false) &&
+    value.fixture_bytes_returned === false && value.import_dispatch_allowed === false &&
+    value.export_engine_available === false && value.round_trip_fidelity_claimed === false &&
+    value.production_admitted === false && typeof value.audit_event_id === "string";
+}
+
+async function loadInterchangeCorpus(session, context) {
+  try {
+    const value = await api("/v1/office/documents/import-export-test-corpus", {}, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!interchangeCorpusMatches(value)) throw new ApiError(502, true);
+    $("lifecycle-interchange-corpus").textContent =
+      "Neun reproduzierbare DOCX-, ODT- und PDF-Fixtures prüfen erlaubte, markierte und blockierte Eingaben. Export-Engine und Rundlauf-Treue bleiben geschlossen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-interchange-corpus").textContent = denied(error)
+      ? "Testkorpus nicht mehr berechtigt; Import und Export bleiben geschlossen."
+      : "Testkorpus konnte nicht bestätigt werden; Import und Export bleiben geschlossen.";
+  }
+}
+
 async function loadDocumentLifecycle() {
   const session = state.session, context = state.context;
   if (!sessionCurrent(session) || !session.objectId) return;
@@ -794,6 +825,8 @@ async function loadDocumentLifecycle() {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     await loadImportCompatibility(session, context);
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    await loadInterchangeCorpus(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
     $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
@@ -817,6 +850,7 @@ function openDocumentLifecycle() {
   $("lifecycle-parser-worker").textContent = "Plan wird geladen …";
   $("lifecycle-macro-policy").textContent = "Policy wird geladen …";
   $("lifecycle-import-compatibility").textContent = "Matrix wird geladen …";
+  $("lifecycle-interchange-corpus").textContent = "Korpus wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";
