@@ -4,12 +4,26 @@ export const OFFICE_SHAPE_COLORS = ["transparent", "white", "slate", "red", "ora
 export const OFFICE_SHAPE_TEXT_ALIGNMENTS = ["left", "center", "right"];
 export const OFFICE_SHAPE_TEXT_COLORS = ["white", "slate", "red", "orange", "yellow", "green", "teal", "blue", "purple", "black"];
 export const OFFICE_SHAPE_TEXT_STYLES = ["bold", "italic", "boldItalic"];
+export const OFFICE_SHAPE_NAME_LIMIT = 80;
+export const OFFICE_SHAPE_ALT_TEXT_LIMIT = 500;
 
 const textColors = { white: "#ffffff", slate: "#334155", red: "#991b1b", orange: "#9a3412", yellow: "#854d0e",
   green: "#166534", teal: "#115e59", blue: "#1e40af", purple: "#6b21a8", black: "#111827" };
 const textColorLabels = { white: "weiß", slate: "schiefer", red: "rot", orange: "orange", yellow: "gelb",
   green: "grün", teal: "petrol", blue: "blau", purple: "violett", black: "schwarz" };
 const textStyleLabels = { bold: "fett", italic: "kursiv", boldItalic: "fett und kursiv" };
+
+function boundedObjectText(value, limit, error) {
+  if (typeof value !== "string" || value.length < 1 || value.length > limit || value !== value.trim() ||
+      [...value].some((character) => character.codePointAt(0) < 32 ||
+        (character.codePointAt(0) >= 127 && character.codePointAt(0) <= 159) ||
+        (character.codePointAt(0) >= 0xd800 && character.codePointAt(0) <= 0xdfff) ||
+        ["\u2028", "\u2029"].includes(character))) throw new Error(error);
+  return value;
+}
+
+export const officeShapeName = (value) => boundedObjectText(value, OFFICE_SHAPE_NAME_LIMIT, "shape-name");
+export const officeShapeAltText = (value) => boundedObjectText(value, OFFICE_SHAPE_ALT_TEXT_LIMIT, "shape-alt-text");
 
 export function officeShapeWrap(wrap) {
   if (!wrap || Object.keys(wrap).length !== 2 || !["left", "right"].includes(wrap.side) ||
@@ -26,7 +40,7 @@ export function officeShapePosition(position) {
 
 export function officeShapeAttributes(attrs) {
   const keys = ["fill", "height", "id", "kind", "stroke", "strokeWidth", "text", "textAlign", "width"];
-  const optional = ["fontSize", "position", "rotation", "textColor", "textStyle", "wrap"];
+  const optional = ["altText", "fontSize", "name", "position", "rotation", "textColor", "textStyle", "wrap"];
   const actualKeys = Object.keys(attrs || {}).filter((key) => !optional.includes(key)).sort();
   if (!attrs || actualKeys.join(",") !== keys.join(",") ||
       (Object.hasOwn(attrs, "fontSize") && attrs.fontSize !== null &&
@@ -49,6 +63,8 @@ export function officeShapeAttributes(attrs) {
       !OFFICE_SHAPE_TEXT_ALIGNMENTS.includes(attrs.textAlign)) throw new Error("shape-attributes");
   const result = { id: attrs.id, kind: attrs.kind, width: attrs.width, height: attrs.height, fill: attrs.fill,
     stroke: attrs.stroke, strokeWidth: attrs.strokeWidth, text: attrs.text, textAlign: attrs.textAlign };
+  if (attrs.name != null) result.name = officeShapeName(attrs.name);
+  if (attrs.altText != null) result.altText = officeShapeAltText(attrs.altText);
   if (attrs.fontSize != null) result.fontSize = attrs.fontSize;
   if (attrs.rotation != null) result.rotation = attrs.rotation;
   if (attrs.textColor != null) result.textColor = attrs.textColor;
@@ -97,7 +113,9 @@ export function officeShapeDescription(attrs) {
   const position = shape.position ? ` · ${shape.position.layer === "front" ? "vor" : "hinter"} Text · X ${shape.position.x} · Y ${shape.position.y} px` : "";
   const wrap = shape.wrap ? ` · Textumfluss ${shape.wrap.side === "left" ? "Form links" : "Form rechts"} · Abstand ${shape.wrap.gap} px` : "";
   const typography = `${shape.fontSize ? ` · Schrift ${shape.fontSize} px` : ""}${shape.textColor ? ` · Textfarbe ${textColorLabels[shape.textColor]}` : ""}${shape.textStyle ? ` · ${textStyleLabels[shape.textStyle]}` : ""}`;
-  return `${kind} · ${shape.width} × ${shape.height} px${rotation}${position}${wrap}${typography}${shape.text ? ` · ${shape.text}` : ""}`;
+  const name = shape.name ? `${shape.name} · ` : "";
+  const altText = shape.altText ? ` · Alternativtext: ${shape.altText}` : "";
+  return `${name}${kind} · ${shape.width} × ${shape.height} px${rotation}${position}${wrap}${typography}${shape.text ? ` · ${shape.text}` : ""}${altText}`;
 }
 
 export function applyOfficeShapeDOM(element, attrs) {

@@ -516,11 +516,12 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       attrs.wrap ? `Textumfluss ${attrs.wrap.side === "left" ? "links" : "rechts"}` : "im Textfluss";
     if (entry.type === "shapeGroup") {
       const texts = entry.node.content.content.map((member) => String(member.attrs.text ?? "").trim()).filter(Boolean);
-      return { title: `Formgruppe mit ${entry.node.childCount} Formen`,
-        details: `Position ${entry.rootIndex + 1} · ${anchor}${texts.length ? ` · ${texts.join(" · ")}` : ""}` };
+      return { title: attrs.name || `Formgruppe mit ${entry.node.childCount} Formen`,
+        details: `Position ${entry.rootIndex + 1} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${texts.length ? ` · ${texts.join(" · ")}` : ""}` };
     }
     const text = String(attrs.text ?? "").trim();
-    return { title: text || `Form ${attrs.kind}`, details: `Position ${entry.rootIndex + 1} · ${attrs.kind} · ${anchor}` };
+    return { title: attrs.name || text || `Form ${attrs.kind}`,
+      details: `Position ${entry.rootIndex + 1} · ${attrs.kind} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${attrs.name && text ? ` · ${text}` : ""}` };
   };
   const navigatorMatches = () => {
     if (!selectionSnapshot) return [];

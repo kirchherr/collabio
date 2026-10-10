@@ -373,6 +373,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     formatted = {**attrs, "fontSize": 28, "textColor": "purple", "textStyle": "boldItalic"}
     formatted_document = {"type": "doc", "content": [{"type": "shape", "attrs": formatted}]}
     assert validate_office_document(formatted_document) == formatted_document
+    accessible = {**attrs, "name": "Process start", "altText": "Starts the bounded approval process"}
+    accessible_document = {"type": "doc", "content": [{"type": "shape", "attrs": accessible}]}
+    assert validate_office_document(accessible_document) == accessible_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -395,6 +398,12 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "rotation": 360},
         {**attrs, "rotation": 90.0},
         {**attrs, "rotation": True},
+        {**attrs, "name": ""},
+        {**attrs, "name": " leading"},
+        {**attrs, "name": "x" * 81},
+        {**attrs, "altText": "bad\ntext"},
+        {**attrs, "altText": "x" * 501},
+        {**attrs, "altText": True},
         {**attrs, "wrap": {"side": "middle", "gap": 0}},
         {**attrs, "wrap": {"side": "left", "gap": 49}},
         {**attrs, "wrap": {"side": "right", "gap": True}},
@@ -445,6 +454,11 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
     }
     document = {"type": "doc", "content": [group]}
     assert validate_office_document(document) == document
+    accessible_group = {
+        **group,
+        "attrs": {**group["attrs"], "name": "Approval path", "altText": "Two connected approval steps"},
+    }
+    assert validate_office_document({"type": "doc", "content": [accessible_group]})["content"][0] == accessible_group
     connected = {
         **group,
         "attrs": {**group["attrs"], "connection": {"kind": "doubleArrow", "color": "purple", "width": 8}},
@@ -479,6 +493,10 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": -1},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 49},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": True},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "name": ""},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "name": "x" * 81},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "altText": "bad\ttext"},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "altText": "x" * 501},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
         {
             "id": "shape-group-" + "a" * 24,

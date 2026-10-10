@@ -5,7 +5,7 @@ import { officeStyles, officeStyledDOMAttributes } from "./office-styles.mjs";
 import { officeImageFigure, officeImagePath } from "./office-images.mjs";
 import { officeImageGroupAttributes, officeImageGroupColumns, OFFICE_IMAGE_GROUP_MEMBER_LIMIT } from "./office-image-groups.mjs";
 import { applyOfficeShapeLayoutDOM, officeShapeAttributes, officeShapeElement } from "./office-shapes.mjs";
-import { officeShapeGroupAttributes, officeShapeGroupLayout, officeShapeGroupConnections, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
+import { officeShapeGroupAttributes, officeShapeGroupDescription, officeShapeGroupLayout, officeShapeGroupConnections, OFFICE_SHAPE_GROUP_MEMBER_LIMIT } from "./office-shape-groups.mjs";
 import { OFFICE_SECTION_LIMIT, officeSectionProfile } from "./office-sections.mjs";
 import { officeLinkDOMAttributes } from "./office-links.mjs";
 import { officeBookmarkAttributes, officeBookmarkFragment, officeReferenceInventory, officeCrossReferenceAttributes } from "./office-bookmarks.mjs";
@@ -110,6 +110,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
         throw new Error("Invalid shape group");
       }
       const group = dom.createElement("section"); group.className = "office-shape-group office-print-shape-group";
+      group.setAttribute("role", "group"); group.setAttribute("aria-label", officeShapeGroupDescription(attrs, children.length));
       group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;
       group.dataset.shapeGroupAlignment = attrs.alignment ?? "start";
       group.toggleAttribute("data-shape-group-distributed", attrs.distributionExtent != null);

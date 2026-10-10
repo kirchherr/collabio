@@ -1,4 +1,4 @@
-import { officeShapeBounds, officeShapePosition } from "./office-shapes.mjs";
+import { officeShapeAltText, officeShapeBounds, officeShapeName, officeShapePosition } from "./office-shapes.mjs";
 
 export const OFFICE_SHAPE_GROUP_LIMIT = 20;
 export const OFFICE_SHAPE_GROUP_MEMBER_LIMIT = 8;
@@ -18,7 +18,7 @@ export function officeShapeGroupConnection(connection) {
 
 export function officeShapeGroupAttributes(attrs) {
   const keys = Object.keys(attrs || {}).filter((key) =>
-    !["alignment", "connection", "connections", "distributionExtent", "position"].includes(key)).sort();
+    !["alignment", "altText", "connection", "connections", "distributionExtent", "name", "position"].includes(key)).sort();
   if (!attrs || keys.join(",") !== "gap,id,layout" ||
       (Object.hasOwn(attrs, "alignment") && attrs.alignment !== null && typeof attrs.alignment !== "string") ||
       (Object.hasOwn(attrs, "connection") && attrs.connection !== null && typeof attrs.connection !== "object") ||
@@ -34,6 +34,8 @@ export function officeShapeGroupAttributes(attrs) {
     throw new Error("shape-group-attributes");
   }
   const result = { id: attrs.id, layout: attrs.layout, gap: attrs.gap };
+  if (attrs.name != null) result.name = officeShapeName(attrs.name);
+  if (attrs.altText != null) result.altText = officeShapeAltText(attrs.altText);
   if (attrs.alignment != null) result.alignment = attrs.alignment;
   if (attrs.connection != null) result.connection = officeShapeGroupConnection(attrs.connection);
   if (attrs.connections != null) {
@@ -117,5 +119,7 @@ export function officeShapeGroupDescription(attrs, memberCount) {
   const alignment = group.alignment ? ` · Ausrichtung ${group.alignment === "center" ? "Mitte" : "Ende"}` : "";
   const distribution = group.distributionExtent ? ` · gleichmäßig auf ${group.distributionExtent} px verteilt` : "";
   const gap = group.distributionExtent ? `Mindestabstand ${group.gap}` : `Abstand ${group.gap}`;
-  return `Formgruppe · ${memberCount} Formen · ${group.layout === "row" ? "nebeneinander" : "untereinander"} · ${gap} px${alignment}${distribution}${connection}${position}`;
+  const name = group.name ? `${group.name} · ` : "";
+  const altText = group.altText ? ` · Alternativtext: ${group.altText}` : "";
+  return `${name}Formgruppe · ${memberCount} Formen · ${group.layout === "row" ? "nebeneinander" : "untereinander"} · ${gap} px${alignment}${distribution}${connection}${position}${altText}`;
 }

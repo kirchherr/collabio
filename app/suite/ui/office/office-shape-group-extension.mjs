@@ -11,7 +11,8 @@ export function officeShapeGroupExtension() {
       gap: { default: null, rendered: false }, connection: { default: null, rendered: false },
       connections: { default: null, rendered: false },
       alignment: { default: null, rendered: false }, distributionExtent: { default: null, rendered: false },
-      position: { default: null, rendered: false } }),
+      position: { default: null, rendered: false }, name: { default: null, rendered: false },
+      altText: { default: null, rendered: false } }),
     parseHTML: () => [], renderHTML: () => ["section", { class: "office-shape-group" }, 0],
     addNodeView() {
       return ({ node, editor, getPos }) => {
@@ -90,7 +91,8 @@ export function officeShapeGroupExtension() {
           const position = attrs.position ? `; ${attrs.position.layer === "front" ? "vor" : "hinter"} Text; X ${attrs.position.x}; Y ${attrs.position.y} Pixel` : "";
           const alignment = attrs.alignment ? `; Ausrichtung ${attrs.alignment === "center" ? "Mitte" : "Ende"}` : "";
           const distribution = attrs.distributionExtent ? `; gleichmäßig auf ${attrs.distributionExtent} Pixel verteilt` : "";
-          control.setAttribute("aria-label", `Formgruppe mit ${current.childCount} Formen bearbeiten${alignment}${distribution}${connection}${position}`);
+          const identity = attrs.altText || attrs.name || `Formgruppe mit ${current.childCount} Formen`;
+          control.setAttribute("aria-label", `${identity} bearbeiten${alignment}${distribution}${connection}${position}`);
         };
         paint(node);
         const selectGroup = () => {

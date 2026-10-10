@@ -15,11 +15,19 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await page.locator("#shape-width").fill("420"); await page.locator("#shape-height").fill("180");
   await page.locator("#shape-fill").selectOption("yellow"); await page.locator("#shape-stroke").selectOption("blue");
   await page.locator("#shape-stroke-width").fill("4"); await page.locator("#shape-text-align").selectOption("center");
+  await page.locator("#shape-name").fill("Freigabeschritt");
+  await page.locator("#shape-alt-text").fill("Gelbe Form für den Beginn der Freigabe");
   await page.locator("#shape-text").fill("Bounded literal <script> shape 😀");
   await expect(page.locator("#shape-preview")).toHaveAttribute("data-shape-kind", "roundedRectangle");
   await page.locator("#shape-apply").click();
   const shape = editor.locator(".office-shape"); await expect(shape).toHaveCount(1);
   await expect(shape).toContainText("<script>"); await expect(shape).toHaveAttribute("data-shape-fill", "yellow");
+  await expect(shape).toHaveAttribute("aria-label", /Freigabeschritt.*Alternativtext: Gelbe Form für den Beginn der Freigabe/);
+  await page.locator("#shape-multi-navigator").click();
+  await page.locator("#shape-multi-navigator-search").fill("Beginn der Freigabe");
+  await expect(page.locator("#shape-multi-navigator-list input")).toHaveCount(1);
+  await expect(page.locator("#shape-multi-navigator-list strong")).toHaveText("Freigabeschritt");
+  await page.locator("#shape-multi-navigator-cancel").click();
   const bounds = await shape.evaluate((element) => { const box = element.getBoundingClientRect(); return { width: box.width, viewport: innerWidth, overflow: document.documentElement.scrollWidth - innerWidth }; });
   expect(bounds.width).toBeLessThanOrEqual(bounds.viewport); expect(bounds.overflow).toBeLessThanOrEqual(0);
 
@@ -60,6 +68,7 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   expect(saved.content.content.find((entry) => entry.type === "shape")).toMatchObject({ attrs: {
     kind: "ellipse", width: 450, height: 190, fill: "teal", stroke: "blue", strokeWidth: 4, text: "Edited ellipse", textAlign: "center",
     fontSize: 28, textColor: "purple", textStyle: "boldItalic", rotation: 180,
+    name: "Freigabeschritt", altText: "Gelbe Form für den Beginn der Freigabe",
     position: { layer: "front", x: 510, y: 24 },
   } });
   expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
@@ -72,6 +81,7 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-position", "behind");
   await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("data-shape-rotation", "180");
   await expect(page.locator("#print-preview .office-print-shape")).toHaveCSS("font-size", "28px");
+  await expect(page.locator("#print-preview .office-print-shape")).toHaveAttribute("aria-label", /Freigabeschritt.*Alternativtext/);
   await page.locator("#print-submit").click(); await expect.poll(() => prints.length).toBe(1); await page.locator("#print-close").click();
 
   await anchor.click(); await page.locator("#shape-options").click(); await page.locator("#shape-position-layer").selectOption("flow");
@@ -189,6 +199,8 @@ test("Office shape groups preserve ordered members history print and independent
 
   await editor.locator(".office-shape-group-control").click(); await page.locator("#shape-options").click();
   await page.locator("#shape-group-layout").selectOption("stack"); await page.locator("#shape-group-gap").fill("24");
+  await page.locator("#shape-group-name").fill("Freigabeweg");
+  await page.locator("#shape-group-alt-text").fill("Drei verbundene Schritte bis zur Freigabe");
   await page.locator("#shape-group-connection").selectOption("doubleArrow");
   await page.locator("#shape-group-connection-color").selectOption("purple");
   await page.locator("#shape-group-connection-width").fill("4");
@@ -229,7 +241,8 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(connectedMembers.nth(2)).not.toHaveAttribute("data-shape-group-connection", /.+/);
   const grouped = await saveOffice(page, { objectId });
   const group = grouped.content.content.find((entry) => entry.type === "shapeGroup");
-  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, alignment: "center", distributionExtent: 900, connections: [
+  expect(group).toMatchObject({ attrs: { layout: "stack", gap: 24, name: "Freigabeweg",
+    altText: "Drei verbundene Schritte bis zur Freigabe", alignment: "center", distributionExtent: 900, connections: [
     { kind: "arrow", color: "red", width: 3 }, { kind: "line", color: "blue", width: 5 },
   ] }, content: [
     { type: "shape", attrs: { text: "Alpha" } },
@@ -241,6 +254,7 @@ test("Office shape groups preserve ordered members history print and independent
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-layout", "stack");
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-alignment", "center");
   await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("data-shape-group-distributed", "");
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveAttribute("aria-label", /Freigabeweg.*Alternativtext/);
   const printMembers = page.locator("#print-preview .office-print-shape-member");
   await expect(printMembers.nth(0)).toHaveAttribute("data-shape-group-connection", "arrow");
   await expect(printMembers.nth(1)).toHaveAttribute("data-shape-group-connection", "line");

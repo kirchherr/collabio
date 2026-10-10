@@ -40,6 +40,25 @@ test("Office shapes preserve only bounded inert attributes", () => {
   }
 });
 
+test("Office shapes and groups preserve bounded accessible names and alternative text", () => {
+  const named = { ...attrs, name: "Prozessstart", altText: "Start des geprüften Freigabeprozesses" };
+  expect(officeShapeAttributes(named)).toEqual(named);
+  expect(officeShapeDescription(named)).toContain("Prozessstart · Abgerundetes Rechteck");
+  expect(officeShapeDescription(named)).toContain("Alternativtext: Start des geprüften Freigabeprozesses");
+  const group = { id: "shape-group-" + "b".repeat(24), layout: "row", gap: 16,
+    name: "Freigabeweg", altText: "Drei Schritte von Entwurf bis Freigabe" };
+  expect(officeShapeGroupAttributes(group)).toEqual(group);
+  expect(officeShapeGroupDescription(group, 3)).toContain("Freigabeweg · Formgruppe · 3 Formen");
+  for (const invalid of ["", " name", "name ", "bad\nname", "x".repeat(81)]) {
+    expect(() => officeShapeAttributes({ ...attrs, name: invalid })).toThrow();
+    expect(() => officeShapeGroupAttributes({ ...group, name: invalid })).toThrow();
+  }
+  for (const invalid of ["", " alt", "alt ", "bad\talt", "x".repeat(501), true]) {
+    expect(() => officeShapeAttributes({ ...attrs, altText: invalid })).toThrow();
+    expect(() => officeShapeGroupAttributes({ ...group, altText: invalid })).toThrow();
+  }
+});
+
 test("Office shape wrapping is bounded and mutually exclusive with positioning", () => {
   for (const wrap of [{ side: "left", gap: 0 }, { side: "right", gap: 48 }]) {
     expect(officeShapeWrap(wrap)).toEqual(wrap); expect(officeShapeAttributes({ ...attrs, wrap })).toEqual({ ...attrs, wrap });

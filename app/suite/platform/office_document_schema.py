@@ -218,6 +218,21 @@ def _table_cell_text(cell: dict[str, Any]) -> str:
     return " ".join("".join(parts).split())
 
 
+def _valid_object_metadata_text(value: Any, limit: int) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= limit
+        and value == value.strip()
+        and not any(
+            ord(character) < 32
+            or 127 <= ord(character) <= 159
+            or 0xD800 <= ord(character) <= 0xDFFF
+            or character in "\u2028\u2029"
+            for character in value
+        )
+    )
+
+
 def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
     tokens: list[tuple[str, Any]] = []
     index = 1
@@ -842,7 +857,16 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "text",
                 "textAlign",
             }
-            optional_shape_attrs = {"fontSize", "position", "rotation", "textColor", "textStyle", "wrap"}
+            optional_shape_attrs = {
+                "altText",
+                "fontSize",
+                "name",
+                "position",
+                "rotation",
+                "textColor",
+                "textStyle",
+                "wrap",
+            }
             if (
                 (depth != 1 and parent_kind != "shapeGroup")
                 or set(attrs) - (required_shape_attrs | optional_shape_attrs)
@@ -870,6 +894,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     for c in text
                 )
                 or attrs.get("textAlign") not in {"left", "center", "right"}
+                or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
+                or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
                 or (
                     "fontSize" in attrs
                     and (
@@ -929,6 +955,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     "connection",
                     "connections",
                     "position",
+                    "name",
+                    "altText",
                 }
                 or not {"id", "layout", "gap"}.issubset(attrs)
                 or not isinstance(identifier, str)
@@ -938,6 +966,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or type(attrs.get("gap")) is not int
                 or not 0 <= attrs["gap"] <= 48
                 or ("alignment" in attrs and attrs.get("alignment") not in {"center", "end"})
+                or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
+                or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
                 or (
                     "distributionExtent" in attrs
                     and (

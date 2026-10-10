@@ -8,7 +8,7 @@ import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 export function officeShapeExtension() {
   return Node.create({
     name: "shape", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "fontSize", "textColor", "textStyle", "rotation", "position", "wrap"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "fontSize", "textColor", "textStyle", "rotation", "position", "wrap", "name", "altText"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["div", { class: "office-shape" }, node.attrs.text || ""],
     addNodeView() {
@@ -226,6 +226,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     fillConnection(scope === "all" ? action.groupConnectionDraft.all : action.groupConnectionDraft.edges[Number(scope.slice(5))]);
   };
   const fill = (attrs) => {
+    $("shape-name").value = attrs.name ?? ""; $("shape-alt-text").value = attrs.altText ?? "";
     $("shape-kind").value = attrs.kind; $("shape-width").value = String(attrs.width); $("shape-height").value = String(attrs.height);
     $("shape-fill").value = attrs.fill; $("shape-stroke").value = attrs.stroke; $("shape-stroke-width").value = String(attrs.strokeWidth);
     $("shape-text").value = attrs.text; $("shape-text-align").value = attrs.textAlign;
@@ -252,6 +253,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     $("shape-group-position-layer").value = action?.shapeContext?.group?.attrs.position?.layer ?? "flow";
     $("shape-group-position-x").value = String(action?.shapeContext?.group?.attrs.position?.x ?? 0);
     $("shape-group-position-y").value = String(action?.shapeContext?.group?.attrs.position?.y ?? 0);
+    $("shape-group-name").value = action?.shapeContext?.group?.attrs.name ?? "";
+    $("shape-group-alt-text").value = action?.shapeContext?.group?.attrs.altText ?? "";
   };
   const shapeId = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes); return `shape-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
   const shapeGroupId = () => `shape-group-${shapeId().slice(6)}`;
@@ -261,6 +264,8 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       { connections: action.groupConnectionDraft.edges };
     return officeShapeGroupAttributes({ id, layout: $("shape-group-layout").value,
       gap: Number($("shape-group-gap").value), ...connectionAttrs,
+      name: $("shape-group-name").value.trim() || null,
+      altText: $("shape-group-alt-text").value.trim() || null,
       alignment: $("shape-group-alignment").value === "start" ? null : $("shape-group-alignment").value,
       distributionExtent: $("shape-group-distribution").value === "fixed" ? null : Number($("shape-group-distribution-extent").value),
       position: $("shape-group-position-layer").value === "flow" ? null : {
@@ -275,6 +280,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
     fontSize: Number($("shape-font-size").value) === 16 ? null : Number($("shape-font-size").value),
     textColor: $("shape-text-color").value === "auto" ? null : $("shape-text-color").value,
     textStyle: $("shape-text-style").value === "normal" ? null : $("shape-text-style").value,
+    name: $("shape-name").value.trim() || null, altText: $("shape-alt-text").value.trim() || null,
     rotation: Number($("shape-rotation").value) || null,
     wrap: $("shape-wrap").value === "none" ? null : { side: $("shape-wrap").value, gap: Number($("shape-wrap-gap").value) },
     position: $("shape-position-layer").value === "flow" ? null : { layer: $("shape-position-layer").value,
@@ -329,6 +335,7 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
       count() + (action?.shapeContext?.group?.childCount ?? 0) > OFFICE_SHAPE_LIMIT;
     $("shape-duplicate").disabled = count() >= OFFICE_SHAPE_LIMIT || (grouped && action.shapeContext.group.childCount >= OFFICE_SHAPE_GROUP_MEMBER_LIMIT);
     $("shape-group-connection-scope").disabled = !grouped;
+    $("shape-group-name").disabled = !grouped; $("shape-group-alt-text").disabled = !grouped;
     const connected = $("shape-group-connection").value !== "none";
     $("shape-group-connection-color").disabled = !connected; $("shape-group-connection-width").disabled = !connected; };
   $("shape-options").addEventListener("click", open);
