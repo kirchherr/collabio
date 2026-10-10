@@ -1957,12 +1957,41 @@ runtime false and preserving the remaining engine, durable-log, restore, fuzzing
 644. [x] Pass focused Ruff, format, Mypy and service/API/load tests and close under ADR-0195 without a migration,
 document content, WebSocket connection or production runtime admission.
 
+645. [x] Add a read-gated native Office RAG-answer endpoint under ADR-0196. Accept only an exact current saved
+document version, a normalized one-through-eight-term question and a bounded result limit; accept no browser-provided
+source body, citation, prompt, model, action or persistence intent.
+
+646. [x] Require tenant AI and RAG policy and select only a tenant-allowed local model approved for RAG and every
+admitted source classification. Keep confidential and restricted sources fail closed without complete registry
+admission.
+
+647. [x] Reuse the bounded ADR-0192 current-version retrieval and immediately reauthorize every candidate through
+the authoritative repository. Require the same current version, content hash, ACL version, title, classification,
+server-derived anchor and excerpt before inference.
+
+648. [x] Use one approved fixed prompt with explicitly untrusted authorized-source blocks. Bound source and aggregate
+context, validate model output and invoke no model when no authorized source remains.
+
+649. [x] Return only a bounded untrusted answer and server-derived citations containing exact object/version IDs,
+title, classification, content hash, ACL version, anchor and excerpt. Mark unsupported answers explicitly.
+
+650. [x] Audit question/output hashes, model/prompt/event IDs and exact citation references/hashes without question,
+source, prompt or answer bodies. Keep answers transient, noncacheable, non-indexed, write-free and unable to trigger
+actions or compliance decisions.
+
+651. [x] Add an accessible responsive question field, answer state and dismissible versioned citation cards. Opening
+a citation uses the ordinary exact-version document read path and therefore reauthorizes access again.
+
+652. [x] Prove policy, ACL, exact-current-version, strict schema, invalid-output, unsupported-without-inference,
+hash-only audit, zero-write and desktop/mobile behavior; close the final Phase-3 Office exit criterion under ADR-0196
+without a migration, vector index, durable AI result, cloud provider or production admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 783 / PLANS 644. The isolated fifty-editor proof now covers real parallelism, per-update ACL, periodic reauthorization, deduplication, state-vector resume, convergence and bounded backpressure while WebSocket load and production runtime remain closed. Continue with the remaining Phase-3 exit gap: RAG-backed document answers with authoritative per-source ACL validation and exact source versions. Preserve all earlier AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 791 / PLANS 652. RAG-backed document answers now reauthorize every exact current source version, use only admitted local models, expose server-derived citations and remain transient, write-free and action-free. Complete the content-specific GitHub publication and UI acceptance before resuming deferred CRM account onboarding. Preserve all earlier AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

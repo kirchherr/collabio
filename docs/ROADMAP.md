@@ -657,6 +657,7 @@ Aufgaben:
 - [x] Dokument mit Richtlinie vergleichen (Roadmap 736-743 / PLANS 597-604).
 - [x] Risiken markieren (Roadmap 744-751 / PLANS 605-612).
 - [x] Quellen suchen und versioniert anzeigen (Roadmap 752-759 / PLANS 613-620).
+- [x] RAG-backed Dokumentantworten mit erneut autorisierten, versionsgenauen Quellen (Roadmap 784-791 / PLANS 645-652).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).
@@ -667,7 +668,7 @@ Exit-Kriterien:
 - [x] AI-Vorschlaege bleiben Drafts bis Nutzer sie uebernimmt.
 - [x] Jede freigegebene Version kann unveraenderbar gespeichert werden.
 - [x] Parser laufen nicht im API-Prozess und haben keinen Netzwerkzugriff.
-- [ ] RAG-backed Dokumentantworten zeigen versionsgenaue Quellen.
+- [x] RAG-backed Dokumentantworten zeigen versionsgenaue Quellen (Roadmap 784-791 / PLANS 645-652).
 
 ## Phase 4: Mail Core, Team Inbox, Mail Security, Voice und AI Triage
 

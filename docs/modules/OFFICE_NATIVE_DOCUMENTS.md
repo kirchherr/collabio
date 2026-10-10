@@ -1,9 +1,37 @@
 # Native Office Documents
 
-Status: Roadmap 252–783 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 783 / PLANS 644 isolated fifty-editor load proof
-Module: `office_documents` / version 0.9.8
-Decisions: ADR-0079 through ADR-0195; current movement: `ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md`
+Status: Roadmap 252–791 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 791 / PLANS 652 versioned RAG document answers
+Module: `office_documents` / version 0.9.9
+Decisions: ADR-0079 through ADR-0196; current movement: `ARCHITECTURE_DECISIONS/ADR-0196-native-office-rag-document-answers.md`
+
+## Versioned RAG document answers (Roadmap 784–791)
+
+The read-gated answer endpoint accepts only an exact current saved document version, a normalized question with at
+most eight searchable terms and a bounded result limit. Tenant AI and RAG policy must be enabled. The selected model
+must be local, tenant-allowed, approved for RAG and admitted for every source classification.
+
+Retrieval reuses the bounded current-version source search. Every returned candidate is then fetched again through
+the authoritative repository immediately before inference. Current-version identity, content hash, ACL version,
+title, classification and the server-derived anchor excerpt must all still match. The fixed approved prompt labels
+each source block as untrusted; browser-provided source bodies, prompts, models and citations are rejected by the
+request schema.
+
+Without a remaining authorized source the response is explicitly unsupported and no model runs. A supported answer
+is bounded, untrusted and accompanied by server-derived citations containing exact object and immutable current
+version IDs, title, classification, content hash, ACL version, anchor and excerpt. Each **Version anzeigen** action
+uses the ordinary exact-version read path and reauthorizes access again.
+
+Audit retains question/output hashes, IDs and exact citation references/hashes without question, source, prompt or
+answer bodies. Answers remain transient, noncacheable, non-indexed and unable to mutate documents, create records,
+certify compliance or trigger actions. Desktop and mobile proofs keep source and working-document version counts
+unchanged. No migration, vector index, durable result, cloud provider admission or production runtime is added.
+
+Focused service/API and dashboard contracts pass. The desktop/mobile browser proof passes 2/2 with report hash
+`sha256:b8d9a853b0332361e2bf3735c33e1d6c9e2bc9a366ffe04f67fbb1f703b92fc1`; screenshot hashes are
+`sha256:ad0899e4dcea108aa29df808cfea171dea69ec2551cf9e6cdca832b5c63dd32b` and
+`sha256:ab9bac1cfab04e2e54e3d07392596bc6d186cd86103d765956f625aa165d4e58`. Complete quality passes
+Ruff, 964-file formatting, Mypy over 639 sources and Pytest at 100 percent.
 
 ## Isolated fifty-editor load proof (Roadmap 776–783)
 

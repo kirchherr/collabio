@@ -2,6 +2,41 @@
 
 Updated: 2026-10-10
 
+Roadmap 784 through 791 / PLANS 645 through 652 are complete under ADR-0196. Native Office now answers bounded
+document questions only when tenant AI and RAG policy admit the request and an approved tenant-allowed local RAG model
+admits every source classification. Retrieval reuses the bounded current-version source search and then immediately
+reauthorizes every candidate through the authoritative repository. Current version, content hash, ACL version, title,
+classification and server-derived anchor excerpt must all still match before inference.
+
+The fixed approved prompt treats every authorized source block as untrusted. The browser supplies no source body,
+prompt, model, citation, action or persistence intent. Without an authorized source the service returns an explicit
+unsupported answer and skips inference. Supported answers remain untrusted and show exact server-derived object and
+version citations that open through the normal reauthorized exact-version read path. Audit stores hashes, IDs and
+citation references without question, source, prompt or answer bodies. The operation is transient, noncacheable,
+non-indexed, write-free and action-free.
+
+Focused service/API tests pass 38/38, followed by focused Ruff, format, Mypy and the roadmap dashboard contract. The
+dedicated responsive RAG browser proof passes 2/2 in desktop and mobile, keeps both document version counts at one and
+has report hash `sha256:b8d9a853b0332361e2bf3735c33e1d6c9e2bc9a366ffe04f67fbb1f703b92fc1`;
+desktop/mobile screenshot hashes are `sha256:ad0899e4dcea108aa29df808cfea171dea69ec2551cf9e6cdca832b5c63dd32b`
+and `sha256:ab9bac1cfab04e2e54e3d07392596bc6d186cd86103d765956f625aa165d4e58`. Visual review passed:
+the layout fits both profiles, identifies the output as untrusted and shows the exact cited source version. The mock
+provider now returns a short synthetic answer instead of echoing governance prompt text.
+
+Complete quality passes Ruff, finds 964 format-conformant files, passes Mypy over 639 source files and runs Pytest to
+100 percent with only the known Starlette/AnyIO warning. Quality, Work-E2E and review API image IDs are
+`sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`,
+`sha256:cd59c3c667b5bc6bce2e8822f0c4784fd42098c6c61cd1ee562241002662704e` and
+`sha256:bbb6b9fd191f386e79e8cefcf26722b9edf92321ac96e0fde6621e1b11e0595e`.
+
+All four Phase-3 Office exit criteria are now closed. The next action is complete quality, final review-runtime
+verification, content-specific GitHub publication and UI acceptance before resuming deferred CRM account onboarding.
+The review target is `http://192.168.0.108:42880/office?review=rag-adr0196` with asset keys `office.css?v=12` and
+`editor.js?v=8`. Exact isolated test dependencies, the interrupted broad browser runner and named transfer files are
+removed; no transient quality or Work-E2E runner remains. Review PostgreSQL, MinIO, decoder and API stay available.
+Regular and review APIs both return `ok`. Product commit `ed1276ea` is local on
+`kirchherr/kb-write-unit-of-work`; GitHub publication remains pending under the content-specific approval requirement.
+
 Roadmap 776 through 783 / PLANS 637 through 644 are complete under ADR-0195. The former fifty-client sequential
 preflight loop has been replaced by a deterministic isolated load harness with fifty genuinely parallel worker
 sessions against one tenant-bound document state. Eight synchronized rounds produce 400 unique updates; all fifty
