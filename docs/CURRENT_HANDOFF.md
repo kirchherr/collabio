@@ -2,6 +2,46 @@
 
 Updated: 2026-10-10
 
+Roadmap 760 through 767 / PLANS 621 through 628 are complete under ADR-0193. Native Office now exposes a governed
+push-to-talk dictation path for an exact current writable document version. Capability and transcript preparation
+freshly revalidate tenant module/write policy, authoritative object ACL and current-version identity. Local client STT
+requires voice policy; browser speech recognition additionally requires explicit external-provider admission.
+
+The browser starts recognition only while the visible button or keyboard control is held. Collabio uploads and stores
+no raw audio, rejects raw-audio-storage intent and receives only a bounded normalized transcript. The Voice Privacy
+Guard and Office audit retain IDs, adapter, language, insertion position, character count, policy and hashes without
+transcript or document bodies. The transcript is classified as personal `voice_transcript` data and remains transient.
+After complete response/hash validation it enters only the local draft; version count, search, RAG and records remain
+unchanged until the author uses the existing separately confirmed version save. Product commit `e44be5dc` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused Ruff/format, Mypy and seven service/API/dashboard/shell checks passed, including denied ACL, stale version,
+policy, raw-audio, strict-schema, insertion-bound and no-write cases. The final synthetic speech workflow passed 2/2
+on desktop and mobile in 11.1 seconds; the existing Office suggestion regression passed 10/10. Browser report hash is
+`sha256:0f4977a9f2132fb804434304436d667bbd7238508df051ab0618353093294cf1`; desktop and mobile screenshot hashes are
+`sha256:b4e4ec48beabbfab2580e16bb656f56c0fc1c92e2ef981d2ce811a1b98cd5750` and
+`sha256:975b7cafd7b59421707d30966896594c402351acc8a93a56a8fb930e93f3379d`. Final Work-E2E, review API and blocked API
+images are `sha256:c954e490d318861f77512c20a45aa322d17e65daaadd2d65c4004d68cdc1d90a`,
+`sha256:08b0b2cbcf992184f2ca3a8bfa042f3611f0728dd265db2facabae331e503d25` and
+`sha256:1bbad2aa26e0f338d4d1cff813b71b7c25361768674cbe0e7c4f4206ded19618`.
+
+The complete quality gate passed Ruff, found 948 format-conformant files, passed Mypy over its configured 633 sources
+and ran Pytest to 100 percent with only the known Starlette/AnyIO warning. A stricter standalone `mypy .` also passed
+over 636 sources. The first two complete attempts stopped before Pytest on missing return-type and enum-precise
+annotations in the new test helper; both test-only findings were corrected before the final green run. Final quality
+image ID is `sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`.
+
+The first responsive run exposed that WebCrypto is unavailable on the HTTP/LAN review origin, so transcript hash
+validation now has a deterministic UTF-8 SHA-256 fallback. A subsequent combined suggestion test reached its existing
+30-second limit after the new flow; dictation was separated into its own focused responsive suite. Live UI review then
+found the provider/status text too compressed and widened the toolbar group before final asset keys `office.css?v=10`
+and `editor.js?v=5`. The final review is
+`http://192.168.0.108:42880/office?review=dictation-adr0193`. Cleanup removed the exact isolated PostgreSQL test,
+blocked API, Work-E2E migration/seed containers and three named transfer resources. No transient quality or browser
+runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and decoder are healthy while review
+MinIO remains available. Text-to-speech is the next Office roadmap loop. GitHub publication remains pending under the
+content-specific approval requirement.
+
 Roadmap 752 through 759 / PLANS 613 through 620 are complete under ADR-0192. Native Office can now search the
 exact current saved versions of other tenant-readable documents without AI, vectors or RAG. The request is bound to
 the exact current source document version and a bounded two-through-200-character query. The server revalidates the

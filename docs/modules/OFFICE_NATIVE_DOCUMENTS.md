@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–759 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 759 / PLANS 620 versioned source search
-Module: `office_documents` / version 0.9.5
-Decisions: ADR-0079 through ADR-0192; current movement: `ARCHITECTURE_DECISIONS/ADR-0192-native-office-versioned-source-search.md`
+Status: Roadmap 252–767 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 767 / PLANS 628 push-to-talk dictation
+Module: `office_documents` / version 0.9.6
+Decisions: ADR-0079 through ADR-0193; current movement: `ARCHITECTURE_DECISIONS/ADR-0193-native-office-push-to-talk-dictation.md`
+
+## Push-to-talk dictation (Roadmap 760–767)
+
+The write-gated capability and preparation endpoints require the exact current immutable document version. Both
+freshly revalidate the tenant module/write feature, authoritative document ACL and current-version identity. The
+strict request contains only a bounded normalized transcript, ProseMirror UTF-16 insertion position, fixed language,
+explicit push-to-talk state, false raw-audio-storage intent and one known recognition adapter.
+
+Local client speech-to-text requires tenant voice policy. Browser speech recognition also requires explicit tenant
+admission for an external provider. The accessible toolbar starts recognition only while the author holds the visible
+button or keyboard control and stops on release. It shows the active provider boundary and that Collabio stores no
+raw audio; there is no always-on or background capture path.
+
+Collabio receives no audio. Every request for raw-audio storage is rejected. The Voice Privacy Guard and Office audit
+record only bounded identities, adapter, language, position, character count, policy, event IDs and transcript hash,
+never transcript or document bodies. The transcript is classified as personal `voice_transcript` data with transient
+non-persistence. Responses are noncacheable.
+
+After full response and hash validation, the browser inserts the transcript only into the local editor draft. No
+document version, record, search entry, RAG context or AI output is created. The existing explicit confirmed save
+remains the only durable write. Desktop and mobile synthetic-speech tests prove that version counts stay unchanged.
 
 ## Versioned source search (Roadmap 752–759)
 

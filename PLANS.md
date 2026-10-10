@@ -1886,12 +1886,36 @@ hash-only audit, noncacheable API behavior, zero document writes and responsive 
 620. [x] Close native Office versioned source search under ADR-0192 without a migration, LLM, vector index, RAG
 answer, cross-tenant discovery, historical-candidate search, persistent search results or production admission.
 
+621. [x] Add exact-current native Office dictation capability and preparation endpoints under ADR-0193. Require the
+document write feature and freshly revalidate authoritative tenant, object ACL and exact current version identity.
+
+622. [x] Require explicit push-to-talk activation, a bounded language and one fixed recognition adapter. Admit local
+client STT only with voice policy and browser speech recognition only with additional external-provider policy.
+
+623. [x] Accept only a normalized one-through-4,000-character transcript and a server-bounded ProseMirror UTF-16
+insertion position. Reject unknown fields, invalid Unicode, stale versions and forged or inaccessible objects.
+
+624. [x] Route every admitted transcript through the Voice Privacy Guard. Audit tenant, object, version, adapter,
+language, position, counts, policy, event IDs and hashes without transcript, document, prompt or output bodies.
+
+625. [x] Reject raw-audio storage unconditionally and upload no audio to Collabio. Mark the transcript as personal
+`voice_transcript` data with transient non-persistence; add no server-side transcript or document mutation.
+
+626. [x] Insert a fully validated transcript only into the local ProseMirror draft. Keep the immutable version count
+unchanged until the author uses the existing separately confirmed version-save flow.
+
+627. [x] Add an accessible responsive language selector, visible hold-to-talk control and live recording, policy,
+provider and draft-state feedback. Cancel capture when the document, editor, lease or version context changes.
+
+628. [x] Prove policy, ACL, exact-version, insertion-bound, strict-schema, hash-only audit and no-persistence behavior;
+run desktop/mobile synthetic speech, ten-case suggestion regression and visible UI review; close under ADR-0193.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 759 / PLANS 620. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison, server-anchored risk marking and bounded ACL-revalidated current-version source search. Continue with explicit push-to-talk dictation through the Voice Transcript Flow. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 767 / PLANS 628. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison, server-anchored risk marking, bounded ACL-revalidated current-version source search and explicit push-to-talk dictation with no raw-audio or transcript persistence. Continue with the governed text-to-speech adapter interface. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

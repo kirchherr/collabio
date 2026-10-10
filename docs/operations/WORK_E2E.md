@@ -935,6 +935,19 @@ Main backup, isolated restore with foundation seed 0 and both release gates prec
 rollout. The regular decoder, main schema, ports and ordinary admission boundaries stay unchanged.
 See CURRENT_HANDOFF.md for the executed acceptance results and hashes.
 
+## Roadmap 760-767 push-to-talk dictation
+
+`office-dictation-responsive.spec.mjs` installs a synthetic `SpeechRecognition` implementation before navigation. It
+emits only a transcript and never requests a real microphone permission, uploads audio or calls an external provider.
+Run it on both `desktop-chromium` and `mobile-chromium`. The workflow creates one immutable document version, holds
+the visible dictation control, emits a final transcript, releases the control, validates the noncacheable preparation
+response and confirms that the transcript exists only in the dirty local draft while the version count remains one.
+
+The test deliberately uses the internal HTTP Compose origin, which exercises the browser's pure-JavaScript SHA-256
+fallback when WebCrypto is unavailable outside a secure context. It also asserts visible provider/raw-audio feedback,
+button containment and no page-level horizontal overflow. The ordinary suggestion specs stay separate so their fixed
+30-second responsive budget does not hide regressions behind a larger combined timeout.
+
 Final acceptance on 800a3a5 passed all 345 cases in one complete run, zero skipped/unexpected/flaky,
 with full Python quality (2875 cases). The final eight PDFs/16 pages passed independent geometry,
 text, image and tagging checks; all final raster hashes match the root-reviewed pages. Fresh272 recovery
