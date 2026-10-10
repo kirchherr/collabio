@@ -2,6 +2,44 @@
 
 Updated: 2026-10-10
 
+Roadmap 704 through 711 / PLANS 565 through 572 are complete under ADR-0186. Native Office can summarize one marked
+text range from the exact current immutable document version. The server revalidates the authoritative document ACL,
+derives the selected text from the saved version and binds the inference to the exact object, version, anchor and
+selection hash; browser-supplied text is never the model source.
+
+The service chooses only a summarization-approved model from the tenant allowlist whose registry deployment is local
+and whose provider is admitted behind the Local LLM Gateway. The browser cannot select a provider. Public content is
+handled at least as internal, while confidential and restricted documents remain closed until tenant, model and
+prompt registries explicitly admit the confidential class. Prompt/output bodies stay out of normal logs and audit;
+the AI audit stores model, prompt template, source IDs and input/output hashes.
+
+The response is visibly labelled **AI-Entwurf · ungeprüft**, remains transient and changes neither the document nor
+its version count. It only fills the existing proposal composer. A user must explicitly confirm suggestion creation
+and later explicitly accept that suggestion before a new immutable document version can exist. Product commit
+`a0f95f43` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service/API/capability checks passed. The final responsive desktop/mobile workflow passed 2/2 in 18.2
+seconds, and the complete Office suggestion browser suite passed 10/10 in 1.3 minutes. The final browser report hash
+is `sha256:84886000ce0f8c423cb961829a3b962b27f5ffbd0a030b12fbcb04f90d518aa2`; desktop, tablet and mobile screenshots
+were produced. Work-E2E and review API image IDs are
+`sha256:dfc48ef144d9375961f857281035b5a369cfad686822f34ea536d5de1651444c` and
+`sha256:555565f43d0d0c4d2d58ec77159835ee0e0275710a1796e1037fface9f694246`.
+
+The complete final quality gate passed Ruff, found 927 format-conformant files, passed Mypy over 619 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API, seed/migration containers and temporary transfer patches
+were removed. No transient runner remains; regular and review APIs both return `ok`, and review health is
+`healthy/0`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated
+projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=selection-summary-a0f95f43`.
+
+This slice adds no migration, durable AI draft, automatic suggestion, automatic save, cloud-provider selection,
+whole-document inference or production admission. The next Office step is rewriting and tone control on the same
+exact-version, local-model and explicit-confirmation boundary. GitHub publication remains pending under the
+content-specific approval requirement.
+
 Roadmap 696 through 703 / PLANS 557 through 564 are complete under ADR-0185. Native Office now has nine deterministic
 synthetic interchange fixtures: one allowed, one visibly marked and one blocked input for each of DOCX, ODT and PDF.
 Exact source hashes, byte lengths, policy outcomes, parser outcomes, text hashes, warning counts and a canonical
