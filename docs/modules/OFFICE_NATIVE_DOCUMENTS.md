@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–687 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 687 / PLANS 548 bounded macro policy
+Status: Roadmap 252–695 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 695 / PLANS 556 import compatibility matrix
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0183; current movement: `ARCHITECTURE_DECISIONS/ADR-0183-bounded-native-office-macro-policy.md`
+Decisions: ADR-0079 through ADR-0184; current movement: `ARCHITECTURE_DECISIONS/ADR-0184-native-office-import-compatibility-matrix.md`
+
+## Import compatibility matrix (Roadmap 688–695)
+
+The tenant-scoped `office_import_compatibility_matrix.v1` records the exact development-parser boundary for DOCX,
+ODT and PDF. Its thirteen feature rows distinguish `text_supported`, `text_flattened`, `blocked_active_content`,
+`visible_review_marker` and `unsupported`. Every row keeps `fidelity_preserved=false`; the matrix does not infer whole-
+format support from a successful text extraction.
+
+DOCX main-document paragraph text is bounded support. Heading, list and table-cell text is flattened, while headers,
+footers, notes, comments, drawings and revisions are unsupported. ODT paragraph and heading text is bounded support;
+lists, tables, styles, fields and annotations are flattened. PDF basic literal strings are flattened, while scans,
+complex fonts, layout, forms and accessibility structure require a separately admitted engine.
+
+The active-content policy remains authoritative. DOCX VBA/ActiveX/OLE/templates, ODT scripts and PDF JavaScript,
+actions or embedded files are blocked before extraction. Nonexecuting signature and external-link indicators remain
+visible review markers. The matrix does not execute, sanitize, parse or accept content.
+
+The endpoint is Office-read-gated, tenant-bound, noncacheable and metadata only. Audit stores the schema, state,
+bounded counts and closed interchange flags. Import dispatch, export, round-trip fidelity and production admission
+remain false. Focused contracts and the exact responsive desktop/mobile lifecycle workflow pass. The next bounded
+step is a real import/export test corpus with explicit fixtures and expected derivatives.
 
 ## Bounded macro policy (Roadmap 680–687)
 

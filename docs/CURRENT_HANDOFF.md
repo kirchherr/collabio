@@ -2,6 +2,37 @@
 
 Updated: 2026-10-10
 
+Roadmap 688 through 695 / PLANS 549 through 556 are complete under ADR-0184. Native Office now exposes a
+tenant-scoped, metadata-only `office_import_compatibility_matrix.v1` with thirteen exact feature entries across DOCX,
+ODT and PDF. The endpoint accepts no content, SourceObject ID or version ID.
+
+The matrix distinguishes bounded text support, flattened text, blocked active content, visible review markers and
+unsupported features. Every entry keeps fidelity false. DOCX secondary parts, ODT structure and complex PDF features
+are not presented as preserved merely because some text can be extracted. ADR-0183 remains authoritative for
+blocking VBA/ActiveX/OLE/templates, ODF scripts and PDF actions before extraction and for visibly marking
+nonexecuting signature/link indicators.
+
+The endpoint is Office-read-gated, tenant-bound and `no-store`; audit is metadata only. Import dispatch, export,
+round-trip fidelity and production admission remain false. The responsive **Dokumentstatus** exposes that boundary.
+Product commit `9c2124dc` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, formatting and Mypy passed, and
+the exact responsive desktop/mobile lifecycle workflow passed 2/2 in 11.9 seconds. Final Work-E2E and review API
+image IDs are `sha256:f4760c5c0922b9c7ec69ba922358a4a815ba3a69f908670915d4858b1c7eea9f` and
+`sha256:9dff8398f2cff8eec2e4aafe4ee31de47ff66ed1f9dc2cb0a9f99f5b0b95ad46`.
+
+The complete final quality gate passed Ruff, found 921 format-conformant files, passed Mypy over 615 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:a7be0dc1b01dfe2896e64a5243da67f0f6968bae56a19fadb2c70eeaea5b3e23`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and five inventoried remote plus five local compatibility transfer files were removed. No transient
+quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`.
+Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were
+unchanged. The review surface is `http://192.168.0.108:42880/office?review=import-compatibility-9c2124dc`.
+
+This slice adds no migration, import/export content flow, parser dispatch, fidelity claim, productive engine
+admission or production release. The next Office step is the import/export test corpus. GitHub publication remains
+pending under the content-specific approval requirement.
+
 Roadmap 680 through 687 / PLANS 541 through 548 are complete under ADR-0183. Native Office now has one tenant-scoped,
 metadata-only `office_macro_policy.v1` and an enforced pre-extraction active-content barrier in the existing isolated
 rich-document worker. The policy endpoint accepts no content, SourceObject ID or version ID.

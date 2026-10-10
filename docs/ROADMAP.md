@@ -648,7 +648,7 @@ Aufgaben:
 - [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
 - [x] Parser-Worker isoliert und ohne Netzwerk planen (Roadmap 672-679 / PLANS 533-540).
 - [x] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP (Roadmap 680-687 / PLANS 541-548).
-- [ ] OOXML/ODF-Kompatibilitaetsmatrix erstellen.
+- [x] OOXML/ODF-Kompatibilitaetsmatrix erstellen (Roadmap 688-695 / PLANS 549-556).
 - [ ] Import/Export-Testkorpus anlegen.
 - [ ] Textzusammenfassung fuer markierte Bereiche.
 - [ ] Umformulieren und Tonalitaet aendern.
@@ -3522,7 +3522,36 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Makroausfuehrung, automatische Bereinigung, Quarantaene-Workflow, Policy-Receipt-Persistenz, produktiven
      Parser-Dispatch oder Produktionsfreigabe geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 687 / PLANS 224 bis 548 sind unter ADR-0139 bis ADR-0183 implementiert
+688. [x] Eine versionierte, tenant-gebundene und metadatenreine `office_import_compatibility_matrix.v1` eingefuehrt.
+     Der Endpunkt nimmt keine Datei oder Source-/Versions-ID an und haelt Import-Dispatch, Export und Produktion
+     geschlossen.
+
+689. [x] Fuer DOCX, ODT und PDF dreizehn merkmalsgenaue Eintraege mit den expliziten Zustaenden `text_supported`,
+     `text_flattened`, `blocked_active_content`, `visible_review_marker` und `unsupported` festgelegt. Kein Eintrag
+     behauptet Format- oder Rundlauf-Treue.
+
+690. [x] DOCX-Haupttext als begrenzt unterstuetzt, Struktur und Styling von Ueberschriften, Listen und Tabellen als
+     abgeflacht sowie Header, Footer, Notizen, Kommentare, Zeichnungen und Revisionen als nicht unterstuetzt
+     ausgewiesen. VBA, ActiveX, OLE und externe Templates bleiben blockiert; Signatur-/Linkindikatoren markiert.
+
+691. [x] ODT-Absatz- und Ueberschriftentext als begrenzt unterstuetzt, Listen, Tabellen, Styles, Felder und
+     Annotationen als abgeflacht ausgewiesen. Basic/Skripte bleiben blockiert; Signatur-/Linkindikatoren markiert.
+
+692. [x] PDF-Basistexte als abgeflacht sowie Scans, komplexe Fonts, Layout, Formulare und Accessibility-Struktur als
+     nicht unterstuetzt ausgewiesen. JavaScript, Aktionen und eingebettete Dateien bleiben blockiert;
+     Signatur-/Linkindikatoren markiert.
+
+693. [x] Die Matrix an das Office-Lesegate und den aktuellen Tenant gebunden. Audit enthaelt nur Schema, Zustand,
+     begrenzte Zaehler und geschlossene Import-/Export-/Fidelity-Werte; die Antwort bleibt `no-store` und inhaltsfrei.
+
+694. [x] Exakte Matrix-, Service-, API- und Dashboard-Vertraege bestanden. Der reale responsive Dokumentstatus-
+     Workflow bestand auf Desktop und Mobil 2/2 in 11,9 Sekunden und zeigt die merkmalsgenaue, geschlossene Grenze.
+
+695. [x] Die native Office-Import-Kompatibilitaetsmatrix unter ADR-0184 ohne Migration, Inhaltsannahme,
+     Import-Dispatch, Export, Rundlauf-Treuebehauptung, produktive Parser-Zulassung oder Produktionsfreigabe
+     geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 695 / PLANS 224 bis 556 sind unter ADR-0139 bis ADR-0184 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
