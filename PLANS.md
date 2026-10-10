@@ -1838,12 +1838,36 @@ version and ACL enforcement, policy denials, strict output validation and unchan
 604. [x] Close native Office policy comparison under ADR-0190 without a migration, durable AI result, automatic edit,
 compliance certification, action execution, indexing, cloud provider or production admission.
 
+605. [x] Add a read-gated native Office risk-marking endpoint under ADR-0191. Accept only an exact current saved
+version; derive all native text blocks and anchors server-side after authoritative document ACL validation.
+
+606. [x] Register one fixed approved prompt and select only drafting-approved tenant-allowed local models behind the
+Local LLM Gateway. Keep confidential and restricted documents fail closed without complete registry admission.
+
+607. [x] Require `clear` or one through eight structured findings with fixed severity/category allowlists and exact
+existing block numbers. Reject duplicate, unknown, malformed, oversized and invalid-Unicode model output.
+
+608. [x] Return source excerpts and ProseMirror UTF-16 anchors only from the server's pre-inference native block
+inventory. Never trust model-provided source text, positions or actions.
+
+609. [x] Keep the report visibly untrusted, transient, non-indexed and incapable of editing the document, creating a
+record, making a compliance decision or triggering an action. Audit only IDs, counts and input/output hashes.
+
+610. [x] Add a responsive dismissible risk report with fixed category/severity labels and a `Stelle anzeigen` action
+that selects and scrolls to the exact saved passage without changing document content or version count.
+
+611. [x] Prove exact current version and ACL enforcement, fixed prompt/local-model admission, strict grammar,
+server-derived anchors, clear findings, browser navigation, no writes and responsive layout.
+
+612. [x] Close native Office risk marking under ADR-0191 without a migration, durable annotation, automatic edit,
+compliance certification, action execution, indexing, cloud provider or production admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 743 / PLANS 604. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts and two-source policy comparison through tenant-admitted local models, approved versioned prompts, exact source citations, hash-only AI audit and untrusted transient output. Continue with risk marking as the next AI Writing Assistant step. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 751 / PLANS 612. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison and server-anchored risk marking through tenant-admitted local models, approved versioned prompts, exact source citations, hash-only AI audit and untrusted transient output. Continue with versioned source search as the next AI Writing Assistant step. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

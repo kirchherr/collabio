@@ -1,9 +1,24 @@
 # Native Office Documents
 
-Status: Roadmap 252–743 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 743 / PLANS 604 policy comparison
-Module: `office_documents` / version 0.9.3
-Decisions: ADR-0079 through ADR-0190; current movement: `ARCHITECTURE_DECISIONS/ADR-0190-native-office-policy-comparison.md`
+Status: Roadmap 252–751 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 751 / PLANS 612 risk marking
+Module: `office_documents` / version 0.9.4
+Decisions: ADR-0079 through ADR-0191; current movement: `ARCHITECTURE_DECISIONS/ADR-0191-native-office-risk-marking.md`
+
+## Risk marking (Roadmap 744–751)
+
+The read-gated risk endpoint accepts only the exact current immutable version ID. The browser sends no document
+body, free instruction, model, provider, categories or requested action. The server revalidates authoritative access,
+enumerates bounded native text runs with exact UTF-16 editor anchors and rejects empty or over-16,000-character input.
+
+One fixed approved prompt treats every numbered block as untrusted. Only a tenant-allowed, drafting-approved local
+model behind the Local LLM Gateway is eligible. The strict grammar allows `clear` or one through eight findings with
+fixed severity/category values and existing block numbers. Duplicate, unknown or malformed findings fail closed.
+
+Source excerpts and anchors always come from the server inventory, never from model output. The responsive report is
+labelled **AI-Risikoprüfung · ungeprüft** and lets the user select each exact saved passage with **Stelle anzeigen**.
+It is dismissible and transient; it changes no content or version, creates no annotation or compliance decision,
+triggers no action and remains excluded from search and RAG indexing. Audit stores only IDs, counts and hashes.
 
 ## Policy comparison (Roadmap 736–743)
 

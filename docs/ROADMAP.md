@@ -655,7 +655,7 @@ Aufgaben:
 - [x] Uebersetzen (Roadmap 720-727 / PLANS 581-588).
 - [x] Gliederung erzeugen (Roadmap 728-735 / PLANS 589-596).
 - [x] Dokument mit Richtlinie vergleichen (Roadmap 736-743 / PLANS 597-604).
-- [ ] Risiken markieren.
+- [x] Risiken markieren (Roadmap 744-751 / PLANS 605-612).
 - [ ] Quellen suchen und versioniert anzeigen.
 - [ ] Diktat in Dokumente ueber Voice Transcript Flow.
 - [ ] Text-to-Speech Adapter Interface.

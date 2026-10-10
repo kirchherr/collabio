@@ -2,6 +2,49 @@
 
 Updated: 2026-10-10
 
+Roadmap 744 through 751 / PLANS 605 through 612 are complete under ADR-0191. Native Office can now inspect the
+exact current saved document version for bounded legal, financial, privacy, security, operational and commitment
+risks. The browser sends only the current version identity. The server revalidates the authoritative read ACL,
+enumerates native text blocks with exact ProseMirror UTF-16 anchors and keeps model-provided text and positions out
+of the trust boundary.
+
+One fixed approved prompt treats the indexed document blocks as untrusted data. Only tenant-admitted,
+drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted documents
+remain closed unless tenant, model and prompt registries all admit the confidential data class. The request accepts
+no free instruction, source body, model or provider.
+
+The model must return either `clear` or one through eight findings with fixed severity, category and existing block
+number. Invalid, duplicate, unknown, oversized or malformed output fails closed. Source excerpts, anchors and the
+highest severity are derived or revalidated by the server. The responsive report is labelled **AI-Risikopruefung ·
+ungeprueft**, can select and scroll to the exact saved passage and remains transient. It cannot edit a document,
+create a version or record, decide compliance, trigger an action or enter search/RAG indexes. Audit contains only
+bounded identifiers, counts and input/output hashes. Product commit `f8c94ee2` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry, persistence, roadmap and browser-support checks passed. The complete Office
+suggestion suite passed 10/10 before the final boundary hardening; the final responsive desktop/mobile workflow
+passed 2/2 in 39.7 seconds and proved exact source selection plus unchanged version counts. The final browser report
+hash is `sha256:d7e819359bc70b35f49952db819ebdf939fcff94d8c1f149494c4df085875962`; desktop, tablet and mobile screenshot
+hashes are `sha256:3abbd350baa6c4f130c3cca3746fb44fba9945a9b294c74e297fe7215ac6d009`,
+`sha256:d0c8c3b6772668bdaf49e1ba18ab3c83138799f049caf1331a35e46a82f8451f` and
+`sha256:63560a7cda2a6bff7f677b3e56b1476fd31a74672acc94cc9549a06cedd58c66`. The existing-browser review exposed stale
+asset reuse, so the shell now pins `editor.js?v=2` and `office.css?v=5`; its same-origin CSP/cache contract tests both
+versions. Work-E2E, review API and blocked review API image IDs are
+`sha256:281e455b5f0ea0164c5cea72f897dc2e8dc899fa56ac9364bdd57e0f02957dfd`,
+`sha256:8795fcdf577294f466be760a4c3e09841a674fe19572268842f660039658c927` and
+`sha256:47d9f061947d71035a2a4f336e90c03a8ec85c6915471edad81ace427c9081ab`.
+
+The complete final quality gate passed Ruff, found 942 format-conformant files, passed Mypy over 629 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The final quality image ID is
+`sha256:83cd44457e7de2f6d517da2c864f686151095b3d40a85ffbf4284e695077d2b3`.
+
+The review surface is `http://192.168.0.108:42880/office?review=risk-marking-v2`. Cleanup removed only the exact
+isolated PostgreSQL test container, blocked API and eleven named transfer files; no transient runner remains. Regular
+and review APIs both return `ok`, the review API is healthy, and review PostgreSQL, MinIO, decoder and API remain
+available. This slice adds no migration, durable risk annotation, automatic edit/action, compliance
+certification, indexing, cloud provider or production admission. Versioned source search is the next Office AI
+Writing Assistant loop. GitHub publication remains pending under the content-specific approval requirement.
+
 Roadmap 736 through 743 / PLANS 597 through 604 are complete under ADR-0190. Native Office can now compare one exact
 current saved document with a different readable policy document. The browser sends only both object/version
 identities. The server revalidates both authoritative ACLs, requires both versions to remain current and extracts

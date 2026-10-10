@@ -35,6 +35,7 @@ Prompts must be versioned and reviewed. They must not be scattered through featu
 - `document_outline_concise_v1`
 - `document_outline_detailed_v1`
 - `document_policy_comparison_v1`
+- `document_risk_marking_v1`
 - `rag_answer_v1`
 
 All prompts are represented by the in-memory prompt registry and covered by policy checks. Inference requires an
