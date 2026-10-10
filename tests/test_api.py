@@ -1232,6 +1232,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/{object_id}/ai/summaries",
         "/v1/office/documents/{object_id}/ai/rewrites",
         "/v1/office/documents/{object_id}/ai/translations",
+        "/v1/office/documents/{object_id}/ai/outlines",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
         "/v1/office/documents/{object_id}/backlinks",
@@ -1350,6 +1351,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         in office_native["evidence_refs"]
     )
     assert "tests/test_office_ai_translation.py" in office_native["evidence_refs"]
+    assert "ARCHITECTURE_DECISIONS/ADR-0189-native-office-selection-outline-drafts.md" in office_native["evidence_refs"]
+    assert "tests/test_office_ai_outline.py" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1367,6 +1370,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/{object_id}/ai/summaries", "POST"),
         ("/v1/office/documents/{object_id}/ai/rewrites", "POST"),
         ("/v1/office/documents/{object_id}/ai/translations", "POST"),
+        ("/v1/office/documents/{object_id}/ai/outlines", "POST"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),
         ("/v1/office/documents/{object_id}/collaboration/preflight", "POST"),

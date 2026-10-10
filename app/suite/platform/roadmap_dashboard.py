@@ -828,7 +828,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Fixture-Bytes, Export-Engine und Rundlauf-Treue bleiben geschlossen. "
                         "Die lokale AI-Schreibassistenz verarbeitet nur eine serverseitig aus der exakten aktuellen "
                         "Fassung abgeleitete Textauswahl. Zusammenfassung, Umformulierung, fuenf feste Tonarten und "
-                        "neun feste Zielsprachen liefern ungepruefte fluechtige Entwuerfe in den bestaetigten "
+                        "neun feste Zielsprachen sowie kompakte und detaillierte Gliederungen liefern ungepruefte "
+                        "fluechtige Entwuerfe in den bestaetigten "
                         "Vorschlagsablauf; freie Prompts und Zielsprachen, "
                         "automatische Speicherung und nicht zugelassene Cloud-Modelle bleiben ausgeschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
@@ -944,6 +945,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_ai_rewrite.py",
                         "ARCHITECTURE_DECISIONS/ADR-0188-native-office-selection-translation-drafts.md",
                         "tests/test_office_ai_translation.py",
+                        "ARCHITECTURE_DECISIONS/ADR-0189-native-office-selection-outline-drafts.md",
+                        "tests/test_office_ai_outline.py",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -955,6 +958,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/ai/summaries",
                         "/v1/office/documents/{object_id}/ai/rewrites",
                         "/v1/office/documents/{object_id}/ai/translations",
+                        "/v1/office/documents/{object_id}/ai/outlines",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
                         "/v1/office/documents/{object_id}/backlinks",
@@ -1015,6 +1019,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "translation_targets_and_prompts_are_fixed_without_browser_instruction_or_model_selection",
                         "office_ai_translation_uses_only_tenant_admitted_local_drafting_models",
                         "ai_translation_output_is_untrusted_transient_and_requires_two_confirmations_before_save",
+                        "selection_outline_revalidates_exact_saved_version_and_authoritative_acl",
+                        "outline_detail_and_prompts_are_fixed_without_browser_instruction_or_model_selection",
+                        "outline_output_requires_bounded_validated_markdown_bullet_lines",
+                        "ai_outline_output_is_untrusted_transient_and_requires_two_confirmations_before_save",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1047,7 +1055,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="add_native_office_generated_outline_drafts",
+                    next_action="add_native_office_policy_comparison_drafts",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

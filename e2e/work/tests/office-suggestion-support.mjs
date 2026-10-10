@@ -7,6 +7,7 @@ export const suggestionsPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponen
 export const summaryPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/summaries`;
 export const rewritePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rewrites`;
 export const translationPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/translations`;
+export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/outlines`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -124,6 +125,31 @@ export async function translateSuggestion(page, objectId, selectedText, targetLa
   await expect(page.locator("#suggestion-ai-label")).toBeVisible();
   await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
   await expect(page.locator("#suggestion-replacement")).toHaveValue(result.translation);
+  return result;
+}
+
+export async function outlineSuggestion(page, objectId, selectedText, detail = "concise") {
+  await selectSuggestionText(page, selectedText);
+  await page.locator("#suggestion-outline-detail").selectOption(detail);
+  await expect(page.locator("#suggestion-outline")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === outlinePath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-outline").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.detail).toBe(detail);
+  expect(result.outline_line_count).toBeGreaterThanOrEqual(2);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.outline);
   return result;
 }
 

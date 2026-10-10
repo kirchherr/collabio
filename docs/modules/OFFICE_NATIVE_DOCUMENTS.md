@@ -1,9 +1,31 @@
 # Native Office Documents
 
-Status: Roadmap 252–727 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 727 / PLANS 588 selection translation drafts
-Module: `office_documents` / version 0.9.1
-Decisions: ADR-0079 through ADR-0188; current movement: `ARCHITECTURE_DECISIONS/ADR-0188-native-office-selection-translation-drafts.md`
+Status: Roadmap 252–735 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 735 / PLANS 596 selection outline drafts
+Module: `office_documents` / version 0.9.2
+Decisions: ADR-0079 through ADR-0189; current movement: `ARCHITECTURE_DECISIONS/ADR-0189-native-office-selection-outline-drafts.md`
+
+## Selection outline drafts (Roadmap 728–735)
+
+The read-gated outline endpoint accepts one exact current immutable version, one bounded same-block text anchor and
+the fixed detail value concise or detailed. It accepts no source text, model, provider, free instruction, output
+format or arbitrary depth. The server revalidates the document ACL and derives the source selection from the saved
+version.
+
+Each detail maps to an approved versioned prompt that preserves source language, facts, names, numbers and
+commitments and treats the delimited source as untrusted data. Only tenant-allowed, drafting-approved local models
+behind the Local LLM Gateway are eligible. Confidential and restricted documents remain closed unless tenant, model
+and the exact prompt all admit confidential data.
+
+The server accepts only structured Markdown bullet output: concise outlines contain two through eight nonempty lines
+and detailed outlines two through twenty. Empty, unchanged, oversized, invalid-Unicode, unstructured, one-line and
+over-limit results fail closed. Response and hash-only audit bind the exact source and validated line count without
+storing source or output bodies.
+
+The responsive AI writing panel exposes a fixed detail selector. The untrusted transient result enters the existing
+editable proposal composer with a visible detail label. Saving a suggestion and accepting it remain two separate
+explicit confirmations before an immutable version can change. Whole-document outlines, semantic heading insertion,
+arbitrary depth and automatic writes remain closed.
 
 ## Selection translation drafts (Roadmap 720–727)
 

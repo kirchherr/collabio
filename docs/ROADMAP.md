@@ -653,7 +653,7 @@ Aufgaben:
 - [x] Textzusammenfassung fuer markierte Bereiche (Roadmap 704-711 / PLANS 565-572).
 - [x] Umformulieren und Tonalitaet aendern (Roadmap 712-719 / PLANS 573-580).
 - [x] Uebersetzen (Roadmap 720-727 / PLANS 581-588).
-- [ ] Gliederung erzeugen.
+- [x] Gliederung erzeugen (Roadmap 728-735 / PLANS 589-596).
 - [ ] Dokument mit Richtlinie vergleichen.
 - [ ] Risiken markieren.
 - [ ] Quellen suchen und versioniert anzeigen.

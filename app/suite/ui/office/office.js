@@ -5601,8 +5601,10 @@ function updateSuggestionControls() {
   $("suggestion-rewrite").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-tone").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-translate").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-outline").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-tone-select").disabled = busy;
   $("suggestion-translation-select").disabled = busy;
+  $("suggestion-outline-detail").disabled = busy;
   const composer = suggestions?.composer;
   const length = Array.from(composer?.replacement || "").length;
   $("suggestion-count").textContent = composer?.operation === "create" ? `${length} / 4.000 Zeichen` : "";
@@ -5813,6 +5815,19 @@ function validAITranslation(result, suggestions, selection, targetLanguage) {
     result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
     result.search_indexing_allowed === false;
 }
+function validAIOutline(result, suggestions, selection, detail) {
+  const lines = typeof result?.outline === "string" ? result.outline.split(/\r?\n/).filter((line) => line.trim()) : [];
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && result.source_anchor?.from === selection.anchor.from &&
+    result.source_anchor?.to === selection.anchor.to && /^sha256:[a-f0-9]{64}$/.test(result.source_selection_hash || "") &&
+    result.detail === detail && Boolean(result.outline?.trim()) && result.outline !== selection.quote &&
+    Array.from(result.outline).length <= 4000 && result.outline_line_count === lines.length &&
+    lines.length >= 2 && lines.length <= (detail === "concise" ? 8 : 20) && typeof result.model_id === "string" &&
+    typeof result.prompt_template_id === "string" && typeof result.inference_audit_event_id === "string" &&
+    result.output_trust === "untrusted" && result.persisted === false && result.document_changed === false &&
+    result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
+    result.search_indexing_allowed === false;
+}
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
   const selection = selectedReviewAnchor();
@@ -5940,6 +5955,48 @@ async function translateSuggestionSelection() {
     $("suggestions-status").textContent = denied(error) ?
       "Die lokale Übersetzung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
       "Die lokale Übersetzung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function outlineSuggestionSelection() {
+  const suggestions = state.suggestions;
+  const selection = selectedReviewAnchor();
+  const detail = $("suggestion-outline-detail").value;
+  const detailLabels = { concise: "Kompakte Gliederung", detailed: "Detaillierte Gliederung" };
+  if (!canCreateSuggestion(suggestions) || !selection || !detailLabels[detail]) return;
+  const revision = suggestions.session.revision;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) ||
+      !canCreateSuggestion(suggestions) || suggestions.session.revision !== revision) return;
+  const selected = selectedReviewAnchor();
+  if (!selected || selected.anchor.from !== selection.anchor.from || selected.anchor.to !== selection.anchor.to) return;
+  suggestions.summarizing = true;
+  $("suggestions-status").textContent = "Gliederung wird lokal erzeugt …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/outlines`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, anchor: selection.anchor, detail },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validAIOutline(result, suggestions, selection, detail)) throw new ApiError(502, true);
+    clearSuggestionComposer(suggestions);
+    suggestions.composer = { operation: "create", suggestionId: null, anchor: selection.anchor, quote: selection.quote,
+      replacement: result.outline, revision: 0, documentRevision: revision, aiDraft: true,
+      aiOperation: "outline", aiOutlineDetail: detail, inferenceAuditEventId: result.inference_audit_event_id };
+    $("suggestion-composer-title").textContent = `${detailLabels[detail]} als Änderungsvorschlag`;
+    $("suggestion-before").textContent = selection.quote;
+    $("suggestion-replacement").value = result.outline;
+    $("suggestion-ai-label").textContent = `AI-Entwurf · ungeprüft · ${detailLabels[detail]}. Inhalt prüfen, bevor Sie den Vorschlag ausdrücklich speichern.`;
+    $("suggestion-ai-label").hidden = false;
+    $("suggestion-composer").hidden = false;
+    $("suggestions-status").textContent = "Lokaler AI-Entwurf erstellt. Gliederung prüfen und ausdrücklich bestätigen.";
+    $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die lokale Gliederung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die lokale Gliederung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6495,6 +6552,8 @@ $("suggestion-tone").addEventListener("mousedown", (event) => { if (event.button
 $("suggestion-tone").addEventListener("click", () => transformSuggestionSelection("tone"));
 $("suggestion-translate").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-translate").addEventListener("click", translateSuggestionSelection);
+$("suggestion-outline").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-outline").addEventListener("click", outlineSuggestionSelection);
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;
