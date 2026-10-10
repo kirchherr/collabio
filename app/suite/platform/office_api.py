@@ -62,6 +62,7 @@ from suite.platform.office_images import (
     read_image,
     store_uploaded_image,
 )
+from suite.platform.office_import_compatibility import OfficeImportCompatibilityResponse
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository, PgOfficeReviewRepository
@@ -268,6 +269,16 @@ def register_office_routes(
         return FileResponse("/opt/collabio-office/THIRD_PARTY_NOTICES.txt", media_type="text/plain")
 
     router = APIRouter(prefix="/v1/office/documents", route_class=OfficeRoute, dependencies=[Depends(read_gate)])
+
+    @router.get("/import-compatibility-matrix", response_model=OfficeImportCompatibilityResponse)
+    def import_compatibility_matrix(
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.import_compatibility_matrix(
+            user_context=context.user_context,
+            read_enabled=True,
+        )
 
     @router.get("/macro-policy", response_model=OfficeMacroPolicyResponse)
     def macro_policy(

@@ -22,6 +22,10 @@ from suite.platform.office_document_schema import (
     office_document_references,
     validate_office_document,
 )
+from suite.platform.office_import_compatibility import (
+    OfficeImportCompatibilityResponse,
+    build_office_import_compatibility_matrix,
+)
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse, build_office_macro_policy
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse, build_office_parser_worker_plan
 from suite.storage.source_object_storage import SourceObjectStorageError
@@ -815,6 +819,34 @@ class OfficeDocumentService:
                     blocker_count=len(response.blockers),
                     active_content_execution_allowed=False,
                     parser_dispatch_allowed=False,
+                    content_included=False,
+                )
+            }
+        )
+
+    def import_compatibility_matrix(
+        self,
+        *,
+        user_context: UserContext,
+        read_enabled: bool = False,
+    ) -> OfficeImportCompatibilityResponse:
+        if not read_enabled:
+            raise OfficeDocumentPermissionError("Office import compatibility is not permitted")
+        response = build_office_import_compatibility_matrix(tenant_id=user_context.tenant_id)
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.import_compatibility_matrix.read",
+                    schema_version=response.schema_version,
+                    matrix_state=response.matrix_state,
+                    entry_count=len(response.entries),
+                    supported_format_count=len({entry.format_id for entry in response.entries}),
+                    blocked_entry_count=sum(entry.state == "blocked_active_content" for entry in response.entries),
+                    marked_entry_count=sum(entry.state == "visible_review_marker" for entry in response.entries),
+                    import_dispatch_allowed=False,
+                    export_allowed=False,
+                    round_trip_fidelity_claimed=False,
                     content_included=False,
                 )
             }

@@ -733,6 +733,38 @@ async function loadMacroPolicy(session, context) {
   }
 }
 
+function importCompatibilityMatches(value) {
+  const counts = value?.entries?.reduce((result, entry) => {
+    result[entry.format_id] = (result[entry.format_id] || 0) + 1;
+    return result;
+  }, {});
+  return value?.tenant_id === state.context.tenantId &&
+    value.schema_version === "office_import_compatibility_matrix.v1" &&
+    value.matrix_state === "development_contract_dispatch_closed" &&
+    value.parser_profile_id === "rich-document-parser-worker:1" && Array.isArray(value.entries) &&
+    value.entries.length === 13 && counts?.ooxml_docx === 5 && counts?.odf_odt === 4 && counts?.pdf === 4 &&
+    value.entries.every((entry) => typeof entry.feature_id === "string" && typeof entry.reason === "string" &&
+      entry.fidelity_preserved === false) && value.content_accepted_by_matrix_endpoint === false &&
+    value.import_dispatch_allowed === false && value.export_allowed === false &&
+    value.round_trip_fidelity_claimed === false && value.production_admitted === false &&
+    typeof value.audit_event_id === "string";
+}
+
+async function loadImportCompatibility(session, context) {
+  try {
+    const value = await api("/v1/office/documents/import-compatibility-matrix", {}, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!importCompatibilityMatches(value)) throw new ApiError(502, true);
+    $("lifecycle-import-compatibility").textContent =
+      "DOCX, ODT und PDF sind merkmalgenau bewertet: Text kann erhalten oder abgeflacht werden; aktive Inhalte werden blockiert, Hinweise markiert. Import, Export und Round-trip-Fidelity bleiben geschlossen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-import-compatibility").textContent = denied(error)
+      ? "Kompatibilitätsmatrix nicht mehr berechtigt; Import und Export bleiben geschlossen."
+      : "Kompatibilitätsmatrix konnte nicht bestätigt werden; Import und Export bleiben geschlossen.";
+  }
+}
+
 async function loadDocumentLifecycle() {
   const session = state.session, context = state.context;
   if (!sessionCurrent(session) || !session.objectId) return;
@@ -760,6 +792,8 @@ async function loadDocumentLifecycle() {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     await loadMacroPolicy(session, context);
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    await loadImportCompatibility(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
     $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
@@ -782,6 +816,7 @@ function openDocumentLifecycle() {
   $("lifecycle-websocket-gateway").textContent = "Preflight wird geladen …";
   $("lifecycle-parser-worker").textContent = "Plan wird geladen …";
   $("lifecycle-macro-policy").textContent = "Policy wird geladen …";
+  $("lifecycle-import-compatibility").textContent = "Matrix wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";

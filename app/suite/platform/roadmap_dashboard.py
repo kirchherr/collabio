@@ -820,6 +820,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Eine fail-closed Makro-Policy blockiert VBA, ActiveX/OLE, ODF-Skripte und aktive PDF-"
                         "Aktionen vor der Textextraktion; nicht ausfuehrbare Signatur- und Linkhinweise werden "
                         "sichtbar markiert. Ausfuehrung und automatische Entfernung bleiben ausgeschlossen. "
+                        "Eine merkmalgenaue OOXML-/ODF-/PDF-Matrix trennt erhaltenen oder abgeflachten Text, "
+                        "blockierte aktive Inhalte, sichtbare Review-Hinweise und nicht unterstuetzte Merkmale; "
+                        "Import, Export und Round-trip-Fidelity bleiben geschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -862,6 +865,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_documents_api.py",
                         "tests/test_office_parser_worker_plan.py",
                         "tests/test_office_macro_policy.py",
+                        "tests/test_office_import_compatibility.py",
                         "tests/test_office_document_discovery.py",
                         "tests/test_office_document_discovery_api.py",
                         "tests/test_office_document_discovery_pg.py",
@@ -923,11 +927,13 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md",
                         "ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md",
                         "ARCHITECTURE_DECISIONS/ADR-0183-bounded-native-office-macro-policy.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0184-native-office-import-compatibility-matrix.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
                         "/v1/office/documents/parser-worker-plan",
                         "/v1/office/documents/macro-policy",
+                        "/v1/office/documents/import-compatibility-matrix",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
@@ -973,6 +979,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "active_content_detected_before_text_extraction_and_never_executed",
                         "blocked_active_content_is_not_extracted_or_automatically_removed",
                         "nonexecuting_signature_and_external_link_indicators_require_visible_review",
+                        "import_compatibility_is_feature_specific_and_metadata_only",
+                        "unsupported_features_do_not_infer_import_export_or_round_trip_fidelity",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1005,7 +1013,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="build_ooxml_odf_compatibility_matrix",
+                    next_action="build_office_import_export_test_corpus",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

@@ -31,6 +31,10 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
     const url = new URL(response.url());
     return url.pathname === "/v1/office/documents/macro-policy" && response.request().method() === "GET";
   });
+  const importCompatibility = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/v1/office/documents/import-compatibility-matrix" && response.request().method() === "GET";
+  });
   await page.locator("#document-lifecycle").click();
   expect((await lifecycle).status()).toBe(200);
   const preflightResponse = await preflight;
@@ -68,6 +72,14 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   expect(macroPolicyBody.active_content_execution_allowed).toBe(false);
   expect(macroPolicyBody.automatic_active_content_removal_allowed).toBe(false);
   expect(macroPolicyBody.content_accepted_by_policy_endpoint).toBe(false);
+  const compatibilityResponse = await importCompatibility;
+  expect(compatibilityResponse.status()).toBe(200);
+  const compatibilityBody = await compatibilityResponse.json();
+  expect(compatibilityBody.matrix_state).toBe("development_contract_dispatch_closed");
+  expect(compatibilityBody.entries).toHaveLength(13);
+  expect(compatibilityBody.import_dispatch_allowed).toBe(false);
+  expect(compatibilityBody.export_allowed).toBe(false);
+  expect(compatibilityBody.round_trip_fidelity_claimed).toBe(false);
   await expect(page.locator("#lifecycle-dialog")).toBeVisible();
   await expect(page.locator("#lifecycle-draft")).toContainText("ungespeicherte Änderungen vorhanden");
   await expect(page.locator("#lifecycle-collaborative")).toContainText("für diese Sitzung reserviert");
@@ -79,6 +91,8 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   await expect(page.locator("#lifecycle-parser-worker")).toContainText("Dispatch und Produktion bleiben geschlossen");
   await expect(page.locator("#lifecycle-macro-policy")).toContainText("VBA, ActiveX/OLE, ODF-Skripte und PDF-Aktionen werden blockiert");
   await expect(page.locator("#lifecycle-macro-policy")).toContainText("Ausführung und automatisches Entfernen bleiben ausgeschlossen");
+  await expect(page.locator("#lifecycle-import-compatibility")).toContainText("DOCX, ODT und PDF sind merkmalgenau bewertet");
+  await expect(page.locator("#lifecycle-import-compatibility")).toContainText("Import, Export und Round-trip-Fidelity bleiben geschlossen");
   await expect(page.locator("#lifecycle-saved")).toContainText(saved.version.version_id);
   await expect(page.locator("#lifecycle-business")).toContainText("Übergang geschlossen");
   await expect(page.locator("#lifecycle-worm")).toContainText("kein WORM Evidence Record");

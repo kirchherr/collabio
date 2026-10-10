@@ -498,6 +498,25 @@ def test_office_macro_policy_api_is_metadata_only_noncacheable_and_execution_clo
     assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
 
 
+def test_office_import_compatibility_api_is_metadata_only_noncacheable_and_closed(
+    office_api: OfficeApiHarness,
+) -> None:
+    enable_office(read=True, write=False)
+    response = office_api.client.get(f"{BASE}/import-compatibility-matrix", headers=office_api.headers)
+
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo"
+    assert value["schema_version"] == "office_import_compatibility_matrix.v1"
+    assert value["matrix_state"] == "development_contract_dispatch_closed"
+    assert value["parser_profile_id"] == "rich-document-parser-worker:1"
+    assert len(value["entries"]) == 13
+    assert value["content_accepted_by_matrix_endpoint"] is False
+    assert value["import_dispatch_allowed"] is False and value["export_allowed"] is False
+    assert value["round_trip_fidelity_claimed"] is False and value["production_admitted"] is False
+    assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

@@ -1106,6 +1106,39 @@ def test_macro_policy_is_tenant_scoped_metadata_only_audited_and_execution_close
     }
 
 
+def test_import_compatibility_matrix_is_tenant_scoped_metadata_only_audited_and_closed(office: Any) -> None:
+    service, _repository, user = office
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.import_compatibility_matrix(user_context=user)
+
+    response = service.import_compatibility_matrix(user_context=user, read_enabled=True)
+    assert response.tenant_id == user.tenant_id
+    assert response.matrix_state == "development_contract_dispatch_closed"
+    assert len(response.entries) == 13
+    assert not response.content_accepted_by_matrix_endpoint
+    assert not response.import_dispatch_allowed and not response.export_allowed
+    assert not response.round_trip_fidelity_claimed and not response.production_admitted
+    event = service.audit.events[-1]
+    assert event.event_type == "office.documents.import_compatibility_matrix.read"
+    assert event.metadata["content_included"] is False
+    assert set(event.metadata) == {
+        "module_id",
+        "surface",
+        "rag_indexing_allowed",
+        "search_indexing_allowed",
+        "schema_version",
+        "matrix_state",
+        "entry_count",
+        "supported_format_count",
+        "blocked_entry_count",
+        "marked_entry_count",
+        "import_dispatch_allowed",
+        "export_allowed",
+        "round_trip_fidelity_claimed",
+        "content_included",
+    }
+
+
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
     office: Any,
 ) -> None:
