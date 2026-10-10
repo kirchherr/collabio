@@ -660,13 +660,13 @@ Aufgaben:
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).
-- [ ] Lasttest-Ziel: 50 gleichzeitige Bearbeiter pro Dokument.
+- [x] Lasttest-Ziel: 50 gleichzeitige Bearbeiter pro Dokument (Roadmap 776-783 / PLANS 637-644).
 
 Exit-Kriterien:
 
-- [ ] AI-Vorschlaege bleiben Drafts bis Nutzer sie uebernimmt.
-- [ ] Jede freigegebene Version kann unveraenderbar gespeichert werden.
-- [ ] Parser laufen nicht im API-Prozess und haben keinen Netzwerkzugriff.
+- [x] AI-Vorschlaege bleiben Drafts bis Nutzer sie uebernimmt.
+- [x] Jede freigegebene Version kann unveraenderbar gespeichert werden.
+- [x] Parser laufen nicht im API-Prozess und haben keinen Netzwerkzugriff.
 - [ ] RAG-backed Dokumentantworten zeigen versionsgenaue Quellen.
 
 ## Phase 4: Mail Core, Team Inbox, Mail Security, Voice und AI Triage

@@ -1,9 +1,26 @@
 # Native Office Documents
 
-Status: Roadmap 252–775 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 775 / PLANS 636 explicit read aloud
-Module: `office_documents` / version 0.9.7
-Decisions: ADR-0079 through ADR-0194; current movement: `ARCHITECTURE_DECISIONS/ADR-0194-native-office-explicit-read-aloud.md`
+Status: Roadmap 252–783 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 783 / PLANS 644 isolated fifty-editor load proof
+Module: `office_documents` / version 0.9.8
+Decisions: ADR-0079 through ADR-0195; current movement: `ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md`
+
+## Isolated fifty-editor load proof (Roadmap 776–783)
+
+The deterministic ADR-0195 harness starts fifty real worker threads behind a common barrier against one tenant-bound
+document state. Each editor contributes eight synchronized update envelopes. All 400 unique updates revalidate
+authorization, every editor is reauthorized at connection and twice in flight, one repeated delivery is deduplicated,
+and all fifty snapshots converge to identical state-vector and update-set hashes.
+
+A midpoint checkpoint resumes by replaying exactly 200 updates. Separate probes reject a revoked editor and foreign
+tenant. Four maximum-size envelopes fill the fixed one-MiB queue, and the next byte fails with close code 1013. The
+golden report contains only counts, booleans and hashes; the harness processes no document body and persists no raw
+browser session identifier.
+
+The Office preflight exposes `verified_50_parallel_editors`, but `websocket_load_verified` and
+`production_runtime_admitted` remain false. This proof does not open a socket or admit a CRDT runtime. Engine
+selection, durable update logging, restore replay, malicious-update fuzzing, upgrade credentials, fan-out and
+transport recovery retain their own gates.
 
 ## Explicit read aloud (Roadmap 768–775)
 

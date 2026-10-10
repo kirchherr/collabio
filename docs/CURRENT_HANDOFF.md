@@ -2,6 +2,43 @@
 
 Updated: 2026-10-10
 
+Roadmap 776 through 783 / PLANS 637 through 644 are complete under ADR-0195. The former fifty-client sequential
+preflight loop has been replaced by a deterministic isolated load harness with fifty genuinely parallel worker
+sessions against one tenant-bound document state. Eight synchronized rounds produce 400 unique updates; all fifty
+editor snapshots converge to the same state-vector and update-set hashes.
+
+The harness performs 401 per-update ACL checks including one deduplicated repeated delivery and 150 session
+reauthorizations. A midpoint state vector replays exactly 200 remaining updates. Revoked ACL and foreign-tenant probes
+fail closed. Four 256-KiB envelopes fill the fixed one-MiB queue, and the next byte is rejected with code 1013. The
+committed metadata-only report contains no document body or raw browser session identifier and has evidence hash
+`sha256:d76cdb940d4a9da22ab7b7316e877eb7e15b2ae8ec30377138e75d8ff76fa698`.
+
+The CRDT preflight now exposes `verified_50_parallel_editors`; its former isolated-load blocker is removed.
+`websocket_load_verified=false` and `production_runtime_admitted=false`. The gateway retains its WebSocket-load
+blocker, while CRDT engine admission, durable update logging, restore replay, malicious-update fuzzing, upgrade
+credentials, fan-out and transport recovery remain closed. Product commit `62524419` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused Ruff, format and Mypy passed, followed by the affected load, Office service/API and roadmap contracts. The
+responsive desktop/mobile lifecycle workflow passed 2/2 in 12.0 seconds after the known review-API cold start had
+finished. Complete quality passed Ruff, found 954 format-conformant files, passed Mypy over 637 source files and ran
+Pytest to 100 percent with only the known Starlette/AnyIO warning. Quality, Work-E2E and review API image IDs are
+`sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`,
+`sha256:4938f8e51f68be54b24594e75c6857ec8a5d223551a3926db4cbc4765f0e3138` and
+`sha256:b8f5fbb3c94d469944908a0d68c443cf7725bede350b9cc69d1246b9051672a9`.
+
+The first browser attempt ran before the freshly recreated review API completed its normal cold start and therefore
+returned `ERR_CONNECTION_REFUSED` twice. No assertion changed; after health became green, the identical command
+passed 2/2. Regular and review APIs both return `ok`. Review is available at
+`http://192.168.0.108:42880/office?review=50-editor-adr0195` with asset key `editor.js?v=7`.
+The exact PostgreSQL test container and all named transfer/test scripts were removed; no transient quality or
+Work-E2E runner remains. Review PostgreSQL, MinIO, decoder and API were retained, and no unrelated project changed.
+
+Three Phase-3 exit criteria are now explicitly closed: AI results remain drafts until confirmed acceptance, approved
+versions are immutable, and the parser runs outside the API process without network. The remaining Office exit gap is
+RAG-backed document answers with authoritative per-source ACL validation and exact source versions. GitHub
+publication remains pending under the content-specific approval requirement.
+
 Roadmap 768 through 775 / PLANS 629 through 636 are complete under ADR-0194. Native Office now provides an explicit
 read-aloud adapter for an exact current saved text selection. Capability and preparation are read-gated and freshly
 revalidate tenant policy, authoritative document ACL and current-version identity. The browser sends only a bounded

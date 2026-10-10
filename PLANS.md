@@ -1934,12 +1934,35 @@ whether a local voice or browser speech service is used and that selection and a
 636. [x] Prove exact-version/ACL enforcement, provider policy, strict schema, hash-only audit, zero persistence and
 zero writes; run desktop/mobile synthetic speech plus dictation/suggestion regression and close under ADR-0194.
 
+637. [x] Add an isolated deterministic native Office load harness under ADR-0195 with fifty genuinely parallel
+worker sessions against one tenant-bound document state; do not count the former sequential client-ID loop as load.
+
+638. [x] Process eight synchronized update envelopes per editor and prove 400 unique updates, fifty simultaneously
+active editors and identical final state-vector and update-set hashes across all editor snapshots.
+
+639. [x] Recheck tenant/editor authorization for every update and reauthorize every editor at connection plus twice
+during the run. Reject revoked access and a foreign tenant fail closed.
+
+640. [x] Deduplicate repeated delivery and prove state-vector resume from an exact 200-update midpoint by replaying
+the remaining 200 updates to the same converged state.
+
+641. [x] Fill the fixed one-MiB queue with four 256-KiB envelopes and reject the next byte with close code 1013.
+
+642. [x] Commit a deterministic metadata-only golden report with counts, booleans and hashes and no document body or
+raw browser session identifier.
+
+643. [x] Show the verified isolated fifty-editor proof in Dokumentstatus while keeping WebSocket load and production
+runtime false and preserving the remaining engine, durable-log, restore, fuzzing, upgrade, fan-out and recovery gates.
+
+644. [x] Pass focused Ruff, format, Mypy and service/API/load tests and close under ADR-0195 without a migration,
+document content, WebSocket connection or production runtime admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 775 / PLANS 636. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison, server-anchored risk marking, bounded ACL-revalidated current-version source search, explicit push-to-talk dictation and explicit read aloud with no raw-audio, transcript, selection or generated-audio persistence. Continue with the 50-concurrent-editor proof target. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 783 / PLANS 644. The isolated fifty-editor proof now covers real parallelism, per-update ACL, periodic reauthorization, deduplication, state-vector resume, convergence and bounded backpressure while WebSocket load and production runtime remain closed. Continue with the remaining Phase-3 exit gap: RAG-backed document answers with authoritative per-source ACL validation and exact source versions. Preserve all earlier AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
