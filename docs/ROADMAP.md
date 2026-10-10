@@ -3460,7 +3460,38 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Credential-Store, WebSocket-Verbindung, CRDT-Engine, Updateannahme, Fan-out, Recovery- oder Lastclaim und ohne
      produktive Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 671 / PLANS 224 bis 532 sind unter ADR-0139 bis ADR-0181 implementiert
+672. [x] Den bestehenden begrenzten Rich-Document-Parser durch einen versionierten, tenant-gebundenen und
+     metadatenreinen Office-Parser-Worker-Plan sichtbar gemacht. Der Plan-Endpunkt akzeptiert weder Dateiinhalt noch
+     SourceObject- oder Versionsbezeichner und laesst Dispatch sowie Produktion geschlossen.
+
+673. [x] Autoritative Tenant-/Objekt-ACL, exakte Source-Version und Manifest-Hash, Klassifikation, Retention,
+     Legal-Hold- und ACL-Version sowie eine Malware-/Active-Content-Entscheidung als zwingende Quellvoraussetzungen
+     festgelegt.
+
+674. [x] Die kuenftige Pipeline auf Autorisierung vor dem Lesen, content-adressierte Materialisierung, einmalige
+     No-Network-Analyse, begrenzte Schema-/Hashvalidierung, erneute Autorisierung vor Ergebnisnutzung und sichere
+     Scratch-Vernichtung festgelegt.
+
+675. [x] Das Compose-Profil des vorhandenen Entwicklungsworkers auf `network_mode: none`, Read-only-RootFS,
+     UID/GID 1000, `CapDrop=ALL`, `no-new-privileges` und ein `noexec,nosuid,nodev`-Tmpfs gehaertet. Datenbank-,
+     Object-Storage- und Provider-Credentials sowie direkte Storage- oder Vector-Writes bleiben ausgeschlossen.
+
+676. [x] Eingaben auf 25 MB, entpackte Archive auf 20 MB, Ausgabe auf zwei Millionen Zeichen, Arbeitsspeicher auf
+     256 MiB, Prozesse auf 64 und CPU auf einen Kern begrenzt. Ein realer Docker-Probecontainer bestaetigte alle
+     gesetzten HostConfig-Werte einschliesslich `NetworkMode=none`.
+
+677. [x] Die sieben fehlenden Produktionsgrenzen explizit ausgewiesen: content-adressierter Materializer,
+     write-only Ergebnishandoff, Scheduler/Timeout, boesartiger Dokumentkorpus, Sandbox-Escape-Fuzzing, nicht-leerer
+     Recovery-Nachweis und Worker-Image-Zulassung. Parserausgabe bleibt bis zur unabhaengigen Validierung unvertraut.
+
+678. [x] Service-, API-, Compose- und vorhandene Parser-Vertraege sowie metadata-only Audit bestanden. Der reale
+     responsive Dokumentstatus-Workflow bestand auf Desktop und Mobil 2/2 in 12,0 Sekunden und zeigt die geschlossene
+     Dispatch-/Produktionsgrenze sichtbar an.
+
+679. [x] Den isolierten Office-Parser-Worker-Plan unter ADR-0182 ohne Migration, Inhaltsannahme, Job-Dispatch,
+     Scheduler, Storage-/Vector-Schreibpfad, produktive Image-Zulassung oder Produktionsfreigabe geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 679 / PLANS 224 bis 540 sind unter ADR-0139 bis ADR-0182 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

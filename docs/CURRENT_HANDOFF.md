@@ -2,6 +2,52 @@
 
 Updated: 2026-10-10
 
+Roadmap 672 through 679 / PLANS 533 through 540 are complete under ADR-0182. Native Office now exposes the existing
+bounded PDF, ODT and DOCX development parser through a tenant-scoped, metadata-only
+`office_parser_worker_plan.v1` boundary. The endpoint accepts no content, SourceObject ID or source-version ID and
+keeps dispatch and production admission false.
+
+Any future source must first pass authoritative tenant/object ACL, exact version/manifest, classification, retention,
+legal-hold, ACL-version and malware/active-content prerequisites. The planned pipeline authorizes before read,
+materializes exact content-addressed bytes, parses once without network, validates bounded schema and hashes,
+reauthorizes before use and erases scratch. Parser output remains untrusted until that validation.
+
+The existing `rich-document-parser` Compose service now runs with `NetworkMode=none`, UID/GID 1000, read-only root,
+all capabilities dropped, `no-new-privileges`, a 64 MiB `noexec,nosuid,nodev` tmpfs, 256 MiB memory, 64 processes
+and one CPU. It receives no database, object-storage or provider credentials and has no direct storage or vector-write
+path. A real transient Docker probe confirmed every effective HostConfig value. The parser retains 25 MB input,
+20 MB expanded-archive and two-million-character output limits.
+
+Materializer, write-only result handoff, scheduler/wall-clock timeout, malicious-document corpus, sandbox-escape
+fuzzing, nonempty recovery and production worker-image admission remain explicit blockers. **Dokumentstatus** displays
+the closed parser boundary without uploading a file or starting a job. Audit is metadata only and excludes content,
+source IDs and versions.
+
+Product commit `2f2ab49c` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the
+affected parser, service, API, Compose and roadmap contracts. The actual one-shot worker started successfully and
+reported only its profile and isolation requirements. The responsive desktop/mobile lifecycle workflow passed 2/2 in
+12.0 seconds. Final Work-E2E and review API image IDs are
+`sha256:6fc1afad7bc8ad748438948868ec7828ffe6d737a56b62b1da2d58e181133e5f` and
+`sha256:7dba9971fcb9a339eb9f0a9212ebb826751b489bcc8eb3ac2a6b9dcc1eeb3423`.
+
+The complete final quality gate passed Ruff, found 935 format-conformant files, passed Mypy over 610 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:09636f6e0d8e7b2a092b80589fd75bb851b9d8edcd859f4b29171f07c7161a4f`.
+
+The first browser command repeated the image's fixed Playwright entrypoint and therefore began the broad 557-case
+matrix. It was stopped after 39 reported cases; its one unrelated CRM negative-path failure came from the deliberately
+absent blocked-API dependency. The corrected exact spec then passed 2/2 without a product or assertion change.
+
+The isolated PostgreSQL test container, that interrupted Work-E2E runner and all temporary remote parser files were
+removed. No transient quality, test, probe or Work-E2E runner remains; regular and review APIs both return `ok`, and
+the review API is healthy with failing streak zero. Review PostgreSQL, MinIO, decoder and API remain available; main
+persistent services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=parser-worker-2f2ab49c`.
+
+This slice adds no migration, content intake, parser dispatch, scheduler, result persistence, storage/vector write,
+external provider, productive worker-image admission or production release. The next Office step is the separately
+bounded macro policy. GitHub publication remains pending under the content-specific approval requirement.
+
 Roadmap 664 through 671 / PLANS 525 through 532 are complete under ADR-0181. Native Office now exposes a second strict,
 metadata-only preflight for the future WebSocket gateway. It requires exact Same-Origin between browser `Origin` and
 the actual request origin, the fixed `collabio-office-crdt.v1` subprotocol and the complete canonical transport

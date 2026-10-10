@@ -1,9 +1,31 @@
 # Native Office Documents
 
-Status: Roadmap 252–671 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 671 / PLANS 532 WebSocket gateway preflight
+Status: Roadmap 252–679 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 679 / PLANS 540 isolated parser-worker plan
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0181; current movement: `ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md`
+Decisions: ADR-0079 through ADR-0182; current movement: `ARCHITECTURE_DECISIONS/ADR-0182-isolated-native-office-parser-worker-plan.md`
+
+## Isolated parser-worker plan (Roadmap 672–679)
+
+The tenant-scoped `office_parser_worker_plan.v1` response makes the existing bounded PDF, ODT and DOCX development
+parser visible without accepting content, a SourceObject ID or a version ID. It requires authoritative ACL,
+content-addressed exact-version lineage, classification/retention/legal-hold/ACL metadata and malware/active-content
+decisions before any future source read. Dispatch and production admission remain false.
+
+The planned pipeline authorizes before materialization, runs a one-shot no-network worker, validates the bounded
+result and hashes, reauthorizes before use and erases scratch. The worker receives no database, object-storage or
+provider credential and may write neither source storage nor a vector index. Normal logs may contain no content and
+parser output remains untrusted until validation.
+
+Compose enforces `network_mode: none`, UID/GID 1000, read-only root, all capabilities dropped,
+`no-new-privileges`, a 64 MiB `noexec,nosuid,nodev` tmpfs, 256 MiB memory, 64 processes and one CPU. Inputs are capped
+at 25 MB, expanded archives at 20 MB and extracted text at two million characters. A transient Docker probe verified
+the effective HostConfig values on `dev001`.
+
+Materialization, write-only result handoff, scheduling/timeout enforcement, malicious-document corpus, sandbox-
+escape fuzzing, nonempty recovery and production image admission remain explicit blockers. The responsive
+**Dokumentstatus** shows this boundary; focused contracts and the exact desktop/mobile workflow pass. No migration,
+content intake, parsing job, output persistence, vector write or production release is added.
 
 ## Bounded WebSocket gateway preflight (Roadmap 664–671)
 
