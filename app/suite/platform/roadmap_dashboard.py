@@ -838,6 +838,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Eine separate Risikopruefung analysiert die exakte aktuelle Fassung mit festen Kategorien "
                         "und zeigt serverseitig abgeleitete Textanker; Modellbefunde bleiben ungeprueft, fluechtig "
                         "und koennen weder das Dokument aendern noch Compliance entscheiden oder Aktionen ausloesen. "
+                        "Eine begrenzte Quellensuche durchsucht nur aktuell autorisiert lesbare Dokumentfassungen "
+                        "ohne AI, Vektorindex oder RAG-Kontext und zeigt jeden Treffer mit exakter Objekt-, Versions-, "
+                        "Klassifikations-, ACL- und Inhalts-Hash-Bindung. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -957,6 +960,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_ai_policy_comparison.py",
                         "ARCHITECTURE_DECISIONS/ADR-0191-native-office-risk-marking.md",
                         "tests/test_office_ai_risk_marking.py",
+                        "ARCHITECTURE_DECISIONS/ADR-0192-native-office-versioned-source-search.md",
+                        "tests/test_office_source_search.py",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -971,6 +976,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/ai/outlines",
                         "/v1/office/documents/{object_id}/ai/policy-comparisons",
                         "/v1/office/documents/{object_id}/ai/risk-markings",
+                        "/v1/office/documents/{object_id}/ai/source-searches",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
                         "/v1/office/documents/{object_id}/backlinks",
@@ -1043,6 +1049,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "risk_marking_uses_only_fixed_approved_prompt_and_tenant_admitted_local_model",
                         "risk_marking_source_excerpts_and_anchors_are_server_derived",
                         "risk_marking_is_untrusted_transient_nonindexable_and_cannot_decide_or_act",
+                        "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
+                        "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
+                        "source_search_uses_no_ai_vector_index_rag_context_or_persistence",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1075,7 +1084,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="add_native_office_versioned_source_search",
+                    next_action="add_native_office_push_to_talk_dictation",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

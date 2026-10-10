@@ -112,6 +112,11 @@ from suite.platform.office_reviews import (
     ReviewListResponse,
     ReviewMutationResponse,
 )
+from suite.platform.office_source_search import (
+    OfficeSourceSearchCommand,
+    OfficeSourceSearchResponse,
+    OfficeSourceSearchService,
+)
 from suite.platform.office_suggestion_repository import OfficeSuggestionRepositoryAdapter
 from suite.platform.office_suggestions import (
     OfficeSuggestionService,
@@ -319,6 +324,10 @@ def build_office_ai_risk_marking_service(
     *, document_service: OfficeDocumentService, gateway: Any
 ) -> OfficeAIRiskMarkingService:
     return OfficeAIRiskMarkingService(documents=document_service, gateway=gateway)
+
+
+def build_office_source_search_service(*, document_service: OfficeDocumentService) -> OfficeSourceSearchService:
+    return OfficeSourceSearchService(documents=document_service)
 
 
 def register_office_routes(
@@ -610,6 +619,19 @@ def register_office_routes(
         return request.app.state.office_ai_risk_marking_service.mark(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/source-searches", response_model=OfficeSourceSearchResponse)
+    def search_document_sources(
+        object_id: str,
+        command: OfficeSourceSearchCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_source_search_service.search(
+            user_context=context.user_context,
             object_id=object_id,
             command=command,
         )

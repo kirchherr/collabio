@@ -1235,6 +1235,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/{object_id}/ai/outlines",
         "/v1/office/documents/{object_id}/ai/policy-comparisons",
         "/v1/office/documents/{object_id}/ai/risk-markings",
+        "/v1/office/documents/{object_id}/ai/source-searches",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
         "/v1/office/documents/{object_id}/backlinks",
@@ -1367,6 +1368,14 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tests/test_office_ai_policy_comparison.py" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0191-native-office-risk-marking.md" in office_native["evidence_refs"]
     assert "tests/test_office_ai_risk_marking.py" in office_native["evidence_refs"]
+    assert "ARCHITECTURE_DECISIONS/ADR-0192-native-office-versioned-source-search.md" in office_native["evidence_refs"]
+    assert "tests/test_office_source_search.py" in office_native["evidence_refs"]
+    assert {
+        "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
+        "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
+        "source_search_uses_no_ai_vector_index_rag_context_or_persistence",
+    }.issubset(office_native["guardrails"])
+    assert office_native["next_action"] == "add_native_office_push_to_talk_dictation"
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1387,6 +1396,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/{object_id}/ai/outlines", "POST"),
         ("/v1/office/documents/{object_id}/ai/policy-comparisons", "POST"),
         ("/v1/office/documents/{object_id}/ai/risk-markings", "POST"),
+        ("/v1/office/documents/{object_id}/ai/source-searches", "POST"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),
         ("/v1/office/documents/{object_id}/collaboration/preflight", "POST"),

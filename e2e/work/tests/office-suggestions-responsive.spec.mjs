@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
 import { createOfficeDocument, officeEditor, officeVersions, openOffice, openOfficeDocument, showDocumentList } from "./office-support.mjs";
-import { compareDocumentWithPolicy, confirmSuggestion, markDocumentRisks, openSuggestion, openSuggestions, outlineSuggestion, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, summarizeSuggestion, translateSuggestion } from "./office-suggestion-support.mjs";
+import { compareDocumentWithPolicy, confirmSuggestion, markDocumentRisks, openSuggestion, openSuggestions, outlineSuggestion, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, searchDocumentSources, summarizeSuggestion, translateSuggestion } from "./office-suggestion-support.mjs";
 
 async function expectSuggestionLayout(page) {
   await expect(page.locator("#suggestions-panel")).toBeInViewport();
@@ -21,13 +21,19 @@ test("Office text proposals and confirmed decisions fit desktop, tablet and mobi
   const first = await createOfficeDocument(page, `Synthetic responsive suggestion ${testInfo.project.name}`, "Plan 😀 review: responsible team confirms the next step.");
   const objectId = first.document.object_id;
   await showDocumentList(page);
-  const policy = await createOfficeDocument(page, `Synthetic approval policy ${testInfo.project.name}`, "POLICY requires manager approval before milestone 42 is committed.");
+  const sourceToken = `approval-${testInfo.project.name}-${Date.now()}`;
+  const policy = await createOfficeDocument(page, `Synthetic approval policy ${sourceToken}`, `POLICY ${sourceToken} requires manager approval before milestone 42 is committed.`);
   await openOfficeDocument(page, objectId);
   await openSuggestions(page, objectId);
   await markDocumentRisks(page, objectId);
   expect(await officeVersions(page, objectId)).toHaveLength(1);
   await page.locator("#suggestion-risk-dismiss").click();
   await expect(page.locator("#suggestion-risk-report")).toBeHidden();
+  await searchDocumentSources(page, objectId, sourceToken, policy);
+  expect(await officeVersions(page, objectId)).toHaveLength(1);
+  expect(await officeVersions(page, policy.document.object_id)).toHaveLength(1);
+  await page.locator("#suggestion-source-dismiss").click();
+  await expect(page.locator("#suggestion-source-report")).toBeHidden();
   await compareDocumentWithPolicy(page, objectId, policy);
   await expect(page.locator("#suggestion-policy-citation")).toContainText(policy.document.title);
   expect(await officeVersions(page, objectId)).toHaveLength(1);

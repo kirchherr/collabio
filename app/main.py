@@ -458,6 +458,7 @@ from suite.platform.office_api import (
     build_office_ai_translation_service,
     build_office_document_service,
     build_office_review_service,
+    build_office_source_search_service,
     build_office_suggestion_service,
     register_office_routes,
 )
@@ -23320,6 +23321,9 @@ def build_app() -> FastAPI:
     )
     app.state.office_ai_risk_marking_service = build_office_ai_risk_marking_service(
         document_service=app.state.office_document_service, gateway=llm_gateway
+    )
+    app.state.office_source_search_service = build_office_source_search_service(
+        document_service=app.state.office_document_service
     )
     register_office_routes(
         app,

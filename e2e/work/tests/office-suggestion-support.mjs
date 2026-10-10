@@ -10,6 +10,7 @@ export const translationPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponen
 export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/outlines`;
 export const policyComparisonPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/policy-comparisons`;
 export const riskMarkingPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/risk-markings`;
+export const sourceSearchPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/source-searches`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -205,6 +206,38 @@ export async function markDocumentRisks(page, objectId) {
   await expect(page.locator(".ai-risk-item")).toHaveCount(result.risk_count);
   await page.locator(".ai-risk-item .quiet-button").first().click();
   await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(result.risks[0].source_excerpt);
+  return result;
+}
+
+export async function searchDocumentSources(page, objectId, query, expectedSource) {
+  await page.locator("#suggestion-source-query").fill(query);
+  await expect(page.locator("#suggestion-source-search")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === sourceSearchPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-source-search").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.source_object_id).toBe(objectId);
+  expect(result.search_policy_id).toBe("office_current_version_keyword_acl_v1");
+  expect(result.result_contract).toBe("current_version_content_acl_revalidated");
+  expect(result.ai_used).toBe(false);
+  expect(result.vector_search_used).toBe(false);
+  expect(result.rag_context_created).toBe(false);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  const source = result.results.find((item) => item.object_id === expectedSource.document.object_id);
+  expect(source).toBeTruthy();
+  expect(source.version_id).toBe(expectedSource.version.version_id);
+  expect(source.authoritative_acl_validated).toBe(true);
+  expect(source.current_version_validated).toBe(true);
+  await expect(page.locator("#suggestion-source-report")).toBeVisible();
+  const card = page.locator(".ai-source-item").filter({ hasText: expectedSource.version.version_id });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText(expectedSource.document.title);
+  expect(await page.locator("#suggestion-source-report").evaluate((report) => report.scrollWidth <= report.clientWidth)).toBe(true);
+  expect(await page.locator("#suggestions-panel").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);
   return result;
 }
 

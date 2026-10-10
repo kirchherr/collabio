@@ -5658,6 +5658,29 @@ function renderRiskMarking(suggestions) {
   $("suggestion-risk-report").dataset.status = result.status;
   $("suggestion-risk-report").hidden = false;
 }
+function clearSourceSearch(suggestions = state.suggestions) {
+  if (suggestions) suggestions.sourceSearch = null;
+  $("suggestion-source-report").hidden = true;
+  $("suggestion-source-status").textContent = "";
+  $("suggestion-source-list").replaceChildren();
+}
+function renderSourceSearch(suggestions) {
+  const result = suggestions?.sourceSearch;
+  if (!result) { clearSourceSearch(suggestions); return; }
+  $("suggestion-source-status").textContent = result.result_count ?
+    `${result.result_count} versionierte Quellen gefunden${result.corpus_truncated ? " · begrenzter Suchraum" : ""}.` :
+    `Keine passende lesbare Quelle gefunden${result.corpus_truncated ? " · begrenzter Suchraum" : ""}.`;
+  const list = $("suggestion-source-list"); list.replaceChildren(); list.className = "ai-source-list";
+  result.results.forEach((source) => {
+    const item = node("article", undefined, "ai-source-item");
+    item.append(node("strong", source.title), node("blockquote", source.source_excerpt),
+      node("p", `Version ${source.version_id} · ${source.information_classification} · ACL ${source.acl_version}`));
+    const open = node("button", "Version anzeigen", "quiet-button"); open.type = "button";
+    open.addEventListener("click", () => openDocument(source.object_id, source.version_id));
+    item.append(open); list.append(item);
+  });
+  $("suggestion-source-report").hidden = false;
+}
 function canCreateSuggestion(suggestions = state.suggestions) {
   return !suggestionBusy(suggestions) && !suggestions.uncertain && !suggestions.loading && suggestions.canCreate &&
     suggestions.session.canWrite && !suggestions.session.historical && !suggestions.session.conflict && !isDirty() && suggestions.currentVersionId === suggestions.versionId;
@@ -5683,6 +5706,11 @@ function updateSuggestionControls() {
   $("suggestion-outline").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-risk-mark").disabled = busy || !suggestionCurrent(suggestions) || isDirty() ||
     suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId;
+  const sourceQuery = $("suggestion-source-query").value.trim();
+  $("suggestion-source-search").disabled = busy || !suggestionCurrent(suggestions) || isDirty() ||
+    suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId || sourceQuery.length < 2;
+  $("suggestion-source-query").disabled = busy;
+  $("suggestion-source-dismiss").disabled = busy;
   const policy = selectedPolicyDocument();
   $("suggestion-policy-compare").disabled = busy || !suggestionCurrent(suggestions) || !policy || isDirty() ||
     suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId;
@@ -5738,7 +5766,7 @@ async function loadSuggestions(append = false) {
       listRequest: 0, detailRequest: 0, items: [], selectedId: null, detail: null, nextCursor: null,
       loading: false, canCreate: false, currentVersionId: null, composer: null, attempt: null,
       preparing: false, saving: false, settling: false, summarizing: false, uncertain: false, conflict: false,
-      policyComparison: null, riskMarking: null };
+      policyComparison: null, riskMarking: null, sourceSearch: null };
     state.suggestions = suggestions;
   }
   if (suggestions.saving || suggestions.preparing || suggestions.uncertain || (append && !suggestions.nextCursor)) return false;
@@ -5954,6 +5982,27 @@ function validAIRiskMarking(result, suggestions) {
     result.requires_human_review === true && result.persisted === false && result.document_changed === false &&
     result.automatic_action_allowed === false && result.compliance_decision_allowed === false &&
     result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
+}
+function validOfficeSourceSearch(result, suggestions) {
+  const classifications = ["public", "internal", "confidential", "restricted"];
+  return result?.tenant_id === suggestions.context.tenantId &&
+    result.source_object_id === suggestions.session.objectId && result.source_version_id === suggestions.versionId &&
+    /^sha256:[a-f0-9]{64}$/.test(result.query_hash || "") && Array.isArray(result.results) &&
+    Number.isInteger(result.result_count) && result.result_count === result.results.length && result.result_count <= 10 &&
+    Number.isInteger(result.searched_document_count) && result.searched_document_count >= result.result_count &&
+    result.searched_document_count <= 100 && typeof result.corpus_truncated === "boolean" &&
+    result.search_policy_id === "office_current_version_keyword_acl_v1" &&
+    result.result_contract === "current_version_content_acl_revalidated" &&
+    result.results.every((source) => /^office-doc-[a-f0-9]{32}$/.test(source.object_id || "") &&
+      /^office-version-[a-f0-9]{32}$/.test(source.version_id || "") && source.object_id !== suggestions.session.objectId &&
+      typeof source.title === "string" && Boolean(source.title.trim()) && classifications.includes(source.information_classification) &&
+      /^sha256:[a-f0-9]{64}$/.test(source.content_hash || "") && Number.isInteger(source.acl_version) && source.acl_version >= 1 &&
+      Number.isInteger(source.anchor?.from) && Number.isInteger(source.anchor?.to) && source.anchor.from >= 1 &&
+      source.anchor.to > source.anchor.from && typeof source.source_excerpt === "string" && Boolean(source.source_excerpt) &&
+      Array.from(source.source_excerpt).length <= 2000 && Number.isInteger(source.score) && source.score >= 1 &&
+      source.authoritative_acl_validated === true && source.current_version_validated === true) &&
+    typeof result.audit_event_id === "string" && result.ai_used === false && result.vector_search_used === false &&
+    result.rag_context_created === false && result.persisted === false && result.document_changed === false;
 }
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
@@ -6182,6 +6231,34 @@ async function markDocumentRisks() {
     $("suggestions-status").textContent = denied(error) ?
       "Die lokale Risikoprüfung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
       "Die lokale Risikoprüfung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function searchDocumentSources() {
+  const suggestions = state.suggestions;
+  const query = $("suggestion-source-query").value.trim();
+  if (!suggestionCurrent(suggestions) || $("suggestion-source-search").disabled || query.length < 2) return;
+  const revision = suggestions.session.revision;
+  suggestions.summarizing = true;
+  clearSourceSearch(suggestions);
+  $("suggestions-status").textContent = "Lesbare aktuelle Dokumentversionen werden durchsucht …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/source-searches`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, query, top_k: 6 },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validOfficeSourceSearch(result, suggestions)) throw new ApiError(502, true);
+    suggestions.sourceSearch = result;
+    renderSourceSearch(suggestions);
+    $("suggestions-status").textContent = "Versionierte Quellen gefunden. Inhalt und Schutzstufe vor Verwendung prüfen.";
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die Quellensuche ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die Quellensuche ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6741,9 +6818,15 @@ $("suggestion-outline").addEventListener("mousedown", (event) => { if (event.but
 $("suggestion-outline").addEventListener("click", outlineSuggestionSelection);
 $("suggestion-policy-compare").addEventListener("click", compareDocumentWithPolicy);
 $("suggestion-risk-mark").addEventListener("click", markDocumentRisks);
+$("suggestion-source-search").addEventListener("click", searchDocumentSources);
+$("suggestion-source-query").addEventListener("input", () => { clearSourceSearch(); updateSuggestionControls(); });
+$("suggestion-source-query").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); searchDocumentSources(); }
+});
 $("suggestion-policy-document").addEventListener("change", () => { clearPolicyComparison(); updateSuggestionControls(); });
 $("suggestion-policy-dismiss").addEventListener("click", () => { clearPolicyComparison(); updateSuggestionControls(); });
 $("suggestion-risk-dismiss").addEventListener("click", () => { clearRiskMarking(); updateSuggestionControls(); });
+$("suggestion-source-dismiss").addEventListener("click", () => { clearSourceSearch(); updateSuggestionControls(); });
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

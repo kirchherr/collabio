@@ -45,6 +45,7 @@ from suite.platform.office_api import (
     build_office_ai_risk_marking_service,
     build_office_ai_summary_service,
     build_office_ai_translation_service,
+    build_office_source_search_service,
     build_office_suggestion_service,
 )
 from suite.platform.principal_store import PgPrincipalDirectory
@@ -380,6 +381,9 @@ app.state.office_ai_policy_comparison_service = build_office_ai_policy_compariso
 )
 app.state.office_ai_risk_marking_service = build_office_ai_risk_marking_service(
     document_service=app.state.office_document_service, gateway=app.state.llm_gateway
+)
+app.state.office_source_search_service = build_office_source_search_service(
+    document_service=app.state.office_document_service
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
 app.state.crm_account_service.repository = crm_repository
