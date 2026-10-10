@@ -665,6 +665,32 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await page.locator("#shape-multi-move-first").click();
   await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
   await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
+  await expect(page.locator("#shape-multi-move-to")).toBeEnabled();
+  await page.locator("#shape-multi-move-to").click();
+  await expect(page.locator("#shape-multi-order-dialog")).toBeVisible();
+  await expect(page.locator("#shape-multi-order-title")).toHaveText("Auswahl exakt einordnen");
+  await expect(page.locator("#shape-multi-order-selection"))
+    .toHaveText("2 ausgewählte Objekte werden als stabiler Block zwischen 4 Dokumentelementen verschoben.");
+  const orderTarget = page.locator("#shape-multi-order-target");
+  await expect(orderTarget).toHaveAttribute("min", "1"); await expect(orderTarget).toHaveAttribute("max", "3");
+  await expect(orderTarget).toHaveValue("1");
+  await orderTarget.fill("0"); await expect(page.locator("#shape-multi-order-apply")).toBeDisabled();
+  await expect(page.locator("#shape-multi-order-status")).toHaveText("Bitte eine ganze Startposition von 1 bis 3 eingeben.");
+  await orderTarget.fill("2"); await expect(page.locator("#shape-multi-order-apply")).toBeEnabled();
+  await expect(page.locator("#shape-multi-order-status")).toHaveText("Die Auswahl beginnt danach an Position 2 von 3.");
+  await page.locator("#shape-multi-order-cancel").click();
+  await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
+  await page.locator("#shape-multi-move-to").click(); await orderTarget.fill("2");
+  await page.locator("#shape-multi-order-apply").click();
+  await expect.poll(rootOrder).toEqual(["p", groupIds[0], groupIds[1], groupIds[2]]);
+  await expect(page.locator("#document-notice")).toContainText(
+    "2 Objekte wurden atomar als stabiler Block an Position 2 verschoben. Rückgängig ist möglich.");
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
+  await editor.press("Control+z");
+  await expect.poll(rootOrder).toEqual([groupIds[0], groupIds[1], "p", groupIds[2]]);
+  await editor.press("Control+Shift+z");
+  await expect.poll(rootOrder).toEqual(["p", groupIds[0], groupIds[1], groupIds[2]]);
   await expect(page.locator("#shape-multi-appearance")).toBeEnabled();
   await page.locator("#shape-multi-appearance").click();
   await page.locator("#shape-multi-appearance-fill").selectOption("red");

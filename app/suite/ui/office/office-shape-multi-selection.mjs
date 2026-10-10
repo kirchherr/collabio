@@ -60,6 +60,26 @@ export function officeShapeMultiOrder(rootCount, entries, action) {
   return { action, order, changed: order.some((rootIndex, index) => rootIndex !== index) };
 }
 
+export function officeShapeMultiMoveTo(rootCount, entries, target) {
+  if (!Number.isSafeInteger(rootCount) || rootCount < 2 || !Array.isArray(entries) || entries.length < 2 ||
+      entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT || entries.length >= rootCount ||
+      !Number.isSafeInteger(target) || target < 1 || target > rootCount - entries.length + 1) {
+    throw new Error("shape-multi-move-to");
+  }
+  const selected = new Set(); let previous = -1;
+  for (const entry of entries) {
+    if (!entry || !["shape", "shapeGroup"].includes(entry.type) || !Number.isSafeInteger(entry.rootIndex) ||
+        entry.rootIndex <= previous || entry.rootIndex < 0 || entry.rootIndex >= rootCount ||
+        selected.has(entry.rootIndex)) throw new Error("shape-multi-move-to");
+    selected.add(entry.rootIndex); previous = entry.rootIndex;
+  }
+  const picked = [...selected];
+  const remainder = Array.from({ length: rootCount }, (_, index) => index).filter((index) => !selected.has(index));
+  const insertion = target - 1;
+  const order = [...remainder.slice(0, insertion), ...picked, ...remainder.slice(insertion)];
+  return { target, order, changed: order.some((rootIndex, index) => rootIndex !== index) };
+}
+
 export function officeShapeMultiCanOrder(rootCount, entries, action) {
   try { return officeShapeMultiOrder(rootCount, entries, action).changed; } catch { return false; }
 }

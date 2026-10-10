@@ -9,7 +9,8 @@ import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeSha
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanOrder, officeShapeMultiCanStyle,
   officeShapeMultiCanRegroup, officeShapeMultiCanUngroup,
   officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiResize, officeShapeMultiRotate,
+  officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
+  officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
   officeShapeMultiRegroup, officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
   officeShapeMultiUngroup,
@@ -46,7 +47,7 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null,
+    suppressedClick = null, orderSnapshot = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null,
     regroupMemory = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
@@ -110,6 +111,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       button.disabled = !doc || !writable ||
         !officeShapeMultiCanOrder(doc.childCount, current, button.dataset.shapeMultiOrder);
     }
+    $("shape-multi-move-to").disabled = !doc || !writable || !enough || current.length >= doc.childCount;
     $("shape-multi-group").disabled = !doc || !writable || !officeShapeMultiCanGroup(current) || groupCount(doc) >= OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
@@ -503,6 +505,18 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   };
   $("shape-multi-toggle").addEventListener("click", () => { mode = !mode; paint(); focus(state.editor); });
   $("shape-multi-clear").addEventListener("click", () => { clear(); focus(state.editor); });
+  const commitOrder = (plan, current, message) => {
+    const editor = state.editor;
+    if (!editor || !allowed() || !plan.changed) return false;
+    const nodes = plan.order.map((index) => editor.state.doc.child(index));
+    let tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, nodes);
+    const wanted = new Set(current.map((entry) => entry.id)); let firstPos = null;
+    tr.doc.forEach((node, pos) => { if (firstPos == null && wanted.has(node.attrs?.id)) firstPos = pos; });
+    if (firstPos == null) throw new Error("shape-multi-order-selection");
+    tr = tr.setSelection(NodeSelection.create(tr.doc, firstPos)); validate(tr.doc);
+    editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+    focus(editor); updateEditor(); paint(); notice(message); return true;
+  };
   for (const button of document.querySelectorAll("[data-shape-multi-order]")) {
     button.addEventListener("click", () => {
       const editor = state.editor, current = selectedEntries(), action = button.dataset.shapeMultiOrder;
@@ -510,20 +524,74 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       try {
         const plan = officeShapeMultiOrder(editor.state.doc.childCount, current, action);
         if (!plan.changed) { paint(); return; }
-        const nodes = plan.order.map((index) => editor.state.doc.child(index));
-        let tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, nodes);
-        const wanted = new Set(current.map((entry) => entry.id)); let firstPos = null;
-        tr.doc.forEach((node, pos) => { if (firstPos == null && wanted.has(node.attrs?.id)) firstPos = pos; });
-        if (firstPos == null) throw new Error("shape-multi-order-selection");
-        tr = tr.setSelection(NodeSelection.create(tr.doc, firstPos)); validate(tr.doc);
-        editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
-        focus(editor); updateEditor(); paint();
         const labels = { previous: "einen Schritt nach vorn", next: "einen Schritt nach hinten",
           first: "an den Anfang", last: "an das Ende" };
-        notice(`${current.length} Objekte wurden atomar ${labels[action]} verschoben. Rückgängig ist möglich.`);
+        commitOrder(plan, current,
+          `${current.length} Objekte wurden atomar ${labels[action]} verschoben. Rückgängig ist möglich.`);
       } catch { notice("Die ausgewählten Objekte konnten nicht gemeinsam in der Dokumentreihenfolge verschoben werden.", true); }
     });
   }
+  const orderDialog = $("shape-multi-order-dialog"), orderForm = $("shape-multi-order-form");
+  const closeOrder = () => {
+    orderSnapshot = null; if (orderDialog.open) orderDialog.close(); paint();
+  };
+  const refreshOrder = () => {
+    const target = Number($("shape-multi-order-target").value);
+    if (!orderSnapshot || !orderForm.checkValidity()) {
+      $("shape-multi-order-apply").disabled = true;
+      $("shape-multi-order-status").textContent =
+        `Bitte eine ganze Startposition von 1 bis ${orderSnapshot?.maximum ?? 1} eingeben.`;
+      return null;
+    }
+    try {
+      const plan = officeShapeMultiMoveTo(orderSnapshot.rootCount, orderSnapshot.entries, target);
+      $("shape-multi-order-apply").disabled = !plan.changed;
+      $("shape-multi-order-status").textContent = plan.changed ?
+        `Die Auswahl beginnt danach an Position ${target} von ${orderSnapshot.maximum}.` :
+        "Die Auswahl befindet sich bereits geschlossen an dieser Position.";
+      return plan;
+    } catch {
+      $("shape-multi-order-apply").disabled = true;
+      $("shape-multi-order-status").textContent =
+        `Bitte eine ganze Startposition von 1 bis ${orderSnapshot?.maximum ?? 1} eingeben.`;
+      return null;
+    }
+  };
+  $("shape-multi-move-to").addEventListener("click", () => {
+    const editor = state.editor, current = selectedEntries();
+    if (!editor || !allowed() || current.length < 2 || current.length >= editor.state.doc.childCount ||
+        document.querySelector("dialog[open]")) return;
+    const maximum = editor.state.doc.childCount - current.length + 1;
+    orderSnapshot = { session: state.session, doc: editor.state.doc, entries: current,
+      ids: current.map((entry) => entry.id), rootCount: editor.state.doc.childCount, maximum };
+    $("shape-multi-order-selection").textContent =
+      `${current.length} ausgewählte Objekte werden als stabiler Block zwischen ${editor.state.doc.childCount} Dokumentelementen verschoben.`;
+    const target = $("shape-multi-order-target"); target.min = "1"; target.max = String(maximum);
+    target.value = String(current[0].rootIndex + 1);
+    orderDialog.showModal(); refreshOrder(); target.focus(); target.select();
+  });
+  $("shape-multi-order-target").addEventListener("input", refreshOrder);
+  $("shape-multi-order-close").addEventListener("click", closeOrder);
+  $("shape-multi-order-cancel").addEventListener("click", closeOrder);
+  orderDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeOrder(); });
+  orderForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const current = selectedEntries(), snapshot = orderSnapshot;
+    const fresh = snapshot && snapshot.session === state.session && snapshot.doc === state.editor?.state.doc &&
+      allowed() && current.length === snapshot.ids.length &&
+      current.every((entry, index) => entry.id === snapshot.ids[index]);
+    const plan = fresh ? refreshOrder() : null;
+    if (!plan?.changed) {
+      closeOrder();
+      if (!fresh) notice("Die exakte Positionierung wurde wegen eines geänderten Dokumentzustands verworfen.", true);
+      return;
+    }
+    const count = current.length, target = plan.target; orderSnapshot = null; orderDialog.close();
+    try {
+      commitOrder(plan, current,
+        `${count} Objekte wurden atomar als stabiler Block an Position ${target} verschoben. Rückgängig ist möglich.`);
+    } catch { notice("Die ausgewählten Objekte konnten nicht an die exakte Dokumentposition verschoben werden.", true); }
+  });
   $("shape-multi-duplicate").addEventListener("click", () => {
     const editor = state.editor, current = selectedEntries(); if (!editor || current.length < 2 || !allowed()) return;
     const copies = current.map((entry) => ({ source: entry, node: clone(editor, entry) })); let tr = editor.state.tr;
@@ -929,6 +997,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (drag && (drag.session !== state.session || !allowed())) finishDrag(null, true);
     if (resizeDrag && (resizeDrag.session !== state.session || !allowed())) finishResize(null, true);
     if (rotateDrag && (rotateDrag.session !== state.session || !allowed())) finishRotate(null, true);
+    if (orderSnapshot && (orderSnapshot.session !== state.session ||
+        orderSnapshot.doc !== state.editor?.state.doc || !allowed())) closeOrder();
     if (transformSnapshot && (transformSnapshot.session !== state.session ||
         transformSnapshot.doc !== state.editor?.state.doc || !allowed())) closeTransform();
     if (appearanceSnapshot && (appearanceSnapshot.session !== state.session ||

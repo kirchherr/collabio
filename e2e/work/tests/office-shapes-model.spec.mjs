@@ -5,7 +5,8 @@ import { officeShapeGroupAttributes, officeShapeGroupBounds, officeShapeGroupCon
 import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMultiAppearanceSample,
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
   officeShapeMultiCanRegroup, officeShapeMultiCanUngroup, officeShapeMultiDistribution,
-  officeShapeMultiLayer, officeShapeMultiNudge, officeShapeMultiOrder, officeShapeMultiRange, officeShapeMultiSelection,
+  officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
+  officeShapeMultiRange, officeShapeMultiSelection,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
   officeShapeMultiRegroup, officeShapeMultiUngroup,
@@ -201,6 +202,29 @@ test("Office shape multi-selection reorders complete roots atomically and stably
   expect(() => officeShapeMultiOrder(7, selected, "middle")).toThrow();
   expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 1 }], "last")).toThrow();
   expect(() => officeShapeMultiOrder(7, [selected[0], { ...selected[1], rootIndex: 7 }], "last")).toThrow();
+});
+
+test("Office shape multi-selection moves a stable block to an exact bounded position", () => {
+  const selected = [
+    { id: "shape-" + "1".repeat(24), type: "shape", rootIndex: 1 },
+    { id: "shape-group-" + "3".repeat(24), type: "shapeGroup", rootIndex: 3 },
+    { id: "shape-" + "4".repeat(24), type: "shape", rootIndex: 4 },
+  ];
+  expect(officeShapeMultiMoveTo(7, selected, 1)).toEqual({
+    target: 1, order: [1, 3, 4, 0, 2, 5, 6], changed: true,
+  });
+  expect(officeShapeMultiMoveTo(7, selected, 3).order).toEqual([0, 2, 1, 3, 4, 5, 6]);
+  expect(officeShapeMultiMoveTo(7, selected, 5).order).toEqual([0, 2, 5, 6, 1, 3, 4]);
+  expect(officeShapeMultiMoveTo(7, [
+    { ...selected[0], rootIndex: 2 }, { ...selected[1], rootIndex: 3 },
+  ], 3).changed).toBe(false);
+  for (const target of [0, 6, 1.5, true]) expect(() => officeShapeMultiMoveTo(7, selected, target)).toThrow();
+  expect(() => officeShapeMultiMoveTo(7, [selected[0]], 1)).toThrow();
+  expect(() => officeShapeMultiMoveTo(3, selected.map((entry, rootIndex) => ({ ...entry, rootIndex })), 1)).toThrow();
+  expect(() => officeShapeMultiMoveTo(7, [selected[0], { ...selected[1], rootIndex: 1 }], 1)).toThrow();
+  expect(() => officeShapeMultiMoveTo(7, [selected[1], selected[0]], 1)).toThrow();
+  expect(() => officeShapeMultiMoveTo(7, [selected[0], { ...selected[1], rootIndex: 7 }], 1)).toThrow();
+  expect(() => officeShapeMultiMoveTo(7, [selected[0], { ...selected[1], type: "paragraph" }], 1)).toThrow();
 });
 
 test("Office shape multi-selection ungroups complete same-anchor groups", () => {
