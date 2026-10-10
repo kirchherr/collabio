@@ -1326,6 +1326,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert (
         "ARCHITECTURE_DECISIONS/ADR-0184-native-office-import-compatibility-matrix.md" in office_native["evidence_refs"]
     )
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md"
+        in office_native["evidence_refs"]
+    )
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()

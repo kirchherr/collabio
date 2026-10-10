@@ -2,6 +2,36 @@
 
 Updated: 2026-10-10
 
+Roadmap 696 through 703 / PLANS 557 through 564 are complete under ADR-0185. Native Office now has nine deterministic
+synthetic interchange fixtures: one allowed, one visibly marked and one blocked input for each of DOCX, ODT and PDF.
+Exact source hashes, byte lengths, policy outcomes, parser outcomes, text hashes, warning counts and a canonical
+manifest hash make drift reviewable.
+
+All fixtures run through the real active-content detector and development parser. VBA, ODF Basic script and PDF
+JavaScript are blocked before extraction; signature fixtures remain nonexecuting and visibly marked. The tenant-
+scoped endpoint returns only metadata and no fixture bytes. Import dispatch, export engine, round-trip fidelity and
+production admission remain false.
+
+Product commit `967a2cd3` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, formatting and Mypy passed with
+the corpus, parser, policy, service, API and dashboard contracts. The exact responsive desktop/mobile lifecycle
+workflow passed 2/2 in 12.2 seconds. Final Work-E2E and review API image IDs are
+`sha256:46bc2b9f2be1307d3e03b480a05573779e62336655e3681baf7b0f11015fcc2a` and
+`sha256:295bf16af4f45d4080365bb62c8da967126b852b9d67c94e319b9655cbc6cd5e`.
+
+The complete final quality gate passed Ruff, found 924 format-conformant files, passed Mypy over 617 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and all inventoried remote and local corpus transfer files were removed. No transient quality, test
+or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=interchange-corpus-967a2cd3`.
+
+This slice adds no migration, fixture-byte response, import dispatch, export engine, round-trip claim or production
+release. The next Office step is separately admitted interchange-engine work against the corpus. GitHub publication
+remains pending under the content-specific approval requirement.
+
 Roadmap 688 through 695 / PLANS 549 through 556 are complete under ADR-0184. Native Office now exposes a
 tenant-scoped, metadata-only `office_import_compatibility_matrix.v1` with thirteen exact feature entries across DOCX,
 ODT and PDF. The endpoint accepts no content, SourceObject ID or version ID.

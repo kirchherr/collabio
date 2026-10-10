@@ -932,6 +932,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md",
                         "ARCHITECTURE_DECISIONS/ADR-0183-bounded-native-office-macro-policy.md",
                         "ARCHITECTURE_DECISIONS/ADR-0184-native-office-import-compatibility-matrix.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",

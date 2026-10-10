@@ -649,7 +649,7 @@ Aufgaben:
 - [x] Parser-Worker isoliert und ohne Netzwerk planen (Roadmap 672-679 / PLANS 533-540).
 - [x] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP (Roadmap 680-687 / PLANS 541-548).
 - [x] OOXML/ODF-Kompatibilitaetsmatrix erstellen (Roadmap 688-695 / PLANS 549-556).
-- [ ] Import/Export-Testkorpus anlegen.
+- [x] Import/Export-Testkorpus anlegen (Roadmap 696-703 / PLANS 557-564).
 - [ ] Textzusammenfassung fuer markierte Bereiche.
 - [ ] Umformulieren und Tonalitaet aendern.
 - [ ] Uebersetzen.
@@ -3551,7 +3551,33 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Import-Dispatch, Export, Rundlauf-Treuebehauptung, produktive Parser-Zulassung oder Produktionsfreigabe
      geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 695 / PLANS 224 bis 556 sind unter ADR-0139 bis ADR-0184 implementiert
+696. [x] Ein versioniertes, tenant-gebundenes und metadatenreines `office_interchange_corpus_manifest.v1` mit neun
+     synthetischen Repository-Fixtures fuer DOCX, ODT und PDF eingefuehrt. Der Endpunkt liefert keine Fixture-Bytes.
+
+697. [x] Fuer jedes Format exakt eine erlaubte Textdatei, eine sichtbar markierte Signaturdatei und eine wegen
+     aktiver Inhalte blockierte Datei definiert. DOCX nutzt VBA, ODT ein Basic-Skript und PDF JavaScript als reale
+     Blockfaelle.
+
+698. [x] ZIP-Zeitstempel, Dateireihenfolge und Berechtigungsbits deterministisch festgelegt sowie jede Quelle an
+     SHA-256 und Bytelaenge gebunden. Ein kanonischer Manifest-Hash bindet IDs, Entscheidungen und erwartete
+     Texthashes.
+
+699. [x] Erwartete Policy-Entscheidung, Parserausgang, Texthash und Warnungsanzahl fuer jedes Fixture festgelegt.
+     Der Test fuehrt den echten Active-Content-Detektor und den realen Entwicklungsparser gegen alle neun Quellen aus.
+
+700. [x] Fuer jedes Fixture `export_expected=blocked_no_engine` und `round_trip_fidelity_expected=false` festgelegt.
+     Der Korpus behauptet weder Export noch Rundlauf-Treue und oeffnet keinen Import-Dispatch.
+
+701. [x] Den Manifest-Read an das Office-Lesegate und den aktuellen Tenant gebunden. Audit enthaelt nur Schema,
+     Zustand, begrenzte Fixture-/Block-/Markierzaehler und geschlossene Import-/Export-/Fidelity-Werte.
+
+702. [x] Korpus-, Parser-, Policy-, Service-, API- und Dashboard-Vertraege bestanden. Der reale responsive
+     Dokumentstatus-Workflow bestand auf Desktop und Mobil 2/2 in 12,2 Sekunden.
+
+703. [x] Den deterministischen Office-Interchange-Testkorpus unter ADR-0185 ohne Migration, Fixture-Byte-Ausgabe,
+     Import-Dispatch, Export-Engine, Rundlauf-Treuebehauptung oder Produktionsfreigabe geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 703 / PLANS 224 bis 564 sind unter ADR-0139 bis ADR-0185 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

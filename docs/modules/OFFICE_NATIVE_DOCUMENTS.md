@@ -1,9 +1,25 @@
 # Native Office Documents
 
-Status: Roadmap 252–695 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 695 / PLANS 556 import compatibility matrix
+Status: Roadmap 252–703 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 703 / PLANS 564 deterministic interchange corpus
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0184; current movement: `ARCHITECTURE_DECISIONS/ADR-0184-native-office-import-compatibility-matrix.md`
+Decisions: ADR-0079 through ADR-0185; current movement: `ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md`
+
+## Deterministic interchange test corpus (Roadmap 696–703)
+
+`office_interchange_corpus_manifest.v1` describes nine repository-generated fixtures: DOCX, ODT and PDF each have
+one allowed text input, one nonexecuting signature marker and one blocked active-content input. Package timestamps,
+ordering and permission bits are fixed. Every source has an exact SHA-256 and byte length, and the canonical manifest
+hash binds fixture identity, policy outcome and expected text hash.
+
+The test executes the real active-content detector and development parser against all nine byte streams. It checks
+the exact allow, allow-marked or block decision, parser outcome, text hash and warning count. VBA, ODF Basic script
+and PDF JavaScript exercise the three block paths; marked signatures remain visible and nonexecuting.
+
+The tenant/read-gated endpoint returns metadata only and never returns fixture bytes. Import dispatch, export engine,
+round-trip fidelity and production admission remain false. The responsive **Dokumentstatus** exposes the corpus and
+closed engine boundary. Representative external fixtures, exported derivatives, recovery and engine admission remain
+separate later work.
 
 ## Import compatibility matrix (Roadmap 688–695)
 
