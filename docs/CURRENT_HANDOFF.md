@@ -2,6 +2,48 @@
 
 Updated: 2026-10-10
 
+Roadmap 728 through 735 / PLANS 589 through 596 are complete under ADR-0189. Native Office can now turn one marked
+text range into either a compact or detailed Markdown outline. The endpoint accepts only the exact current immutable
+version, one native selection anchor and one of the two fixed detail levels. The server revalidates the authoritative
+document ACL and derives the selected source from the saved version; the browser cannot send source text, a free
+instruction, model or provider.
+
+Each detail level maps to its own approved versioned prompt. The prompts preserve language, facts, names, numbers and
+commitments, require bounded heading/list structure and treat the delimited source as untrusted data. Only tenant-
+admitted, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
+content stays closed until tenant, model and exact outline prompt all admit the confidential class.
+
+The result is rejected when empty, unchanged, oversized, structurally invalid or invalid Unicode. A valid outline is
+visibly labelled **AI-Entwurf · ungeprüft** with its detail level, remains transient and changes neither document
+content nor version count. It enters the existing editable proposal composer. Explicit suggestion creation and a
+separate explicit acceptance are both still required before a new immutable version can exist. Audit stores model,
+prompt, exact source IDs and input/output hashes without source, prompt or output bodies. Product commit `fbc00b66`
+is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
+passed 2/2 in 28.3 seconds, and the complete Office suggestion suite passed 10/10 in 1.7 minutes. The final browser
+report hash is `sha256:cd3a3b855e685f0fa2b3d3cae4d1a0a27c5d4da2626b2bd2447c8e0e85d674ab`; desktop, tablet and mobile screenshot
+hashes are `sha256:c8e5594f0730c8a08f5c7b5ace67cb75b67c21a34eac7ae6a9eaf89edac344f3`,
+`sha256:832accda61e7c39713fd229c5fcfb98107ac2cfa01a1a3c426074d84c886d1aa` and
+`sha256:da21be66888bb9420d8e911dec4ce5cfd3eb1d8b2e0d2414bdace07097f7e1af`. Work-E2E and review API image IDs are
+`sha256:e5112fca99d23e0fe866fad9086c22a962bbf3f63344ccd2e99b9be1f30e7cf7` and
+`sha256:897b4b136b2f9d402fddac36cfe3a88ebd38cb4cb9b09c30a5668b86d32d8c1e`.
+
+The complete final quality gate passed Ruff, found 939 format-conformant files, passed Mypy over 625 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API, aborted broad E2E runner and all named temporary transfer
+files were removed. No transient runner remains; regular and review APIs both return `ok`, and review health is
+`healthy/0`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated
+projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=outline-fbc00b66`.
+
+This slice adds no migration, durable AI draft, free-form outline instruction, caller-selected model/provider,
+automatic suggestion/save, whole-document restructuring, semantic heading insertion, indexing or production
+admission. The next Office step is a policy comparison on the same exact-version, local-model and explicit-
+confirmation boundary. GitHub publication remains pending under the content-specific approval requirement.
+
 Roadmap 720 through 727 / PLANS 581 through 588 are complete under ADR-0188. Native Office can now translate one
 marked text range into German, English, French, Spanish, Italian, Dutch, Polish, Portuguese or Ukrainian. The endpoint
 accepts only the exact current immutable version, one native selection anchor and a fixed target-language code. The
