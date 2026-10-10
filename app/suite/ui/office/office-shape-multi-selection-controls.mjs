@@ -10,6 +10,7 @@ import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeSha
   officeShapeMultiCanRegroup, officeShapeMultiCanUngroup,
   officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
+  officeShapeMultiObjectState, officeShapeMultiUnlocked,
   officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
   officeShapeMultiRegroup, officeShapeMultiSelection, officeShapeMultiSelectionPlan,
@@ -99,6 +100,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       count === 1 ? "1 Objekt ausgewählt" : `${count} Objekte ausgewählt`;
     const actions = $("shape-multi-actions"); actions.hidden = count === 0;
     const current = selectedEntries(), writable = allowed(), enough = current.length >= 2, doc = state.editor?.state.doc;
+    const editable = current.length > 0 && officeShapeMultiUnlocked(current);
     $("shape-multi-navigator").disabled = !doc || !writable || entries().length === 0;
     const rememberedGroups = regroupMemory?.session === state.session;
     $("shape-multi-regroup").hidden = !rememberedGroups;
@@ -106,15 +108,15 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       !officeShapeMultiCanRegroup(entries(), regroupMemory);
     const duplicateShapes = current.reduce((total, entry) => total + (entry.type === "shape" ? 1 : entry.node.childCount), 0);
     const duplicateGroups = current.filter((entry) => entry.type === "shapeGroup").length;
-    $("shape-multi-duplicate").disabled = !doc || !writable || !enough || shapeCount(doc) + duplicateShapes > OFFICE_SHAPE_LIMIT ||
+    $("shape-multi-duplicate").disabled = !doc || !writable || !editable || !enough || shapeCount(doc) + duplicateShapes > OFFICE_SHAPE_LIMIT ||
       groupCount(doc) + duplicateGroups > OFFICE_SHAPE_GROUP_LIMIT;
-    $("shape-multi-remove").disabled = !writable || !enough;
+    $("shape-multi-remove").disabled = !writable || !editable || !enough;
     $("shape-multi-ungroup").disabled = !writable || !officeShapeMultiCanUngroup(current);
     for (const button of document.querySelectorAll("[data-shape-multi-order]")) {
-      button.disabled = !doc || !writable ||
+      button.disabled = !doc || !writable || !editable ||
         !officeShapeMultiCanOrder(doc.childCount, current, button.dataset.shapeMultiOrder);
     }
-    $("shape-multi-move-to").disabled = !doc || !writable || !enough || current.length >= doc.childCount;
+    $("shape-multi-move-to").disabled = !doc || !writable || !editable || !enough || current.length >= doc.childCount;
     $("shape-multi-group").disabled = !doc || !writable || !officeShapeMultiCanGroup(current) || groupCount(doc) >= OFFICE_SHAPE_GROUP_LIMIT;
     $("shape-multi-align").disabled = !writable || !officeShapeMultiCanArrange(current);
     $("shape-multi-distribute").disabled = !writable || !officeShapeMultiCanArrange(current, 3);
@@ -125,6 +127,12 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     $("shape-multi-copy-appearance").disabled = !writable || !officeShapeMultiCanCopyAppearance(current);
     $("shape-multi-paste-appearance").disabled = !writable || !copiedHere || !officeShapeMultiCanStyle(current);
     $("shape-multi-style-status").textContent = copiedHere ? "Darstellung gemerkt" : "Keine Darstellung gemerkt";
+    const hiddenCount = current.filter((entry) => entry.node.attrs.hidden === true).length;
+    const lockedCount = current.filter((entry) => entry.node.attrs.locked === true).length;
+    $("shape-multi-show").disabled = !doc || !writable || hiddenCount === 0;
+    $("shape-multi-hide").disabled = !doc || !writable || current.length === 0 || hiddenCount === current.length;
+    $("shape-multi-lock").disabled = !doc || !writable || current.length === 0 || lockedCount === current.length;
+    $("shape-multi-unlock").disabled = !doc || !writable || lockedCount === 0;
     const positions = current.map((entry) => entry.node?.attrs.position).filter(Boolean);
     const movable = writable && officeShapeMultiCanArrange(current);
     $("shape-multi-nudge-left").disabled = !movable || positions.some((position) => position.x <= 0);
@@ -514,14 +522,15 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     const attrs = entry.node.attrs, positioned = attrs.position;
     const anchor = positioned ? `${positioned.layer === "front" ? "vor" : "hinter"} Text · X ${positioned.x} · Y ${positioned.y}` :
       attrs.wrap ? `Textumfluss ${attrs.wrap.side === "left" ? "links" : "rechts"}` : "im Textfluss";
+    const stateLabel = `${attrs.hidden === true ? " · ausgeblendet" : ""}${attrs.locked === true ? " · gesperrt" : ""}`;
     if (entry.type === "shapeGroup") {
       const texts = entry.node.content.content.map((member) => String(member.attrs.text ?? "").trim()).filter(Boolean);
       return { title: attrs.name || `Formgruppe mit ${entry.node.childCount} Formen`,
-        details: `Position ${entry.rootIndex + 1} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${texts.length ? ` · ${texts.join(" · ")}` : ""}` };
+        details: `Position ${entry.rootIndex + 1} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${texts.length ? ` · ${texts.join(" · ")}` : ""}${stateLabel}` };
     }
     const text = String(attrs.text ?? "").trim();
     return { title: attrs.name || text || `Form ${attrs.kind}`,
-      details: `Position ${entry.rootIndex + 1} · ${attrs.kind} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${attrs.name && text ? ` · ${text}` : ""}` };
+      details: `Position ${entry.rootIndex + 1} · ${attrs.kind} · ${anchor}${attrs.altText ? ` · ${attrs.altText}` : ""}${attrs.name && text ? ` · ${text}` : ""}${stateLabel}` };
   };
   const navigatorMatches = () => {
     if (!selectionSnapshot) return [];
@@ -612,9 +621,34 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       closeNavigator(); notice("Die Objektauswahl wurde wegen eines geänderten Dokumentzustands verworfen.", true);
     }
   });
+  const commitObjectState = (options, message) => {
+    const editor = state.editor, ids = [...selectedIds];
+    if (!editor || !allowed() || !ids.length) return;
+    try {
+      const planned = officeShapeMultiSelectionPlan(entries(), ids).entries;
+      const result = officeShapeMultiObjectState(planned, options);
+      let tr = editor.state.tr;
+      for (const change of result.changes) {
+        const entry = planned.find((candidate) => candidate.id === change.id);
+        if (!entry || entry.type !== change.type) throw new Error("shape-multi-object-state");
+        tr = tr.setNodeMarkup(entry.pos, undefined, change.attrs);
+      }
+      if (!tr.docChanged || tr.doc.eq(editor.state.doc)) { notice("Der Objektzustand ist bereits gesetzt."); return; }
+      validate(tr.doc); editor.view.dispatch(closeHistory(tr).scrollIntoView()); editor.view.dispatch(closeHistory(editor.state.tr));
+      focus(editor); updateEditor(); paint(); notice(message);
+    } catch { notice("Sichtbarkeit oder Bearbeitungsschutz konnten wegen eines geänderten Dokumentzustands nicht gesetzt werden.", true); }
+  };
+  $("shape-multi-show").addEventListener("click", () => commitObjectState({ hidden: false, locked: null },
+    "Die ausgewählten Objekte wurden eingeblendet. Rückgängig ist möglich."));
+  $("shape-multi-hide").addEventListener("click", () => commitObjectState({ hidden: true, locked: null },
+    "Die ausgewählten Objekte wurden ausgeblendet und bleiben über die Objektliste erreichbar. Rückgängig ist möglich."));
+  $("shape-multi-lock").addEventListener("click", () => commitObjectState({ hidden: null, locked: true },
+    "Die ausgewählten Objekte sind gegen versehentliche Bearbeitung gesperrt. Rückgängig ist möglich."));
+  $("shape-multi-unlock").addEventListener("click", () => commitObjectState({ hidden: null, locked: false },
+    "Der Bearbeitungsschutz der ausgewählten Objekte wurde aufgehoben. Rückgängig ist möglich."));
   const commitOrder = (plan, current, message) => {
     const editor = state.editor;
-    if (!editor || !allowed() || !plan.changed) return false;
+    if (!editor || !allowed() || !officeShapeMultiUnlocked(current) || !plan.changed) return false;
     const nodes = plan.order.map((index) => editor.state.doc.child(index));
     let tr = editor.state.tr.replaceWith(0, editor.state.doc.content.size, nodes);
     const wanted = new Set(current.map((entry) => entry.id)); let firstPos = null;
@@ -782,7 +816,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   });
   const commitArrangement = (changes, message) => {
     const editor = state.editor, current = selectedEntries();
-    if (!editor || !allowed() || changes.length !== current.length) return;
+    if (!editor || !allowed() || !officeShapeMultiUnlocked(current) || changes.length !== current.length) return;
     const byId = new Map(changes.map((change) => [change.id, change.position]));
     let tr = editor.state.tr;
     for (const entry of current) {
@@ -801,7 +835,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   };
   const commitShapeChanges = (changes, message, unchangedMessage, failureMessage) => {
     const editor = state.editor, current = selectedEntries();
-    if (!editor || !allowed() || changes.length !== current.length) return;
+    if (!editor || !allowed() || !officeShapeMultiUnlocked(current) || changes.length !== current.length) return;
     const byId = new Map(changes.map((change) => [change.id, change]));
     let tr = editor.state.tr;
     try {

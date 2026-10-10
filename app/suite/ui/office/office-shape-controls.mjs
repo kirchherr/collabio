@@ -8,7 +8,7 @@ import { selectedOfficeShapeContext } from "./office-shape-group-extension.mjs";
 export function officeShapeExtension() {
   return Node.create({
     name: "shape", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "fontSize", "textColor", "textStyle", "rotation", "position", "wrap", "name", "altText"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "width", "height", "fill", "stroke", "strokeWidth", "text", "textAlign", "fontSize", "textColor", "textStyle", "rotation", "position", "wrap", "name", "altText", "hidden", "locked"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["div", { class: "office-shape" }, node.attrs.text || ""],
     addNodeView() {
@@ -39,8 +39,11 @@ export function officeShapeExtension() {
         };
         const render = () => {
           const shape = officeShapeElement(current.attrs); dom.replaceChildren(shape);
+          dom.toggleAttribute("data-office-object-hidden", current.attrs.hidden === true);
+          dom.toggleAttribute("data-office-object-locked", current.attrs.locked === true);
           dom.toggleAttribute("data-shape-positioned", current.attrs.position != null);
           applyOfficeShapeLayoutDOM(dom, current.attrs);
+          if (current.attrs.locked === true) return;
           const resize = document.createElement("button"); resize.type = "button"; resize.className = "office-shape-resize";
           const describeSize = (width, height) => resize.setAttribute("aria-label", `Formgröße ${width} mal ${height} Pixel; ziehen oder mit Pfeiltasten ändern`);
           resize.textContent = "Größe ändern"; describeSize(current.attrs.width, current.attrs.height);
@@ -292,6 +295,12 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   const open = () => {
     if (!allowed() || (!selected() && count() >= OFFICE_SHAPE_LIMIT)) return;
     const selection = state.editor.state.selection, groupSelected = selection.node?.type.name === "shapeGroup";
+    const protectedObject = selection.node?.attrs?.locked === true ||
+      (selection.$from.parent.type.name === "shapeGroup" && selection.$from.parent.attrs.locked === true);
+    if (protectedObject) {
+      notice("Dieses Objekt ist gesperrt. Der Bearbeitungsschutz kann über die Objektliste aufgehoben werden.", true);
+      return;
+    }
     const shapeSelection = groupSelected ? NodeSelection.create(state.editor.state.doc, selection.from + 1) : selection;
     const editing = shapeSelection.node?.type.name === "shape";
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
@@ -563,6 +572,11 @@ export function installOfficeShapeControls({ state, allowed, current, validate, 
   });
   for (const id of ["shape-close", "shape-cancel"]) $(id).addEventListener("click", () => close(true));
   $("shape-dialog").addEventListener("cancel", (event) => { event.preventDefault(); close(true); });
-  const update = () => { $("shape-options").disabled = !allowed() || (!selected() && count() >= OFFICE_SHAPE_LIMIT); $("shape-options").textContent = selected() ? "Form bearbeiten …" : "Form einfügen …"; };
+  const selectionLocked = () => {
+    const selection = state.editor?.state.selection;
+    return selection?.node?.attrs?.locked === true ||
+      (selection?.$from.parent.type.name === "shapeGroup" && selection.$from.parent.attrs.locked === true);
+  };
+  const update = () => { $("shape-options").disabled = !allowed() || selectionLocked() || (!selected() && count() >= OFFICE_SHAPE_LIMIT); $("shape-options").textContent = selected() ? "Form bearbeiten …" : "Form einfügen …"; };
   return { update, close };
 }

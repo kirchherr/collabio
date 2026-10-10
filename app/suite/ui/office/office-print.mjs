@@ -39,6 +39,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
   const setColumns = (element, section) => { element.dataset.officeColumns = columnsForSection(section); };
   const printShape = (rawAttrs) => {
     const attrs = officeShapeAttributes(rawAttrs), shape = officeShapeElement(attrs, dom);
+    if (attrs.hidden === true) return dom.createDocumentFragment();
     shape.classList.add("office-print-shape");
     if (!attrs.rotation || attrs.rotation % 180 === 0 || attrs.position) return shape;
     const wrapper = dom.createElement("div"); wrapper.className = "office-print-shape-node";
@@ -109,6 +110,7 @@ export function renderOfficePrintDocument(content, title, dom = document, images
           children.some((child) => child.type !== "shape" || child.attrs?.wrap != null || child.attrs?.position != null)) {
         throw new Error("Invalid shape group");
       }
+      if (attrs.hidden === true) return dom.createDocumentFragment();
       const group = dom.createElement("section"); group.className = "office-shape-group office-print-shape-group";
       group.setAttribute("role", "group"); group.setAttribute("aria-label", officeShapeGroupDescription(attrs, children.length));
       group.dataset.shapeGroup = attrs.id; group.dataset.shapeGroupLayout = attrs.layout;

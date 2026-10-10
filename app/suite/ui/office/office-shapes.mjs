@@ -40,7 +40,7 @@ export function officeShapePosition(position) {
 
 export function officeShapeAttributes(attrs) {
   const keys = ["fill", "height", "id", "kind", "stroke", "strokeWidth", "text", "textAlign", "width"];
-  const optional = ["altText", "fontSize", "name", "position", "rotation", "textColor", "textStyle", "wrap"];
+  const optional = ["altText", "fontSize", "hidden", "locked", "name", "position", "rotation", "textColor", "textStyle", "wrap"];
   const actualKeys = Object.keys(attrs || {}).filter((key) => !optional.includes(key)).sort();
   if (!attrs || actualKeys.join(",") !== keys.join(",") ||
       (Object.hasOwn(attrs, "fontSize") && attrs.fontSize !== null &&
@@ -51,6 +51,8 @@ export function officeShapeAttributes(attrs) {
       (Object.hasOwn(attrs, "textColor") && attrs.textColor !== null && !OFFICE_SHAPE_TEXT_COLORS.includes(attrs.textColor)) ||
       (Object.hasOwn(attrs, "textStyle") && attrs.textStyle !== null && !OFFICE_SHAPE_TEXT_STYLES.includes(attrs.textStyle)) ||
       (Object.hasOwn(attrs, "wrap") && attrs.wrap !== null && typeof attrs.wrap !== "object") ||
+      (Object.hasOwn(attrs, "hidden") && attrs.hidden !== null && attrs.hidden !== true) ||
+      (Object.hasOwn(attrs, "locked") && attrs.locked !== null && attrs.locked !== true) ||
       !/^shape-[a-f0-9]{24}$/.test(attrs.id) || !OFFICE_SHAPE_KINDS.includes(attrs.kind) ||
       !Number.isInteger(attrs.width) || attrs.width < 80 || attrs.width > 1200 ||
       !Number.isInteger(attrs.height) || attrs.height < 40 || attrs.height > 800 ||
@@ -65,6 +67,8 @@ export function officeShapeAttributes(attrs) {
     stroke: attrs.stroke, strokeWidth: attrs.strokeWidth, text: attrs.text, textAlign: attrs.textAlign };
   if (attrs.name != null) result.name = officeShapeName(attrs.name);
   if (attrs.altText != null) result.altText = officeShapeAltText(attrs.altText);
+  if (attrs.hidden === true) result.hidden = true;
+  if (attrs.locked === true) result.locked = true;
   if (attrs.fontSize != null) result.fontSize = attrs.fontSize;
   if (attrs.rotation != null) result.rotation = attrs.rotation;
   if (attrs.textColor != null) result.textColor = attrs.textColor;
@@ -115,7 +119,8 @@ export function officeShapeDescription(attrs) {
   const typography = `${shape.fontSize ? ` · Schrift ${shape.fontSize} px` : ""}${shape.textColor ? ` · Textfarbe ${textColorLabels[shape.textColor]}` : ""}${shape.textStyle ? ` · ${textStyleLabels[shape.textStyle]}` : ""}`;
   const name = shape.name ? `${shape.name} · ` : "";
   const altText = shape.altText ? ` · Alternativtext: ${shape.altText}` : "";
-  return `${name}${kind} · ${shape.width} × ${shape.height} px${rotation}${position}${wrap}${typography}${shape.text ? ` · ${shape.text}` : ""}${altText}`;
+  const state = `${shape.hidden ? " · ausgeblendet" : ""}${shape.locked ? " · gesperrt" : ""}`;
+  return `${name}${kind} · ${shape.width} × ${shape.height} px${rotation}${position}${wrap}${typography}${shape.text ? ` · ${shape.text}` : ""}${altText}${state}`;
 }
 
 export function applyOfficeShapeDOM(element, attrs) {
@@ -126,6 +131,8 @@ export function applyOfficeShapeDOM(element, attrs) {
   element.dataset.shapeFill = shape.fill;
   element.dataset.shapeStroke = shape.stroke;
   element.dataset.shapeTextAlign = shape.textAlign;
+  element.toggleAttribute("data-office-object-hidden", shape.hidden === true);
+  element.toggleAttribute("data-office-object-locked", shape.locked === true);
   if (shape.fontSize) element.dataset.shapeFontSize = String(shape.fontSize); else delete element.dataset.shapeFontSize;
   if (shape.textColor) element.dataset.shapeTextColor = shape.textColor; else delete element.dataset.shapeTextColor;
   if (shape.textStyle) element.dataset.shapeTextStyle = shape.textStyle; else delete element.dataset.shapeTextStyle;

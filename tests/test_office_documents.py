@@ -376,6 +376,9 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
     accessible = {**attrs, "name": "Process start", "altText": "Starts the bounded approval process"}
     accessible_document = {"type": "doc", "content": [{"type": "shape", "attrs": accessible}]}
     assert validate_office_document(accessible_document) == accessible_document
+    protected = {**accessible, "hidden": True, "locked": True}
+    protected_document = {"type": "doc", "content": [{"type": "shape", "attrs": protected}]}
+    assert validate_office_document(protected_document) == protected_document
     invalid = [
         {**attrs, "id": "shape-short"},
         {**attrs, "kind": "svg"},
@@ -404,6 +407,10 @@ def test_native_shapes_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "altText": "bad\ntext"},
         {**attrs, "altText": "x" * 501},
         {**attrs, "altText": True},
+        {**attrs, "hidden": False},
+        {**attrs, "hidden": 1},
+        {**attrs, "locked": False},
+        {**attrs, "locked": "true"},
         {**attrs, "wrap": {"side": "middle", "gap": 0}},
         {**attrs, "wrap": {"side": "left", "gap": 49}},
         {**attrs, "wrap": {"side": "right", "gap": True}},
@@ -459,6 +466,11 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         "attrs": {**group["attrs"], "name": "Approval path", "altText": "Two connected approval steps"},
     }
     assert validate_office_document({"type": "doc", "content": [accessible_group]})["content"][0] == accessible_group
+    protected_group = {
+        **group,
+        "attrs": {**group["attrs"], "hidden": True, "locked": True},
+    }
+    assert validate_office_document({"type": "doc", "content": [protected_group]})["content"][0] == protected_group
     connected = {
         **group,
         "attrs": {**group["attrs"], "connection": {"kind": "doubleArrow", "color": "purple", "width": 8}},
@@ -497,6 +509,10 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "name": "x" * 81},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "altText": "bad\ttext"},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "altText": "x" * 501},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "hidden": False},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "hidden": 1},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "locked": False},
+        {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "locked": "true"},
         {"id": "shape-group-" + "a" * 24, "layout": "row", "gap": 16, "style": "display:flex"},
         {
             "id": "shape-group-" + "a" * 24,
@@ -609,6 +625,11 @@ def test_native_shape_groups_are_bounded_positionable_root_objects() -> None:
     for key, value in (("wrap", {"side": "left", "gap": 16}), ("position", {"layer": "front", "x": 0, "y": 0})):
         member = shape(1)
         member["attrs"][key] = value
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document({"type": "doc", "content": [{**group, "content": [member, shape(2)]}]})
+    for key in ("hidden", "locked"):
+        member = shape(1)
+        member["attrs"][key] = True
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document({"type": "doc", "content": [{**group, "content": [member, shape(2)]}]})
     with pytest.raises(OfficeDocumentInvalidContentError):

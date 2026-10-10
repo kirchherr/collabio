@@ -18,13 +18,15 @@ export function officeShapeGroupConnection(connection) {
 
 export function officeShapeGroupAttributes(attrs) {
   const keys = Object.keys(attrs || {}).filter((key) =>
-    !["alignment", "altText", "connection", "connections", "distributionExtent", "name", "position"].includes(key)).sort();
+    !["alignment", "altText", "connection", "connections", "distributionExtent", "hidden", "locked", "name", "position"].includes(key)).sort();
   if (!attrs || keys.join(",") !== "gap,id,layout" ||
       (Object.hasOwn(attrs, "alignment") && attrs.alignment !== null && typeof attrs.alignment !== "string") ||
       (Object.hasOwn(attrs, "connection") && attrs.connection !== null && typeof attrs.connection !== "object") ||
       (Object.hasOwn(attrs, "connections") && attrs.connections !== null && !Array.isArray(attrs.connections)) ||
       (Object.hasOwn(attrs, "distributionExtent") && attrs.distributionExtent !== null && !Number.isInteger(attrs.distributionExtent)) ||
       (Object.hasOwn(attrs, "position") && attrs.position !== null && typeof attrs.position !== "object") ||
+      (Object.hasOwn(attrs, "hidden") && attrs.hidden !== null && attrs.hidden !== true) ||
+      (Object.hasOwn(attrs, "locked") && attrs.locked !== null && attrs.locked !== true) ||
       (attrs.connection != null && attrs.connections != null) ||
       !/^shape-group-[a-f0-9]{24}$/.test(attrs.id) ||
       !["row", "stack"].includes(attrs.layout) || !Number.isInteger(attrs.gap) || attrs.gap < 0 || attrs.gap > 48 ||
@@ -36,6 +38,8 @@ export function officeShapeGroupAttributes(attrs) {
   const result = { id: attrs.id, layout: attrs.layout, gap: attrs.gap };
   if (attrs.name != null) result.name = officeShapeName(attrs.name);
   if (attrs.altText != null) result.altText = officeShapeAltText(attrs.altText);
+  if (attrs.hidden === true) result.hidden = true;
+  if (attrs.locked === true) result.locked = true;
   if (attrs.alignment != null) result.alignment = attrs.alignment;
   if (attrs.connection != null) result.connection = officeShapeGroupConnection(attrs.connection);
   if (attrs.connections != null) {
@@ -121,5 +125,6 @@ export function officeShapeGroupDescription(attrs, memberCount) {
   const gap = group.distributionExtent ? `Mindestabstand ${group.gap}` : `Abstand ${group.gap}`;
   const name = group.name ? `${group.name} · ` : "";
   const altText = group.altText ? ` · Alternativtext: ${group.altText}` : "";
-  return `${name}Formgruppe · ${memberCount} Formen · ${group.layout === "row" ? "nebeneinander" : "untereinander"} · ${gap} px${alignment}${distribution}${connection}${position}${altText}`;
+  const state = `${group.hidden ? " · ausgeblendet" : ""}${group.locked ? " · gesperrt" : ""}`;
+  return `${name}Formgruppe · ${memberCount} Formen · ${group.layout === "row" ? "nebeneinander" : "untereinander"} · ${gap} px${alignment}${distribution}${connection}${position}${altText}${state}`;
 }

@@ -43,6 +43,40 @@ export function officeShapeMultiSelectionPlan(entries, ids) {
   return { ids: selected.map((entry) => entry.id), entries: selected };
 }
 
+export function officeShapeMultiUnlocked(entries) {
+  if (!Array.isArray(entries) || entries.length < 1 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
+  return entries.every((entry) => ["shape", "shapeGroup"].includes(entry?.type) && entry.node?.attrs &&
+    [undefined, null, true].includes(entry.node.attrs.locked) && [undefined, null, true].includes(entry.node.attrs.hidden) &&
+    entry.node.attrs.locked !== true && entry.node.attrs.hidden !== true);
+}
+
+export function officeShapeMultiObjectState(entries, options) {
+  if (!Array.isArray(entries) || entries.length < 1 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT ||
+      !options || typeof options !== "object" || Array.isArray(options) ||
+      Object.keys(options).sort().join(",") !== "hidden,locked" ||
+      ![null, true, false].includes(options.hidden) || ![null, true, false].includes(options.locked) ||
+      (options.hidden === null) === (options.locked === null)) throw new Error("shape-multi-object-state");
+  const ids = new Set(); let previous = -1;
+  const changes = entries.map((entry) => {
+    if (typeof entry?.id !== "string" || ids.has(entry.id) || !Number.isSafeInteger(entry.rootIndex) ||
+        entry.rootIndex <= previous || !["shape", "shapeGroup"].includes(entry.type)) {
+      throw new Error("shape-multi-object-state");
+    }
+    ids.add(entry.id); previous = entry.rootIndex;
+    const attrs = entry.type === "shape" ? officeShapeAttributes(entry.node?.attrs) :
+      officeShapeGroupAttributes(entry.node?.attrs);
+    if (attrs.id !== entry.id) throw new Error("shape-multi-object-state");
+    const next = { ...attrs };
+    for (const key of ["hidden", "locked"]) {
+      if (options[key] === true) next[key] = true;
+      else if (options[key] === false) delete next[key];
+    }
+    return { id: entry.id, type: entry.type, attrs: entry.type === "shape" ?
+      officeShapeAttributes(next) : officeShapeGroupAttributes(next) };
+  });
+  return { options: { ...options }, changes };
+}
+
 export function officeShapeMultiRange(entries, anchorId, targetId) {
   const anchor = entries.findIndex((entry) => entry.id === anchorId), target = entries.findIndex((entry) => entry.id === targetId);
   if (anchor < 0 || target < 0) return [targetId];
@@ -105,6 +139,7 @@ export function officeShapeMultiCanOrder(rootCount, entries, action) {
 
 export function officeShapeMultiCanGroup(entries) {
   return entries.length >= 2 && entries.length <= OFFICE_SHAPE_GROUP_MEMBER_LIMIT &&
+    officeShapeMultiUnlocked(entries) &&
     entries.every((entry) => entry.type === "shape" && entry.node?.attrs.position == null && entry.node?.attrs.wrap == null) &&
     entries.every((entry, index) => index === 0 || entry.rootIndex === entries[index - 1].rootIndex + 1);
 }
@@ -112,7 +147,7 @@ export function officeShapeMultiCanGroup(entries) {
 export function officeShapeMultiCanArrange(entries, minimum = 2) {
   if (!Array.isArray(entries) || !Number.isInteger(minimum) || minimum < 2 || entries.length < minimum ||
       entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
-  return entries.every((entry) => {
+  return officeShapeMultiUnlocked(entries) && entries.every((entry) => {
     if (!["shape", "shapeGroup"].includes(entry?.type)) return false;
     try { officeShapePosition(entry.node?.attrs.position); return true; } catch { return false; }
   });
@@ -190,6 +225,7 @@ function officeShapeMultiMembers(entry) {
 export function officeShapeMultiCanUngroup(entries) {
   if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
   try {
+    if (!officeShapeMultiUnlocked(entries)) return false;
     const positioned = entries[0]?.node?.attrs.position != null;
     return entries.every((entry) => {
       if (entry?.type !== "shapeGroup" || (entry.node?.attrs.position != null) !== positioned) return false;
@@ -289,7 +325,7 @@ export function officeShapeMultiCanRegroup(entries, snapshot) {
 
 export function officeShapeMultiCanStyle(entries) {
   if (!Array.isArray(entries) || entries.length < 2 || entries.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) return false;
-  try { entries.forEach(officeShapeMultiMembers); return true; } catch { return false; }
+  try { if (!officeShapeMultiUnlocked(entries)) return false; entries.forEach(officeShapeMultiMembers); return true; } catch { return false; }
 }
 
 function validAppearanceOptions(options, allowNull) {
@@ -334,7 +370,7 @@ export function officeShapeMultiAppearanceSample(entry) {
 
 export function officeShapeMultiCanCopyAppearance(entries) {
   if (!Array.isArray(entries) || entries.length !== 1) return false;
-  try { officeShapeMultiAppearanceSample(entries[0]); return true; } catch { return false; }
+  try { if (!officeShapeMultiUnlocked(entries)) return false; officeShapeMultiAppearanceSample(entries[0]); return true; } catch { return false; }
 }
 
 export function officeShapeMultiAppearance(entries, options) {

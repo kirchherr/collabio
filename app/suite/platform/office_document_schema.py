@@ -860,6 +860,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             optional_shape_attrs = {
                 "altText",
                 "fontSize",
+                "hidden",
+                "locked",
                 "name",
                 "position",
                 "rotation",
@@ -896,6 +898,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or attrs.get("textAlign") not in {"left", "center", "right"}
                 or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
                 or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
+                or ("hidden" in attrs and (attrs.get("hidden") is not True or depth != 1))
+                or ("locked" in attrs and (attrs.get("locked") is not True or depth != 1))
                 or (
                     "fontSize" in attrs
                     and (
@@ -954,6 +958,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     "distributionExtent",
                     "connection",
                     "connections",
+                    "hidden",
+                    "locked",
                     "position",
                     "name",
                     "altText",
@@ -968,6 +974,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or ("alignment" in attrs and attrs.get("alignment") not in {"center", "end"})
                 or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
                 or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
+                or ("hidden" in attrs and attrs.get("hidden") is not True)
+                or ("locked" in attrs and attrs.get("locked") is not True)
                 or (
                     "distributionExtent" in attrs
                     and (

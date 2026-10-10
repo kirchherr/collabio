@@ -12,7 +12,8 @@ export function officeShapeGroupExtension() {
       connections: { default: null, rendered: false },
       alignment: { default: null, rendered: false }, distributionExtent: { default: null, rendered: false },
       position: { default: null, rendered: false }, name: { default: null, rendered: false },
-      altText: { default: null, rendered: false } }),
+      altText: { default: null, rendered: false }, hidden: { default: null, rendered: false },
+      locked: { default: null, rendered: false } }),
     parseHTML: () => [], renderHTML: () => ["section", { class: "office-shape-group" }, 0],
     addNodeView() {
       return ({ node, editor, getPos }) => {
@@ -43,7 +44,7 @@ export function officeShapeGroupExtension() {
           anchor.setAttribute("aria-label", `${anchor.textContent}; X ${value.x}; Y ${value.y} Pixel; ziehen oder mit Pfeiltasten verschieben`);
         };
         const commitPosition = (position) => {
-          if (node.attrs.position == null || typeof getPos !== "function") return;
+          if (node.attrs.position == null || node.attrs.locked === true || typeof getPos !== "function") return;
           const at = getPos(); if (!Number.isInteger(at)) return;
           const attrs = officeShapeGroupAttributes({ ...node.attrs, position });
           const transaction = editor.state.tr.setNodeMarkup(at, undefined, attrs);
@@ -51,6 +52,8 @@ export function officeShapeGroupExtension() {
         };
         const paint = (current) => {
           const attrs = officeShapeGroupAttributes(current.attrs);
+          dom.toggleAttribute("data-office-object-hidden", attrs.hidden === true);
+          dom.toggleAttribute("data-office-object-locked", attrs.locked === true);
           const bounds = officeShapeGroupLayout(attrs, current.content.content.map((member) => member.attrs));
           dom.dataset.shapeGroup = attrs.id; dom.dataset.shapeGroupLayout = attrs.layout;
           dom.dataset.shapeGroupAlignment = attrs.alignment ?? "start";
@@ -60,11 +63,12 @@ export function officeShapeGroupExtension() {
           else dom.style.removeProperty("--shape-group-distribution-extent");
           dom.style.setProperty("--shape-group-columns", attrs.layout === "row" ? String(current.childCount) : "1");
           dom.style.setProperty("--shape-group-bound-width", String(bounds.width));
-          resize.hidden = attrs.position == null;
+          resize.hidden = attrs.position == null || attrs.locked === true;
           resize.setAttribute("aria-label", `Formgruppengröße ${bounds.width} mal ${bounds.height} Pixel; in einer Mehrfachauswahl ziehen oder mit Pfeiltasten ändern`);
-          rotate.hidden = attrs.position == null;
+          rotate.hidden = attrs.position == null || attrs.locked === true;
           rotate.setAttribute("aria-label", "Formgruppe in einer Mehrfachauswahl ziehen oder mit Pfeiltasten drehen");
           setPosition(attrs.position ?? null);
+          anchor.hidden = attrs.position == null || attrs.locked === true;
           const connections = officeShapeGroupConnections(attrs, current.childCount);
           if (attrs.connection) {
             dom.dataset.shapeGroupConnection = attrs.connection.kind;
@@ -92,7 +96,8 @@ export function officeShapeGroupExtension() {
           const alignment = attrs.alignment ? `; Ausrichtung ${attrs.alignment === "center" ? "Mitte" : "Ende"}` : "";
           const distribution = attrs.distributionExtent ? `; gleichmäßig auf ${attrs.distributionExtent} Pixel verteilt` : "";
           const identity = attrs.altText || attrs.name || `Formgruppe mit ${current.childCount} Formen`;
-          control.setAttribute("aria-label", `${identity} bearbeiten${alignment}${distribution}${connection}${position}`);
+          control.setAttribute("aria-label", attrs.locked === true ? `${identity}; Formgruppe gesperrt` :
+            `${identity} bearbeiten${alignment}${distribution}${connection}${position}`);
         };
         paint(node);
         const selectGroup = () => {
@@ -134,7 +139,7 @@ export function officeShapeGroupExtension() {
         };
         const cancel = (event) => finish(event, true);
         const startDrag = (event, id = null) => {
-          if (drag || event.button !== 0 || node.attrs.position == null) return;
+          if (drag || event.button !== 0 || node.attrs.position == null || node.attrs.locked === true) return;
           const bounds = editor.view.dom.getBoundingClientRect();
           drag = { id, clientX: event.clientX, clientY: event.clientY, width: Math.max(1, bounds.width),
             start: node.attrs.position, next: node.attrs.position };
@@ -155,11 +160,11 @@ export function officeShapeGroupExtension() {
         anchor.addEventListener("pointercancel", cancel);
         anchor.addEventListener("mousedown", (event) => startDrag(event));
         anchor.addEventListener("keydown", (event) => {
-          if (event.key === "Home" && node.attrs.position != null) {
+          if (event.key === "Home" && node.attrs.position != null && node.attrs.locked !== true) {
             event.preventDefault(); commitPosition({ ...node.attrs.position, x: 0, y: 0 }); return;
           }
           const direction = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
-          if (!direction || event.ctrlKey || event.metaKey || event.altKey || node.attrs.position == null) return;
+          if (!direction || event.ctrlKey || event.metaKey || event.altKey || node.attrs.position == null || node.attrs.locked === true) return;
           event.preventDefault(); const step = event.shiftKey ? 10 : 1, position = node.attrs.position;
           commitPosition({ ...position, x: Math.max(0, Math.min(1000, position.x + direction[0] * step)),
             y: Math.max(-1200, Math.min(1200, position.y + direction[1] * step)) });

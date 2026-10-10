@@ -6,6 +6,7 @@ import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMulti
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
   officeShapeMultiCanRegroup, officeShapeMultiCanUngroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
+  officeShapeMultiObjectState, officeShapeMultiUnlocked,
   officeShapeMultiRange, officeShapeMultiSelection, officeShapeMultiSelectionPlan,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
@@ -57,6 +58,36 @@ test("Office shapes and groups preserve bounded accessible names and alternative
     expect(() => officeShapeAttributes({ ...attrs, altText: invalid })).toThrow();
     expect(() => officeShapeGroupAttributes({ ...group, altText: invalid })).toThrow();
   }
+});
+
+test("Office shape root visibility and protection are canonical and bounded", () => {
+  const groupAttrs = { id: "shape-group-" + "b".repeat(24), layout: "row", gap: 16 };
+  expect(officeShapeAttributes({ ...attrs, hidden: true, locked: true })).toEqual({ ...attrs, hidden: true, locked: true });
+  expect(officeShapeGroupAttributes({ ...groupAttrs, hidden: true, locked: true })).toEqual({ ...groupAttrs, hidden: true, locked: true });
+  expect(officeShapeDescription({ ...attrs, hidden: true, locked: true })).toContain("ausgeblendet · gesperrt");
+  expect(officeShapeGroupDescription({ ...groupAttrs, hidden: true, locked: true }, 2)).toContain("ausgeblendet · gesperrt");
+  for (const invalid of [false, 1, "true"]) {
+    expect(() => officeShapeAttributes({ ...attrs, hidden: invalid })).toThrow();
+    expect(() => officeShapeAttributes({ ...attrs, locked: invalid })).toThrow();
+    expect(() => officeShapeGroupAttributes({ ...groupAttrs, hidden: invalid })).toThrow();
+    expect(() => officeShapeGroupAttributes({ ...groupAttrs, locked: invalid })).toThrow();
+  }
+  const entries = [
+    { id: attrs.id, type: "shape", rootIndex: 1, node: { attrs } },
+    { id: groupAttrs.id, type: "shapeGroup", rootIndex: 3, node: { attrs: groupAttrs } },
+  ];
+  expect(officeShapeMultiUnlocked(entries)).toBe(true);
+  const hidden = officeShapeMultiObjectState(entries, { hidden: true, locked: null });
+  expect(hidden.changes.map((change) => change.attrs.hidden)).toEqual([true, true]);
+  const locked = officeShapeMultiObjectState(entries, { hidden: null, locked: true });
+  expect(locked.changes.map((change) => change.attrs.locked)).toEqual([true, true]);
+  expect(officeShapeMultiObjectState(hidden.changes.map((change, index) => ({ ...entries[index], node: { attrs: change.attrs } })),
+    { hidden: false, locked: null }).changes.every((change) => change.attrs.hidden == null)).toBe(true);
+  expect(officeShapeMultiUnlocked([{ ...entries[0], node: { attrs: { ...attrs, hidden: true } } }])).toBe(false);
+  expect(officeShapeMultiUnlocked([{ ...entries[0], node: { attrs: { ...attrs, locked: true } } }])).toBe(false);
+  expect(() => officeShapeMultiObjectState(entries, { hidden: true, locked: true })).toThrow();
+  expect(() => officeShapeMultiObjectState(entries, { hidden: null, locked: null })).toThrow();
+  expect(() => officeShapeMultiObjectState([entries[1], entries[0]], { hidden: true, locked: null })).toThrow();
 });
 
 test("Office shape wrapping is bounded and mutually exclusive with positioning", () => {

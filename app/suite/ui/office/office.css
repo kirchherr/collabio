@@ -290,6 +290,8 @@ div.office-semantic { display: block; margin: .75rem 0; padding: .65rem .8rem; f
 @media(max-width:760px){.backlinks-dialog>.dialog-body{max-height:55dvh}.backlink-item{padding:11px}.backlink-item::after{content:"↗"}.document-actions #document-backlinks{font-size:11px}}
 
 .shape-multi-navigator-dialog{width:min(680px,calc(100vw - 28px));overflow:hidden}
+.office-shape-node[data-office-object-hidden],.office-shape-group[data-office-object-hidden]{display:none!important}
+.office-shape-node[data-office-object-locked]>.office-shape,.office-shape-group[data-office-object-locked]>.office-shape-group-content{filter:saturate(.82)}
 #shape-multi-navigator-form{display:flex;flex-direction:column;max-height:calc(100dvh - 44px)}
 #shape-multi-navigator-form>.dialog-body{min-height:0;overflow:auto}
 #shape-multi-navigator-form>header,#shape-multi-navigator-form>footer{flex-shrink:0}

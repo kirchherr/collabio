@@ -104,6 +104,73 @@ test("Office shapes insert edit undo save print and copy responsively", async ({
   expect(copy.content.content.find((entry) => entry.type === "shape").attrs).toEqual(wrapped.content.content.find((entry) => entry.type === "shape").attrs);
 });
 
+test("Office object list controls persistent visibility and editing protection", async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await openOffice(page);
+  const baseline = await createOfficeDocument(page, "Native object state proof", "Protected object context");
+  const editor = officeEditor(page), objectId = baseline.document.object_id;
+  const insertShape = async (text, kind = "rectangle") => {
+    await page.locator("#shape-options").click(); await page.locator("#shape-kind").selectOption(kind);
+    await page.locator("#shape-text").fill(text); await page.locator("#shape-apply").click();
+  };
+  await editor.locator("p").click(); await insertShape("State A", "roundedRectangle");
+  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
+  await insertShape("State B");
+  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await editor.press("ArrowRight");
+  await insertShape("State C", "ellipse");
+  await editor.locator(":scope > .office-shape-node .office-shape").last().click(); await page.locator("#shape-options").click();
+  await page.locator("#shape-group-previous").click();
+  await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(1);
+  await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
+
+  await page.locator("#shape-multi-navigator").click(); await page.locator("#shape-multi-navigator-all").click();
+  await page.locator("#shape-multi-navigator-apply").click();
+  await expect(page.locator("#shape-multi-status")).toHaveText("2 Objekte ausgewählt");
+  await page.locator("#shape-multi-lock").click();
+  const lockedRoots = editor.locator(":scope > .office-shape-node[data-office-object-locked], :scope > .office-shape-group[data-office-object-locked]");
+  const hiddenRoots = editor.locator(":scope > .office-shape-node[data-office-object-hidden], :scope > .office-shape-group[data-office-object-hidden]");
+  await expect(lockedRoots).toHaveCount(2);
+  await expect(page.locator("#shape-multi-unlock")).toBeEnabled();
+  await expect(page.locator("#shape-multi-duplicate")).toBeDisabled();
+  await expect(page.locator("#shape-multi-remove")).toBeDisabled();
+  await expect(page.locator("#shape-multi-transform")).toBeDisabled();
+  await page.locator("#shape-multi-hide").click();
+  await expect(hiddenRoots).toHaveCount(2);
+  await expect(hiddenRoots.first()).toBeHidden();
+  await expect(page.locator("#shape-multi-show")).toBeEnabled();
+
+  await page.locator("#shape-multi-navigator").click();
+  await page.locator("#shape-multi-navigator-search").fill("ausgeblendet");
+  await expect(page.locator(".shape-multi-navigator-item")).toHaveCount(2);
+  await expect(page.locator(".shape-multi-navigator-item small").first()).toContainText("ausgeblendet · gesperrt");
+  await page.locator("#shape-multi-navigator-cancel").click();
+
+  const saved = await saveOffice(page, { objectId });
+  const storedRoots = saved.content.content.filter((entry) => ["shape", "shapeGroup"].includes(entry.type));
+  expect(storedRoots).toHaveLength(2);
+  expect(storedRoots.every((entry) => entry.attrs.hidden === true && entry.attrs.locked === true)).toBe(true);
+  expect((await officeContent(page, objectId, { versionId: baseline.version.version_id })).content).toEqual(baseline.content);
+
+  await page.locator("#document-print").click();
+  await expect(page.locator("#print-preview .office-print-shape")).toHaveCount(0);
+  await expect(page.locator("#print-preview .office-print-shape-group")).toHaveCount(0);
+  await page.locator("#print-close").click();
+  await page.locator("#shape-multi-navigator").click(); await page.locator("#shape-multi-navigator-all").click();
+  await page.locator("#shape-multi-navigator-apply").click();
+
+  await page.locator("#shape-multi-show").click();
+  await expect(hiddenRoots).toHaveCount(0);
+  await expect(lockedRoots).toHaveCount(2);
+  await page.locator("#shape-multi-unlock").click();
+  await expect(lockedRoots).toHaveCount(0);
+  await expect(page.locator("#shape-multi-duplicate")).toBeEnabled();
+  await editor.press("Control+z"); await expect(lockedRoots).toHaveCount(2);
+  await editor.press("Control+z"); await expect(hiddenRoots).toHaveCount(2);
+  await editor.press("Control+Shift+z"); await expect(hiddenRoots).toHaveCount(0);
+  await editor.press("Control+Shift+z"); await expect(lockedRoots).toHaveCount(0);
+  await page.screenshot({ path: `${ARTIFACT_DIR}/office-object-state-${testInfo.project.name}.png`, fullPage: true });
+});
+
 test("Office shapes rotate at exact arbitrary angles by dialog keyboard and pointer", async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   await openOffice(page);
