@@ -23,6 +23,10 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
     const url = new URL(response.url());
     return url.pathname === `/v1/office/documents/${saved.document.object_id}/collaboration/gateway-preflight` && response.request().method() === "POST";
   });
+  const parserPlan = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === "/v1/office/documents/parser-worker-plan" && response.request().method() === "GET";
+  });
   await page.locator("#document-lifecycle").click();
   expect((await lifecycle).status()).toBe(200);
   const preflightResponse = await preflight;
@@ -43,6 +47,14 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   expect(gatewayBody.credential_issued).toBe(false);
   expect(gatewayBody).not.toHaveProperty("ticket");
   expect(gatewayBody).not.toHaveProperty("socket_url");
+  const parserPlanResponse = await parserPlan;
+  expect(parserPlanResponse.status()).toBe(200);
+  const parserPlanBody = await parserPlanResponse.json();
+  expect(parserPlanBody.plan_state).toBe("planned_dispatch_closed");
+  expect(parserPlanBody.worker_profile_id).toBe("rich-document-parser-worker:1");
+  expect(parserPlanBody.dispatch_allowed).toBe(false);
+  expect(parserPlanBody.production_admitted).toBe(false);
+  expect(parserPlanBody.content_accepted_by_plan_endpoint).toBe(false);
   await expect(page.locator("#lifecycle-dialog")).toBeVisible();
   await expect(page.locator("#lifecycle-draft")).toContainText("ungespeicherte Änderungen vorhanden");
   await expect(page.locator("#lifecycle-collaborative")).toContainText("für diese Sitzung reserviert");
@@ -50,6 +62,8 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Restore-, Fuzzing- und Lastnachweise sind noch offen");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("Same-Origin, Subprotocol, Binärframes");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("HTTP-Upgrade, Zugangsticket und Verbindungen bleiben geschlossen");
+  await expect(page.locator("#lifecycle-parser-worker")).toContainText("No-Network-, Read-only- und Non-root-Profil geplant");
+  await expect(page.locator("#lifecycle-parser-worker")).toContainText("Dispatch und Produktion bleiben geschlossen");
   await expect(page.locator("#lifecycle-saved")).toContainText(saved.version.version_id);
   await expect(page.locator("#lifecycle-business")).toContainText("Übergang geschlossen");
   await expect(page.locator("#lifecycle-worm")).toContainText("kein WORM Evidence Record");

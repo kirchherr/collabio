@@ -62,6 +62,7 @@ from suite.platform.office_images import (
     read_image,
     store_uploaded_image,
 )
+from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository, PgOfficeReviewRepository
 from suite.platform.office_reviews import (
     OfficeReviewService,
@@ -266,6 +267,16 @@ def register_office_routes(
         return FileResponse("/opt/collabio-office/THIRD_PARTY_NOTICES.txt", media_type="text/plain")
 
     router = APIRouter(prefix="/v1/office/documents", route_class=OfficeRoute, dependencies=[Depends(read_gate)])
+
+    @router.get("/parser-worker-plan", response_model=OfficeParserWorkerPlanResponse)
+    def parser_worker_plan(
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.parser_worker_plan(
+            user_context=context.user_context,
+            read_enabled=True,
+        )
 
     @router.post("/{object_id}/images", dependencies=[Depends(write_gate)])
     def upload_image(

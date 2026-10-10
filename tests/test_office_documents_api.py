@@ -449,6 +449,31 @@ def test_office_gateway_preflight_is_same_origin_version_and_lease_bound_with_up
     assert malformed.status_code == 422
 
 
+def test_office_parser_worker_plan_api_is_metadata_only_noncacheable_and_dispatch_closed(
+    office_api: OfficeApiHarness,
+) -> None:
+    enable_office(read=True, write=False)
+    response = office_api.client.get(f"{BASE}/parser-worker-plan", headers=office_api.headers)
+
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo"
+    assert value["schema_version"] == "office_parser_worker_plan.v1"
+    assert value["plan_state"] == "planned_dispatch_closed"
+    assert value["worker_profile_id"] == "rich-document-parser-worker:1"
+    assert value["supported_mime_types"] == [
+        "application/pdf",
+        "application/vnd.oasis.opendocument.text",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ]
+    assert value["dispatch_allowed"] is False and value["production_admitted"] is False
+    assert value["content_accepted_by_plan_endpoint"] is False
+    assert value["normal_logs_may_contain_content"] is False
+    assert value["output_trusted_without_validation"] is False
+    assert value["blockers"][-1] == "production_worker_image_admission_not_verified"
+    assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

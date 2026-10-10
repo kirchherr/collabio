@@ -814,6 +814,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Der darauf aufbauende Gateway-Preflight legt Same-Origin, Subprotocol, binaere Frames, "
                         "Backpressure, Heartbeat, Reautorisierung und State-Vector-Resume fest, gibt aber weder "
                         "Zugangsticket noch Upgrade oder Verbindung frei. "
+                        "Ein tenant-gebundener Parser-Worker-Plan bindet exakte Quellenmetadaten an einen "
+                        "No-Network-, Read-only-, Non-root-One-shot-Worker; Dispatch und Produktion bleiben bis zu "
+                        "Materializer-, Handoff-, Schadkorpus-, Fuzzing-, Recovery- und Image-Nachweisen geschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -854,6 +857,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_documents.py",
                         "tests/test_office_documents_pg.py",
                         "tests/test_office_documents_api.py",
+                        "tests/test_office_parser_worker_plan.py",
                         "tests/test_office_document_discovery.py",
                         "tests/test_office_document_discovery_api.py",
                         "tests/test_office_document_discovery_pg.py",
@@ -917,6 +921,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                     ),
                     api_routes=(
                         "/v1/office/documents",
+                        "/v1/office/documents/parser-worker-plan",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
@@ -956,6 +961,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "websocket_gateway_preflight_requires_exact_same_origin_subprotocol_acl_version_and_lease",
                         "websocket_upgrade_credentials_query_tokens_and_runtime_remain_closed",
                         "websocket_backpressure_heartbeat_reauth_resume_and_limits_are_explicit",
+                        "parser_plan_requires_exact_source_metadata_and_acl_revalidation_before_and_after_parse",
+                        "parser_worker_is_no_network_non_root_read_only_bounded_and_credential_free",
+                        "parser_dispatch_and_output_trust_remain_closed_until_separate_evidence",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -988,7 +996,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="plan_isolated_no_network_office_parser_worker",
+                    next_action="define_office_macro_detection_block_mark_policy",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

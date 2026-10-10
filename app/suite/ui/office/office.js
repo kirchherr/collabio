@@ -663,6 +663,42 @@ async function loadGatewayPreflight(session, context) {
   }
 }
 
+function parserWorkerPlanMatches(value) {
+  const blockers = ["content_addressed_input_materializer_not_implemented",
+    "write_only_result_handoff_not_implemented", "job_scheduler_and_timeout_enforcement_not_implemented",
+    "malicious_document_corpus_not_verified", "sandbox_escape_fuzzing_not_verified",
+    "non_empty_parser_recovery_not_verified", "production_worker_image_admission_not_verified"];
+  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_parser_worker_plan.v1" &&
+    value.plan_state === "planned_dispatch_closed" && value.worker_profile_id === "rich-document-parser-worker:1" &&
+    value.development_manifest_present === true && value.max_input_bytes === 25000000 &&
+    value.max_archive_uncompressed_bytes === 20000000 && value.max_extracted_characters === 2000000 &&
+    value.memory_limit_bytes === 268435456 && value.pids_limit === 64 && value.cpu_limit === 1 &&
+    value.dispatch_allowed === false && value.production_admitted === false &&
+    value.content_accepted_by_plan_endpoint === false && value.direct_storage_mutation_allowed === false &&
+    value.direct_vector_writes_allowed === false && value.normal_logs_may_contain_content === false &&
+    value.output_trusted_without_validation === false &&
+    Array.isArray(value.supported_mime_types) && value.supported_mime_types.length === 3 &&
+    Array.isArray(value.source_requirements) && value.source_requirements.length === 4 &&
+    Array.isArray(value.pipeline) && value.pipeline.length === 6 &&
+    Array.isArray(value.isolation_requirements) && value.isolation_requirements.length === 9 &&
+    JSON.stringify(value.blockers) === JSON.stringify(blockers) && typeof value.audit_event_id === "string";
+}
+
+async function loadParserWorkerPlan(session, context) {
+  try {
+    const value = await api("/v1/office/documents/parser-worker-plan", {}, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!parserWorkerPlanMatches(value)) throw new ApiError(502, true);
+    $("lifecycle-parser-worker").textContent =
+      "No-Network-, Read-only- und Non-root-Profil geplant; Dispatch und Produktion bleiben geschlossen. Materializer, Ergebnishandoff, Scheduler, Schadkorpus, Fuzzing, Recovery und Image-Zulassung fehlen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-parser-worker").textContent = denied(error)
+      ? "Parser-Plan nicht mehr berechtigt; Dispatch bleibt geschlossen."
+      : "Parser-Plan konnte nicht bestätigt werden; Dispatch bleibt geschlossen.";
+  }
+}
+
 async function loadDocumentLifecycle() {
   const session = state.session, context = state.context;
   if (!sessionCurrent(session) || !session.objectId) return;
@@ -686,6 +722,8 @@ async function loadDocumentLifecycle() {
     if (collaborationPrepared) await loadGatewayPreflight(session, context);
     else $("lifecycle-websocket-gateway").textContent = "Nicht geprüft; der vorgelagerte CRDT-Preflight ist geschlossen.";
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    await loadParserWorkerPlan(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
     $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
@@ -706,6 +744,7 @@ function openDocumentLifecycle() {
   $("lifecycle-collaborative").textContent = "Status wird geladen …";
   $("lifecycle-live-collaboration").textContent = "Preflight wird geladen …";
   $("lifecycle-websocket-gateway").textContent = "Preflight wird geladen …";
+  $("lifecycle-parser-worker").textContent = "Plan wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";

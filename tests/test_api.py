@@ -1224,6 +1224,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "/office" in office_native["summary"]
     assert office_native["api_routes"] == [
         "/v1/office/documents",
+        "/v1/office/documents/parser-worker-plan",
         "/v1/office/documents/{object_id}/content",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
@@ -1262,6 +1263,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "websocket_gateway_preflight_requires_exact_same_origin_subprotocol_acl_version_and_lease",
         "websocket_upgrade_credentials_query_tokens_and_runtime_remain_closed",
         "websocket_backpressure_heartbeat_reauth_resume_and_limits_are_explicit",
+        "parser_plan_requires_exact_source_metadata_and_acl_revalidation_before_and_after_parse",
+        "parser_worker_is_no_network_non_root_read_only_bounded_and_credential_free",
+        "parser_dispatch_and_output_trust_remain_closed_until_separate_evidence",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",
@@ -1317,6 +1321,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert {
         ("/v1/office/documents", "GET"),
         ("/v1/office/documents", "POST"),
+        ("/v1/office/documents/parser-worker-plan", "GET"),
         ("/v1/office/documents/{object_id}/content", "GET"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),

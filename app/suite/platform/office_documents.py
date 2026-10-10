@@ -22,6 +22,7 @@ from suite.platform.office_document_schema import (
     office_document_references,
     validate_office_document,
 )
+from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse, build_office_parser_worker_plan
 from suite.storage.source_object_storage import SourceObjectStorageError
 from suite.storage.source_objects import (
     SourceLifecycleState,
@@ -761,6 +762,35 @@ class OfficeDocumentService:
         ).encode("utf-8")
         encoded = base64.urlsafe_b64encode(payload).decode("ascii").rstrip("=")
         return f"{encoded}.{hmac.new(self._list_cursor_key, payload, sha256).hexdigest()}"
+
+    def parser_worker_plan(
+        self,
+        *,
+        user_context: UserContext,
+        read_enabled: bool = False,
+    ) -> OfficeParserWorkerPlanResponse:
+        if not read_enabled:
+            raise OfficeDocumentPermissionError("Office parser planning is not permitted")
+        response = build_office_parser_worker_plan(tenant_id=user_context.tenant_id)
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.parser_worker_plan.read",
+                    schema_version=response.schema_version,
+                    plan_state=response.plan_state,
+                    worker_profile_id=response.worker_profile_id,
+                    supported_mime_type_count=len(response.supported_mime_types),
+                    source_requirement_count=len(response.source_requirements),
+                    pipeline_step_count=len(response.pipeline),
+                    isolation_requirement_count=len(response.isolation_requirements),
+                    blocker_count=len(response.blockers),
+                    dispatch_allowed=False,
+                    production_admitted=False,
+                    content_included=False,
+                )
+            }
+        )
 
     def list_documents(
         self,

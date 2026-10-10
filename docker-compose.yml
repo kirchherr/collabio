@@ -744,6 +744,7 @@ services:
       target: dev
     command: python -m suite.rag.rich_document_parser_service --describe
     network_mode: "none"
+    user: "1000:1000"
     read_only: true
     cap_drop:
       - ALL
@@ -751,6 +752,9 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:size=64m,noexec,nosuid,nodev
+    mem_limit: 256m
+    pids_limit: 64
+    cpus: 1
     environment:
       PYTHONPATH: /workspace/app
     volumes:

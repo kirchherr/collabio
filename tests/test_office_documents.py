@@ -1039,6 +1039,41 @@ def test_gateway_preflight_requires_exact_subprotocol_and_transport_capabilities
         )
 
 
+def test_parser_worker_plan_is_tenant_scoped_metadata_only_audited_and_dispatch_closed(office: Any) -> None:
+    service, _repository, user = office
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.parser_worker_plan(user_context=user)
+
+    response = service.parser_worker_plan(user_context=user, read_enabled=True)
+    assert response.tenant_id == user.tenant_id
+    assert response.plan_state == "planned_dispatch_closed"
+    assert response.worker_profile_id == "rich-document-parser-worker:1"
+    assert not response.dispatch_allowed and not response.production_admitted
+    assert not response.content_accepted_by_plan_endpoint
+    assert not response.direct_storage_mutation_allowed and not response.direct_vector_writes_allowed
+    assert not response.normal_logs_may_contain_content and not response.output_trusted_without_validation
+    event = service.audit.events[-1]
+    assert event.event_type == "office.documents.parser_worker_plan.read"
+    assert event.metadata["content_included"] is False
+    assert set(event.metadata) == {
+        "module_id",
+        "surface",
+        "rag_indexing_allowed",
+        "search_indexing_allowed",
+        "schema_version",
+        "plan_state",
+        "worker_profile_id",
+        "supported_mime_type_count",
+        "source_requirement_count",
+        "pipeline_step_count",
+        "isolation_requirement_count",
+        "blocker_count",
+        "dispatch_allowed",
+        "production_admitted",
+        "content_included",
+    }
+
+
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
     office: Any,
 ) -> None:
