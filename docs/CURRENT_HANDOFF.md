@@ -2,6 +2,47 @@
 
 Updated: 2026-10-10
 
+Roadmap 720 through 727 / PLANS 581 through 588 are complete under ADR-0188. Native Office can now translate one
+marked text range into German, English, French, Spanish, Italian, Dutch, Polish, Portuguese or Ukrainian. The endpoint
+accepts only the exact current immutable version, one native selection anchor and a fixed target-language code. The
+server revalidates the authoritative document ACL and derives the selected source from the saved version; the browser
+cannot send source text, source-language claims, free instructions, model or provider.
+
+Every target maps to its own approved versioned prompt. The prompts preserve meaning, facts, names, numbers,
+commitments and formality, request translation only and treat the delimited source as untrusted data. Only tenant-
+admitted, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
+content stays closed until tenant, model and exact target prompt all admit the confidential class.
+
+The result is rejected when empty, unchanged, oversized or invalid Unicode. A valid translation is visibly labelled
+**AI-Entwurf · ungeprüft** with its target language, remains transient and changes neither document content nor
+version count. It enters the existing editable proposal composer. Explicit suggestion creation and a separate
+explicit acceptance are both still required before a new immutable version can exist. Audit stores model, prompt,
+exact source IDs and input/output hashes without source, prompt or output bodies. Product commit `941f1bae` is local
+on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
+passed 2/2 in 27.5 seconds, and the complete Office suggestion suite passed 10/10 in 1.6 minutes. The final browser
+report hash is `sha256:b5199b06325a9193f36e313e862d62565ff4a6c1d15c951889cfbc1abbbc787c`; desktop, tablet and mobile screenshot
+hashes are `sha256:99bc36bff3f00c3a6238e1bfaa9de37280ee84c05afa9ecfb93bb586bc6a8e91`,
+`sha256:0bf8ec33767d0b0a96198fff57e16a4c6611c6eaff17d63cbbb3cb25b5103592` and
+`sha256:97220f8a8a2237c7ff4d400f0d0bc9334c4976a99cd0e96ab3e7e11ae900d370`. Work-E2E and review API image IDs are
+`sha256:6b055668acba1b0f3becde1aaef1161ff444351a143be6fa32f4ba3cbfc3dec9` and
+`sha256:af907010595faa1e5012ea9824d06bc4b3f2cbfa629092a5be841a73b19c4ac8`.
+
+The complete final quality gate passed Ruff, found 933 format-conformant files, passed Mypy over 623 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API and both temporary transfer patches were removed. No
+transient runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=translation-941f1bae`.
+
+This slice adds no migration, durable AI draft, free target language, automatic source-language detection,
+translation memory, caller-selected model/provider, automatic suggestion/save, whole-document translation, indexing
+or production admission. The next Office step is generated outlines on the same exact-version, local-model and
+explicit-confirmation boundary. GitHub publication remains pending under the content-specific approval requirement.
+
 Roadmap 712 through 719 / PLANS 573 through 580 are complete under ADR-0187. Native Office can now rewrite one
 marked text range or apply one of five fixed tones: neutral, professional, friendly, formal or concise. The endpoint
 accepts the exact current immutable version, one native selection anchor and the fixed operation only. The server
