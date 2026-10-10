@@ -644,7 +644,7 @@ Aufgaben:
 - [x] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren (Roadmap 641-647 / PLANS 502-508).
 - [ ] CRDT Service vorbereiten.
 - [ ] WebSocket Gateway vorbereiten.
-- [ ] Commenting, Mentions und Change Attribution modellieren.
+- [x] Commenting, Mentions und Change Attribution modellieren (Roadmap 648-655 / PLANS 509-516).
 - [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
 - [ ] Parser-Worker isoliert und ohne Netzwerk planen.
 - [ ] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP.
@@ -3366,7 +3366,38 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Endpunkt, Record-Promotion, Retention-Aenderung, Object-Lock-Umschaltung, AI-Aktion, externen Provider oder
      produktive Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 647 / PLANS 224 bis 508 sind unter ADR-0139 bis ADR-0178 implementiert
+648. [x] Den bestehenden versionsgebundenen, append-only Office-Kommentarvertrag um kanonische
+     `@[principal-id]`-Erwaehnungen und explizite Aenderungszuordnung erweitert, ohne Kommentarinhalt zu duplizieren
+     oder eine neue Persistenzschicht einzufuehren.
+
+649. [x] Mention-Syntax fail-closed auf eindeutige Principal-IDs, maximal zwanzig unterschiedliche Ziele und
+     vollstaendige Tokens begrenzt. Mehrdeutige, unvollstaendige und ueberlange Mention-Mengen werden vor jedem Write
+     abgewiesen.
+
+650. [x] Neue Erwaehnungen autoritativ auf aktive Tenant-Principals mit aktueller direkter User-ACL fuer genau das
+     Dokument oder dessen Owner begrenzt. Rollen- und Gruppenfreigaben werden nicht in einzelne Mention-Empfaenger
+     aufgeloest; Erwaehnungen gewaehren keinen Zugriff.
+
+651. [x] Idempotente Replays vor erneuter Mention-Pruefung stabil gehalten. Historische Erwaehnungen bleiben nach
+     spaeterem ACL-Widerruf lesbar, solange der Leser das Kommentarthema weiterhin lesen darf; neue Erwaehnungen des
+     widerrufenen Principals scheitern atomar.
+
+652. [x] Jede Kommentaraktion in der API explizit dem menschlich bestaetigten Actor, der Operation und der exakten
+     Revision zugeordnet. Audit erfasst nur die Mention-Anzahl und keine Mention-IDs oder Kommentartexte.
+
+653. [x] Die responsive Kommentaroberflaeche um erklaerte Mention-Syntax, sichere Textdarstellung, sichtbare
+     menschliche Attribution und den ausdruecklichen Hinweis erweitert, dass noch keine Benachrichtigung gesendet und
+     keine Berechtigung vergeben wird.
+
+654. [x] Ruff, Format und fokussiertes Mypy bestanden; 44 Service-/API-Tests und alle sieben PostgreSQL-Review-Tests
+     bestanden. Der exakte responsive Desktop-/Mobile-Workflow bestand 2/2 in 17,2 Sekunden; die vollstaendige
+     Office-Review-Browsermatrix bestand 10/10 in 1,3 Minuten.
+
+655. [x] Den begrenzten nativen Office-Kommentar-, Mention- und Change-Attribution-Vertrag unter ADR-0179 ohne
+     Migration, Notification-Outbox, E-Mail, Push, Zugriffserweiterung, Rollen-/Gruppenexpansion, RAG/Search-Indexing,
+     CRDT, WebSocket oder produktive Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 655 / PLANS 224 bis 516 sind unter ADR-0139 bis ADR-0179 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

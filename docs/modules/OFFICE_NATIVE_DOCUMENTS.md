@@ -1,9 +1,31 @@
 # Native Office Documents
 
-Status: Roadmap 252–647 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 647 / PLANS 508 lifecycle-state model
+Status: Roadmap 252–655 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 655 / PLANS 516 comments, mentions and change attribution
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0178; current movement: `ARCHITECTURE_DECISIONS/ADR-0178-bounded-native-office-lifecycle-state-model.md`
+Decisions: ADR-0079 through ADR-0179; current movement: `ARCHITECTURE_DECISIONS/ADR-0179-bounded-native-office-mentions-and-change-attribution.md`
+
+## Bounded comments, mentions and change attribution (Roadmap 648–655)
+
+The existing version-bound, append-only review stream now derives canonical `@[principal-id]` mentions directly from
+the immutable comment body. Syntax is fail closed, duplicate targets preserve first-occurrence order and one event can
+reference at most twenty distinct principals. No second copy of comment content and no migration are required.
+
+A new mention is accepted only for an active tenant principal with current direct user access to the exact document,
+or for its owner. Role and group grants are deliberately not expanded into individual recipients. Mentioning never
+grants access and this slice sends no notification. Idempotent replay remains stable before current mention
+revalidation. If a target later loses access, the historical mention remains part of the immutable comment and is only
+visible inside an otherwise authorized thread; a new mention of that target fails atomically.
+
+Every returned review event carries the exact actor principal, operation, revision and `human_confirmed: true`
+attribution. Audit records only the mention count alongside existing hashes and receipts; mentioned IDs and bodies are
+excluded. The responsive UI explains the syntax, renders all values as text, shows attribution and states that no
+access or notification is created.
+
+Focused Ruff, format and Mypy pass. The complete focused service/API files pass 44 tests, all seven PostgreSQL review
+tests pass, the exact desktop/mobile workflow passes 2/2 in 17.2 seconds and the full review browser matrix passes
+10/10 in 1.3 minutes. Notification outbox, email, push, role/group recipient expansion, CRDT, WebSocket and production
+admission remain closed.
 
 ## Bounded lifecycle-state model (Roadmap 641–647)
 

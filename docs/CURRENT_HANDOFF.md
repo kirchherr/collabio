@@ -2,6 +2,51 @@
 
 Updated: 2026-10-10
 
+Roadmap 648 through 655 / PLANS 509 through 516 are complete under ADR-0179. The existing version-bound, append-only
+Office review stream now supports canonical `@[principal-id]` mentions and an explicit event attribution containing
+the human actor, operation and exact revision. Mention parsing is fail closed, preserves first occurrence, deduplicates
+repeats and caps one event at twenty distinct principals.
+
+Every new target must be an active principal in the current tenant and either own the exact document or hold a
+current, unexpired direct user ACL. Role/group grants are not expanded into recipients. A mention grants no access and
+sends no notification. Idempotent replay is resolved before current target revalidation; historical mentions remain
+inside immutable comments after later revocation and can only be read through the still-authorized parent thread,
+while new mentions of the revoked target fail atomically.
+
+The API derives mentions from the existing immutable body and returns `human_confirmed: true` attribution. Browser
+validation requires those derived values to match the event and renders them as text. Audit records only the mention
+count; target IDs and bodies remain excluded. The responsive composer explains the exact syntax and the closed access
+and notification boundaries.
+
+Product commit `756d5fd3` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed, 44
+service/API tests passed, and all seven PostgreSQL review tests passed. The exact responsive desktop/mobile workflow
+passed 2/2 in 17.2 seconds; the complete Office review browser matrix passed 10/10 in 1.3 minutes.
+
+The complete final quality gate passed Ruff, found 909 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Its first invocation found one
+test-only protocol typing error; making the In-Memory adapter assertion explicit left product behavior unchanged and
+the complete rerun passed. Final Work-E2E, review API and quality image IDs are
+`sha256:7d4613d59296ff1bcb9b019d6987c727c73fe2f16e873c238388dda109407464`,
+`sha256:35d88b65e2730dcfce6eb1845dbfa4e8cff9183cc0442c7ef8dbd42158b03184` and
+`sha256:a79ca64d7bfdc07c694fa62fbb8629bd79c8009f3e127d921539f3f749e2fbd6`.
+
+The review API reached healthy after its normal extended cold-start interval and has failing streak zero. Both
+`http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The review surface is
+`http://192.168.0.108:42880/office?review=mentions-756d5fd3`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test and
+blocked-API containers, five inventoried remote transfer files and both local transfer archives were removed. No
+transient quality, test or Work-E2E runner remains. Review PostgreSQL, MinIO, image decoder and API remain available;
+main persistent services and unrelated projects were unchanged.
+
+The first complete browser invocation deliberately used `--no-deps`, so the existing negative-path case could not
+resolve its separate blocked-API test dependency; the other nine cases passed. Starting only that isolated dependency
+and rerunning the identical matrix produced the clean 10/10 result. No product assertion was changed.
+
+This slice adds no migration, notification outbox, email, push, access expansion, role/group recipient expansion,
+RAG/search indexing, CRDT, WebSocket, external provider or productive admission. GitHub publication remains pending
+under the content-specific approval requirement.
+
 Roadmap 641 through 647 / PLANS 502 through 508 are complete under ADR-0178. Native Office now exposes one
 authoritative read-only lifecycle contract: working data is request-transient, drafts remain browser-memory only,
 collaborative state is metadata-only edit-lease state, and the current saved version is the sole persistent document
