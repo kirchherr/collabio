@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
 import { createOfficeDocument, officeEditor, officeVersions, openOffice } from "./office-support.mjs";
-import { confirmSuggestion, openSuggestion, openSuggestions, prepareSuggestion, prepareSuggestionDecision } from "./office-suggestion-support.mjs";
+import { confirmSuggestion, openSuggestion, openSuggestions, prepareSuggestion, prepareSuggestionDecision, summarizeSuggestion } from "./office-suggestion-support.mjs";
 
 async function expectSuggestionLayout(page) {
   await expect(page.locator("#suggestions-panel")).toBeInViewport();
@@ -21,6 +21,12 @@ test("Office text proposals and confirmed decisions fit desktop, tablet and mobi
   const first = await createOfficeDocument(page, `Synthetic responsive suggestion ${testInfo.project.name}`, "Plan 😀 review: responsible team confirms the next step.");
   const objectId = first.document.object_id;
   await openSuggestions(page, objectId);
+  await summarizeSuggestion(page, objectId, "responsible team confirms the next step");
+  await expect(page.locator("#document-save")).toBeDisabled();
+  expect(await officeVersions(page, objectId)).toHaveLength(1);
+  await page.locator("#suggestion-cancel").click();
+  await expect(page.locator("#discard-dialog")).toBeVisible();
+  await page.locator("#discard-confirm").click();
   await prepareSuggestion(page, "Plan 😀 review", "Approved 😀 review");
   for (const id of ["suggestion-confirm-checkbox", "suggestion-confirm-submit", "suggestion-confirm-cancel"]) {
     await expect(page.locator(`#${id}`)).toBeInViewport();

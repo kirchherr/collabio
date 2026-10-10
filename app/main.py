@@ -450,6 +450,7 @@ from suite.platform.mvp_pilot_decisions import (
     build_mvp_pilot_decision_context,
 )
 from suite.platform.office_api import (
+    build_office_ai_summary_service,
     build_office_document_service,
     build_office_review_service,
     build_office_suggestion_service,
@@ -23296,6 +23297,9 @@ def build_app() -> FastAPI:
     )
     app.state.office_suggestion_service = build_office_suggestion_service(
         document_service=app.state.office_document_service, audit=audit_logger
+    )
+    app.state.office_ai_summary_service = build_office_ai_summary_service(
+        document_service=app.state.office_document_service, gateway=llm_gateway
     )
     register_office_routes(
         app,

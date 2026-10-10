@@ -14,9 +14,16 @@ from starlette.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.policy import PolicyViolation
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
 from suite.platform.office_access_logging import protect_office_discovery_access_logs
+from suite.platform.office_ai_summary import (
+    OfficeAISummaryCommand,
+    OfficeAISummaryResponse,
+    OfficeAISummaryService,
+    OfficeAISummaryUnavailable,
+)
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -169,6 +176,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Invalid document share request"}, status_code=400)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
+            except PolicyViolation:
+                return JSONResponse({"detail": "Office AI summary is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
                 return JSONResponse(
                     {"detail": "The document has a newer or conflicting saved version"}, status_code=409
@@ -177,6 +186,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
             except (SourceObjectStorageError, PsycopgError, OfficeImageUnavailable):
                 return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
+            except OfficeAISummaryUnavailable:
+                return JSONResponse({"detail": "Office AI summary is unavailable"}, status_code=502)
 
         return guarded
 
@@ -241,6 +252,10 @@ def build_office_suggestion_service(
         document_service=document_service,
         audit=audit,
     )
+
+
+def build_office_ai_summary_service(*, document_service: OfficeDocumentService, gateway: Any) -> OfficeAISummaryService:
+    return OfficeAISummaryService(documents=document_service, gateway=gateway)
 
 
 def register_office_routes(
@@ -450,6 +465,20 @@ def register_office_routes(
             object_id=object_id,
             version_id=version_id,
             write_enabled=_write_enabled(request, context),
+        )
+
+    @router.post("/{object_id}/ai/summaries", response_model=OfficeAISummaryResponse)
+    def summarize_document_selection(
+        object_id: str,
+        command: OfficeAISummaryCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_ai_summary_service.summarize(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
         )
 
     @router.get("/{object_id}/versions", response_model=OfficeDocumentHistoryResponse)

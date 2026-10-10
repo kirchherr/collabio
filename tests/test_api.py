@@ -1229,6 +1229,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/import-compatibility-matrix",
         "/v1/office/documents/import-export-test-corpus",
         "/v1/office/documents/{object_id}/content",
+        "/v1/office/documents/{object_id}/ai/summaries",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
         "/v1/office/documents/{object_id}/backlinks",
@@ -1276,6 +1277,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "unsupported_features_do_not_infer_import_export_or_round_trip_fidelity",
         "interchange_corpus_is_deterministic_synthetic_and_hash_bound",
         "corpus_metadata_does_not_return_fixture_bytes_or_open_export",
+        "selection_summary_revalidates_exact_saved_version_and_authoritative_acl",
+        "office_ai_uses_only_tenant_admitted_local_summary_models",
+        "ai_summary_output_is_untrusted_transient_and_never_changes_the_document",
+        "ai_summary_requires_explicit_suggestion_and_acceptance_confirmations_before_save",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",
@@ -1330,6 +1335,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md"
         in office_native["evidence_refs"]
     )
+    assert "ARCHITECTURE_DECISIONS/ADR-0186-native-office-selection-summary-drafts.md" in office_native["evidence_refs"]
+    assert "tests/test_office_ai_summary.py" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1344,6 +1351,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/import-compatibility-matrix", "GET"),
         ("/v1/office/documents/import-export-test-corpus", "GET"),
         ("/v1/office/documents/{object_id}/content", "GET"),
+        ("/v1/office/documents/{object_id}/ai/summaries", "POST"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),
         ("/v1/office/documents/{object_id}/collaboration/preflight", "POST"),

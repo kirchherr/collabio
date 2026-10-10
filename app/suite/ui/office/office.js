@@ -5532,7 +5532,7 @@ function suggestionLocksDocument() {
   return Boolean(suggestions && (suggestions.preparing || suggestions.saving || suggestions.settling || suggestions.uncertain));
 }
 function suggestionBusy(suggestions = state.suggestions) {
-  return !suggestionCurrent(suggestions) || suggestions.preparing || suggestions.saving || suggestions.settling ||
+  return !suggestionCurrent(suggestions) || suggestions.preparing || suggestions.saving || suggestions.settling || suggestions.summarizing ||
     suggestions.session.loading || suggestions.session.saving || suggestions.session.restoring || suggestions.session.uncertain;
 }
 function suggestionBase(suggestions) { return `/v1/office/documents/${encodeURIComponent(suggestions.session.objectId)}/suggestions`; }
@@ -5574,6 +5574,7 @@ function clearSuggestions() {
   $("suggestions-list").replaceChildren();
   ["suggestions-status", "suggestions-version", "suggestions-hint", "suggestion-before", "suggestion-count"].forEach((id) => { $(id).textContent = ""; });
   $("suggestion-replacement").value = "";
+  $("suggestion-ai-label").hidden = true;
   $("suggestion-composer").hidden = true;
   $("suggestions-more").hidden = true;
   $("suggestion-new").disabled = true;
@@ -5596,6 +5597,7 @@ function updateSuggestionControls() {
   $("suggestions-more").disabled = $("suggestions-refresh").disabled;
   $("suggestions-close").disabled = Boolean(suggestions?.saving || suggestions?.settling);
   $("suggestion-new").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-summary").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   const composer = suggestions?.composer;
   const length = Array.from(composer?.replacement || "").length;
   $("suggestion-count").textContent = composer?.operation === "create" ? `${length} / 4.000 Zeichen` : "";
@@ -5641,7 +5643,7 @@ async function loadSuggestions(append = false) {
     suggestions = { session, context: state.context, versionId: session.version.version_id, controller: new AbortController(),
       listRequest: 0, detailRequest: 0, items: [], selectedId: null, detail: null, nextCursor: null,
       loading: false, canCreate: false, currentVersionId: null, composer: null, attempt: null,
-      preparing: false, saving: false, settling: false, uncertain: false, conflict: false };
+      preparing: false, saving: false, settling: false, summarizing: false, uncertain: false, conflict: false };
     state.suggestions = suggestions;
   }
   if (suggestions.saving || suggestions.preparing || suggestions.uncertain || (append && !suggestions.nextCursor)) return false;
@@ -5749,6 +5751,7 @@ function clearSuggestionComposer(suggestions) {
   suggestions.composer = null; suggestions.attempt = null; suggestions.uncertain = false; suggestions.conflict = false;
   closeSuggestionConfirmation(); $("suggestion-composer").hidden = true;
   $("suggestion-replacement").value = ""; $("suggestion-before").textContent = "";
+  $("suggestion-ai-label").hidden = true;
   updateEditorState();
 }
 async function beginSuggestion() {
@@ -5768,6 +5771,56 @@ async function beginSuggestion() {
   $("suggestion-replacement").value = selection.quote;
   $("suggestion-composer").hidden = false;
   updateSuggestionControls(); $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+}
+function validAISummary(result, suggestions, selection) {
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && result.source_anchor?.from === selection.anchor.from &&
+    result.source_anchor?.to === selection.anchor.to && /^sha256:[a-f0-9]{64}$/.test(result.source_selection_hash || "") &&
+    typeof result.summary === "string" && Boolean(result.summary.trim()) && Array.from(result.summary).length <= 4000 &&
+    typeof result.model_id === "string" && typeof result.prompt_template_id === "string" &&
+    typeof result.inference_audit_event_id === "string" && result.output_trust === "untrusted" &&
+    result.persisted === false && result.document_changed === false &&
+    result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
+    result.search_indexing_allowed === false;
+}
+async function summarizeSuggestionSelection() {
+  const suggestions = state.suggestions;
+  const selection = selectedReviewAnchor();
+  if (!canCreateSuggestion(suggestions) || !selection) return;
+  const revision = suggestions.session.revision;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) ||
+      !canCreateSuggestion(suggestions) || suggestions.session.revision !== revision) return;
+  const selected = selectedReviewAnchor();
+  if (!selected || selected.anchor.from !== selection.anchor.from || selected.anchor.to !== selection.anchor.to) return;
+  suggestions.summarizing = true;
+  $("suggestions-status").textContent = "Auswahl wird lokal zusammengefasst …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/summaries`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, anchor: selection.anchor },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validAISummary(result, suggestions, selection)) throw new ApiError(502, true);
+    clearSuggestionComposer(suggestions);
+    suggestions.composer = { operation: "create", suggestionId: null, anchor: selection.anchor, quote: selection.quote,
+      replacement: result.summary, revision: 0, documentRevision: revision, aiDraft: true,
+      inferenceAuditEventId: result.inference_audit_event_id };
+    $("suggestion-composer-title").textContent = "Zusammenfassung als Änderungsvorschlag";
+    $("suggestion-before").textContent = selection.quote;
+    $("suggestion-replacement").value = result.summary;
+    $("suggestion-ai-label").hidden = false;
+    $("suggestion-composer").hidden = false;
+    $("suggestions-status").textContent = "Lokaler AI-Entwurf erstellt. Prüfen und ausdrücklich bestätigen.";
+    $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die lokale AI-Zusammenfassung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die lokale AI-Zusammenfassung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
 }
 async function prepareSuggestionOperation(operation = null, id = null) {
   const suggestions = state.suggestions;
@@ -6312,6 +6365,8 @@ $("suggestions-refresh").addEventListener("click", () => loadSuggestions());
 $("suggestions-more").addEventListener("click", () => loadSuggestions(true));
 $("suggestion-new").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-new").addEventListener("click", beginSuggestion);
+$("suggestion-summary").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-summary").addEventListener("click", summarizeSuggestionSelection);
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

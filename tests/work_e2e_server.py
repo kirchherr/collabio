@@ -38,7 +38,7 @@ from suite.platform.modules import (
     TenantModuleState,
     default_module_catalog_entries,
 )
-from suite.platform.office_api import build_office_suggestion_service
+from suite.platform.office_api import build_office_ai_summary_service, build_office_suggestion_service
 from suite.platform.principal_store import PgPrincipalDirectory
 from suite.platform.productivity_pilot_start_authorization import (
     ProductivityPilotControlEvidence,
@@ -136,8 +136,7 @@ base_policy = InMemoryTenantPolicyRepository.default().get("tenant-demo")
 synthetic_policy = base_policy.model_copy(
     update={
         "tenant_id": WORK_E2E_TENANT_ID,
-        "ai_enabled": False,
-        "allowed_model_ids": set(),
+        "ai_enabled": True,
         "rag_enabled": False,
         "voice_enabled": False,
         "raw_audio_storage_allowed": False,
@@ -355,6 +354,9 @@ app.state.office_review_service = build_synthetic_office_review_service(
 )
 app.state.office_suggestion_service = build_office_suggestion_service(
     document_service=app.state.office_document_service, audit=app.state.audit_logger
+)
+app.state.office_ai_summary_service = build_office_ai_summary_service(
+    document_service=app.state.office_document_service, gateway=app.state.llm_gateway
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
 app.state.crm_account_service.repository = crm_repository

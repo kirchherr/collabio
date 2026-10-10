@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–703 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 703 / PLANS 564 deterministic interchange corpus
+Status: Roadmap 252–711 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 711 / PLANS 572 selection summary drafts
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0185; current movement: `ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md`
+Decisions: ADR-0079 through ADR-0186; current movement: `ARCHITECTURE_DECISIONS/ADR-0186-native-office-selection-summary-drafts.md`
+
+## Selection summary drafts (Roadmap 704–711)
+
+The read-gated summary endpoint accepts one exact current version and one bounded native text anchor. It ignores
+browser-provided text because the server revalidates the authoritative document ACL, loads the immutable version and
+derives the selected text itself. Stale versions, cross-paragraph selections and invalid native positions fail closed.
+
+The service selects only a summarization-approved model from the tenant allowlist whose registry deployment is local
+and whose provider is admitted behind the Local LLM Gateway. Public content is handled at least as internal;
+confidential and restricted documents remain denied until the tenant, model and prompt registries explicitly admit
+the confidential data class. The client cannot choose a model or provider.
+
+The response is marked untrusted and binds the summary to the exact object, version, anchor and source-selection
+hash. It is transient, not indexed and changes neither suggestion storage nor document history. The AI audit records
+model, prompt template, source object and input/output hashes without bodies. A second Office audit links those hashes
+and the inference event without content.
+
+The browser places the result in the existing proposal composer with a visible **AI-Entwurf · ungeprüft** label. A
+user must explicitly save the proposal and later explicitly accept it before a new immutable document version can be
+created. Cancellation leaves the document and its version count unchanged. Whole-document inference, rewrite/tone,
+translation, outline, policy comparison, risk analysis, RAG citations, voice and text-to-speech remain later work.
 
 ## Deterministic interchange test corpus (Roadmap 696–703)
 

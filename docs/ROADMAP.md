@@ -650,7 +650,7 @@ Aufgaben:
 - [x] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP (Roadmap 680-687 / PLANS 541-548).
 - [x] OOXML/ODF-Kompatibilitaetsmatrix erstellen (Roadmap 688-695 / PLANS 549-556).
 - [x] Import/Export-Testkorpus anlegen (Roadmap 696-703 / PLANS 557-564).
-- [ ] Textzusammenfassung fuer markierte Bereiche.
+- [x] Textzusammenfassung fuer markierte Bereiche (Roadmap 704-711 / PLANS 565-572).
 - [ ] Umformulieren und Tonalitaet aendern.
 - [ ] Uebersetzen.
 - [ ] Gliederung erzeugen.
