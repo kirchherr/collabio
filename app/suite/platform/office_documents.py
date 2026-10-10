@@ -22,6 +22,7 @@ from suite.platform.office_document_schema import (
     office_document_references,
     validate_office_document,
 )
+from suite.platform.office_macro_policy import OfficeMacroPolicyResponse, build_office_macro_policy
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse, build_office_parser_worker_plan
 from suite.storage.source_object_storage import SourceObjectStorageError
 from suite.storage.source_objects import (
@@ -787,6 +788,33 @@ class OfficeDocumentService:
                     blocker_count=len(response.blockers),
                     dispatch_allowed=False,
                     production_admitted=False,
+                    content_included=False,
+                )
+            }
+        )
+
+    def macro_policy(
+        self,
+        *,
+        user_context: UserContext,
+        read_enabled: bool = False,
+    ) -> OfficeMacroPolicyResponse:
+        if not read_enabled:
+            raise OfficeDocumentPermissionError("Office macro policy is not permitted")
+        response = build_office_macro_policy(tenant_id=user_context.tenant_id)
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.macro_policy.read",
+                    schema_version=response.schema_version,
+                    policy_state=response.policy_state,
+                    supported_mime_type_count=len(response.supported_mime_types),
+                    blocking_indicator_count=len(response.blocking_indicators),
+                    review_marking_count=len(response.review_markings),
+                    blocker_count=len(response.blockers),
+                    active_content_execution_allowed=False,
+                    parser_dispatch_allowed=False,
                     content_included=False,
                 )
             }

@@ -1225,6 +1225,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert office_native["api_routes"] == [
         "/v1/office/documents",
         "/v1/office/documents/parser-worker-plan",
+        "/v1/office/documents/macro-policy",
         "/v1/office/documents/{object_id}/content",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
@@ -1266,6 +1267,9 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "parser_plan_requires_exact_source_metadata_and_acl_revalidation_before_and_after_parse",
         "parser_worker_is_no_network_non_root_read_only_bounded_and_credential_free",
         "parser_dispatch_and_output_trust_remain_closed_until_separate_evidence",
+        "active_content_detected_before_text_extraction_and_never_executed",
+        "blocked_active_content_is_not_extracted_or_automatically_removed",
+        "nonexecuting_signature_and_external_link_indicators_require_visible_review",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",
@@ -1312,6 +1316,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md"
         in office_native["evidence_refs"]
     )
+    assert "ARCHITECTURE_DECISIONS/ADR-0183-bounded-native-office-macro-policy.md" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1322,6 +1327,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents", "GET"),
         ("/v1/office/documents", "POST"),
         ("/v1/office/documents/parser-worker-plan", "GET"),
+        ("/v1/office/documents/macro-policy", "GET"),
         ("/v1/office/documents/{object_id}/content", "GET"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),

@@ -1074,6 +1074,38 @@ def test_parser_worker_plan_is_tenant_scoped_metadata_only_audited_and_dispatch_
     }
 
 
+def test_macro_policy_is_tenant_scoped_metadata_only_audited_and_execution_closed(office: Any) -> None:
+    service, _repository, user = office
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.macro_policy(user_context=user)
+
+    response = service.macro_policy(user_context=user, read_enabled=True)
+    assert response.tenant_id == user.tenant_id
+    assert response.policy_state == "enforced_execution_disabled"
+    assert response.active_content_detection_enforced_by_parser
+    assert not response.active_content_execution_allowed and not response.automatic_active_content_removal_allowed
+    assert not response.blocked_input_extraction_allowed and response.marked_input_extraction_allowed
+    assert not response.content_accepted_by_policy_endpoint and not response.parser_dispatch_allowed
+    event = service.audit.events[-1]
+    assert event.event_type == "office.documents.macro_policy.read"
+    assert event.metadata["content_included"] is False
+    assert set(event.metadata) == {
+        "module_id",
+        "surface",
+        "rag_indexing_allowed",
+        "search_indexing_allowed",
+        "schema_version",
+        "policy_state",
+        "supported_mime_type_count",
+        "blocking_indicator_count",
+        "review_marking_count",
+        "blocker_count",
+        "active_content_execution_allowed",
+        "parser_dispatch_allowed",
+        "content_included",
+    }
+
+
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
     office: Any,
 ) -> None:

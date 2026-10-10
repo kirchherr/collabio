@@ -474,6 +474,30 @@ def test_office_parser_worker_plan_api_is_metadata_only_noncacheable_and_dispatc
     assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
 
 
+def test_office_macro_policy_api_is_metadata_only_noncacheable_and_execution_closed(
+    office_api: OfficeApiHarness,
+) -> None:
+    enable_office(read=True, write=False)
+    response = office_api.client.get(f"{BASE}/macro-policy", headers=office_api.headers)
+
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo"
+    assert value["schema_version"] == "office_macro_policy.v1"
+    assert value["policy_state"] == "enforced_execution_disabled"
+    assert value["active_content_detection_enforced_by_parser"] is True
+    assert value["blocked_mime_types"] == ["application/vnd.ms-word.document.macroenabled.12"]
+    assert value["active_content_execution_allowed"] is False
+    assert value["automatic_active_content_removal_allowed"] is False
+    assert value["blocked_input_extraction_allowed"] is False
+    assert value["marked_input_extraction_allowed"] is True
+    assert value["content_accepted_by_policy_endpoint"] is False
+    assert value["parser_dispatch_allowed"] is False
+    assert value["policy_receipt_persisted"] is False
+    assert value["normal_logs_may_contain_content_or_indicator_paths"] is False
+    assert "content" not in value and "source_object_id" not in value and "source_version_id" not in value
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

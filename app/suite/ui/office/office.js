@@ -699,6 +699,40 @@ async function loadParserWorkerPlan(session, context) {
   }
 }
 
+function macroPolicyMatches(value) {
+  const blockers = ["complete_ooxml_odf_pdf_active_content_corpus_not_verified",
+    "quarantine_and_operator_review_workflow_not_implemented",
+    "policy_receipt_persistence_and_restore_not_implemented", "production_parser_image_admission_not_verified"];
+  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_macro_policy.v1" &&
+    value.policy_state === "enforced_execution_disabled" &&
+    Array.isArray(value.supported_mime_types) && value.supported_mime_types.length === 3 &&
+    Array.isArray(value.blocked_mime_types) && value.blocked_mime_types.length === 1 &&
+    Array.isArray(value.blocking_indicators) && value.blocking_indicators.length === 4 &&
+    Array.isArray(value.review_markings) && value.review_markings.length === 2 &&
+    value.active_content_detection_enforced_by_parser === true &&
+    value.active_content_execution_allowed === false && value.automatic_active_content_removal_allowed === false &&
+    value.blocked_input_extraction_allowed === false && value.marked_input_extraction_allowed === true &&
+    value.marked_input_requires_visible_review === true && value.content_accepted_by_policy_endpoint === false &&
+    value.parser_dispatch_allowed === false && value.policy_receipt_persisted === false &&
+    value.normal_logs_may_contain_content_or_indicator_paths === false &&
+    JSON.stringify(value.blockers) === JSON.stringify(blockers) && typeof value.audit_event_id === "string";
+}
+
+async function loadMacroPolicy(session, context) {
+  try {
+    const value = await api("/v1/office/documents/macro-policy", {}, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!macroPolicyMatches(value)) throw new ApiError(502, true);
+    $("lifecycle-macro-policy").textContent =
+      "VBA, ActiveX/OLE, ODF-Skripte und PDF-Aktionen werden blockiert; Signaturen und externe Links sichtbar markiert. Ausführung und automatisches Entfernen bleiben ausgeschlossen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-macro-policy").textContent = denied(error)
+      ? "Makro-Policy nicht mehr berechtigt; aktive Inhalte und Ausführung bleiben blockiert."
+      : "Makro-Policy konnte nicht bestätigt werden; aktive Inhalte und Ausführung bleiben blockiert.";
+  }
+}
+
 async function loadDocumentLifecycle() {
   const session = state.session, context = state.context;
   if (!sessionCurrent(session) || !session.objectId) return;
@@ -724,6 +758,8 @@ async function loadDocumentLifecycle() {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     await loadParserWorkerPlan(session, context);
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    await loadMacroPolicy(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
     $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
@@ -745,6 +781,7 @@ function openDocumentLifecycle() {
   $("lifecycle-live-collaboration").textContent = "Preflight wird geladen …";
   $("lifecycle-websocket-gateway").textContent = "Preflight wird geladen …";
   $("lifecycle-parser-worker").textContent = "Plan wird geladen …";
+  $("lifecycle-macro-policy").textContent = "Policy wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";
