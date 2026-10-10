@@ -2,42 +2,45 @@
 
 Updated: 2026-10-10
 
-Roadmap 728 through 735 / PLANS 589 through 596 are complete under ADR-0189. Native Office can now turn one marked
-text range into either a compact or detailed Markdown outline. The endpoint accepts only the exact current immutable
-version, one native selection anchor and one of the two fixed detail levels. The server revalidates the authoritative
-document ACL and derives the selected source from the saved version; the browser cannot send source text, a free
-instruction, model or provider.
+Roadmap 736 through 743 / PLANS 597 through 604 are complete under ADR-0190. Native Office can now compare one exact
+current saved document with a different readable policy document. The browser sends only both object/version
+identities. The server revalidates both authoritative ACLs, requires both versions to remain current and extracts
+bounded native text from both immutable versions. Empty or over-16,000-character sources fail closed without silent
+truncation.
 
-Each detail level maps to its own approved versioned prompt. The prompts preserve language, facts, names, numbers and
-commitments, require bounded heading/list structure and treat the delimited source as untrusted data. Only tenant-
-admitted, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
-content stays closed until tenant, model and exact outline prompt all admit the confidential class.
+One approved fixed prompt treats both delimited sources as untrusted data and forbids legal or regulatory approval.
+Only tenant-admitted, drafting-approved local models behind the Local LLM Gateway are eligible. The higher source
+classification governs inference; confidential and restricted sources remain closed unless tenant, model and the
+exact prompt all admit confidential data. Free instructions, browser-selected models/providers and cloud AI are not
+accepted.
 
-The result is rejected when empty, unchanged, oversized, structurally invalid or invalid Unicode. A valid outline is
-visibly labelled **AI-Entwurf · ungeprüft** with its detail level, remains transient and changes neither document
-content nor version count. It enters the existing editable proposal composer. Explicit suggestion creation and a
-separate explicit acceptance are both still required before a new immutable version can exist. Audit stores model,
-prompt, exact source IDs and input/output hashes without source, prompt or output bodies. Product commit `fbc00b66`
-is local on `kirchherr/kb-write-unit-of-work`.
+The model output must contain one fixed status plus bounded finding/recommendation lines with at least one finding.
+Invalid or oversized output fails closed. A valid result is visibly labelled **AI-Vergleich · ungeprüft**, remains
+transient and changes neither document nor version count. It cites the exact ACL-validated policy object, version,
+title and content hash and cannot certify compliance or trigger a follow-up action. Audit stores model, prompt, both
+source identities, status, counts and input/output hashes without document, prompt or output bodies. Product commit
+`3d8355d7` is local on `kirchherr/kb-write-unit-of-work`.
 
-Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
-passed 2/2 in 28.3 seconds, and the complete Office suggestion suite passed 10/10 in 1.7 minutes. The final browser
-report hash is `sha256:cd3a3b855e685f0fa2b3d3cae4d1a0a27c5d4da2626b2bd2447c8e0e85d674ab`; desktop, tablet and mobile screenshot
-hashes are `sha256:c8e5594f0730c8a08f5c7b5ace67cb75b67c21a34eac7ae6a9eaf89edac344f3`,
-`sha256:832accda61e7c39713fd229c5fcfb98107ac2cfa01a1a3c426074d84c886d1aa` and
-`sha256:da21be66888bb9420d8e911dec4ce5cfd3eb1d8b2e0d2414bdace07097f7e1af`. Work-E2E and review API image IDs are
-`sha256:e5112fca99d23e0fe866fad9086c22a962bbf3f63344ccd2e99b9be1f30e7cf7` and
-`sha256:897b4b136b2f9d402fddac36cfe3a88ebd38cb4cb9b09c30a5668b86d32d8c1e`.
+Focused Ruff and format checks passed, Mypy passed over the affected sources and 30 focused service, API, policy,
+registry, persistence and roadmap tests passed. The responsive desktop/mobile workflow passed 2/2 in 37.6 seconds,
+and the complete Office suggestion suite passed 10/10 in 1.8 minutes. The final browser report hash is
+`sha256:5ee59f8af0d8640fa298f5f19e1c76595ae3009638cdc6af7724a3d706d7ecea`; desktop, tablet and mobile screenshot
+hashes are `sha256:aae91f454f9faa866f15b7eb06dd5e465406f04ce51499a53f277a507ec6042e`,
+`sha256:48a5d0904e8905f57308727233599a0b18819d1d8f664ee11e66a950892e1b59` and
+`sha256:5d5e25ed00968ea9655c981f462ad47c351b909e40e02e1bcb8c21fcc2026115`. Work-E2E, review API and blocked review API
+image IDs are `sha256:0af68a21e86ef399ca21b276ce6d6ffa557749996325966ecf17d8c0ffe57b4f`,
+`sha256:9831ce70946f803d2c673506e42e4b096f27cb77e39ba3ea3b6ceda70aea83bc` and
+`sha256:bf5459a3eb5a437fc3d4646299e484a3ea09eceda9e55c69e5f54e86f291490e`.
 
-The complete final quality gate passed Ruff, found 939 format-conformant files, passed Mypy over 625 source files and
+The complete final quality gate passed Ruff, found 939 format-conformant files, passed Mypy over 627 source files and
 ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
 `sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
 
-The exact isolated PostgreSQL test container, blocked API, aborted broad E2E runner and all named temporary transfer
-files were removed. No transient runner remains; regular and review APIs both return `ok`, and review health is
+The exact isolated PostgreSQL test container, blocked API and all four named temporary transfer files were removed.
+No transient quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is
 `healthy/0`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated
-projects were unchanged. The review surface is
-`http://192.168.0.108:42880/office?review=outline-fbc00b66`.
+projects were unchanged. The visible report was reviewed at
+`http://192.168.0.108:42880/office?review=policy-comparison`. Risk marking is the next Office roadmap loop.
 
 This slice adds no migration, durable AI draft, free-form outline instruction, caller-selected model/provider,
 automatic suggestion/save, whole-document restructuring, semantic heading insertion, indexing or production
