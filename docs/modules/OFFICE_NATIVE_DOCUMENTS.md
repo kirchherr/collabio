@@ -1,9 +1,35 @@
 # Native Office Documents
 
-Status: Roadmap 252–631 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 631 / PLANS 492 object visibility and editing protection
-Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0176; current movement: `ARCHITECTURE_DECISIONS/ADR-0176-bounded-native-office-object-visibility-protection.md`
+Status: Roadmap 252–640 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 640 / PLANS 501 advisory edit leases
+Module: `office_documents` / version 0.8.0
+Decisions: ADR-0079 through ADR-0177; current movement: `ARCHITECTURE_DECISIONS/ADR-0177-bounded-native-office-advisory-edit-leases.md`
+
+## Bounded advisory edit leases (Roadmap 632–640)
+
+Each tenant/document pair can hold one short-lived advisory edit lease for the current immutable version. Migration
+0090 stores a 90-second expiry, monotonically increasing revision, base version, acquire/renew/release timestamps,
+takeover count and audit reference under forced tenant RLS. The application can update only the bounded lease
+columns, deletion is denied and the complete table, policies, constraints and grants belong to the Office restore
+contract.
+
+A browser session ID is accepted only in the fixed `office-session-` format and persisted solely as a SHA-256 binding
+over tenant, document, principal and session. Lease endpoints still require the Office write gate and authoritative
+document ACLs. Responses disclose only coordination state and never another holder's identity or raw session value.
+Acquire and renew require the exact current version ID and run under a tenant/document advisory transaction lock; a
+new saved version makes predecessor leases inactive without weakening the established version compare-and-swap.
+
+The editor renews and reconciles every 15 seconds. A foreign holder or unavailable authoritative state makes editing
+and Save read-only. Takeover uses an explicit confirmation dialog, and workspace close or page unload attempts a
+best-effort release. If a session loses its lease, its existing unsaved local text remains visible while further saves
+stay blocked. Lease read, request, actual takeover, actual release and ineffective release request are audited as
+distinct metadata-only events.
+
+The focused service, API, PostgreSQL, migration and restore contracts pass, including tenant isolation, hashed
+storage, stale-version rejection and audit precision. The real two-browser desktop/mobile workflow passes 2/2 in
+41.4 seconds and proves takeover reconciliation plus local draft retention. This is bounded one-writer coordination,
+not ACL, CRDT, WebSocket, presence, merge, simultaneous coauthoring, durable draft storage or DOCX lock
+interoperability.
 
 ## Bounded object visibility and editing protection (Roadmap 624–631)
 

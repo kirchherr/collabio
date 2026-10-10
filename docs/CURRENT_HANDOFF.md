@@ -2,6 +2,51 @@
 
 Updated: 2026-10-10
 
+Roadmap 632 through 640 / PLANS 493 through 501 are complete under ADR-0177. Native Office now has one bounded,
+tenant/document advisory edit lease for the current immutable version. Migration 0090 stores a 90-second expiry,
+lease revision, version binding, release timestamp, takeover count and audit reference under forced tenant RLS,
+no-delete policy and column-limited app updates. The module manifest advances to 0.8.0 and the complete table,
+constraints, RLS policies and grants are covered by the Office restore contract.
+
+Browser session IDs are persisted only as SHA-256 bindings over tenant, document, principal and session. Every lease
+read or mutation retains the Office feature gate and authoritative document ACL check. Acquire and renew require the
+exact current immutable version and serialize under a tenant/document PostgreSQL advisory transaction lock. A save
+therefore invalidates a lease bound to its predecessor. Responses reveal neither a foreign principal nor a raw
+session identifier.
+
+The responsive editor shows lease state, reconciles and renews every 15 seconds, becomes read-only when another
+session holds the lease or authoritative status is unavailable, and requires explicit confirmation before takeover.
+The previous session retains its already-entered local draft but cannot save. Close and page unload attempt a
+best-effort release. Audit distinguishes read, request, actual takeover, actual release and ineffective release
+request without storing session IDs or content.
+
+Product commit `908ba5cc` is local on `kirchherr/kb-write-unit-of-work`. Focused service/API/migration tests passed,
+the PostgreSQL lease integration passed, and the Office restore contracts passed. The real two-browser Playwright
+workflow passed on desktop and mobile, 2/2 in 41.4 seconds, including blocked secondary editing, confirmed takeover,
+first-session read-only reconciliation within 30 seconds and retention of its unsaved text. After the final audit
+precision correction, the focused lease/API/PostgreSQL/migration set passed completely again.
+
+The complete quality run passed Ruff, found 906 format-conformant files and passed Mypy over 608 source files. Pytest
+ran to 100 percent and surfaced only two successive static migration-catalog expectation failures; after both were
+corrected, all 56 affected migration tests passed. Final review API and quality image IDs are
+`sha256:54ec8876a3a9473d8c4c85638313ccccfa78bee2243033d25c5557909318ff9d` and
+`sha256:978f80e9590df52a8def6621de6aaa9c3793379a78506b2ad4c19f8903973400`.
+
+The isolated review API initially exceeded its cold-start health interval. Process and health-history inspection
+showed normal Uvicorn startup, after which it reached healthy with failing streak zero. Both
+`http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The review surface is
+`http://192.168.0.108:42880/office?review=edit-lease-908ba5cc`.
+
+The exact `collabio-postgres-test-1`, `collabio-work-e2e-seed-1` and `collabio-work-e2e-migrate-1` containers and all
+inventoried lease transfer files were removed. No transient quality, test or Work-E2E runner remains. Review
+PostgreSQL, MinIO, image decoder and API stay available; main persistent services and unrelated projects were not
+changed. All eight focused planning and implementation documentation contracts passed. GitHub publication remains
+pending under the content-specific approval requirement.
+
+These leases coordinate one author per saved version. They do not replace ACL or immutable-version CAS and do not
+provide CRDT, WebSocket broadcast, presence, merge, simultaneous coauthoring, durable local-draft storage or DOCX
+lock interoperability. Those remain later Phase 3 Office work.
+
 Roadmap 624 through 631 / PLANS 485 through 492 are complete under ADR-0176. Standalone root shapes and complete root
 shape groups now support optional canonical `hidden: true` and `locked: true` states. Omission remains visible and
 editable; grouped member shapes cannot carry either root state. Browser and authoritative server accept only literal

@@ -1473,12 +1473,48 @@ recovery, semantic print and undo/redo; pass Ruff, formatting, Mypy over 607 sou
 new endpoint, dependency, external request, provider, worker, recovery store, security label, access-control change,
 collaborative lock, cross-document or cross-tenant transfer, or DOCX DrawingML admission.
 
+493. [x] Add migration 0090 with one durable tenant/document edit-lease row, a 90-second expiry, revision,
+base-version binding, release timestamp, takeover count and audit reference. Force tenant RLS, deny delete and grant
+the app updates only on the bounded mutable lease columns.
+
+494. [x] Persist browser session identity only as a SHA-256 binding over tenant, document, principal and session.
+Require authoritative document write access and the Office write gate for every lease operation, and disclose no
+foreign principal or raw session identifier in responses or logs.
+
+495. [x] Serialize acquire, renew, expiry and release with a tenant/document PostgreSQL advisory transaction lock.
+Keep the expected current immutable version as mandatory optimistic CAS and make a successful save invalidate every
+lease still bound to its predecessor.
+
+496. [x] Keep an active foreign session fail-closed and require an explicit confirmed takeover. Audit read, request,
+actual takeover, actual release and ineffective release request as metadata only, with distinct event types and no
+document body or raw session value.
+
+497. [x] Add a responsive lease banner, 15-second reconciliation and renewal, a confirmation-gated takeover dialog
+and best-effort release on close. Make the editor and Save read-only whenever another session holds the lease or the
+authoritative lease state is unavailable.
+
+498. [x] Preserve an existing unsaved local draft after lease loss while blocking further saves. Allow the confirmed
+second session to edit and make the first session observe takeover within the bounded polling interval without
+discarding its text.
+
+499. [x] Extend in-memory, API, PostgreSQL, migration and restore contracts for contention, explicit takeover,
+hashed storage, tenant isolation, stale version CAS, release and precise audit outcomes. Pass the final focused lease
+and migration suite completely.
+
+500. [x] Pass the real two-browser desktop/mobile workflow 2/2 in 41.4 seconds, covering blocked secondary editing,
+confirmed takeover, first-session read-only reconciliation within 30 seconds and retained unsaved text. Run complete
+Pytest to its end with only two static catalog expectations remaining, then pass all 56 affected migration tests after
+correcting them.
+
+501. [x] Close bounded native Office advisory edit leases under ADR-0177. Keep ACL and immutable-version CAS
+authoritative; leave CRDT, WebSocket, presence, merge, coauthoring and DOCX lock interoperability outside this slice.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 631 / PLANS 492. Preserve root-only canonical visibility and accidental-edit protection, the explicit statement that neither is access control, navigator recovery for hidden roots, print suppression, one-step history and fail-closed session/document/root revalidation. Preserve bounded accessible object names and alternative text across browser/server validation, navigation, editor labels, semantic print, comparison and immutable versions. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 640 / PLANS 501. Preserve tenant/document advisory leases, hashed browser-session bindings, 90-second expiry, explicit takeover, current-version CAS, fail-closed read-only reconciliation and local unsaved-draft retention. Treat them as coordination only: ACL and version CAS remain authoritative, and CRDT, WebSocket, presence, merge and coauthoring remain separate. Preserve root-only canonical visibility and accidental-edit protection, the explicit statement that neither is access control, navigator recovery for hidden roots, print suppression, one-step history and fail-closed session/document/root revalidation. Preserve bounded accessible object names and alternative text across browser/server validation, navigation, editor labels, semantic print, comparison and immutable versions. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

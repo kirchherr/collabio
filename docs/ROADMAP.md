@@ -645,7 +645,7 @@ Aufgaben:
 - [ ] CRDT Service vorbereiten.
 - [ ] WebSocket Gateway vorbereiten.
 - [ ] Commenting, Mentions und Change Attribution modellieren.
-- [ ] Soft Locks und Versioning Service implementieren.
+- [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
 - [ ] Parser-Worker isoliert und ohne Netzwerk planen.
 - [ ] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP.
 - [ ] OOXML/ODF-Kompatibilitaetsmatrix erstellen.
@@ -3301,7 +3301,44 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Zugriffskontrolle, kollaborative Sperre, dokument- oder tenantuebergreifende Uebertragung oder DOCX-DrawingML-
      Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 631 / PLANS 224 bis 492 sind unter ADR-0139 bis ADR-0176 implementiert
+632. [x] Einen dauerhaften mandanten- und dokumentgebundenen Lease-Datensatz mit 90 Sekunden Laufzeit, Revision,
+     aktueller Basisversion, Freigabezeitpunkt, Uebernahmezaehler und Audit-Referenz in Migration 0090 eingefuehrt.
+     Row-Level Security ist erzwungen; Loeschen ist gesperrt und App-Updates sind auf die Lease-Spalten begrenzt.
+
+633. [x] Sitzungskennungen nur als SHA-256-Bindung aus Tenant, Dokument, Principal und Browser-Sitzung gespeichert.
+     Lease-Lesen, -Erwerben und -Freigeben verlangen weiterhin autoritative Dokument-ACLs und das Office-Write-Gate;
+     Antworten legen weder fremde Principal- noch Sitzungskennungen offen.
+
+634. [x] Erwerben, Erneuern, Ablauf und Freigabe unter einem tenant-/dokumentgebundenen PostgreSQL-Advisory-Lock
+     serialisiert. Die erwartete aktuelle immutable Version bleibt ein verpflichtender Compare-and-Swap; ein Save
+     macht jede Lease auf der Vorgaengerversion automatisch unwirksam.
+
+635. [x] Eine aktive fremde Sitzung blockiert Bearbeitung fail-closed. Uebernahme ist nur ueber eine explizit
+     bestaetigte Aktion moeglich. Lesen, Anfordern, tatsaechliche Uebernahme, Freigabe und wirkungslose
+     Freigabeanforderung werden metadata-only auditiert, ohne rohe Sitzungskennung oder Dokumentinhalt.
+
+636. [x] Den responsiven Editor um einen sichtbaren Lease-Status, 15-Sekunden-Abgleich, automatische Erneuerung,
+     einen bestaetigungspflichtigen Uebernahmedialog und Freigabe beim Schliessen erweitert. Bei Konflikt oder
+     nicht verfuegbarem Status werden Editor und Speichern sofort schreibgeschuetzt.
+
+637. [x] Einen bereits eingegebenen lokalen Entwurf bei verlorener Lease im Browser erhalten, waehrend jeder weitere
+     Save gesperrt bleibt. Die zweite Sitzung kann nach ausdruecklicher Uebernahme schreiben; die erste erkennt die
+     Aenderung innerhalb des bounded Abgleichintervalls, ohne ihren ungespeicherten Text zu verwerfen.
+
+638. [x] In-Memory-, API-, PostgreSQL-, Migrations- und Restore-Vertraege um Konflikt, Uebernahme, Hash-Speicherung,
+     Tenant-Isolation, veraltete Basisversion, Freigabe und praezise Audit-Ereignisse erweitert. Die abschliessenden
+     fokussierten Lease- und Migrationspruefungen bestanden vollstaendig.
+
+639. [x] Den echten Zwei-Browser-Workflow auf Desktop und Mobile 2/2 in 41,4 Sekunden bestanden. Er prueft den
+     blockierten zweiten Editor, explizite Uebernahme, den innerhalb von 30 Sekunden schreibgeschuetzten ersten Editor
+     und den dort erhaltenen ungespeicherten Entwurf. Der komplette Pytest-Lauf erreichte sein Ende und zeigte nur
+     zwei statische Katalogerwartungen; nach deren Korrektur bestanden die betroffenen 56/56 Migrationstests.
+
+640. [x] Begrenzte native Office-Bearbeitungs-Leases unter ADR-0177 geschlossen. Sie koordinieren einen Autor pro
+     gespeicherter Version, ersetzen aber weder ACL, optimistic Version-CAS, CRDT, WebSocket, Presence, Merge,
+     Coauthoring noch DOCX-Lock-Interoperabilitaet.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 640 / PLANS 224 bis 501 sind unter ADR-0139 bis ADR-0177 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
