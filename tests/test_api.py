@@ -1304,6 +1304,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md"
         in office_native["evidence_refs"]
     )
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md"
+        in office_native["evidence_refs"]
+    )
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()

@@ -2,6 +2,45 @@
 
 Updated: 2026-10-10
 
+Roadmap 664 through 671 / PLANS 525 through 532 are complete under ADR-0181. Native Office now exposes a second strict,
+metadata-only preflight for the future WebSocket gateway. It requires exact Same-Origin between browser `Origin` and
+the actual request origin, the fixed `collabio-office-crdt.v1` subprotocol and the complete canonical transport
+capability set.
+
+The Office write gate, tenant/document write ACL, exact current immutable version and current browser edit lease are
+revalidated. Session and client IDs remain request-transient. Audit contains only version, protocol, bounded counts,
+closed states and blocker count; origin, raw IDs, credentials, content and future updates are excluded.
+
+The prepared envelope fixes binary-only uncompressed frames, 256 KiB per frame, 1 MiB queued bytes, close code 1013,
+a 25-second heartbeat, 60-second reauthorization and a five-minute maximum connection lifetime. Resume requires
+state-vector reconciliation and at-least-once delivery requires client deduplication. Per-update ACL checks remain
+mandatory.
+
+No upgrade credential is issued. Query credentials are forbidden, responses contain neither ticket nor socket URL,
+and the server accepts no connection. Upgrade routing, ticket persistence, actual handshake rejection integration,
+per-update authorization, disconnect recovery, multi-node fan-out, CRDT engine admission and WebSocket load evidence
+remain explicit blockers.
+
+Product commit `8b1808c7` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the
+affected service, API and capability tests. The responsive desktop/mobile lifecycle workflow passed 2/2 in 11.0
+seconds. Final Work-E2E and review API image IDs are
+`sha256:716003c94be47ffdd256a0653edd05c4675c853056515998dd8e17b4c18f66d7` and
+`sha256:20883aa6615f76ea26378a02d93bd7079ae3cb06296eb4633be2074cf705680b`.
+
+The complete final quality gate passed Ruff, found 911 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:b0d22e5cdf6f52d3025f55e7d13098a971b4b48215edf96bc520cb8a13fdb829`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and four inventoried remote Gateway scripts were removed. No transient quality or Work-E2E runner remains;
+regular and review APIs both return `ok`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent
+services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=websocket-preflight-8b1808c7`.
+
+This slice adds no migration, upgrade route, credential store, WebSocket connection, CRDT engine, update ingestion,
+fan-out, recovery or load claim, external provider or production admission. GitHub publication remains pending under
+the content-specific approval requirement.
+
 Roadmap 656 through 663 / PLANS 517 through 524 are complete under ADR-0180. Native Office now exposes one strict,
 metadata-only `collabio-office-crdt-preflight.v1` compatibility boundary for binary updates and state vectors. It
 publishes a future 256 KiB update ceiling and fifty-editor target but accepts no update bytes, state vector, awareness

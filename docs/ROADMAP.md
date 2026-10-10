@@ -643,7 +643,7 @@ Aufgaben:
 - [ ] Weitergehende Kollaborations- und Interchange-Vertraege fuer Dokumente ausbauen.
 - [x] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren (Roadmap 641-647 / PLANS 502-508).
 - [x] CRDT Service vorbereiten (Roadmap 656-663 / PLANS 517-524).
-- [ ] WebSocket Gateway vorbereiten.
+- [x] WebSocket Gateway vorbereiten (Roadmap 664-671 / PLANS 525-532).
 - [x] Commenting, Mentions und Change Attribution modellieren (Roadmap 648-655 / PLANS 509-516).
 - [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
 - [ ] Parser-Worker isoliert und ohne Netzwerk planen.
@@ -3428,7 +3428,39 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Updateannahme, Durable Log, Presence, Merge, WebSocket, Restore-Claim, 50-Editor-Lastclaim oder produktive
      Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 663 / PLANS 224 bis 524 sind unter ADR-0139 bis ADR-0180 implementiert
+664. [x] Einen versionierten, metadatenreinen WebSocket-Gateway-Preflight als zweite Grenze nach dem CRDT-Vertrag
+     eingefuehrt. Der Endpunkt beschreibt den kuenftigen Socket-Pfad, gibt aber weder URL, Ticket, HTTP-Upgrade noch
+     Verbindung frei.
+
+665. [x] Same-Origin serverseitig aus Browser-`Origin` und tatsaechlichem Request-Origin exakt geprueft. Nur das
+     feste Subprotocol `collabio-office-crdt.v1` und die kanonische vollstaendige Transportfaehigkeitsliste werden
+     akzeptiert; Body-Origin und Query-Credentials bleiben ausgeschlossen.
+
+666. [x] Den Gateway-Preflight erneut an Office-Schreibgate, aktuelle Tenant-/Dokument-ACL, exakte immutable Version
+     und aktuelle Browser-Edit-Lease gebunden. Sitzungs- und Client-IDs bleiben request-transient und fehlen in Audit.
+
+667. [x] Den kuenftigen Transport auf binaere Frames ohne Kompression, 256-KiB-Framegrenze, 1-MiB-Backpressure-
+     Grenze mit Close-Code 1013, 25-Sekunden-Heartbeat, 60-Sekunden-Reautorisierung und maximal fuenf Minuten
+     Verbindungsdauer festgelegt.
+
+668. [x] Eine spaetere kurzlebige, einmalige und hashgebundene Upgrade-Berechtigung verlangt, aber bewusst kein
+     Credential ausgestellt. Antworten enthalten weder Ticket noch Socket-URL; der Server akzeptiert keine
+     Verbindung.
+
+669. [x] State-Vector-Reconciliation fuer Resume, at-least-once-Lieferung mit Client-Deduplizierung und ACL-
+     Revalidierung pro Update als Pflichtvertrag benannt. Upgrade-Route, Ticket-Store, reale Origin-/Subprotocol-
+     Ablehnung, Update-ACL, Backpressure-/Disconnect-Recovery, Multi-Node-Fan-out, CRDT-Engine und Lasttest bleiben
+     geordnete Blocker.
+
+670. [x] Service-, API- und Capability-Vertraege fuer Same-Origin, Version, Lease, exakte Faehigkeiten, Grenzen,
+     metadata-only Audit und unveraenderte Persistenz bestanden. Der responsive Desktop-/Mobile-Workflow bestand
+     2/2 in 11,0 Sekunden und bestaetigte sichtbar den geschlossenen Upgrade-, Ticket- und Verbindungspfad.
+
+671. [x] Die begrenzte native Office-WebSocket-Gateway-Vorbereitung unter ADR-0181 ohne Migration, Upgrade-Route,
+     Credential-Store, WebSocket-Verbindung, CRDT-Engine, Updateannahme, Fan-out, Recovery- oder Lastclaim und ohne
+     produktive Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 671 / PLANS 224 bis 532 sind unter ADR-0139 bis ADR-0181 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

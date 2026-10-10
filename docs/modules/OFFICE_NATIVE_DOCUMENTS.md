@@ -1,9 +1,34 @@
 # Native Office Documents
 
-Status: Roadmap 252–663 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 663 / PLANS 524 CRDT service preflight
+Status: Roadmap 252–671 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 671 / PLANS 532 WebSocket gateway preflight
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0180; current movement: `ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md`
+Decisions: ADR-0079 through ADR-0181; current movement: `ARCHITECTURE_DECISIONS/ADR-0181-bounded-native-office-websocket-gateway-preflight.md`
+
+## Bounded WebSocket gateway preflight (Roadmap 664–671)
+
+The metadata-only `collabio-office-websocket-preflight.v1` contract prepares a future gateway after the CRDT
+preflight. Exact Same-Origin validation uses the browser `Origin` and actual request origin; the body cannot nominate
+an origin. Only `collabio-office-crdt.v1` and the complete canonical transport capability list are accepted.
+
+Every request retains the Office write gate and revalidates the exact tenant, document write ACL, immutable current
+version and active current-version edit lease. Session and client identifiers remain request-transient. Audit contains
+only bounded version, protocol, counts, closed states and blocker count, never origin, raw identifiers, credentials or
+content.
+
+The future envelope is binary-only and uncompressed: 256 KiB per frame, 1 MiB queued bytes, close code 1013 under
+backpressure, 25-second heartbeat, 60-second reauthorization and five-minute maximum connection lifetime. State-
+vector reconciliation is required for resume and at-least-once delivery requires client deduplication. Document and
+per-update ACL checks remain mandatory.
+
+The response requires a future short-lived, single-use, hash-bound upgrade credential but issues none. Query
+credentials are forbidden, no ticket or socket URL is returned and `server_accepts_connections` remains false. The
+upgrade route, credential store, real handshake rejection, update authorization, disconnect recovery, multi-node fan-
+out, CRDT engine and load evidence remain explicit blockers.
+
+Focused Ruff, format and Mypy pass with the affected service, API and capability tests. The real responsive desktop/
+mobile lifecycle workflow passes 2/2 in 11.0 seconds and visibly confirms closed upgrade, ticket and connection
+states. No migration, WebSocket connection, update ingestion, recovery or production admission is added.
 
 ## Bounded CRDT service preflight (Roadmap 656–663)
 
