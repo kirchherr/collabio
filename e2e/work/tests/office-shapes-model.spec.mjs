@@ -6,7 +6,7 @@ import { officeShapeMultiAlignment, officeShapeMultiAppearance, officeShapeMulti
   officeShapeMultiCanArrange, officeShapeMultiCanCopyAppearance, officeShapeMultiCanGroup, officeShapeMultiCanOrder,
   officeShapeMultiCanRegroup, officeShapeMultiCanUngroup, officeShapeMultiDistribution,
   officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
-  officeShapeMultiRange, officeShapeMultiSelection,
+  officeShapeMultiRange, officeShapeMultiSelection, officeShapeMultiSelectionPlan,
   officeShapeMultiPasteAppearance, officeShapeMultiResize, officeShapeMultiRootRotation,
   officeShapeMultiRootSize, officeShapeMultiRotate, officeShapeMultiTransform, officeShapeMultiTranslate,
   officeShapeMultiRegroup, officeShapeMultiUngroup,
@@ -180,6 +180,26 @@ test("Office shape multi-selection is bounded ordered and groups only adjacent f
     node: { attrs: { position: { layer: "front", x: 0, y: 0 }, wrap: null } } }])).toBe(false);
   expect(() => officeShapeMultiSelection(nodes, [nodes[0].id, nodes[0].id])).toThrow();
   expect(() => officeShapeMultiSelection(nodes, Array(21).fill(0).map((_, index) => `shape-${String(index).padStart(24, "0")}`))).toThrow();
+});
+
+test("Office shape selection navigator plans exact current roots in document order", () => {
+  const nodes = [
+    { id: "shape-" + "1".repeat(24), type: "shape", rootIndex: 1 },
+    { id: "shape-group-" + "2".repeat(24), type: "shapeGroup", rootIndex: 3 },
+    { id: "shape-" + "3".repeat(24), type: "shape", rootIndex: 5 },
+  ];
+  expect(officeShapeMultiSelectionPlan(nodes, [nodes[2].id, nodes[0].id])).toEqual({
+    ids: [nodes[0].id, nodes[2].id], entries: [nodes[0], nodes[2]],
+  });
+  expect(officeShapeMultiSelectionPlan(nodes, [])).toEqual({ ids: [], entries: [] });
+  expect(() => officeShapeMultiSelectionPlan(nodes, ["shape-" + "9".repeat(24)])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan(nodes, [nodes[0].id, nodes[0].id])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan([nodes[1], nodes[0]], [nodes[0].id])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan([nodes[0], { ...nodes[1], rootIndex: 1 }], [nodes[0].id])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan([nodes[0], { ...nodes[1], id: nodes[0].id }], [nodes[0].id])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan([...nodes, { id: "paragraph", type: "paragraph", rootIndex: 6 }], [])).toThrow();
+  expect(() => officeShapeMultiSelectionPlan(nodes,
+    Array.from({ length: 21 }, (_, index) => `shape-${String(index).padStart(24, "0")}`))).toThrow();
 });
 
 test("Office shape multi-selection reorders complete roots atomically and stably", () => {

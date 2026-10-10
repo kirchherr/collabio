@@ -24,6 +24,25 @@ export function officeShapeMultiSelection(entries, ids) {
     .sort((left, right) => left.rootIndex - right.rootIndex);
 }
 
+export function officeShapeMultiSelectionPlan(entries, ids) {
+  if (!Array.isArray(entries) || !Array.isArray(ids) || ids.length > OFFICE_SHAPE_MULTI_SELECTION_LIMIT ||
+      ids.some((id) => typeof id !== "string") || new Set(ids).size !== ids.length) {
+    throw new Error("shape-multi-selection-plan");
+  }
+  const byId = new Map(); let previous = -1;
+  for (const entry of entries) {
+    if (!entry || typeof entry.id !== "string" || byId.has(entry.id) ||
+        !["shape", "shapeGroup"].includes(entry.type) || !Number.isSafeInteger(entry.rootIndex) ||
+        entry.rootIndex <= previous || entry.rootIndex < 0) throw new Error("shape-multi-selection-plan");
+    byId.set(entry.id, entry); previous = entry.rootIndex;
+  }
+  const wanted = new Set(ids);
+  if (ids.some((id) => !byId.has(id))) throw new Error("shape-multi-selection-plan");
+  const selected = entries.filter((entry) => wanted.has(entry.id));
+  if (selected.length !== ids.length) throw new Error("shape-multi-selection-plan");
+  return { ids: selected.map((entry) => entry.id), entries: selected };
+}
+
 export function officeShapeMultiRange(entries, anchorId, targetId) {
   const anchor = entries.findIndex((entry) => entry.id === anchorId), target = entries.findIndex((entry) => entry.id === targetId);
   if (anchor < 0 || target < 0) return [targetId];

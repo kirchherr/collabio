@@ -609,6 +609,32 @@ test("Office shapes and groups support atomic responsive multi-selection", async
   await expect(editor.locator(":scope > .office-shape-node")).toHaveCount(1);
   await expect(editor.locator(":scope > .office-shape-group")).toHaveCount(1);
 
+  await expect(page.locator("#shape-multi-navigator")).toBeEnabled();
+  await page.locator("#shape-multi-navigator").click();
+  await expect(page.locator("#shape-multi-navigator-dialog")).toBeVisible();
+  await expect(page.locator(".shape-multi-navigator-item")).toHaveCount(2);
+  await page.locator("#shape-multi-navigator-type").selectOption("shapeGroup");
+  await expect(page.locator(".shape-multi-navigator-item")).toHaveCount(1);
+  await page.locator("#shape-multi-navigator-all").click();
+  await expect(page.locator("#shape-multi-navigator-status")).toContainText("1 von höchstens 20");
+  await page.locator("#shape-multi-navigator-type").selectOption("all");
+  await page.locator("#shape-multi-navigator-search").fill("Multi A");
+  await expect(page.locator(".shape-multi-navigator-item")).toHaveCount(1);
+  await page.locator("#shape-multi-navigator-all").click();
+  await expect(page.locator("#shape-multi-navigator-status")).toContainText("2 von höchstens 20");
+  await page.locator("#shape-multi-navigator-apply").click();
+  await expect(page.locator("#shape-multi-navigator-dialog")).not.toBeVisible();
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
+  await expect(page.locator("#document-notice")).toHaveText(
+    "2 Objekte wurden über die Dokumentliste ausgewählt. Der Inhalt blieb unverändert.");
+  await page.locator("#shape-multi-navigator").click();
+  await page.locator("#shape-multi-navigator-clear").click();
+  await expect(page.locator("#shape-multi-navigator-status")).toContainText("0 von höchstens 20");
+  await page.locator("#shape-multi-navigator-cancel").click();
+  await expect(editor.locator("[data-office-multi-selected]")).toHaveCount(2);
+  await page.locator("#shape-multi-clear").click();
+  await page.locator("#shape-multi-toggle").click();
+
   await page.locator("#shape-multi-toggle").click(); await expect(page.locator("#shape-multi-toggle")).toHaveAttribute("aria-pressed", "true");
   await editor.locator(":scope > .office-shape-node .office-shape").dispatchEvent("mousedown", { button: 0 });
   await editor.locator(":scope > .office-shape-group .office-shape-group-control").dispatchEvent("mousedown", { button: 0 });

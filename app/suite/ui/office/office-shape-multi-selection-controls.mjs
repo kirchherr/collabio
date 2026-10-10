@@ -12,7 +12,8 @@ import { OFFICE_SHAPE_MULTI_SELECTION_LIMIT, officeShapeMultiCanGroup, officeSha
   officeShapeMultiLayer, officeShapeMultiMoveTo, officeShapeMultiNudge, officeShapeMultiOrder,
   officeShapeMultiResize, officeShapeMultiRotate,
   officeShapeMultiPasteAppearance, officeShapeMultiRootRotation, officeShapeMultiRootSize,
-  officeShapeMultiRegroup, officeShapeMultiSelection, officeShapeMultiTransform, officeShapeMultiTranslate,
+  officeShapeMultiRegroup, officeShapeMultiSelection, officeShapeMultiSelectionPlan,
+  officeShapeMultiTransform, officeShapeMultiTranslate,
   officeShapeMultiUngroup,
   OFFICE_SHAPE_MULTI_SCALE_BASE } from "./office-shape-multi-selection.mjs";
 
@@ -47,7 +48,8 @@ function groupCount(doc) {
 export function installOfficeShapeMultiSelection({ state, allowed, validate, focus, updateEditor, notice }) {
   const $ = (id) => document.getElementById(id), selectedIds = new Set();
   let mode = false, anchorId = null, session = null, bound = null, drag = null, resizeDrag = null, rotateDrag = null,
-    suppressedClick = null, orderSnapshot = null, transformSnapshot = null, appearanceSnapshot = null, appearanceClipboard = null,
+    suppressedClick = null, selectionSnapshot = null, orderSnapshot = null, transformSnapshot = null,
+    appearanceSnapshot = null, appearanceClipboard = null,
     regroupMemory = null;
   const entries = () => state.editor ? rootEntries(state.editor.state.doc) : [];
   const selectedEntries = () => officeShapeMultiSelection(entries(), [...selectedIds]);
@@ -97,6 +99,7 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
       count === 1 ? "1 Objekt ausgewählt" : `${count} Objekte ausgewählt`;
     const actions = $("shape-multi-actions"); actions.hidden = count === 0;
     const current = selectedEntries(), writable = allowed(), enough = current.length >= 2, doc = state.editor?.state.doc;
+    $("shape-multi-navigator").disabled = !doc || !writable || entries().length === 0;
     const rememberedGroups = regroupMemory?.session === state.session;
     $("shape-multi-regroup").hidden = !rememberedGroups;
     $("shape-multi-regroup").disabled = !doc || !writable || !rememberedGroups ||
@@ -505,6 +508,109 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
   };
   $("shape-multi-toggle").addEventListener("click", () => { mode = !mode; paint(); focus(state.editor); });
   $("shape-multi-clear").addEventListener("click", () => { clear(); focus(state.editor); });
+  const navigatorDialog = $("shape-multi-navigator-dialog");
+  const navigatorForm = $("shape-multi-navigator-form");
+  const navigatorLabel = (entry) => {
+    const attrs = entry.node.attrs, positioned = attrs.position;
+    const anchor = positioned ? `${positioned.layer === "front" ? "vor" : "hinter"} Text · X ${positioned.x} · Y ${positioned.y}` :
+      attrs.wrap ? `Textumfluss ${attrs.wrap.side === "left" ? "links" : "rechts"}` : "im Textfluss";
+    if (entry.type === "shapeGroup") {
+      const texts = entry.node.content.content.map((member) => String(member.attrs.text ?? "").trim()).filter(Boolean);
+      return { title: `Formgruppe mit ${entry.node.childCount} Formen`,
+        details: `Position ${entry.rootIndex + 1} · ${anchor}${texts.length ? ` · ${texts.join(" · ")}` : ""}` };
+    }
+    const text = String(attrs.text ?? "").trim();
+    return { title: text || `Form ${attrs.kind}`, details: `Position ${entry.rootIndex + 1} · ${attrs.kind} · ${anchor}` };
+  };
+  const navigatorMatches = () => {
+    if (!selectionSnapshot) return [];
+    const query = $("shape-multi-navigator-search").value.trim().toLocaleLowerCase("de");
+    const type = $("shape-multi-navigator-type").value;
+    return selectionSnapshot.entries.filter((entry) => {
+      if (type !== "all" && entry.type !== type) return false;
+      const label = navigatorLabel(entry);
+      return !query || `${label.title} ${label.details}`.toLocaleLowerCase("de").includes(query);
+    });
+  };
+  const navigatorStatus = (message = "") => {
+    if (!selectionSnapshot) return;
+    const count = selectionSnapshot.checked.size, matches = navigatorMatches().length;
+    $("shape-multi-navigator-status").textContent = message ||
+      `${count} von höchstens ${OFFICE_SHAPE_MULTI_SELECTION_LIMIT} Objekten ausgewählt · ${matches} Treffer.`;
+    $("shape-multi-navigator-clear").disabled = count === 0;
+  };
+  const renderNavigator = () => {
+    const list = $("shape-multi-navigator-list"); list.replaceChildren();
+    for (const entry of navigatorMatches()) {
+      const label = document.createElement("label"), input = document.createElement("input"), body = document.createElement("span");
+      const title = document.createElement("strong"), details = document.createElement("small"), description = navigatorLabel(entry);
+      label.className = "shape-multi-navigator-item"; input.type = "checkbox"; input.value = entry.id;
+      input.checked = selectionSnapshot.checked.has(entry.id); title.textContent = description.title; details.textContent = description.details;
+      body.append(title, details); label.append(input, body); list.append(label);
+      input.addEventListener("change", () => {
+        if (input.checked && selectionSnapshot.checked.size >= OFFICE_SHAPE_MULTI_SELECTION_LIMIT) {
+          input.checked = false;
+          navigatorStatus(`Es können höchstens ${OFFICE_SHAPE_MULTI_SELECTION_LIMIT} Objekte gleichzeitig ausgewählt werden.`);
+          return;
+        }
+        if (input.checked) selectionSnapshot.checked.add(entry.id); else selectionSnapshot.checked.delete(entry.id);
+        navigatorStatus();
+      });
+    }
+    if (!list.childElementCount) {
+      const empty = document.createElement("p"); empty.className = "paragraph-help"; empty.textContent = "Keine passenden Objekte.";
+      list.append(empty);
+    }
+    navigatorStatus();
+  };
+  const closeNavigator = () => {
+    selectionSnapshot = null; if (navigatorDialog.open) navigatorDialog.close(); paint();
+  };
+  const updateNavigatorMatches = (operation) => {
+    if (!selectionSnapshot) return;
+    const next = new Set(selectionSnapshot.checked), matches = navigatorMatches();
+    if (operation === "all") for (const entry of matches) next.add(entry.id);
+    else if (operation === "invert") for (const entry of matches) {
+      if (next.has(entry.id)) next.delete(entry.id); else next.add(entry.id);
+    }
+    if (next.size > OFFICE_SHAPE_MULTI_SELECTION_LIMIT) {
+      navigatorStatus(`Diese Aktion würde die Grenze von ${OFFICE_SHAPE_MULTI_SELECTION_LIMIT} Objekten überschreiten.`); return;
+    }
+    selectionSnapshot.checked = next; renderNavigator();
+  };
+  $("shape-multi-navigator").addEventListener("click", () => {
+    const editor = state.editor, current = entries();
+    if (!editor || !allowed() || !current.length || document.querySelector("dialog[open]")) return;
+    selectionSnapshot = { session: state.session, doc: editor.state.doc, entries: current,
+      checked: new Set(selectedEntries().map((entry) => entry.id)) };
+    $("shape-multi-navigator-search").value = ""; $("shape-multi-navigator-type").value = "all";
+    renderNavigator(); navigatorDialog.showModal(); $("shape-multi-navigator-search").focus();
+  });
+  $("shape-multi-navigator-search").addEventListener("input", renderNavigator);
+  $("shape-multi-navigator-type").addEventListener("change", renderNavigator);
+  $("shape-multi-navigator-all").addEventListener("click", () => updateNavigatorMatches("all"));
+  $("shape-multi-navigator-invert").addEventListener("click", () => updateNavigatorMatches("invert"));
+  $("shape-multi-navigator-clear").addEventListener("click", () => {
+    if (!selectionSnapshot) return; selectionSnapshot.checked.clear(); renderNavigator();
+  });
+  $("shape-multi-navigator-close").addEventListener("click", closeNavigator);
+  $("shape-multi-navigator-cancel").addEventListener("click", closeNavigator);
+  navigatorDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeNavigator(); });
+  navigatorForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const snapshot = selectionSnapshot, editor = state.editor;
+    const fresh = snapshot && editor && snapshot.session === state.session && snapshot.doc === editor.state.doc && allowed();
+    try {
+      if (!fresh) throw new Error("shape-multi-navigator-stale");
+      const plan = officeShapeMultiSelectionPlan(entries(), [...snapshot.checked]);
+      selectionSnapshot = null; navigatorDialog.close(); if (plan.ids.length) mode = true;
+      setSelection(plan.ids); focus(editor);
+      notice(plan.ids.length ? `${plan.ids.length} Objekte wurden über die Dokumentliste ausgewählt. Der Inhalt blieb unverändert.` :
+        "Die Objektauswahl wurde aufgehoben. Der Inhalt blieb unverändert.");
+    } catch {
+      closeNavigator(); notice("Die Objektauswahl wurde wegen eines geänderten Dokumentzustands verworfen.", true);
+    }
+  });
   const commitOrder = (plan, current, message) => {
     const editor = state.editor;
     if (!editor || !allowed() || !plan.changed) return false;
@@ -997,6 +1103,8 @@ export function installOfficeShapeMultiSelection({ state, allowed, validate, foc
     if (drag && (drag.session !== state.session || !allowed())) finishDrag(null, true);
     if (resizeDrag && (resizeDrag.session !== state.session || !allowed())) finishResize(null, true);
     if (rotateDrag && (rotateDrag.session !== state.session || !allowed())) finishRotate(null, true);
+    if (selectionSnapshot && (selectionSnapshot.session !== state.session ||
+        selectionSnapshot.doc !== state.editor?.state.doc || !allowed())) closeNavigator();
     if (orderSnapshot && (orderSnapshot.session !== state.session ||
         orderSnapshot.doc !== state.editor?.state.doc || !allowed())) closeOrder();
     if (transformSnapshot && (transformSnapshot.session !== state.session ||
