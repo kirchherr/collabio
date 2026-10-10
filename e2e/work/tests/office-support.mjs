@@ -12,8 +12,28 @@ export const OFFICE_READER_HEADERS = {
   "X-Tenant-Id": TENANT_ID, "X-User-Id": OFFICE_READER_ID, "X-Role-Ids": "office-reader",
 };
 export const officeContentPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id)}/content`;
+export const officeDictationPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id)}/voice/dictations`;
 export const officeEditor = (page) => page.locator("#office-editor .tiptap");
 export const textDocument = (text) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
+
+export async function installSyntheticSpeechRecognition(page) {
+  await page.addInitScript(() => {
+    const state = { current: null };
+    class SyntheticSpeechRecognition {
+      constructor() { state.current = this; this.lang = "de-DE"; this.continuous = false; this.interimResults = true; }
+      start() { this.started = true; }
+      stop() { this.started = false; queueMicrotask(() => this.onend?.()); }
+      abort() { this.started = false; }
+    }
+    window.SpeechRecognition = SyntheticSpeechRecognition;
+    window.__officeSyntheticDictation = {
+      emit(transcript, isFinal = true) {
+        const result = { 0: { transcript }, length: 1, isFinal };
+        state.current?.onresult?.({ results: [result] });
+      },
+    };
+  });
+}
 
 export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {} } = {}) {
   let complete;
@@ -110,6 +130,43 @@ export async function openOfficeDocument(page, objectId) {
   expect(response.status()).toBe(200);
   await expect(officeEditor(page)).toBeVisible();
   return response.json();
+}
+
+export async function dictateIntoOffice(page, objectId, transcript) {
+  const button = page.locator("#dictation-push");
+  await button.scrollIntoViewIfNeeded();
+  await expect(button).toBeEnabled();
+  await officeEditor(page).click();
+  await page.keyboard.press("ControlOrMeta+End");
+  await expect(button).toBeEnabled();
+  const box = await button.boundingBox();
+  expect(box).toBeTruthy();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === officeDictationPath(objectId) && response.request().method() === "POST");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await page.evaluate((value) => window.__officeSyntheticDictation.emit(value), transcript);
+  await page.mouse.up();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.activation_contract).toBe("explicit_push_to_talk");
+  expect(result.recognition_adapter).toBe("browser_web_speech");
+  expect(result.classification).toBe("voice_transcript");
+  expect(result.transcript_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  expect(result.raw_audio_uploaded).toBe(false);
+  expect(result.raw_audio_stored).toBe(false);
+  expect(result.transcript_persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_version_save).toBe(true);
+  expect(result.ai_used).toBe(false);
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("#dictation-status")).toContainText("Version noch nicht gespeichert");
+  await expect(officeEditor(page)).toContainText(transcript);
+  return result;
 }
 
 export async function officeContent(page, objectId, { baseUrl = BASE_URL, headers = OFFICE_HEADERS, versionId = null } = {}) {

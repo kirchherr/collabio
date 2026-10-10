@@ -1,3 +1,4 @@
+from hashlib import sha256
 from uuid import uuid4
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
@@ -23,10 +24,13 @@ class VoicePrivacyGuard:
             raise PolicyViolation("Voice is disabled for this tenant")
         if not request.push_to_talk_active:
             raise PolicyViolation("Voice input must be explicit push-to-talk or explicitly activated")
+        if request.recognition_adapter == "browser_web_speech" and not tenant_policy.external_ai_enabled:
+            raise PolicyViolation("Browser speech recognition is disabled by tenant policy")
         if request.requested_raw_audio_storage and not tenant_policy.raw_audio_storage_allowed:
             raise PolicyViolation("Raw audio storage is disabled by tenant policy")
 
         transcript_id = str(uuid4())
+        transcript_hash = "sha256:" + sha256(request.transcript.encode("utf-8")).hexdigest()
         audit_event = self.audit_logger.record(
             user_context=user_context,
             event_type="voice.transcript",
@@ -36,6 +40,9 @@ class VoicePrivacyGuard:
                 "classification": DataClass.VOICE_TRANSCRIPT,
                 "raw_audio_stored": False,
                 "language": request.language,
+                "recognition_adapter": request.recognition_adapter,
+                "retention_policy_id": "transient-not-persisted",
+                "transcript_persisted": False,
             },
         )
         return VoiceTranscriptResponse(
@@ -43,4 +50,8 @@ class VoicePrivacyGuard:
             classification=DataClass.VOICE_TRANSCRIPT,
             raw_audio_stored=False,
             audit_event_id=audit_event.event_id,
+            transcript_hash=transcript_hash,
+            transcript_character_count=len(request.transcript),
+            language=request.language,
+            recognition_adapter=request.recognition_adapter,
         )

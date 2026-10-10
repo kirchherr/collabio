@@ -54,6 +54,13 @@ from suite.platform.office_ai_translation import (
     OfficeAITranslationService,
     OfficeAITranslationUnavailable,
 )
+from suite.platform.office_dictation import (
+    OfficeDictationCapabilityResponse,
+    OfficeDictationCommand,
+    OfficeDictationRequestError,
+    OfficeDictationResponse,
+    OfficeDictationService,
+)
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -209,6 +216,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Invalid version history request"}, status_code=400)
             except OfficeDocumentShareRequestError:
                 return JSONResponse({"detail": "Invalid document share request"}, status_code=400)
+            except OfficeDictationRequestError:
+                return JSONResponse({"detail": "Invalid Office dictation request"}, status_code=400)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except PolicyViolation:
@@ -328,6 +337,12 @@ def build_office_ai_risk_marking_service(
 
 def build_office_source_search_service(*, document_service: OfficeDocumentService) -> OfficeSourceSearchService:
     return OfficeSourceSearchService(documents=document_service)
+
+
+def build_office_dictation_service(
+    *, document_service: OfficeDocumentService, voice_guard: Any
+) -> OfficeDictationService:
+    return OfficeDictationService(documents=document_service, voice_guard=voice_guard)
 
 
 def register_office_routes(
@@ -632,6 +647,42 @@ def register_office_routes(
     ) -> Any:
         return request.app.state.office_source_search_service.search(
             user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.get(
+        "/{object_id}/voice/dictation-capability",
+        response_model=OfficeDictationCapabilityResponse,
+        dependencies=[Depends(write_gate)],
+    )
+    def office_dictation_capability(
+        object_id: str,
+        request: Request,
+        expected_current_version_id: str = Query(pattern=r"^office-version-[a-f0-9]{32}$"),
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_dictation_service.capability(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            expected_current_version_id=expected_current_version_id,
+        )
+
+    @router.post(
+        "/{object_id}/voice/dictations",
+        response_model=OfficeDictationResponse,
+        dependencies=[Depends(write_gate)],
+    )
+    def prepare_office_dictation(
+        object_id: str,
+        command: OfficeDictationCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_dictation_service.prepare(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
             object_id=object_id,
             command=command,
         )

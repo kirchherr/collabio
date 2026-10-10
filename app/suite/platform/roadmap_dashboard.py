@@ -841,6 +841,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Eine begrenzte Quellensuche durchsucht nur aktuell autorisiert lesbare Dokumentfassungen "
                         "ohne AI, Vektorindex oder RAG-Kontext und zeigt jeden Treffer mit exakter Objekt-, Versions-, "
                         "Klassifikations-, ACL- und Inhalts-Hash-Bindung. "
+                        "Explizites Push-to-talk-Diktat prueft vor der Aufnahme Tenant-Policy, aktuelle Version und "
+                        "Schreibrecht. Browser-Spracherkennung bleibt ohne ausdrueckliche externe Providerfreigabe "
+                        "gesperrt; Collabio laedt oder speichert kein Roh-Audio. Das hash-auditierte Transkript wird "
+                        "erst nach serverseitiger Annahme in den lokalen Entwurf eingefuegt und braucht weiterhin "
+                        "die bestaetigte Versionsspeicherung. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -962,6 +967,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "tests/test_office_ai_risk_marking.py",
                         "ARCHITECTURE_DECISIONS/ADR-0192-native-office-versioned-source-search.md",
                         "tests/test_office_source_search.py",
+                        "ARCHITECTURE_DECISIONS/ADR-0193-native-office-push-to-talk-dictation.md",
+                        "app/suite/platform/office_dictation.py",
+                        "tests/test_office_dictation.py",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -977,6 +985,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/ai/policy-comparisons",
                         "/v1/office/documents/{object_id}/ai/risk-markings",
                         "/v1/office/documents/{object_id}/ai/source-searches",
+                        "/v1/office/documents/{object_id}/voice/dictation-capability",
+                        "/v1/office/documents/{object_id}/voice/dictations",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
                         "/v1/office/documents/{object_id}/backlinks",
@@ -1052,6 +1062,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
                         "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
                         "source_search_uses_no_ai_vector_index_rag_context_or_persistence",
+                        "dictation_requires_explicit_push_to_talk_current_version_write_acl_and_tenant_voice_policy",
+                        "browser_speech_recognition_requires_explicit_external_ai_policy_admission",
+                        "dictation_uploads_and_stores_no_raw_audio_and_persists_no_transcript",
+                        "dictation_changes_only_the_local_draft_until_confirmed_version_save",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1084,7 +1098,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="add_native_office_push_to_talk_dictation",
+                    next_action="add_native_office_text_to_speech_adapter_interface",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

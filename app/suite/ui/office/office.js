@@ -71,7 +71,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null, share: null,
+  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null, share: null, dictation: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -1023,6 +1023,237 @@ function isDirty() {
   try { return JSON.stringify(draftSnapshot()) !== state.session.baseline; } catch { return true; }
 }
 
+function speechRecognitionConstructor() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+function dictationCapabilityMatches(value, session) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.source_version_id === session.version?.version_id && typeof value.voice_enabled === "boolean" &&
+    value.push_to_talk_required === true && typeof value.browser_speech_recognition_allowed === "boolean" &&
+    typeof value.client_local_stt_allowed === "boolean" && value.raw_audio_upload_allowed === false &&
+    value.raw_audio_storage_allowed === false && value.transcript_persisted === false &&
+    value.document_write_authorized === true && value.policy_id === "office_push_to_talk_transcript_v1" &&
+    typeof value.audit_event_id === "string";
+}
+
+async function refreshDictationCapability(session = state.session) {
+  if (!sessionCurrent(session) || !session.objectId || !session.version?.version_id || !session.canWrite || session.historical) return;
+  const request = ++session.dictationCapabilityRequest;
+  session.dictationCapability = null; session.dictationCapabilityLoading = true; session.dictationNotice = "";
+  updateDictationControls();
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/voice/dictation-capability?expected_current_version_id=${encodeURIComponent(session.version.version_id)}`);
+    if (!sessionCurrent(session) || request !== session.dictationCapabilityRequest) return;
+    if (!dictationCapabilityMatches(value, session)) throw new ApiError(502, true);
+    session.dictationCapability = value;
+  } catch (error) {
+    if (!sessionCurrent(session) || request !== session.dictationCapabilityRequest) return;
+    session.dictationNotice = denied(error) ? "Diktat ist für dieses Dokument nicht freigegeben." :
+      "Diktat kann gerade nicht geprüft werden.";
+  } finally {
+    if (sessionCurrent(session) && request === session.dictationCapabilityRequest) {
+      session.dictationCapabilityLoading = false; updateDictationControls();
+    }
+  }
+}
+
+function dictationCanStart() {
+  const session = state.session, selection = state.editor?.state.selection;
+  return Boolean(session && sessionCurrent(session) && session.objectId && session.dictationCapability?.browser_speech_recognition_allowed &&
+    speechRecognitionConstructor() && replacementAllowed() && !isDirty() && selection instanceof TextSelection && selection.empty && !state.dictation);
+}
+
+function updateDictationControls() {
+  const session = state.session, action = state.dictation, button = $("dictation-push"), status = $("dictation-status");
+  const active = Boolean(action && action.session === session);
+  button.disabled = active ? false : !dictationCanStart();
+  $("dictation-language").disabled = active || !dictationCanStart();
+  button.setAttribute("aria-pressed", String(active));
+  button.dataset.state = active ? action.phase : "idle";
+  status.dataset.state = active ? action.phase : session?.dictationNotice ? "accepted" : "idle";
+  if (active) {
+    button.textContent = action.phase === "submitting" ? "Diktat prüfen …" : "● Aufnahme läuft";
+    status.textContent = action.phase === "submitting" ? "Transkript wird tenantgebunden geprüft; noch nicht eingefügt." :
+      `${action.interim || action.transcript || "Sprechen Sie jetzt."} · Loslassen beendet.`;
+    return;
+  }
+  button.textContent = "🎙 Diktieren";
+  if (session?.dictationNotice) status.textContent = session.dictationNotice;
+  else if (!session?.objectId) status.textContent = "Nach dem ersten Speichern verfügbar.";
+  else if (session.dictationCapabilityLoading) status.textContent = "Diktat wird geprüft …";
+  else if (!session.dictationCapability) status.textContent = "Diktat ist nicht verfügbar.";
+  else if (!session.dictationCapability.voice_enabled) status.textContent = "Voice ist durch die Tenant-Richtlinie deaktiviert.";
+  else if (!session.dictationCapability.browser_speech_recognition_allowed) status.textContent = "Browser-Spracherkennung ist durch die Tenant-Richtlinie gesperrt.";
+  else if (!speechRecognitionConstructor()) status.textContent = "Dieser Browser bietet keine Spracherkennung.";
+  else if (isDirty()) status.textContent = "Vor einem weiteren Diktat die aktuelle Version speichern.";
+  else if (!replacementAllowed()) status.textContent = "Diktat benötigt die aktuelle Bearbeitungssitzung.";
+  else if (!(state.editor?.state.selection instanceof TextSelection) || !state.editor.state.selection.empty) status.textContent = "Setzen Sie den Cursor an die Einfügestelle.";
+  else status.textContent = "Gedrückt halten · Browser-Sprachdienst · kein Roh-Audio in Collabio.";
+}
+
+function normalizedDictationTranscript(value) { return String(value || "").trim().replace(/\s+/gu, " "); }
+
+function sha256Bytes(bytes) {
+  const constants = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ]);
+  const hash = new Uint32Array([
+    0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+  ]);
+  const padded = new Uint8Array(Math.ceil((bytes.length + 9) / 64) * 64);
+  padded.set(bytes); padded[bytes.length] = 0x80;
+  const view = new DataView(padded.buffer), bitLength = bytes.length * 8;
+  view.setUint32(padded.length - 8, Math.floor(bitLength / 0x100000000), false);
+  view.setUint32(padded.length - 4, bitLength >>> 0, false);
+  const words = new Uint32Array(64), rotate = (word, bits) => (word >>> bits) | (word << (32 - bits));
+  for (let offset = 0; offset < padded.length; offset += 64) {
+    for (let index = 0; index < 16; index += 1) words[index] = view.getUint32(offset + index * 4, false);
+    for (let index = 16; index < 64; index += 1) {
+      const first = rotate(words[index - 15], 7) ^ rotate(words[index - 15], 18) ^ (words[index - 15] >>> 3);
+      const second = rotate(words[index - 2], 17) ^ rotate(words[index - 2], 19) ^ (words[index - 2] >>> 10);
+      words[index] = (words[index - 16] + first + words[index - 7] + second) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = hash;
+    for (let index = 0; index < 64; index += 1) {
+      const upper = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25);
+      const choose = (e & f) ^ (~e & g);
+      const first = (h + upper + choose + constants[index] + words[index]) >>> 0;
+      const lower = rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22);
+      const majority = (a & b) ^ (a & c) ^ (b & c);
+      const second = (lower + majority) >>> 0;
+      h = g; g = f; f = e; e = (d + first) >>> 0; d = c; c = b; b = a; a = (first + second) >>> 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((word, index) => { hash[index] = (hash[index] + word) >>> 0; });
+  }
+  return Array.from(hash, (word) => word.toString(16).padStart(8, "0")).join("");
+}
+
+async function sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  if (globalThis.crypto?.subtle) {
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+    return `sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+  }
+  return `sha256:${sha256Bytes(bytes)}`;
+}
+
+function officeDictationMatches(value, action, transcriptHash) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === action.session.objectId &&
+    value.source_version_id === action.session.version?.version_id && value.insertion_position === action.position &&
+    value.transcript_hash === transcriptHash && value.transcript_character_count === Array.from(action.transcript).length &&
+    value.language === action.language && value.recognition_adapter === "browser_web_speech" &&
+    value.classification === "voice_transcript" && value.retention_policy_id === "transient-not-persisted" &&
+    value.activation_contract === "explicit_push_to_talk" && value.raw_audio_uploaded === false &&
+    value.raw_audio_stored === false && value.transcript_persisted === false && value.document_changed === false &&
+    value.requires_explicit_version_save === true && value.ai_used === false && value.rag_indexing_allowed === false &&
+    value.search_indexing_allowed === false && value.policy_id === "office_push_to_talk_transcript_v1" &&
+    typeof value.voice_audit_event_id === "string" && typeof value.audit_event_id === "string";
+}
+
+function dictationActionCurrent(action) {
+  return state.dictation === action && sessionCurrent(action.session) && state.editor === action.editor &&
+    action.revision === action.session.revision && action.document === action.editor.state.doc;
+}
+
+async function submitDictation(action) {
+  if (!dictationActionCurrent(action) || action.submitting) return;
+  action.transcript = normalizedDictationTranscript(action.transcript);
+  if (!action.transcript) {
+    state.dictation = null; action.session.dictationNotice = "Kein gesprochenes Wort erkannt."; updateDictationControls(); return;
+  }
+  action.submitting = true; action.phase = "submitting"; updateDictationControls();
+  try {
+    const transcriptHash = await sha256Text(action.transcript);
+    const value = await api(`/v1/office/documents/${encodeURIComponent(action.session.objectId)}/voice/dictations`, {
+      method: "POST", body: { expected_current_version_id: action.session.version.version_id,
+        insertion_position: action.position, transcript: action.transcript, push_to_talk_active: true,
+        requested_raw_audio_storage: false, language: action.language, recognition_adapter: "browser_web_speech" },
+    }, action.context);
+    if (!dictationActionCurrent(action) || !officeDictationMatches(value, action, transcriptHash)) throw new ApiError(502, true);
+    state.dictation = null;
+    action.session.dictationNotice = "Diktat in den lokalen Entwurf übernommen · Version noch nicht gespeichert.";
+    const previous = action.position > 1 ? action.editor.state.doc.textBetween(action.position - 1, action.position, "") : "";
+    const insertion = previous && !/\s/u.test(previous) ? ` ${action.transcript}` : action.transcript;
+    action.editor.view.dispatch(closeHistory(action.editor.state.tr));
+    action.editor.view.dispatch(action.editor.state.tr.insertText(insertion, action.position));
+    action.editor.view.dispatch(closeHistory(action.editor.state.tr));
+    focusEditor(action.editor);
+  } catch (error) {
+    if (state.dictation === action) state.dictation = null;
+    if (sessionCurrent(action.session)) {
+      action.session.dictationNotice = denied(error) ? "Diktat wurde durch Richtlinie oder Berechtigung abgelehnt." :
+        error instanceof ApiError && error.status === 409 ? "Das Dokument hat inzwischen eine neuere Version." :
+        "Diktat konnte nicht sicher übernommen werden.";
+    }
+  } finally { if (sessionCurrent(action.session)) updateEditorState(); }
+}
+
+function finishDictation(action) {
+  if (state.dictation !== action || action.cancelled) return;
+  action.ended = true;
+  void submitDictation(action);
+}
+
+function beginDictation(event) {
+  if ((event.type === "pointerdown" && event.button !== 0) || !dictationCanStart()) return;
+  event.preventDefault();
+  const Recognition = speechRecognitionConstructor(), session = state.session, editor = state.editor;
+  const recognition = new Recognition();
+  const action = { session, editor, context: state.context, revision: session.revision, document: editor.state.doc,
+    position: editor.state.selection.from, language: $("dictation-language").value, recognition,
+    transcript: "", interim: "", phase: "recording", submitting: false, released: false, ended: false, cancelled: false };
+  state.dictation = action; session.dictationNotice = "";
+  recognition.lang = action.language; recognition.continuous = false; recognition.interimResults = true; recognition.maxAlternatives = 1;
+  recognition.onresult = ({ results }) => {
+    if (state.dictation !== action) return;
+    let finalText = "", interimText = "";
+    Array.from(results || []).forEach((result) => {
+      const text = result?.[0]?.transcript || "";
+      if (result.isFinal) finalText += ` ${text}`; else interimText += ` ${text}`;
+    });
+    action.transcript = normalizedDictationTranscript(finalText);
+    action.interim = normalizedDictationTranscript(interimText);
+    updateDictationControls();
+  };
+  recognition.onerror = () => {
+    if (state.dictation !== action) return;
+    action.cancelled = true; state.dictation = null;
+    session.dictationNotice = "Mikrofon oder Spracherkennung ist nicht verfügbar."; updateDictationControls();
+  };
+  recognition.onend = () => finishDictation(action);
+  try {
+    if (event.pointerId !== undefined) $("dictation-push").setPointerCapture(event.pointerId);
+    recognition.start(); updateDictationControls();
+  } catch {
+    action.cancelled = true; state.dictation = null;
+    session.dictationNotice = "Spracherkennung konnte nicht gestartet werden."; updateDictationControls();
+  }
+}
+
+function releaseDictation(event) {
+  const action = state.dictation;
+  if (!action || action.phase !== "recording") return;
+  event?.preventDefault(); action.released = true;
+  try { action.recognition.stop(); } catch { finishDictation(action); }
+  if (action.ended) finishDictation(action);
+}
+
+function cancelDictation() {
+  const action = state.dictation;
+  if (!action) return;
+  action.cancelled = true; state.dictation = null;
+  try { action.recognition.abort(); } catch { /* Browser recognition may already be closed. */ }
+  if (sessionCurrent(action.session)) updateDictationControls();
+}
+
 function updateEditorState() {
   if (state.print && !printCurrent(state.print)) closePrint();
   updateReuseControls();
@@ -1107,6 +1338,7 @@ function updateEditorState() {
   updateSearchControls();
   updateReviewControls();
   updateSuggestionControls();
+  updateDictationControls();
   renderEditLease();
   const status = $("document-status");
   status.className = "document-status";
@@ -3594,6 +3826,7 @@ function refreshDocumentTools() {
 
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
+  if (state.dictation?.session === session) cancelDictation();
   pageControls.close();
   imageControls.close();
   chartControls.close();
@@ -3718,6 +3951,7 @@ function mountEditor(content, session) {
 
 function clearWorkspace() {
   const previousSession = state.session, previousContext = state.context;
+  cancelDictation();
   releaseEditLease(previousSession, previousContext);
   closeEditLeaseDialog();
   closeDocumentLifecycle();
@@ -3991,7 +4225,8 @@ function freshSession(objectId = null) {
     loading: true, saving: false, historical: false, conflict: false, uncertain: false, restoring: false,
     version: null, metadata: null, baseline: "", attempt: null, versions: [],
     leaseStatus: objectId ? "checking" : "not_required", leaseExpiresAt: null, leaseRevision: 0,
-    leaseRequest: 0, leasePending: false, leaseTimer: null };
+    leaseRequest: 0, leasePending: false, leaseTimer: null,
+    dictationCapability: null, dictationCapabilityRequest: 0, dictationCapabilityLoading: false };
 }
 
 function contentMatches(result, objectId, versionId = null) {
@@ -4041,6 +4276,7 @@ function acceptContent(result, session) {
   refreshDocumentTools();
   state.documentReferenceResolutions = new Map();
   void refreshDocumentReferences(session);
+  void refreshDictationCapability(session);
   if (editLeaseRequired(session)) void acquireEditLease(session);
 }
 
@@ -6655,6 +6891,16 @@ $("edit-lease-retry").addEventListener("click", () => {
 $("edit-lease-form").addEventListener("submit", submitEditLeaseTakeover);
 $("edit-lease-confirm").addEventListener("change", () => {
   $("edit-lease-submit").disabled = !$("edit-lease-confirm").checked || Boolean(state.session?.leasePending);
+});
+$("dictation-push").addEventListener("pointerdown", beginDictation);
+$("dictation-push").addEventListener("pointerup", releaseDictation);
+$("dictation-push").addEventListener("pointercancel", releaseDictation);
+$("dictation-push").addEventListener("lostpointercapture", releaseDictation);
+$("dictation-push").addEventListener("keydown", (event) => {
+  if (["Enter", " "].includes(event.key) && !event.repeat) beginDictation(event);
+});
+$("dictation-push").addEventListener("keyup", (event) => {
+  if (["Enter", " "].includes(event.key)) releaseDictation(event);
 });
 $("edit-lease-cancel").addEventListener("click", closeEditLeaseDialog);
 $("edit-lease-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeEditLeaseDialog(); });

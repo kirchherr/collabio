@@ -45,6 +45,7 @@ from suite.platform.office_api import (
     build_office_ai_risk_marking_service,
     build_office_ai_summary_service,
     build_office_ai_translation_service,
+    build_office_dictation_service,
     build_office_source_search_service,
     build_office_suggestion_service,
 )
@@ -147,7 +148,8 @@ synthetic_policy = base_policy.model_copy(
         "tenant_id": WORK_E2E_TENANT_ID,
         "ai_enabled": True,
         "rag_enabled": False,
-        "voice_enabled": False,
+        "voice_enabled": True,
+        "external_ai_enabled": True,
         "raw_audio_storage_allowed": False,
     }
 )
@@ -384,6 +386,9 @@ app.state.office_ai_risk_marking_service = build_office_ai_risk_marking_service(
 )
 app.state.office_source_search_service = build_office_source_search_service(
     document_service=app.state.office_document_service
+)
+app.state.office_dictation_service = build_office_dictation_service(
+    document_service=app.state.office_document_service, voice_guard=app.state.voice_guard
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])
 app.state.crm_account_service.repository = crm_repository
