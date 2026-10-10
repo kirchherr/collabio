@@ -38,7 +38,11 @@ from suite.platform.modules import (
     TenantModuleState,
     default_module_catalog_entries,
 )
-from suite.platform.office_api import build_office_ai_summary_service, build_office_suggestion_service
+from suite.platform.office_api import (
+    build_office_ai_rewrite_service,
+    build_office_ai_summary_service,
+    build_office_suggestion_service,
+)
 from suite.platform.principal_store import PgPrincipalDirectory
 from suite.platform.productivity_pilot_start_authorization import (
     ProductivityPilotControlEvidence,
@@ -356,6 +360,9 @@ app.state.office_suggestion_service = build_office_suggestion_service(
     document_service=app.state.office_document_service, audit=app.state.audit_logger
 )
 app.state.office_ai_summary_service = build_office_ai_summary_service(
+    document_service=app.state.office_document_service, gateway=app.state.llm_gateway
+)
+app.state.office_ai_rewrite_service = build_office_ai_rewrite_service(
     document_service=app.state.office_document_service, gateway=app.state.llm_gateway
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])

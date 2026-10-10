@@ -651,7 +651,7 @@ Aufgaben:
 - [x] OOXML/ODF-Kompatibilitaetsmatrix erstellen (Roadmap 688-695 / PLANS 549-556).
 - [x] Import/Export-Testkorpus anlegen (Roadmap 696-703 / PLANS 557-564).
 - [x] Textzusammenfassung fuer markierte Bereiche (Roadmap 704-711 / PLANS 565-572).
-- [ ] Umformulieren und Tonalitaet aendern.
+- [x] Umformulieren und Tonalitaet aendern (Roadmap 712-719 / PLANS 573-580).
 - [ ] Uebersetzen.
 - [ ] Gliederung erzeugen.
 - [ ] Dokument mit Richtlinie vergleichen.

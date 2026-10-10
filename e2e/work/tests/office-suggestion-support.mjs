@@ -5,6 +5,7 @@ import { OFFICE_HEADERS, OFFICE_PATH, captureOfficeResponse, officeEditor } from
 
 export const suggestionsPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/suggestions`;
 export const summaryPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/summaries`;
+export const rewritePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rewrites`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -72,6 +73,32 @@ export async function summarizeSuggestion(page, objectId, selectedText) {
   await expect(page.locator("#suggestion-ai-label")).toBeVisible();
   await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
   await expect(page.locator("#suggestion-replacement")).toHaveValue(result.summary);
+  return result;
+}
+
+export async function rewriteSuggestion(page, objectId, selectedText, { operation = "rewrite", tone = null } = {}) {
+  await selectSuggestionText(page, selectedText);
+  const button = operation === "tone" ? "#suggestion-tone" : "#suggestion-rewrite";
+  if (tone) await page.locator("#suggestion-tone-select").selectOption(tone);
+  await expect(page.locator(button)).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === rewritePath(objectId) && response.request().method() === "POST");
+  await page.locator(button).click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.operation).toBe(operation);
+  expect(result.tone).toBe(tone);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.replacement_text);
   return result;
 }
 

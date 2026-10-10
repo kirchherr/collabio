@@ -5598,6 +5598,9 @@ function updateSuggestionControls() {
   $("suggestions-close").disabled = Boolean(suggestions?.saving || suggestions?.settling);
   $("suggestion-new").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-summary").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-rewrite").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-tone").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-tone-select").disabled = busy;
   const composer = suggestions?.composer;
   const length = Array.from(composer?.replacement || "").length;
   $("suggestion-count").textContent = composer?.operation === "create" ? `${length} / 4.000 Zeichen` : "";
@@ -5751,6 +5754,7 @@ function clearSuggestionComposer(suggestions) {
   suggestions.composer = null; suggestions.attempt = null; suggestions.uncertain = false; suggestions.conflict = false;
   closeSuggestionConfirmation(); $("suggestion-composer").hidden = true;
   $("suggestion-replacement").value = ""; $("suggestion-before").textContent = "";
+  $("suggestion-ai-label").textContent = "AI-Entwurf · ungeprüft. Inhalt prüfen, bevor Sie den Vorschlag ausdrücklich speichern.";
   $("suggestion-ai-label").hidden = true;
   updateEditorState();
 }
@@ -5783,6 +5787,18 @@ function validAISummary(result, suggestions, selection) {
     result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
     result.search_indexing_allowed === false;
 }
+function validAIRewrite(result, suggestions, selection, operation, tone) {
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && result.source_anchor?.from === selection.anchor.from &&
+    result.source_anchor?.to === selection.anchor.to && /^sha256:[a-f0-9]{64}$/.test(result.source_selection_hash || "") &&
+    result.operation === operation && result.tone === tone && typeof result.replacement_text === "string" &&
+    Boolean(result.replacement_text.trim()) && Array.from(result.replacement_text).length <= 4000 &&
+    result.replacement_text !== selection.quote && typeof result.model_id === "string" &&
+    typeof result.prompt_template_id === "string" && typeof result.inference_audit_event_id === "string" &&
+    result.output_trust === "untrusted" && result.persisted === false && result.document_changed === false &&
+    result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
+    result.search_indexing_allowed === false;
+}
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
   const selection = selectedReviewAnchor();
@@ -5809,6 +5825,7 @@ async function summarizeSuggestionSelection() {
     $("suggestion-composer-title").textContent = "Zusammenfassung als Änderungsvorschlag";
     $("suggestion-before").textContent = selection.quote;
     $("suggestion-replacement").value = result.summary;
+    $("suggestion-ai-label").textContent = "AI-Entwurf · ungeprüft · Zusammengefasst. Inhalt prüfen, bevor Sie den Vorschlag ausdrücklich speichern.";
     $("suggestion-ai-label").hidden = false;
     $("suggestion-composer").hidden = false;
     $("suggestions-status").textContent = "Lokaler AI-Entwurf erstellt. Prüfen und ausdrücklich bestätigen.";
@@ -5818,6 +5835,52 @@ async function summarizeSuggestionSelection() {
     $("suggestions-status").textContent = denied(error) ?
       "Die lokale AI-Zusammenfassung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
       "Die lokale AI-Zusammenfassung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function transformSuggestionSelection(operation) {
+  const suggestions = state.suggestions;
+  const selection = selectedReviewAnchor();
+  if (!canCreateSuggestion(suggestions) || !selection || !["rewrite", "tone"].includes(operation)) return;
+  const tone = operation === "tone" ? $("suggestion-tone-select").value : null;
+  if (operation === "tone" && !["neutral", "professional", "friendly", "formal", "concise"].includes(tone)) return;
+  const revision = suggestions.session.revision;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) ||
+      !canCreateSuggestion(suggestions) || suggestions.session.revision !== revision) return;
+  const selected = selectedReviewAnchor();
+  if (!selected || selected.anchor.from !== selection.anchor.from || selected.anchor.to !== selection.anchor.to) return;
+  suggestions.summarizing = true;
+  $("suggestions-status").textContent = operation === "rewrite" ?
+    "Auswahl wird lokal umformuliert …" : "Tonalität wird lokal angepasst …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/rewrites`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, anchor: selection.anchor, operation,
+        ...(tone ? { tone } : {}) },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validAIRewrite(result, suggestions, selection, operation, tone)) throw new ApiError(502, true);
+    clearSuggestionComposer(suggestions);
+    suggestions.composer = { operation: "create", suggestionId: null, anchor: selection.anchor, quote: selection.quote,
+      replacement: result.replacement_text, revision: 0, documentRevision: revision, aiDraft: true,
+      aiOperation: operation, aiTone: tone, inferenceAuditEventId: result.inference_audit_event_id };
+    const toneLabels = { neutral: "Neutral", professional: "Professionell", friendly: "Freundlich", formal: "Formell", concise: "Prägnant" };
+    $("suggestion-composer-title").textContent = operation === "rewrite" ?
+      "Umformulierung als Änderungsvorschlag" : `${toneLabels[tone]} als Änderungsvorschlag`;
+    $("suggestion-before").textContent = selection.quote;
+    $("suggestion-replacement").value = result.replacement_text;
+    $("suggestion-ai-label").textContent = `AI-Entwurf · ungeprüft${tone ? ` · Ton: ${toneLabels[tone]}` : " · Umformuliert"}. Inhalt prüfen, bevor Sie den Vorschlag ausdrücklich speichern.`;
+    $("suggestion-ai-label").hidden = false;
+    $("suggestion-composer").hidden = false;
+    $("suggestions-status").textContent = "Lokaler AI-Entwurf erstellt. Prüfen und ausdrücklich bestätigen.";
+    $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die lokale AI-Schreibassistenz ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die lokale AI-Schreibassistenz ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6367,6 +6430,10 @@ $("suggestion-new").addEventListener("mousedown", (event) => { if (event.button 
 $("suggestion-new").addEventListener("click", beginSuggestion);
 $("suggestion-summary").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-summary").addEventListener("click", summarizeSuggestionSelection);
+$("suggestion-rewrite").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-rewrite").addEventListener("click", () => transformSuggestionSelection("rewrite"));
+$("suggestion-tone").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-tone").addEventListener("click", () => transformSuggestionSelection("tone"));
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

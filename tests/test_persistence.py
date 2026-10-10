@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from suite.ai_control_plane.audit import JsonlAuditLogger
@@ -51,6 +52,23 @@ def test_json_registries_seed_and_reload(tmp_path: Path) -> None:
     )
     assert reloaded_models.get("mock-summarizer").checksum == "sha256:mock"
     assert reloaded_tenants.get("tenant-demo").external_ai_enabled
+
+
+def test_prompt_registry_adds_missing_system_prompts_without_overwriting_existing_rows(tmp_path: Path) -> None:
+    path = tmp_path / "prompts.json"
+    seed = InMemoryPromptRegistry.default()
+    existing = seed.get("document_summary_v1").model_copy(update={"version": "tenant-pinned"})
+    path.write_text(json.dumps([existing.model_dump(mode="json")]), encoding="utf-8")
+
+    registry = JsonFilePromptRegistry.load_or_seed(path, seed=seed)
+
+    assert registry.get("document_summary_v1").version == "tenant-pinned"
+    assert registry.get("document_rewrite_v1").approval_status == "approved"
+    assert registry.get("document_tone_professional_v1").approval_status == "approved"
+    stored = json.loads(path.read_text(encoding="utf-8"))
+    assert next(row for row in stored if row["prompt_template_id"] == "document_summary_v1")["version"] == (
+        "tenant-pinned"
+    )
 
 
 def test_jsonl_audit_logger_persists_and_reloads_chain(tmp_path: Path) -> None:

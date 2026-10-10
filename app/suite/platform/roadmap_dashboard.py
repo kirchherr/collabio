@@ -826,6 +826,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Ein deterministischer Neun-Fixture-Testkorpus prueft fuer DOCX, ODT und PDF jeweils erlaubte, "
                         "sichtbar markierte und blockierte Eingaben gegen Policy und realen Entwicklungsparser; "
                         "Fixture-Bytes, Export-Engine und Rundlauf-Treue bleiben geschlossen. "
+                        "Die lokale AI-Schreibassistenz verarbeitet nur eine serverseitig aus der exakten aktuellen "
+                        "Fassung abgeleitete Textauswahl. Zusammenfassung, Umformulierung und fuenf feste Tonarten "
+                        "liefern ungepruefte fluechtige Entwuerfe in den bestaetigten Vorschlagsablauf; freie Prompts, "
+                        "automatische Speicherung und nicht zugelassene Cloud-Modelle bleiben ausgeschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -935,6 +939,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0185-deterministic-office-interchange-test-corpus.md",
                         "ARCHITECTURE_DECISIONS/ADR-0186-native-office-selection-summary-drafts.md",
                         "tests/test_office_ai_summary.py",
+                        "ARCHITECTURE_DECISIONS/ADR-0187-native-office-rewrite-and-tone-drafts.md",
+                        "tests/test_office_ai_rewrite.py",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -944,6 +950,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/import-export-test-corpus",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/ai/summaries",
+                        "/v1/office/documents/{object_id}/ai/rewrites",
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
                         "/v1/office/documents/{object_id}/backlinks",
@@ -996,6 +1003,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "office_ai_uses_only_tenant_admitted_local_summary_models",
                         "ai_summary_output_is_untrusted_transient_and_never_changes_the_document",
                         "ai_summary_requires_explicit_suggestion_and_acceptance_confirmations_before_save",
+                        "selection_rewrite_revalidates_exact_saved_version_and_authoritative_acl",
+                        "office_ai_rewrite_uses_only_tenant_admitted_local_drafting_models_and_approved_prompts",
+                        "rewrite_modes_and_tones_are_fixed_without_browser_prompt_or_model_selection",
+                        "ai_rewrite_output_is_untrusted_transient_and_requires_two_confirmations_before_save",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1028,7 +1039,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="admit_office_interchange_engine_against_corpus",
+                    next_action="add_native_office_translation_drafts",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

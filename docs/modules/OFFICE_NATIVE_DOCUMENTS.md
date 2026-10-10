@@ -1,9 +1,33 @@
 # Native Office Documents
 
-Status: Roadmap 252–711 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 711 / PLANS 572 selection summary drafts
-Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0186; current movement: `ARCHITECTURE_DECISIONS/ADR-0186-native-office-selection-summary-drafts.md`
+Status: Roadmap 252–719 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 719 / PLANS 580 rewrite and tone drafts
+Module: `office_documents` / version 0.9.0
+Decisions: ADR-0079 through ADR-0187; current movement: `ARCHITECTURE_DECISIONS/ADR-0187-native-office-rewrite-and-tone-drafts.md`
+
+## Rewrite and tone drafts (Roadmap 712–719)
+
+The read-gated rewrite endpoint accepts one exact current immutable version, one bounded same-block text anchor and
+either plain rewrite or one fixed tone: neutral, professional, friendly, formal or concise. It accepts no source text,
+model, provider, free instruction or target language. The server revalidates the document ACL and derives the source
+selection from the saved version; stale versions and invalid anchors fail before inference.
+
+Every option maps to a versioned prompt-registry entry that preserves language, meaning, facts, names, numbers and
+commitments and treats the delimited source as untrusted data. The common policy engine rejects unapproved prompts.
+Missing built-in prompts are added to a JSON registry without replacing existing customized rows. Only tenant-
+allowed, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
+documents remain closed unless tenant, model and the exact prompt all admit confidential data.
+
+The response binds object, version, anchor, selection hash, operation and tone to the model, prompt and inference
+event. Source and output bodies stay out of normal logs and audit. Empty, invalid, overlong or unchanged output is
+rejected. A valid result remains visibly untrusted, transient and excluded from search/RAG indexing and document
+history.
+
+The responsive proposal panel provides summary, rewrite and fixed-tone controls. The result enters the existing
+editable proposal composer with an exact AI/tone label. Saving a suggestion still needs explicit confirmation, and
+accepting it requires a separate confirmation before an immutable version is appended. Discarding changes neither
+the document nor its version count. Free prompts, translation, whole-document inference and automatic writes remain
+closed.
 
 ## Selection summary drafts (Roadmap 704–711)
 

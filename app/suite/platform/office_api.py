@@ -18,6 +18,12 @@ from suite.ai_control_plane.policy import PolicyViolation
 from suite.platform.context import TenantRequestContext
 from suite.platform.modules import InMemoryModuleRegistry, ModuleGateSurface, ModuleLifecycleError
 from suite.platform.office_access_logging import protect_office_discovery_access_logs
+from suite.platform.office_ai_rewrite import (
+    OfficeAIRewriteCommand,
+    OfficeAIRewriteResponse,
+    OfficeAIRewriteService,
+    OfficeAIRewriteUnavailable,
+)
 from suite.platform.office_ai_summary import (
     OfficeAISummaryCommand,
     OfficeAISummaryResponse,
@@ -177,7 +183,7 @@ class OfficeRoute(APIRoute):
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except PolicyViolation:
-                return JSONResponse({"detail": "Office AI summary is not allowed"}, status_code=403)
+                return JSONResponse({"detail": "Office AI request is not allowed"}, status_code=403)
             except OfficeDocumentConflictError:
                 return JSONResponse(
                     {"detail": "The document has a newer or conflicting saved version"}, status_code=409
@@ -186,8 +192,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
             except (SourceObjectStorageError, PsycopgError, OfficeImageUnavailable):
                 return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
-            except OfficeAISummaryUnavailable:
-                return JSONResponse({"detail": "Office AI summary is unavailable"}, status_code=502)
+            except (OfficeAISummaryUnavailable, OfficeAIRewriteUnavailable):
+                return JSONResponse({"detail": "Office AI request is unavailable"}, status_code=502)
 
         return guarded
 
@@ -256,6 +262,10 @@ def build_office_suggestion_service(
 
 def build_office_ai_summary_service(*, document_service: OfficeDocumentService, gateway: Any) -> OfficeAISummaryService:
     return OfficeAISummaryService(documents=document_service, gateway=gateway)
+
+
+def build_office_ai_rewrite_service(*, document_service: OfficeDocumentService, gateway: Any) -> OfficeAIRewriteService:
+    return OfficeAIRewriteService(documents=document_service, gateway=gateway)
 
 
 def register_office_routes(
@@ -475,6 +485,20 @@ def register_office_routes(
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_ai_summary_service.summarize(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/rewrites", response_model=OfficeAIRewriteResponse)
+    def rewrite_document_selection(
+        object_id: str,
+        command: OfficeAIRewriteCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_ai_rewrite_service.transform(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
             object_id=object_id,
