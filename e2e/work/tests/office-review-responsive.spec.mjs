@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
-import { createOfficeDocument, officeEditor, officeVersions, openOffice } from "./office-support.mjs";
+import { createOfficeDocument, OFFICE_EDITOR_ID, officeEditor, officeVersions, openOffice } from "./office-support.mjs";
 import { confirmComment, openComments, openThread, prepareComment, reviewEvent, selectEditorText } from "./office-review-support.mjs";
 
 async function expectReviewLayout(page) {
@@ -21,13 +21,24 @@ test("Office saved-version comments and explicit confirmation fit desktop, table
   const objectId = saved.document.object_id;
   await openComments(page, objectId);
   await selectEditorText(page, "Delivery 😀 review");
-  await prepareComment(page, "Responsible team: please verify the next step.", { selection: true });
+  await prepareComment(page, `Responsible team: @[${OFFICE_EDITOR_ID}] please verify the next step.`, { selection: true });
+  await expect(page.locator("#comment-mentions-help")).toContainText("vergibt keinen Zugriff");
   for (const id of ["comment-confirm-summary", "comment-confirm-checkbox", "comment-confirm-submit", "comment-confirm-cancel"]) {
     await expect(page.locator(`#${id}`)).toBeInViewport();
   }
   expect(await page.locator("#comment-confirm-dialog").evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
   const created = await confirmComment(page, objectId);
+  expect(created.event.mentioned_principal_ids).toEqual([OFFICE_EDITOR_ID]);
+  expect(created.event.attribution).toEqual({
+    actor_principal_id: OFFICE_EDITOR_ID,
+    operation: "create",
+    revision: 1,
+    human_confirmed: true,
+  });
   await openThread(page, objectId, created.thread.thread_id);
+  await expect(page.locator(".review-mentions")).toContainText(`${OFFICE_EDITOR_ID} · kein Zugriff und keine Benachrichtigung`);
+  await expect(page.locator(".review-event .review-meta").first()).toContainText(`Zugeordnet: ${OFFICE_EDITOR_ID}`);
+  await expect(page.locator(".review-event .review-meta").first()).toContainText("bestätigte menschliche Aktion · Revision 1");
   await reviewEvent(page, objectId, created.thread.thread_id, "reply", "The assigned team has checked it.");
   await expectReviewLayout(page);
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-review-${testInfo.project.name}.png`, fullPage: true });

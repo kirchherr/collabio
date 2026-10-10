@@ -28,6 +28,7 @@ from suite.platform.context import (
 from suite.platform.modules import ModuleStatus
 from suite.platform.office_api import build_office_review_service
 from suite.platform.office_documents import OFFICE_DOCUMENTS_MODULE_ID
+from suite.platform.office_review_repository import InMemoryOfficeReviewRepository
 from suite.platform.office_reviews import OfficeReviewService
 from suite.storage.source_object_storage import SourceObjectStorageError
 from test_office_documents_api import OfficeApiHarness, create_document, enable_office
@@ -104,6 +105,35 @@ def test_review_api_create_reply_resolve_reopen_are_noncacheable_and_literal(
     assert REVIEW_BODY not in json.dumps([event.model_dump(mode="json") for event in review_api.service.audit.events])
 
 
+def test_review_api_returns_canonical_mentions_and_explicit_human_attribution(
+    review_api: ReviewApiHarness,
+) -> None:
+    actor = review_api.office.headers["X-User-Id"]
+    payload = review_api.payload("mention-api")
+    payload["body"] = f"Please review @[{actor}] and @[{actor}]."
+    response = review_api.office.client.post(review_api.base, headers=review_api.office.headers, json=payload)
+    assert response.status_code == 200, response.text
+    event = response.json()["event"]
+    assert event["mentioned_principal_ids"] == [actor]
+    assert event["attribution"] == {
+        "actor_principal_id": actor,
+        "operation": "create",
+        "revision": 1,
+        "human_confirmed": True,
+    }
+    assert review_api.service.audit.events[-1].metadata["mention_count"] == 1
+    assert "mentioned_principal_ids" not in review_api.service.audit.events[-1].metadata
+
+
+def test_review_api_rejects_unshared_mention_without_persistence(review_api: ReviewApiHarness) -> None:
+    payload = review_api.payload("unshared-mention-api")
+    payload["body"] = "Please review @[not-authorized]."
+    response = review_api.office.client.post(review_api.base, headers=review_api.office.headers, json=payload)
+    assert response.status_code == 400 and response.json() == {"detail": "Document validation failed"}
+    assert isinstance(review_api.service.repository, InMemoryOfficeReviewRepository)
+    assert not review_api.service.repository.events
+
+
 @pytest.mark.parametrize("block", ["module", "read", "write", "authentication"])
 def test_review_api_gate_changes_precede_mutation_and_cached_capabilities(
     review_api: ReviewApiHarness, monkeypatch: pytest.MonkeyPatch, block: str
@@ -151,6 +181,7 @@ def test_review_api_gate_changes_precede_mutation_and_cached_capabilities(
         {"body": ""},
         {"body": "x" * 4001},
         {"body": "secret\x00"},
+        {"body": "ambiguous @[principal"},
         {"anchor": {"from": True, "to": 3}},
         {"quote": "forged quote"},
     ],

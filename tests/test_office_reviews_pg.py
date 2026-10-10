@@ -11,12 +11,13 @@ from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.platform.office_api import build_office_review_service
 from suite.platform.office_documents import (
     OfficeDocumentConflictError,
+    OfficeDocumentInvalidContentError,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
 )
 from suite.platform.office_reviews import ReviewCreateCommand, ReviewEventCommand
 from suite.storage.source_object_storage import InMemorySourceObjectContentStore, SourceObjectStorageError
-from test_office_documents_pg import Database, command, editor, grant, service_for, set_tenant
+from test_office_documents_pg import Database, add_principal, command, editor, grant, service_for, set_tenant
 from test_office_documents_pg import database as database
 
 
@@ -88,6 +89,43 @@ def test_pg_review_complete_loop_is_reopenable_after_reconstructing_service(data
     assert len(store.list_stored_objects(tenant_id=user.tenant_id)) == 5
     replay = reviews.mutate(user_context=user, object_id=object_id, command=create, write_enabled=True)
     assert replay.replayed and replay.applied_revision == 1 and replay.event.event_id == created.event.event_id
+
+
+def test_pg_review_mentions_require_active_direct_document_access_and_preserve_replay(database: Database) -> None:
+    _, _, user, object_id, reviews, create = prepared(database)
+    principal_id = "mentioned-review-reader"
+    add_principal(database, user, principal_id, "Mentioned review reader")
+    grant(database, user, object_id, principal_id, "read")
+    mentioned = create.model_copy(
+        update={"body": f"Please review @[{principal_id}].", "mutation_reference": "mentioned-review-create"}
+    )
+    created = reviews.mutate(user_context=user, object_id=object_id, command=mentioned, write_enabled=True)
+    assert created.event.mentioned_principal_ids == [principal_id]
+    assert created.event.attribution.actor_principal_id == user.user_id
+
+    with psycopg.connect(database.admin_dsn) as connection:
+        set_tenant(connection, user.tenant_id)
+        connection.execute(
+            "UPDATE collabio.object_acl_entries SET status='revoked', revoked_at_utc=now() "
+            "WHERE tenant_id=%s AND object_id=%s AND acl_subject_type='user' AND acl_subject_id=%s",
+            (user.tenant_id, object_id, principal_id),
+        )
+    assert reviews.mutate(user_context=user, object_id=object_id, command=mentioned, write_enabled=True).replayed
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        reviews.mutate(
+            user_context=user,
+            object_id=object_id,
+            thread_id=created.thread.thread_id,
+            write_enabled=True,
+            command=ReviewEventCommand(
+                operation="reply",
+                expected_revision=1,
+                body=f"Please return @[{principal_id}].",
+                mutation_reference="mentioned-review-reply",
+                human_confirmation=True,
+            ),
+        )
+    assert review_counts(database, user) == (1, 1, 2, 2)
 
 
 def test_pg_review_current_parent_acl_precedes_storage_and_replay(

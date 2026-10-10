@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -32,6 +33,8 @@ REVIEW_SCHEMA = "collabio_office_review_event.v1"
 REVIEW_MIME = "application/vnd.collabio.review-event+json"
 REVIEW_SOURCE_SYSTEM = "collabio_office_native_review"
 MAX_REVIEW_BYTES = 80000
+MAX_REVIEW_MENTIONS = 20
+REVIEW_MENTION_PATTERN = re.compile(r"@\[([A-Za-z0-9][A-Za-z0-9_.:-]{0,127})\]")
 ReviewOperation = Literal["create", "reply", "resolve", "reopen"]
 ReviewStatus = Literal["open", "resolved"]
 
@@ -61,6 +64,27 @@ def _review_text(value: str) -> str:
     return value
 
 
+def review_mentions(value: str | None) -> tuple[str, ...]:
+    """Extract canonical principal references while rejecting ambiguous mention syntax."""
+    if value is None:
+        return ()
+    mentions: list[str] = []
+    positions: set[int] = set()
+    for match in REVIEW_MENTION_PATTERN.finditer(value):
+        positions.add(match.start())
+        principal_id = match.group(1)
+        if principal_id not in mentions:
+            mentions.append(principal_id)
+    cursor = value.find("@[")
+    while cursor >= 0:
+        if cursor not in positions:
+            raise ValueError("Review mention is invalid")
+        cursor = value.find("@[", cursor + 2)
+    if len(mentions) > MAX_REVIEW_MENTIONS:
+        raise ValueError("Review mention limit exceeded")
+    return tuple(mentions)
+
+
 class ReviewMutation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mutation_reference: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
@@ -82,6 +106,7 @@ class ReviewCreateCommand(ReviewMutation):
     @field_validator("body")
     @classmethod
     def valid_body(cls, value: str) -> str:
+        review_mentions(value)
         return _review_text(value)
 
 
@@ -95,6 +120,7 @@ class ReviewEventCommand(ReviewMutation):
         if self.operation == "reply":
             if self.body is None:
                 raise ValueError("Reply text is required")
+            review_mentions(self.body)
             _review_text(self.body)
         elif self.body is not None:
             raise ValueError("Status changes do not accept text")
@@ -162,11 +188,20 @@ class ReviewThreadView(BaseModel):
     can_resolve: bool
 
 
+class ReviewAttributionView(BaseModel):
+    actor_principal_id: str
+    operation: ReviewOperation
+    revision: int
+    human_confirmed: bool = True
+
+
 class ReviewEventView(BaseModel):
     event_id: str
     revision: int
     operation: ReviewOperation
     body: str | None
+    mentioned_principal_ids: list[str]
+    attribution: ReviewAttributionView
     created_by: str
     created_at_utc: str
 
@@ -450,9 +485,16 @@ class OfficeReviewService:
 
     @staticmethod
     def _event(event: ReviewEventRecord, payload: dict[str, Any]) -> ReviewEventView:
+        mentions = list(review_mentions(payload["body"]))
         return ReviewEventView(
             **event.model_dump(include={"event_id", "revision", "operation", "created_by", "created_at_utc"}),
             body=payload["body"],
+            mentioned_principal_ids=mentions,
+            attribution=ReviewAttributionView(
+                actor_principal_id=event.created_by,
+                operation=event.operation,
+                revision=event.revision,
+            ),
         )
 
     def list_threads(
@@ -554,6 +596,7 @@ class OfficeReviewService:
                 operation=result.event.operation,
                 command_hash=result.event.command_hash,
                 source_write_receipt_hash=result.event.source_write_receipt_hash,
+                mention_count=len(review_mentions(result.payload["body"])),
                 replayed=result.replayed,
             ),
         )

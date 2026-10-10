@@ -25,6 +25,7 @@ from suite.platform.office_reviews import (
     ReviewCreateCommand,
     ReviewEventCommand,
     derive_review_quote,
+    review_mentions,
 )
 from suite.storage.source_object_storage import SourceObjectStorageError
 from suite.storage.source_objects import InMemorySourceObjectRepository, SourceObjectRecord
@@ -131,6 +132,88 @@ def test_review_lifecycle_is_durable_source_backed_without_document_versions(rev
     audit = canonical_json([event.model_dump(mode="json") for event in reviews.service.audit.events])
     assert "PRIVATE COMMENT" not in audit and "Reply <script>" not in audit and "😀" not in audit
     assert all(event.metadata["surface"] == "api" for event in reviews.service.audit.events)
+
+
+def test_review_mentions_are_acl_bounded_at_write_and_attributed_without_notification(
+    reviews: ReviewHarness,
+) -> None:
+    documents = reviews.repository.documents
+    collaborator = "direct-review-reader"
+    documents.principals[(reviews.user.tenant_id, collaborator)] = ("Direct reader", "reader@example.test")
+    documents.grants[(reviews.user.tenant_id, reviews.object_id, collaborator)] = "read"
+    body = f"Please check @[{collaborator}] and @[{reviews.user.user_id}] then @[{collaborator}] again."
+    created = reviews.service.mutate(
+        user_context=reviews.user,
+        object_id=reviews.object_id,
+        command=reviews.command(reference="mentioned-create", body=body),
+        write_enabled=True,
+    )
+    assert created.event.mentioned_principal_ids == [collaborator, reviews.user.user_id]
+    assert created.event.attribution.actor_principal_id == reviews.user.user_id
+    assert created.event.attribution.operation == "create"
+    assert created.event.attribution.revision == 1
+    assert created.event.attribution.human_confirmed is True
+    assert review_mentions(body) == (collaborator, reviews.user.user_id)
+    changed = reviews.service.mutate(
+        user_context=reviews.user,
+        object_id=reviews.object_id,
+        thread_id=created.thread.thread_id,
+        command=event_command("reply", 1, "mentioned-reply", f"Thanks @[{collaborator}]."),
+        write_enabled=True,
+    )
+    assert changed.event.mentioned_principal_ids == [collaborator]
+    assert changed.event.attribution.operation == "reply" and changed.event.attribution.revision == 2
+    assert reviews.service.audit.events[-1].metadata["mention_count"] == 1
+    assert collaborator not in canonical_json([event.metadata for event in reviews.service.audit.events])
+
+    del documents.grants[(reviews.user.tenant_id, reviews.object_id, collaborator)]
+    detail = reviews.service.detail(
+        user_context=reviews.user,
+        object_id=reviews.object_id,
+        thread_id=created.thread.thread_id,
+        write_enabled=True,
+    )
+    assert detail.events[0].mentioned_principal_ids == [collaborator, reviews.user.user_id]
+    assert reviews.service.mutate(
+        user_context=reviews.user,
+        object_id=reviews.object_id,
+        command=reviews.command(reference="mentioned-create", body=body),
+        write_enabled=True,
+    ).replayed
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        reviews.service.mutate(
+            user_context=reviews.user,
+            object_id=reviews.object_id,
+            thread_id=created.thread.thread_id,
+            command=event_command("reply", 2, "revoked-mention", f"Again @[{collaborator}]."),
+            write_enabled=True,
+        )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        "Broken @[principal",
+        "Broken @[]",
+        "Broken @[white space]",
+        " ".join(f"@[person-{index}]" for index in range(21)),
+    ],
+)
+def test_review_mentions_reject_ambiguous_or_unbounded_syntax(body: str, reviews: ReviewHarness) -> None:
+    with pytest.raises(ValidationError):
+        reviews.command(body=body)
+
+
+def test_review_mentions_reject_unknown_or_indirect_principals_without_writing(reviews: ReviewHarness) -> None:
+    before = len(reviews.repository.events)
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        reviews.service.mutate(
+            user_context=reviews.user,
+            object_id=reviews.object_id,
+            command=reviews.command(reference="unknown-mention", body="Please check @[unknown-reader]."),
+            write_enabled=True,
+        )
+    assert len(reviews.repository.events) == before
 
 
 def test_review_replay_is_actor_bound_and_requires_current_acl_and_confirmation(reviews: ReviewHarness) -> None:

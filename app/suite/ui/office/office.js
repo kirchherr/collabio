@@ -4836,6 +4836,22 @@ function reviewIdentity(result, review) {
   return result?.tenant_id === review.context.tenantId && result.object_id === review.session.objectId &&
     result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
 }
+function reviewMentions(body) {
+  if (body === null) return [];
+  if (typeof body !== "string") return null;
+  const pattern = /@\[([A-Za-z0-9][A-Za-z0-9_.:-]{0,127})\]/g;
+  const mentions = [], starts = new Set();
+  for (const match of body.matchAll(pattern)) {
+    starts.add(match.index);
+    if (!mentions.includes(match[1])) mentions.push(match[1]);
+  }
+  let cursor = body.indexOf("@[");
+  while (cursor >= 0) {
+    if (!starts.has(cursor)) return null;
+    cursor = body.indexOf("@[", cursor + 2);
+  }
+  return mentions.length <= 20 ? mentions : null;
+}
 function validReviewThread(thread, review) {
   return thread && typeof thread.thread_id === "string" && thread.anchor_version_id === review.versionId &&
     Number.isInteger(thread.revision) && thread.revision > 0 && ["open", "resolved"].includes(thread.status) &&
@@ -4845,9 +4861,14 @@ function validReviewThread(thread, review) {
       thread.anchor.from >= 0 && thread.anchor.to > thread.anchor.from));
 }
 function validReviewEvent(event) {
+  const mentions = reviewMentions(event?.body);
   return event && typeof event.event_id === "string" && Number.isInteger(event.revision) && event.revision > 0 &&
     reviewOperations.has(event.operation) && typeof event.created_by === "string" && typeof event.created_at_utc === "string" &&
-    (["create", "reply"].includes(event.operation) ? typeof event.body === "string" && Array.from(event.body).length <= 4000 : event.body === null);
+    (["create", "reply"].includes(event.operation) ? typeof event.body === "string" && Array.from(event.body).length <= 4000 : event.body === null) &&
+    mentions !== null && Array.isArray(event.mentioned_principal_ids) &&
+    JSON.stringify(event.mentioned_principal_ids) === JSON.stringify(mentions) &&
+    event.attribution?.actor_principal_id === event.created_by && event.attribution.operation === event.operation &&
+    event.attribution.revision === event.revision && event.attribution.human_confirmed === true;
 }
 function clearReviewHighlight() {
   if (!state.review?.highlight) return;
@@ -5016,7 +5037,7 @@ function renderReviewThreads(review) {
     open.type = "button"; open.dataset.reviewAction = "open";
     open.setAttribute("aria-expanded", String(review.selectedId === thread.thread_id));
     open.addEventListener("click", () => loadReviewThread(thread.thread_id));
-    card.append(open, node("p", `${thread.created_by} · ${dateLabel(thread.created_at_utc)}`, "review-meta"));
+    card.append(open, node("p", `Erstellt von ${thread.created_by} · ${dateLabel(thread.created_at_utc)}`, "review-meta"));
     if (review.selectedId === thread.thread_id && review.detail) renderReviewDetail(card, review);
     $("comments-list").append(card);
   });
@@ -5077,8 +5098,9 @@ function renderReviewDetail(card, review) {
   const labels = { create: "Kommentar", reply: "Antwort", resolve: "Diskussion erledigt", reopen: "Diskussion wieder geöffnet" };
   detail.events.forEach((entry) => {
     const event = node("article", undefined, "review-event"); event.dataset.revision = String(entry.revision);
-    event.append(node("strong", labels[entry.operation]), node("p", `${entry.created_by} · ${dateLabel(entry.created_at_utc)}`, "review-meta"));
+    event.append(node("strong", labels[entry.operation]), node("p", `Zugeordnet: ${entry.attribution.actor_principal_id} · bestätigte menschliche Aktion · Revision ${entry.attribution.revision} · ${dateLabel(entry.created_at_utc)}`, "review-meta"));
     if (entry.body !== null) event.append(node("p", entry.body, "review-event-body"));
+    if (entry.mentioned_principal_ids.length) event.append(node("p", `Erwähnt: ${entry.mentioned_principal_ids.join(", ")} · kein Zugriff und keine Benachrichtigung`, "review-mentions"));
     events.append(event);
   });
   section.append(events);

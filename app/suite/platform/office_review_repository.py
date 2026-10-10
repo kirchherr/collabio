@@ -40,6 +40,7 @@ from suite.platform.office_reviews import (
     derive_review_quote,
     read_review_payload,
     review_command_hash,
+    review_mentions,
 )
 from suite.storage.source_objects import (
     LegalHoldState,
@@ -203,6 +204,62 @@ def _replay(
     return ReviewCommit(document=document, thread=snapshot, event=event, payload=payload, replayed=True)
 
 
+def _command_mentions(command: ReviewCreateCommand | ReviewEventCommand) -> tuple[str, ...]:
+    body = command.body if isinstance(command, ReviewCreateCommand) or command.operation == "reply" else None
+    return review_mentions(body)
+
+
+def _validate_pg_mentions(
+    connection: psycopg.Connection[Any],
+    document: OfficeDocumentRecord,
+    command: ReviewCreateCommand | ReviewEventCommand,
+) -> None:
+    mentions = _command_mentions(command)
+    if not mentions:
+        return
+    rows = connection.execute(
+        """
+        SELECT DISTINCT principal.user_id
+        FROM collabio.tenant_principals AS principal
+        JOIN collabio.tenant_principal_memberships AS membership
+          ON membership.tenant_id = principal.tenant_id
+         AND membership.issuer = principal.issuer AND membership.subject = principal.subject
+        WHERE principal.tenant_id = %s AND principal.user_id = ANY(%s::text[])
+          AND principal.status = 'active' AND membership.status = 'active'
+          AND (
+            principal.user_id = %s OR EXISTS (
+              SELECT 1 FROM collabio.object_acl_entries AS acl
+              WHERE acl.tenant_id = principal.tenant_id AND acl.object_id = %s
+                AND acl.object_type = 'office.document' AND acl.acl_subject_type = 'user'
+                AND acl.acl_subject_id = principal.user_id AND acl.status = 'active'
+                AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
+                AND acl.permission IN ('read', 'write', 'admin')
+            )
+          )
+        """,
+        (document.tenant_id, list(mentions), document.owner_principal_id, document.object_id),
+    ).fetchall()
+    if {str(row[0]) for row in rows} != set(mentions):
+        raise OfficeDocumentInvalidContentError("Review mention is invalid")
+
+
+def _validate_memory_mentions(
+    documents: InMemoryOfficeDocumentRepository,
+    document: OfficeDocumentRecord,
+    command: ReviewCreateCommand | ReviewEventCommand,
+) -> None:
+    mentions = _command_mentions(command)
+    for principal_id in mentions:
+        if principal_id == document.owner_principal_id:
+            continue
+        principal_key = (document.tenant_id, principal_id)
+        grant_key = (document.tenant_id, document.object_id, principal_id)
+        if principal_key not in documents.principals or documents._active_grant(
+            documents.grants, documents.grant_expirations, grant_key
+        ) not in {"read", "write", "admin"}:
+            raise OfficeDocumentInvalidContentError("Review mention is invalid")
+
+
 class PgOfficeReviewRepository:
     def __init__(self, *, document_service: OfficeDocumentService) -> None:
         if not isinstance(document_service.repository, PgOfficeDocumentRepository):
@@ -318,6 +375,7 @@ class PgOfficeReviewRepository:
                         raise OfficeDocumentConflictError("Mutation reference was already used")
                     thread = self._thread(connection, user, object_id, event.thread_id)
                     return _replay(document, thread, event, self.document_service)
+                _validate_pg_mentions(connection, document, command)
                 if isinstance(command, ReviewCreateCommand):
                     if (
                         document.current_version_id != command.expected_current_version_id
@@ -474,6 +532,7 @@ class InMemoryOfficeReviewRepository:
                     return _replay(
                         document, self._thread(user, object_id, event.thread_id), event, self.document_service
                     )
+            _validate_memory_mentions(self.documents, document, command)
             if isinstance(command, ReviewCreateCommand):
                 if (
                     document.current_version_id != command.expected_current_version_id
