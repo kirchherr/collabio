@@ -110,6 +110,12 @@ from suite.platform.office_import_compatibility import OfficeImportCompatibility
 from suite.platform.office_interchange_corpus import OfficeInterchangeCorpusResponse
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse
+from suite.platform.office_read_aloud import (
+    OfficeReadAloudCapabilityResponse,
+    OfficeReadAloudCommand,
+    OfficeReadAloudResponse,
+    OfficeReadAloudService,
+)
 from suite.platform.office_review_repository import InMemoryOfficeReviewRepository, PgOfficeReviewRepository
 from suite.platform.office_reviews import (
     OfficeReviewService,
@@ -343,6 +349,12 @@ def build_office_dictation_service(
     *, document_service: OfficeDocumentService, voice_guard: Any
 ) -> OfficeDictationService:
     return OfficeDictationService(documents=document_service, voice_guard=voice_guard)
+
+
+def build_office_read_aloud_service(
+    *, document_service: OfficeDocumentService, voice_guard: Any
+) -> OfficeReadAloudService:
+    return OfficeReadAloudService(documents=document_service, voice_guard=voice_guard)
 
 
 def register_office_routes(
@@ -681,6 +693,40 @@ def register_office_routes(
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_dictation_service.prepare(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.get(
+        "/{object_id}/voice/read-aloud-capability",
+        response_model=OfficeReadAloudCapabilityResponse,
+    )
+    def office_read_aloud_capability(
+        object_id: str,
+        request: Request,
+        expected_current_version_id: str = Query(pattern=r"^office-version-[a-f0-9]{32}$"),
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_read_aloud_service.capability(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            expected_current_version_id=expected_current_version_id,
+        )
+
+    @router.post(
+        "/{object_id}/voice/read-aloud-preparations",
+        response_model=OfficeReadAloudResponse,
+    )
+    def prepare_office_read_aloud(
+        object_id: str,
+        command: OfficeReadAloudCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_read_aloud_service.prepare(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
             object_id=object_id,

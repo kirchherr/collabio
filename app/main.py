@@ -458,6 +458,7 @@ from suite.platform.office_api import (
     build_office_ai_translation_service,
     build_office_dictation_service,
     build_office_document_service,
+    build_office_read_aloud_service,
     build_office_review_service,
     build_office_source_search_service,
     build_office_suggestion_service,
@@ -23327,6 +23328,9 @@ def build_app() -> FastAPI:
         document_service=app.state.office_document_service
     )
     app.state.office_dictation_service = build_office_dictation_service(
+        document_service=app.state.office_document_service, voice_guard=voice_guard
+    )
+    app.state.office_read_aloud_service = build_office_read_aloud_service(
         document_service=app.state.office_document_service, voice_guard=voice_guard
     )
     register_office_routes(

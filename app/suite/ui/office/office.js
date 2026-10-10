@@ -71,7 +71,7 @@ const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
   listController: null, listTimer: null, listRetry: null, discardResolve: null, compare: null, restore: null,
-  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null, share: null, dictation: null,
+  tableAction: null, formulaRecalculating: false, paragraphAction: null, characterAction: null, linkAction: null, bookmarkAction: null, crossReferenceAction: null, documentReferenceAction: null, documentReferenceResolutions: new Map(), backlinksAction: null, semanticAction: null, listAction: null, styleAction: null, sectionAction: null, formatSample: null, review: null, suggestions: null, print: null, preparedPrint: null, reuse: null, share: null, dictation: null, readAloud: null,
 };
 const searchKey = new PluginKey("officeSearch");
 const search = { query: "", matches: [], index: -1, windowStart: 0, notice: "" };
@@ -1145,6 +1145,176 @@ async function sha256Text(value) {
   return `sha256:${sha256Bytes(bytes)}`;
 }
 
+function speechSynthesisAvailable() {
+  return Boolean(window.speechSynthesis && window.SpeechSynthesisUtterance);
+}
+
+function localSpeechVoice(language = $("read-aloud-language").value) {
+  if (!speechSynthesisAvailable()) return null;
+  const exact = String(language).toLowerCase(), base = exact.split("-")[0];
+  const voices = window.speechSynthesis.getVoices?.() || [];
+  return voices.find((voice) => voice.localService === true && String(voice.lang).toLowerCase() === exact) ||
+    voices.find((voice) => voice.localService === true && String(voice.lang).toLowerCase().split("-")[0] === base) || null;
+}
+
+function readAloudCapabilityMatches(value, session) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.source_version_id === session.version?.version_id && typeof value.voice_enabled === "boolean" &&
+    value.explicit_activation_required === true && typeof value.browser_speech_synthesis_allowed === "boolean" &&
+    typeof value.client_local_tts_allowed === "boolean" && value.audio_generated_by_server === false &&
+    value.audio_upload_allowed === false && value.audio_storage_allowed === false &&
+    value.source_text_persisted === false && value.document_read_authorized === true &&
+    value.policy_id === "office_explicit_read_aloud_v1" && typeof value.audit_event_id === "string";
+}
+
+async function refreshReadAloudCapability(session = state.session) {
+  if (!sessionCurrent(session) || !session.objectId || !session.version?.version_id || session.historical) return;
+  const request = ++session.readAloudCapabilityRequest;
+  session.readAloudCapability = null; session.readAloudCapabilityLoading = true; session.readAloudNotice = "";
+  updateReadAloudControls();
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/voice/read-aloud-capability?expected_current_version_id=${encodeURIComponent(session.version.version_id)}`);
+    if (!sessionCurrent(session) || request !== session.readAloudCapabilityRequest) return;
+    if (!readAloudCapabilityMatches(value, session)) throw new ApiError(502, true);
+    session.readAloudCapability = value;
+  } catch (error) {
+    if (!sessionCurrent(session) || request !== session.readAloudCapabilityRequest) return;
+    session.readAloudNotice = denied(error) ? "Vorlesen ist für dieses Dokument nicht freigegeben." :
+      "Vorlesen kann gerade nicht geprüft werden.";
+  } finally {
+    if (sessionCurrent(session) && request === session.readAloudCapabilityRequest) {
+      session.readAloudCapabilityLoading = false; updateReadAloudControls();
+    }
+  }
+}
+
+function selectedReadAloudText() {
+  const selection = state.editor?.state.selection;
+  if (!(selection instanceof TextSelection) || selection.empty || !selection.$from.sameParent(selection.$to)) return "";
+  const text = state.editor.state.doc.textBetween(selection.from, selection.to, "");
+  return Array.from(text).length <= 2000 ? text : "";
+}
+
+function readAloudAdapter(session = state.session) {
+  const capability = session?.readAloudCapability;
+  if (!capability) return null;
+  if (capability.client_local_tts_allowed && localSpeechVoice()) return "client_local_tts";
+  if (capability.browser_speech_synthesis_allowed) return "browser_speech_synthesis";
+  return null;
+}
+
+function readAloudCanStart() {
+  const session = state.session;
+  return Boolean(session && sessionCurrent(session) && session.objectId && !session.historical &&
+    speechSynthesisAvailable() && readAloudAdapter(session) && !isDirty() && selectedReadAloudText() && !state.readAloud);
+}
+
+function updateReadAloudControls() {
+  const session = state.session, action = state.readAloud, button = $("read-aloud"), status = $("read-aloud-status");
+  const active = Boolean(action && action.session === session);
+  button.disabled = active ? false : !readAloudCanStart();
+  $("read-aloud-language").disabled = active || !session?.readAloudCapability || !speechSynthesisAvailable();
+  $("read-aloud-rate").disabled = active || !session?.readAloudCapability || !speechSynthesisAvailable();
+  button.setAttribute("aria-pressed", String(active));
+  button.dataset.state = active ? action.phase : "idle";
+  status.dataset.state = active ? action.phase : session?.readAloudNotice ? "accepted" : "idle";
+  if (active) {
+    button.textContent = action.phase === "speaking" ? "■ Stoppen" : "Vorlesen prüfen …";
+    status.textContent = action.phase === "speaking"
+      ? `${action.adapter === "client_local_tts" ? "Lokale Browserstimme" : "Browser-Sprachdienst"} · Audio bleibt flüchtig.`
+      : "Auswahl und Voice-Richtlinie werden serverseitig geprüft.";
+    return;
+  }
+  button.textContent = "🔊 Vorlesen";
+  if (session?.readAloudNotice) status.textContent = session.readAloudNotice;
+  else if (!session?.objectId) status.textContent = "Nach dem ersten Speichern verfügbar.";
+  else if (session.historical) status.textContent = "Nur die aktuelle gespeicherte Fassung kann vorgelesen werden.";
+  else if (session.readAloudCapabilityLoading) status.textContent = "Vorlesen wird geprüft …";
+  else if (!session.readAloudCapability) status.textContent = "Vorlesen ist nicht verfügbar.";
+  else if (!session.readAloudCapability.voice_enabled) status.textContent = "Voice ist durch die Tenant-Richtlinie deaktiviert.";
+  else if (!speechSynthesisAvailable()) status.textContent = "Dieser Browser bietet keine Sprachausgabe.";
+  else if (!readAloudAdapter(session)) status.textContent = "Keine freigegebene lokale oder Browserstimme verfügbar.";
+  else if (isDirty()) status.textContent = "Vorlesen verwendet nur die gespeicherte Fassung; Änderungen zuerst speichern.";
+  else if (!selectedReadAloudText()) status.textContent = "Markieren Sie bis zu 2.000 Zeichen in einem Absatz.";
+  else status.textContent = `${readAloudAdapter(session) === "client_local_tts" ? "Lokale Stimme" : "Browser-Sprachdienst"} · Auswahl wird nicht gespeichert.`;
+}
+
+function readAloudResponseMatches(value, action, textHash) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === action.session.objectId &&
+    value.source_version_id === action.session.version?.version_id && value.source_text === action.text &&
+    value.source_text_hash === textHash && value.source_character_count === Array.from(action.text).length &&
+    value.source_anchor?.from === action.from && value.source_anchor?.to === action.to &&
+    value.language === action.language && value.rate === action.rate && value.synthesis_adapter === action.adapter &&
+    ["public", "internal", "confidential"].includes(value.classification) &&
+    value.activation_contract === "explicit_read_aloud" && value.retention_policy_id === "transient-not-persisted" &&
+    value.source_text_persisted === false && value.audio_generated_by_server === false &&
+    value.audio_uploaded === false && value.audio_stored === false && value.document_changed === false &&
+    value.ai_used === false && value.rag_indexing_allowed === false && value.search_indexing_allowed === false &&
+    value.policy_id === "office_explicit_read_aloud_v1" && typeof value.synthesis_id === "string" &&
+    typeof value.voice_audit_event_id === "string" && typeof value.audit_event_id === "string";
+}
+
+function readAloudActionCurrent(action) {
+  return state.readAloud === action && sessionCurrent(action.session) && state.editor === action.editor &&
+    action.revision === action.session.revision && action.document === action.editor.state.doc;
+}
+
+async function beginReadAloud() {
+  if (state.readAloud) { cancelReadAloud(); return; }
+  if (!readAloudCanStart()) return;
+  const session = state.session, editor = state.editor, selection = editor.state.selection;
+  const action = { session, editor, revision: session.revision, document: editor.state.doc,
+    from: selection.from, to: selection.to, text: selectedReadAloudText(),
+    language: $("read-aloud-language").value, rate: Number($("read-aloud-rate").value),
+    adapter: readAloudAdapter(session), context: state.context, phase: "preparing", utterance: null, cancelled: false };
+  state.readAloud = action; session.readAloudNotice = ""; updateReadAloudControls();
+  try {
+    const textHash = await sha256Text(action.text);
+    if (!readAloudActionCurrent(action)) return;
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/voice/read-aloud-preparations`, {
+      method: "POST", body: { expected_current_version_id: session.version.version_id,
+        anchor: { from: action.from, to: action.to }, explicit_activation: true, requested_audio_storage: false,
+        language: action.language, rate: action.rate, synthesis_adapter: action.adapter },
+    }, action.context);
+    if (!readAloudActionCurrent(action) || !readAloudResponseMatches(value, action, textHash)) throw new ApiError(502, true);
+    const utterance = new window.SpeechSynthesisUtterance(value.source_text);
+    utterance.lang = action.language; utterance.rate = action.rate;
+    if (action.adapter === "client_local_tts") {
+      const voice = localSpeechVoice(action.language);
+      if (!voice) throw new ApiError(409, true);
+      utterance.voice = voice;
+    }
+    action.utterance = utterance; action.phase = "speaking";
+    utterance.onend = () => {
+      if (state.readAloud !== action) return;
+      state.readAloud = null; session.readAloudNotice = "Auswahl vollständig vorgelesen."; updateReadAloudControls();
+    };
+    utterance.onerror = () => {
+      if (state.readAloud !== action) return;
+      state.readAloud = null; session.readAloudNotice = "Die Sprachausgabe wurde beendet."; updateReadAloudControls();
+    };
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance); updateReadAloudControls();
+  } catch (error) {
+    if (state.readAloud === action) state.readAloud = null;
+    if (sessionCurrent(session)) {
+      session.readAloudNotice = denied(error) ? "Vorlesen wurde durch Richtlinie oder Berechtigung abgelehnt." :
+        error instanceof ApiError && error.status === 409 ? "Das Dokument oder die Stimme hat sich geändert." :
+        "Vorlesen konnte nicht gestartet werden.";
+      updateReadAloudControls();
+    }
+  }
+}
+
+function cancelReadAloud() {
+  const action = state.readAloud;
+  if (!action) return;
+  action.cancelled = true; state.readAloud = null;
+  try { window.speechSynthesis?.cancel(); } catch {}
+  if (sessionCurrent(action.session)) {
+    action.session.readAloudNotice = "Vorlesen beendet."; updateReadAloudControls();
+  }
+}
+
 function officeDictationMatches(value, action, transcriptHash) {
   return value?.tenant_id === state.context.tenantId && value.object_id === action.session.objectId &&
     value.source_version_id === action.session.version?.version_id && value.insertion_position === action.position &&
@@ -1339,6 +1509,7 @@ function updateEditorState() {
   updateReviewControls();
   updateSuggestionControls();
   updateDictationControls();
+  updateReadAloudControls();
   renderEditLease();
   const status = $("document-status");
   status.className = "document-status";
@@ -3827,6 +3998,7 @@ function refreshDocumentTools() {
 function contentChanged(session) {
   if (!sessionCurrent(session) || session.loading) return;
   if (state.dictation?.session === session) cancelDictation();
+  if (state.readAloud?.session === session) cancelReadAloud();
   pageControls.close();
   imageControls.close();
   chartControls.close();
@@ -3923,7 +4095,11 @@ function prepareEditor(content, session) {
       handleDrop() { notice("Dateien werden hier nicht eingefügt. Text lässt sich über die Zwischenablage übernehmen."); return true; },
     },
     onUpdate: ({ editor: updatedEditor }) => { if (!refreshTableFormulaResults(updatedEditor)) contentChanged(session); },
-    onSelectionUpdate: () => { if (sessionCurrent(session)) updateEditorState(); },
+    onSelectionUpdate: () => {
+      if (!sessionCurrent(session)) return;
+      if (state.readAloud?.session === session) cancelReadAloud();
+      updateEditorState();
+    },
   });
   try {
     validateEditorDocument(editor.schema.nodeFromJSON(safeContent));
@@ -3952,6 +4128,7 @@ function mountEditor(content, session) {
 function clearWorkspace() {
   const previousSession = state.session, previousContext = state.context;
   cancelDictation();
+  cancelReadAloud();
   releaseEditLease(previousSession, previousContext);
   closeEditLeaseDialog();
   closeDocumentLifecycle();
@@ -4226,7 +4403,9 @@ function freshSession(objectId = null) {
     version: null, metadata: null, baseline: "", attempt: null, versions: [],
     leaseStatus: objectId ? "checking" : "not_required", leaseExpiresAt: null, leaseRevision: 0,
     leaseRequest: 0, leasePending: false, leaseTimer: null,
-    dictationCapability: null, dictationCapabilityRequest: 0, dictationCapabilityLoading: false };
+    dictationCapability: null, dictationCapabilityRequest: 0, dictationCapabilityLoading: false,
+    readAloudCapability: null, readAloudCapabilityRequest: 0, readAloudCapabilityLoading: false,
+    readAloudNotice: "" };
 }
 
 function contentMatches(result, objectId, versionId = null) {
@@ -4277,6 +4456,7 @@ function acceptContent(result, session) {
   state.documentReferenceResolutions = new Map();
   void refreshDocumentReferences(session);
   void refreshDictationCapability(session);
+  void refreshReadAloudCapability(session);
   if (editLeaseRequired(session)) void acquireEditLease(session);
 }
 
@@ -6902,6 +7082,10 @@ $("dictation-push").addEventListener("keydown", (event) => {
 $("dictation-push").addEventListener("keyup", (event) => {
   if (["Enter", " "].includes(event.key)) releaseDictation(event);
 });
+$("read-aloud").addEventListener("click", beginReadAloud);
+$("read-aloud-language").addEventListener("change", updateReadAloudControls);
+$("read-aloud-rate").addEventListener("change", updateReadAloudControls);
+window.speechSynthesis?.addEventListener?.("voiceschanged", updateReadAloudControls);
 $("edit-lease-cancel").addEventListener("click", closeEditLeaseDialog);
 $("edit-lease-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeEditLeaseDialog(); });
 $("document-lifecycle").addEventListener("click", openDocumentLifecycle);
@@ -7410,7 +7594,9 @@ document.addEventListener("keydown", (event) => {
 window.addEventListener("beforeunload", (event) => {
   if (isDirty() || state.session?.saving || state.session?.uncertain || hasReviewDraft() || state.review?.saving || hasSuggestionDraft() || state.suggestions?.saving) { event.preventDefault(); event.returnValue = ""; }
 });
-window.addEventListener("pagehide", () => releaseEditLease(state.session, state.context, true));
+window.addEventListener("pagehide", () => {
+  cancelDictation(); cancelReadAloud(); releaseEditLease(state.session, state.context, true);
+});
 
 const pageControls = installOfficePageControls({ state, allowed: paragraphAllowed, actionCurrent: characterActionCurrent,
   sessionCurrent, validate: validateEditorDocument, focus: focusEditor, updateEditor: updateEditorState, notice });

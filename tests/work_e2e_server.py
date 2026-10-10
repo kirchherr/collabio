@@ -46,6 +46,7 @@ from suite.platform.office_api import (
     build_office_ai_summary_service,
     build_office_ai_translation_service,
     build_office_dictation_service,
+    build_office_read_aloud_service,
     build_office_source_search_service,
     build_office_suggestion_service,
 )
@@ -388,6 +389,9 @@ app.state.office_source_search_service = build_office_source_search_service(
     document_service=app.state.office_document_service
 )
 app.state.office_dictation_service = build_office_dictation_service(
+    document_service=app.state.office_document_service, voice_guard=app.state.voice_guard
+)
+app.state.office_read_aloud_service = build_office_read_aloud_service(
     document_service=app.state.office_document_service, voice_guard=app.state.voice_guard
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])

@@ -13,6 +13,7 @@ export const OFFICE_READER_HEADERS = {
 };
 export const officeContentPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id)}/content`;
 export const officeDictationPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id)}/voice/dictations`;
+export const officeReadAloudPath = (id) => `${OFFICE_PATH}/${encodeURIComponent(id)}/voice/read-aloud-preparations`;
 export const officeEditor = (page) => page.locator("#office-editor .tiptap");
 export const textDocument = (text) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
 
@@ -33,6 +34,29 @@ export async function installSyntheticSpeechRecognition(page) {
       },
     };
   });
+}
+
+export async function installSyntheticSpeechSynthesis(page, { localService = true } = {}) {
+  await page.addInitScript(({ local }) => {
+    const listeners = new Map(), state = { current: null, spoken: [], cancellations: 0 };
+    class SyntheticSpeechSynthesisUtterance {
+      constructor(text) { this.text = text; this.lang = ""; this.rate = 1; this.voice = null; }
+    }
+    const voice = { name: "Synthetic local voice", lang: "de-DE", localService: local, default: true, voiceURI: "synthetic" };
+    const synthesis = {
+      getVoices: () => [voice],
+      speak(utterance) { state.current = utterance; state.spoken.push({ text: utterance.text, lang: utterance.lang, rate: utterance.rate, localService: utterance.voice?.localService === true }); },
+      cancel() { state.cancellations += 1; state.current = null; },
+      addEventListener(type, listener) { const entries = listeners.get(type) || []; entries.push(listener); listeners.set(type, entries); },
+    };
+    Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: SyntheticSpeechSynthesisUtterance });
+    Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
+    window.__officeSyntheticSpeechSynthesis = {
+      state,
+      finish() { const current = state.current; state.current = null; current?.onend?.(); },
+      fail() { const current = state.current; state.current = null; current?.onerror?.({ error: "synthetic" }); },
+    };
+  }, { local: localService });
 }
 
 export async function captureOfficeResponse(page, matches, { method = "GET", extraHeaders = {} } = {}) {
@@ -166,6 +190,33 @@ export async function dictateIntoOffice(page, objectId, transcript) {
   await expect(button).toHaveAttribute("aria-pressed", "false");
   await expect(page.locator("#dictation-status")).toContainText("Version noch nicht gespeichert");
   await expect(officeEditor(page)).toContainText(transcript);
+  return result;
+}
+
+export async function readOfficeSelectionAloud(page, objectId) {
+  const button = page.locator("#read-aloud");
+  await officeEditor(page).selectText();
+  await button.scrollIntoViewIfNeeded();
+  await expect(button).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === officeReadAloudPath(objectId) && response.request().method() === "POST");
+  await button.click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.activation_contract).toBe("explicit_read_aloud");
+  expect(result.synthesis_adapter).toBe("client_local_tts");
+  expect(result.source_text_hash).toMatch(/^sha256:[a-f0-9]{64}$/);
+  expect(result.source_text_persisted).toBe(false);
+  expect(result.audio_generated_by_server).toBe(false);
+  expect(result.audio_uploaded).toBe(false);
+  expect(result.audio_stored).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.ai_used).toBe(false);
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#read-aloud-status")).toContainText("Audio bleibt flüchtig");
   return result;
 }
 
