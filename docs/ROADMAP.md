@@ -656,7 +656,7 @@ Aufgaben:
 - [x] Gliederung erzeugen (Roadmap 728-735 / PLANS 589-596).
 - [x] Dokument mit Richtlinie vergleichen (Roadmap 736-743 / PLANS 597-604).
 - [x] Risiken markieren (Roadmap 744-751 / PLANS 605-612).
-- [ ] Quellen suchen und versioniert anzeigen.
+- [x] Quellen suchen und versioniert anzeigen (Roadmap 752-759 / PLANS 613-620).
 - [ ] Diktat in Dokumente ueber Voice Transcript Flow.
 - [ ] Text-to-Speech Adapter Interface.
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

@@ -1,9 +1,28 @@
 # Native Office Documents
 
-Status: Roadmap 252–751 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 751 / PLANS 612 risk marking
-Module: `office_documents` / version 0.9.4
-Decisions: ADR-0079 through ADR-0191; current movement: `ARCHITECTURE_DECISIONS/ADR-0191-native-office-risk-marking.md`
+Status: Roadmap 252–759 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 759 / PLANS 620 versioned source search
+Module: `office_documents` / version 0.9.5
+Decisions: ADR-0079 through ADR-0192; current movement: `ARCHITECTURE_DECISIONS/ADR-0192-native-office-versioned-source-search.md`
+
+## Versioned source search (Roadmap 752–759)
+
+The read-gated source-search endpoint accepts only the exact current source version, a normalized one-through-eight-
+term query and a result limit. The browser sends no document body, model, prompt, embedding or proposed citation.
+The service revalidates the source ACL and current version before searching.
+
+Candidate discovery uses the tenant-scoped authoritative repository. Every candidate document ACL and exact current
+version is revalidated again immediately before content is loaded. Search is bounded to 100 candidates, 32,000 native
+text characters per document and 256,000 characters in aggregate; a reached bound is reported as corpus truncation.
+
+Results contain only server-derived excerpts and UTF-16 anchors plus exact object and immutable version IDs, title,
+information classification, content hash and ACL version. The responsive panel shows dismissible read-only cards;
+**Version anzeigen** opens the exact version through the normal freshly authorized document-read path.
+
+The deterministic keyword search uses no LLM, vector search or RAG context and creates no persistent result, index,
+suggestion or document version. Audit stores the normalized query hash, bounded counts, exact result references and
+content hashes without query text or document bodies. Historical-candidate search, fuzzy/semantic ranking, automatic
+citation insertion and production-grade indexed search remain closed.
 
 ## Risk marking (Roadmap 744–751)
 
@@ -127,8 +146,9 @@ and the inference event without content.
 
 The browser places the result in the existing proposal composer with a visible **AI-Entwurf · ungeprüft** label. A
 user must explicitly save the proposal and later explicitly accept it before a new immutable document version can be
-created. Cancellation leaves the document and its version count unchanged. Whole-document inference, rewrite/tone,
-translation, outline, policy comparison, risk analysis, RAG citations, voice and text-to-speech remain later work.
+created. Cancellation leaves the document and its version count unchanged. Whole-document inference stays closed;
+rewrite, translation, outline, policy comparison, risk analysis and source search use separate bounded contracts.
+Voice and text-to-speech remain later work.
 
 ## Deterministic interchange test corpus (Roadmap 696–703)
 

@@ -2,6 +2,43 @@
 
 Updated: 2026-10-10
 
+Roadmap 752 through 759 / PLANS 613 through 620 are complete under ADR-0192. Native Office can now search the
+exact current saved versions of other tenant-readable documents without AI, vectors or RAG. The request is bound to
+the exact current source document version and a bounded two-through-200-character query. The server revalidates the
+source ACL and current version, enumerates no more than 100 candidate documents, revalidates every candidate through
+the authoritative document service and derives all searchable text from immutable native content blocks.
+
+Results contain only current versions and carry exact object ID, version ID, title, protection classification,
+content hash, ACL version, server-derived UTF-16 anchor, bounded excerpt and deterministic score. They remain
+transient and do not change the document, create a version, persist a result, index content or construct RAG context.
+Audit stores the query hash, result identities and content hashes without query or document bodies. The browser
+validates the complete response contract before showing a responsive, dismissible source report with an exact
+version opener. Product commit `20f3cea0` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, tenant/ACL, current-version, audit, dashboard and asset-contract checks passed. The complete
+Office suggestion suite passed 10/10 in 2.1 minutes. After the live browser exposed an inspector overflow, the final
+desktop/mobile workflow passed 2/2 in 54.8 seconds with an explicit no-horizontal-overflow assertion. The final
+browser report hash is `sha256:18bbe8a91d5d52e655b1c88766eaf62357eb0f5edfc5261dd6dbe0ed5839b439`;
+desktop, tablet and mobile screenshot hashes are
+`sha256:2b553619f05f4281b26cd942f984134de5ca345696e3d900afb47fe817b4716a`,
+`sha256:53eaf4a6af143e3afbb38d75e10c28f7dcb5b553990f9886d04d2aa33c629e71` and
+`sha256:d26892995576b295302e784792a9d4d81ba5d61797eb15738363ab5e3c74e965`. The final Work-E2E API image ID is
+`sha256:852f97019d022411cdecf37eacd94c4f1867d164b9efe41f23eb7f0404ad6ff9`.
+
+The complete quality gate passed Ruff, found 945 format-conformant files, passed Mypy over 631 source files and ran
+Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The final CSS-v8 shell contract also
+passed in the rebuilt image. The final quality image ID is
+`sha256:9b876c754f1f796c01050fe6c42624e491fa9c7030633fe16995f7c9013ce316`.
+
+The review surface is `http://192.168.0.108:42880/office?review=source-search-adr0192`. The exact isolated PostgreSQL
+test container, blocked API and nine named transfer files were removed. No transient quality, test or Work-E2E runner
+remains. Regular and review APIs both return `ok`; review PostgreSQL, MinIO, decoder and API remain available. One
+incorrectly composed browser command began the broad matrix and was stopped after 30 passing cases; the exact
+suggestion and responsive suites then passed. This slice adds no migration, AI inference, embeddings, vector index,
+RAG context, automatic document write or production admission. Explicit push-to-talk dictation through the governed
+Voice Transcript Flow is the next Office roadmap loop. GitHub publication remains pending under the
+content-specific approval requirement.
+
 Roadmap 744 through 751 / PLANS 605 through 612 are complete under ADR-0191. Native Office can now inspect the
 exact current saved document version for bounded legal, financial, privacy, security, operational and commitment
 risks. The browser sends only the current version identity. The server revalidates the authoritative read ACL,
