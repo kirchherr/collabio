@@ -2,6 +2,46 @@
 
 Updated: 2026-10-10
 
+Roadmap 768 through 775 / PLANS 629 through 636 are complete under ADR-0194. Native Office now provides an explicit
+read-aloud adapter for an exact current saved text selection. Capability and preparation are read-gated and freshly
+revalidate tenant policy, authoritative document ACL and current-version identity. The browser sends only a bounded
+UTF-16 anchor, language, rate, activation state, false storage intent and adapter; the server derives the passage
+from the immutable authorized document. Authorized readers do not need document write permission.
+
+Local client TTS requires tenant voice policy. Browser speech synthesis additionally requires explicit external-
+provider admission. The Voice Privacy Guard and Office audit retain IDs, classification, adapter, language, rate,
+anchor, counts, policy and source hash without selected text or document bodies. Collabio generates, receives and
+stores no audio and persists no selection. The browser validates exact text, anchor and UTF-8 hash before speaking,
+offers language/speed plus an explicit stop action, and cancels on selection, document, editor, version or tenant
+context changes. The operation is read-only, transient and excluded from AI, records, search and RAG indexing.
+Product commit `af279cd0` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused Voice/API checks passed 10/10, then the final Voice, shell and roadmap contracts passed 12/12. The final
+desktop/mobile workflow passed 2/2 in 10.5 seconds and left the immutable version count unchanged. The combined
+dictation/read-aloud/suggestion regression produced 13 passes while its one fail-closed case could not resolve the
+previously removed internal blocked API; after that exact dependency was started, the remaining case passed 1/1.
+Final report hash is `sha256:e5bbce3777d556f9977bd6317eaa3b4d23119d85414a5e54020e3ecbf973c936`;
+desktop/mobile screenshot hashes are `sha256:68e58e497a110ac009a26dfab9cd3e7191c2e5bb08ab27198cf148bf4577b913`
+and `sha256:d600ee5ca3a45823f077e9ba137dc25beee0c60d5c1715f84ec6bea3e66a47f4`.
+
+Complete quality passed Ruff, found 951 format-conformant files, passed configured Mypy over 635 sources and ran
+Pytest to 100 percent with only the known Starlette/AnyIO warning. A stricter `mypy .` passed over 638 sources. The
+quality log hash is `sha256:b9b701d4c5b2c06b37051c5b2acccfd07b77dc35b9c01088984cdb9549823d46`;
+quality image ID remains `sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`.
+Final Work-E2E, review API and blocked API images are
+`sha256:afd5e6c17434197d1b0e715ba964ae15dedd569285e7a58b44dab7126741c5df`,
+`sha256:a6006dd9ab1a548f32b126ba648e38d137f48e05cc2ad7951d14c0f957f1ba78` and
+`sha256:1bbad2aa26e0f338d4d1cff813b71b7c25361768674cbe0e7c4f4206ded19618`.
+
+Visual review passed desktop and mobile with reachable language/rate/start-stop controls, visible provider/transient
+state and no horizontal overflow. Final asset keys are `office.css?v=11` and `editor.js?v=6`; review is available at
+`http://192.168.0.108:42880/office?review=read-aloud-adr0194`. Cleanup removed the exact isolated PostgreSQL test and
+blocked API containers plus named transfer/test files; no transient runner remains. Regular and review APIs return
+`ok`, the review API/PostgreSQL/decoder are healthy and review MinIO remains available. This slice adds no migration,
+server synthesis runtime, provider credential, audio upload/storage, selection persistence, document write, AI or
+production admission. The next open Office item is the 50-concurrent-editor proof target. GitHub publication remains
+pending under the content-specific approval requirement.
+
 Roadmap 760 through 767 / PLANS 621 through 628 are complete under ADR-0193. Native Office now exposes a governed
 push-to-talk dictation path for an exact current writable document version. Capability and transcript preparation
 freshly revalidate tenant module/write policy, authoritative object ACL and current-version identity. Local client STT
@@ -39,8 +79,8 @@ and `editor.js?v=5`. The final review is
 `http://192.168.0.108:42880/office?review=dictation-adr0193`. Cleanup removed the exact isolated PostgreSQL test,
 blocked API, Work-E2E migration/seed containers and three named transfer resources. No transient quality or browser
 runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and decoder are healthy while review
-MinIO remains available. Text-to-speech is the next Office roadmap loop. GitHub publication remains pending under the
-content-specific approval requirement.
+MinIO remains available. Text-to-speech is now complete in Roadmap 768–775; the 50-concurrent-editor proof is the next
+Office roadmap loop. GitHub publication remains pending under the content-specific approval requirement.
 
 Roadmap 752 through 759 / PLANS 613 through 620 are complete under ADR-0192. Native Office can now search the
 exact current saved versions of other tenant-readable documents without AI, vectors or RAG. The request is bound to

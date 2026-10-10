@@ -1910,12 +1910,36 @@ provider and draft-state feedback. Cancel capture when the document, editor, lea
 628. [x] Prove policy, ACL, exact-version, insertion-bound, strict-schema, hash-only audit and no-persistence behavior;
 run desktop/mobile synthetic speech, ten-case suggestion regression and visible UI review; close under ADR-0193.
 
+629. [x] Add read-gated native Office read-aloud capability and preparation endpoints under ADR-0194. Require the
+exact current saved version and freshly revalidate authoritative tenant, object and read ACL boundaries.
+
+630. [x] Accept only a bounded same-block ProseMirror UTF-16 anchor, fixed language, bounded rate, explicit activation,
+false audio-storage intent and one fixed synthesis adapter. Derive all source text server-side after authorization.
+
+631. [x] Admit local client TTS only with tenant voice policy and browser speech synthesis only with the additional
+external-provider policy. Keep provider choice visible and fail closed when no admitted voice is available.
+
+632. [x] Route each admitted passage through the Voice Privacy Guard. Audit tenant, object, version, anchor, adapter,
+language, rate, classification, counts, policy, event IDs and hashes without selection or document bodies.
+
+633. [x] Generate no audio on the server, upload no audio to Collabio, store no audio and persist no selected text.
+Keep the operation read-only, transient, non-indexed and unable to change a document, record or action.
+
+634. [x] Validate the complete response, exact selection and UTF-8 hash in the browser before speaking. Cancel output
+when the selection, document, editor, version or tenant context changes and expose an explicit stop control.
+
+635. [x] Add accessible responsive language, speed and start/stop controls for authorized readers and authors. Show
+whether a local voice or browser speech service is used and that selection and audio remain transient.
+
+636. [x] Prove exact-version/ACL enforcement, provider policy, strict schema, hash-only audit, zero persistence and
+zero writes; run desktop/mobile synthetic speech plus dictation/suggestion regression and close under ADR-0194.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 767 / PLANS 628. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison, server-anchored risk marking, bounded ACL-revalidated current-version source search and explicit push-to-talk dictation with no raw-audio or transcript persistence. Continue with the governed text-to-speech adapter interface. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 775 / PLANS 636. Preserve exact-version server-derived selection summaries, rewriting, fixed-tone drafts, nine fixed-target translations, validated concise/detailed outline drafts, two-source policy comparison, server-anchored risk marking, bounded ACL-revalidated current-version source search, explicit push-to-talk dictation and explicit read aloud with no raw-audio, transcript, selection or generated-audio persistence. Continue with the 50-concurrent-editor proof target. Preserve all earlier interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

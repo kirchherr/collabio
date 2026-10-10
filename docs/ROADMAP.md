@@ -658,7 +658,7 @@ Aufgaben:
 - [x] Risiken markieren (Roadmap 744-751 / PLANS 605-612).
 - [x] Quellen suchen und versioniert anzeigen (Roadmap 752-759 / PLANS 613-620).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
-- [ ] Text-to-Speech Adapter Interface.
+- [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).
 - [ ] Lasttest-Ziel: 50 gleichzeitige Bearbeiter pro Dokument.
 

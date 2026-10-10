@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–767 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 767 / PLANS 628 push-to-talk dictation
-Module: `office_documents` / version 0.9.6
-Decisions: ADR-0079 through ADR-0193; current movement: `ARCHITECTURE_DECISIONS/ADR-0193-native-office-push-to-talk-dictation.md`
+Status: Roadmap 252–775 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 775 / PLANS 636 explicit read aloud
+Module: `office_documents` / version 0.9.7
+Decisions: ADR-0079 through ADR-0194; current movement: `ARCHITECTURE_DECISIONS/ADR-0194-native-office-explicit-read-aloud.md`
+
+## Explicit read aloud (Roadmap 768–775)
+
+The read-gated capability and preparation endpoints require the exact current immutable document version and freshly
+revalidate the tenant module/read feature plus authoritative document ACL. The request contains a bounded same-block
+UTF-16 selection anchor, fixed language, bounded rate, explicit activation, false audio-storage intent and one known
+synthesis adapter. It contains no source text, prompt, model, provider credential or requested action.
+
+The server derives at most 2,000 characters from the authorized saved version. A local client voice requires tenant
+voice policy; browser speech synthesis additionally requires explicit external-provider admission. The Voice Privacy
+Guard and Office audit retain only tenant, object, exact version, anchor, classification, adapter, language, rate,
+counts, policy, event IDs and selection hash. Selected text and document bodies do not enter audit or normal logs.
+
+The browser checks the returned text, anchor and UTF-8 hash against its local saved selection before speaking. Its
+accessible language, speed and start/stop controls identify a local voice or browser speech service and cancel output
+on selection, document, editor, version or tenant-context changes. Authorized read-only users do not need document
+write permission.
+
+Collabio generates, receives and stores no audio and persists no selected text. The operation is transient, read-only,
+non-indexed and cannot alter a document or version, create a record, call an LLM or trigger an action. Desktop/mobile
+synthetic speech tests prove unchanged version counts and explicit stop/completion state.
 
 ## Push-to-talk dictation (Roadmap 760–767)
 
@@ -169,7 +190,7 @@ The browser places the result in the existing proposal composer with a visible *
 user must explicitly save the proposal and later explicitly accept it before a new immutable document version can be
 created. Cancellation leaves the document and its version count unchanged. Whole-document inference stays closed;
 rewrite, translation, outline, policy comparison, risk analysis and source search use separate bounded contracts.
-Voice and text-to-speech remain later work.
+Other Voice workflows remain separate later work.
 
 ## Deterministic interchange test corpus (Roadmap 696–703)
 
