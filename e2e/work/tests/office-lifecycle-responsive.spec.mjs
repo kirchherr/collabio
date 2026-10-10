@@ -19,6 +19,10 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
     const url = new URL(response.url());
     return url.pathname === `/v1/office/documents/${saved.document.object_id}/collaboration/preflight` && response.request().method() === "POST";
   });
+  const gatewayPreflight = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === `/v1/office/documents/${saved.document.object_id}/collaboration/gateway-preflight` && response.request().method() === "POST";
+  });
   await page.locator("#document-lifecycle").click();
   expect((await lifecycle).status()).toBe(200);
   const preflightResponse = await preflight;
@@ -29,11 +33,23 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   expect(preflightBody.runtime_admitted).toBe(false);
   expect(preflightBody.target_concurrent_editors).toBe(50);
   expect(preflightBody.raw_session_or_client_id_persisted).toBe(false);
+  const gatewayResponse = await gatewayPreflight;
+  expect(gatewayResponse.status()).toBe(200);
+  const gatewayBody = await gatewayResponse.json();
+  expect(gatewayBody.gateway_contract_state).toBe("prepared_upgrade_closed");
+  expect(gatewayBody.upgrade_state).toBe("http_upgrade_not_admitted");
+  expect(gatewayBody.required_subprotocol).toBe("collabio-office-crdt.v1");
+  expect(gatewayBody.server_accepts_connections).toBe(false);
+  expect(gatewayBody.credential_issued).toBe(false);
+  expect(gatewayBody).not.toHaveProperty("ticket");
+  expect(gatewayBody).not.toHaveProperty("socket_url");
   await expect(page.locator("#lifecycle-dialog")).toBeVisible();
   await expect(page.locator("#lifecycle-draft")).toContainText("ungespeicherte Änderungen vorhanden");
   await expect(page.locator("#lifecycle-collaborative")).toContainText("für diese Sitzung reserviert");
   await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Runtime und WebSocket bleiben geschlossen");
   await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Restore-, Fuzzing- und Lastnachweise sind noch offen");
+  await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("Same-Origin, Subprotocol, Binärframes");
+  await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("HTTP-Upgrade, Zugangsticket und Verbindungen bleiben geschlossen");
   await expect(page.locator("#lifecycle-saved")).toContainText(saved.version.version_id);
   await expect(page.locator("#lifecycle-business")).toContainText("Übergang geschlossen");
   await expect(page.locator("#lifecycle-worm")).toContainText("kein WORM Evidence Record");

@@ -31,6 +31,8 @@ from suite.platform.office_documents import (
     OfficeDocumentEditLeaseCommand,
     OfficeDocumentEditLeaseReleaseCommand,
     OfficeDocumentEditLeaseState,
+    OfficeDocumentGatewayPreflightCommand,
+    OfficeDocumentGatewayPreflightResponse,
     OfficeDocumentHistoryRequestError,
     OfficeDocumentHistoryResponse,
     OfficeDocumentLifecycleResponse,
@@ -583,6 +585,26 @@ def register_office_routes(
             user_context=context.user_context,
             object_id=object_id,
             command=command,
+            write_enabled=True,
+        )
+
+    @router.post(
+        "/{object_id}/collaboration/gateway-preflight",
+        response_model=OfficeDocumentGatewayPreflightResponse,
+        dependencies=[Depends(write_gate)],
+    )
+    def gateway_preflight(
+        object_id: str,
+        command: OfficeDocumentGatewayPreflightCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.gateway_preflight(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            browser_origin=request.headers.get("origin", ""),
+            request_origin=str(request.base_url).rstrip("/"),
             write_enabled=True,
         )
 

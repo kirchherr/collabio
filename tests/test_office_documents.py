@@ -14,6 +14,7 @@ from suite.platform.office_documents import (
     OfficeDocumentCreateCommand,
     OfficeDocumentEditLeaseCommand,
     OfficeDocumentEditLeaseReleaseCommand,
+    OfficeDocumentGatewayPreflightCommand,
     OfficeDocumentNotFoundError,
     OfficeDocumentPermissionError,
     OfficeDocumentSaveCommand,
@@ -912,6 +913,128 @@ def test_collaboration_preflight_capabilities_are_complete_unique_and_canonical(
                 "client_instance_id": "office-client-" + "2" * 32,
                 "expected_current_version_id": "office-version-" + "3" * 32,
                 "capabilities": capabilities,
+            }
+        )
+
+
+def test_gateway_preflight_binds_same_origin_acl_version_and_lease_without_issuing_credentials_or_state(
+    office: Any,
+) -> None:
+    service, repository, user = office
+    created = service.create(
+        user_context=user,
+        command=create_command("gateway-preflight-create"),
+        write_enabled=True,
+    )
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    session_id = "office-session-" + "7" * 32
+    client_id = "office-client-" + "8" * 32
+    service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=session_id,
+            expected_current_version_id=created.version.version_id,
+        ),
+        write_enabled=True,
+    )
+    command = OfficeDocumentGatewayPreflightCommand(
+        session_id=session_id,
+        client_instance_id=client_id,
+        expected_current_version_id=created.version.version_id,
+        requested_subprotocols=["collabio-office-crdt.v1"],
+        transport_capabilities=[
+            "binary_frames_v1",
+            "bounded_backpressure_v1",
+            "heartbeat_v1",
+            "reauth_v1",
+            "resume_state_vector_v1",
+        ],
+    )
+    response = service.gateway_preflight(
+        user_context=user,
+        object_id=object_id,
+        command=command,
+        browser_origin="https://office.example.test",
+        request_origin="https://office.example.test",
+        write_enabled=True,
+    )
+    assert response.gateway_contract_state == "prepared_upgrade_closed"
+    assert response.upgrade_state == "http_upgrade_not_admitted" and not response.server_accepts_connections
+    assert response.required_subprotocol == "collabio-office-crdt.v1"
+    assert response.max_frame_bytes == 262144 and response.max_queued_bytes == 1048576
+    assert response.backpressure_close_code == 1013
+    assert response.heartbeat_interval_seconds == 25
+    assert response.reauthorization_interval_seconds == 60 and response.max_connection_seconds == 300
+    assert not response.query_credentials_allowed and not response.compression_admitted
+    assert not response.credential_issued and "websocket_load_not_verified" in response.blockers
+    assert len(repository.documents) == len(repository.saved_versions) == len(repository.edit_leases) == 1
+    audit_payload = canonical_json([event.model_dump(mode="json") for event in service.audit.events])
+    assert session_id not in audit_payload and client_id not in audit_payload
+    assert "office.example.test" not in audit_payload
+
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.gateway_preflight(
+            user_context=user,
+            object_id=object_id,
+            command=command,
+            browser_origin="https://attacker.example",
+            request_origin="https://office.example.test",
+            write_enabled=True,
+        )
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.gateway_preflight(
+            user_context=user,
+            object_id=object_id,
+            command=command,
+            browser_origin="null",
+            request_origin="https://office.example.test",
+            write_enabled=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("subprotocols", "capabilities"),
+    [
+        (
+            [],
+            [
+                "binary_frames_v1",
+                "bounded_backpressure_v1",
+                "heartbeat_v1",
+                "reauth_v1",
+                "resume_state_vector_v1",
+            ],
+        ),
+        (
+            ["collabio-office-crdt.v1"],
+            [
+                "bounded_backpressure_v1",
+                "binary_frames_v1",
+                "heartbeat_v1",
+                "reauth_v1",
+                "resume_state_vector_v1",
+            ],
+        ),
+        (
+            ["collabio-office-crdt.v1"],
+            ["binary_frames_v1", "bounded_backpressure_v1", "heartbeat_v1", "reauth_v1"],
+        ),
+    ],
+)
+def test_gateway_preflight_requires_exact_subprotocol_and_transport_capabilities(
+    subprotocols: list[str],
+    capabilities: list[str],
+) -> None:
+    with pytest.raises(ValidationError):
+        OfficeDocumentGatewayPreflightCommand.model_validate(
+            {
+                "session_id": "office-session-" + "1" * 32,
+                "client_instance_id": "office-client-" + "2" * 32,
+                "expected_current_version_id": "office-version-" + "3" * 32,
+                "requested_subprotocols": subprotocols,
+                "transport_capabilities": capabilities,
             }
         )
 

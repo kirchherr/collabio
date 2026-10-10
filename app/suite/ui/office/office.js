@@ -589,7 +589,7 @@ function collaborationPreflightMatches(value, session) {
 async function loadCollaborationPreflight(session, context) {
   if (!session.canWrite || !editLeaseGranted(session)) {
     $("lifecycle-live-collaboration").textContent = "Preflight nicht verfügbar; Schreibrecht und aktuelle Bearbeitungs-Lease sind erforderlich.";
-    return;
+    return false;
   }
   try {
     const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/collaboration/preflight`, {
@@ -599,15 +599,67 @@ async function loadCollaborationPreflight(session, context) {
         protocol_version: "collabio-office-crdt-preflight.v1",
         capabilities: ["awareness_v1", "binary_update_v1", "state_vector_v1"] },
     }, context);
-    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return false;
     if (!collaborationPreflightMatches(value, session)) throw new ApiError(502, true);
     $("lifecycle-live-collaboration").textContent =
       "Vertrag für Binärupdates und State Vector vorbereitet; Runtime und WebSocket bleiben geschlossen. Ziel: 50 gleichzeitige Bearbeiter. Restore-, Fuzzing- und Lastnachweise sind noch offen.";
+    return true;
   } catch (error) {
-    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return false;
     $("lifecycle-live-collaboration").textContent = denied(error)
       ? "Preflight nicht mehr berechtigt; Live-Zusammenarbeit bleibt geschlossen."
       : "Preflight konnte nicht bestätigt werden; Live-Zusammenarbeit bleibt geschlossen.";
+    return false;
+  }
+}
+
+function gatewayPreflightMatches(value, session) {
+  const blockers = ["upgrade_route_not_implemented", "single_use_ticket_store_not_implemented",
+    "origin_and_subprotocol_rejection_not_integration_tested", "per_update_acl_revalidation_not_implemented",
+    "backpressure_and_disconnect_recovery_not_verified", "multi_node_fanout_not_implemented",
+    "crdt_engine_not_admitted", "websocket_load_not_verified"];
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.current_version_id === session.metadata?.current_version_id &&
+    value.gateway_protocol_version === "collabio-office-websocket-preflight.v1" &&
+    value.gateway_contract_state === "prepared_upgrade_closed" &&
+    value.upgrade_state === "http_upgrade_not_admitted" &&
+    value.endpoint_template === "/v1/office/documents/{object_id}/collaboration/socket" &&
+    value.required_subprotocol === "collabio-office-crdt.v1" &&
+    value.origin_policy === "exact_same_origin_required" &&
+    value.credential_policy === "single_use_hash_bound_ticket_required_not_issued" &&
+    value.query_credentials_allowed === false && value.frame_encoding === "binary_only" &&
+    value.compression_admitted === false && value.max_frame_bytes === 262144 &&
+    value.max_queued_bytes === 1048576 && value.backpressure_close_code === 1013 &&
+    value.heartbeat_interval_seconds === 25 && value.reauthorization_interval_seconds === 60 &&
+    value.max_connection_seconds === 300 && value.resume_strategy === "state_vector_reconciliation_required" &&
+    value.delivery_contract === "at_least_once_client_deduplication_required" &&
+    value.document_acl_revalidation_required === true && value.per_update_acl_revalidation_required === true &&
+    value.server_accepts_connections === false && value.credential_issued === false &&
+    !("ticket" in value) && !("socket_url" in value) &&
+    JSON.stringify(value.blockers) === JSON.stringify(blockers) && typeof value.audit_event_id === "string";
+}
+
+async function loadGatewayPreflight(session, context) {
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/collaboration/gateway-preflight`, {
+      method: "POST",
+      body: { session_id: editSessionId, client_instance_id: collaborationClientId,
+        expected_current_version_id: session.metadata.current_version_id,
+        crdt_protocol_version: "collabio-office-crdt-preflight.v1",
+        gateway_protocol_version: "collabio-office-websocket-preflight.v1",
+        requested_subprotocols: ["collabio-office-crdt.v1"],
+        transport_capabilities: ["binary_frames_v1", "bounded_backpressure_v1", "heartbeat_v1", "reauth_v1", "resume_state_vector_v1"],
+        requested_max_frame_bytes: 262144 },
+    }, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!gatewayPreflightMatches(value, session)) throw new ApiError(502, true);
+    $("lifecycle-websocket-gateway").textContent =
+      "Same-Origin, Subprotocol, Binärframes, Backpressure, Heartbeat, Reauth und State-Vector-Resume sind festgelegt. HTTP-Upgrade, Zugangsticket und Verbindungen bleiben geschlossen; Integration, Recovery, Fan-out und Lastnachweis fehlen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-websocket-gateway").textContent = denied(error)
+      ? "Gateway-Preflight nicht mehr berechtigt; HTTP-Upgrade und Verbindungen bleiben geschlossen."
+      : "Gateway-Preflight konnte nicht bestätigt werden; HTTP-Upgrade und Verbindungen bleiben geschlossen.";
   }
 }
 
@@ -629,7 +681,10 @@ async function loadDocumentLifecycle() {
     $("lifecycle-working").textContent = "Nur innerhalb der aktuellen Anfrage; kein Dokumentinhalt wird daraus gespeichert.";
     $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
     $("lifecycle-collaborative").textContent = collaborative;
-    await loadCollaborationPreflight(session, context);
+    const collaborationPrepared = await loadCollaborationPreflight(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (collaborationPrepared) await loadGatewayPreflight(session, context);
+    else $("lifecycle-websocket-gateway").textContent = "Nicht geprüft; der vorgelagerte CRDT-Preflight ist geschlossen.";
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
@@ -650,6 +705,7 @@ function openDocumentLifecycle() {
   $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
   $("lifecycle-collaborative").textContent = "Status wird geladen …";
   $("lifecycle-live-collaboration").textContent = "Preflight wird geladen …";
+  $("lifecycle-websocket-gateway").textContent = "Preflight wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";

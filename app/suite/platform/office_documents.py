@@ -53,7 +53,7 @@ OfficeCrdtBlocker = Literal[
     "websocket_gateway_not_admitted",
 ]
 OFFICE_CRDT_PROTOCOL_VERSION: OfficeCrdtProtocolVersion = "collabio-office-crdt-preflight.v1"
-OFFICE_CRDT_MAX_UPDATE_BYTES = 262144
+OFFICE_CRDT_MAX_UPDATE_BYTES: Literal[262144] = 262144
 OFFICE_CRDT_TARGET_CONCURRENT_EDITORS = 50
 OFFICE_CRDT_BLOCKERS: tuple[OfficeCrdtBlocker, ...] = (
     "crdt_engine_not_admitted",
@@ -62,6 +62,50 @@ OFFICE_CRDT_BLOCKERS: tuple[OfficeCrdtBlocker, ...] = (
     "malicious_update_fuzzing_not_verified",
     "fifty_editor_load_not_verified",
     "websocket_gateway_not_admitted",
+)
+OfficeWebSocketGatewayProtocolVersion = Literal["collabio-office-websocket-preflight.v1"]
+OfficeWebSocketSubprotocol = Literal["collabio-office-crdt.v1"]
+OfficeWebSocketTransportCapability = Literal[
+    "binary_frames_v1",
+    "bounded_backpressure_v1",
+    "heartbeat_v1",
+    "reauth_v1",
+    "resume_state_vector_v1",
+]
+OfficeWebSocketGatewayBlocker = Literal[
+    "upgrade_route_not_implemented",
+    "single_use_ticket_store_not_implemented",
+    "origin_and_subprotocol_rejection_not_integration_tested",
+    "per_update_acl_revalidation_not_implemented",
+    "backpressure_and_disconnect_recovery_not_verified",
+    "multi_node_fanout_not_implemented",
+    "crdt_engine_not_admitted",
+    "websocket_load_not_verified",
+]
+OFFICE_WEBSOCKET_GATEWAY_PROTOCOL_VERSION: OfficeWebSocketGatewayProtocolVersion = (
+    "collabio-office-websocket-preflight.v1"
+)
+OFFICE_WEBSOCKET_SUBPROTOCOL: OfficeWebSocketSubprotocol = "collabio-office-crdt.v1"
+OFFICE_WEBSOCKET_TRANSPORT_CAPABILITIES: tuple[OfficeWebSocketTransportCapability, ...] = (
+    "binary_frames_v1",
+    "bounded_backpressure_v1",
+    "heartbeat_v1",
+    "reauth_v1",
+    "resume_state_vector_v1",
+)
+OFFICE_WEBSOCKET_MAX_QUEUED_BYTES = 1048576
+OFFICE_WEBSOCKET_HEARTBEAT_INTERVAL_SECONDS = 25
+OFFICE_WEBSOCKET_REAUTHORIZATION_INTERVAL_SECONDS = 60
+OFFICE_WEBSOCKET_MAX_CONNECTION_SECONDS = 300
+OFFICE_WEBSOCKET_GATEWAY_BLOCKERS: tuple[OfficeWebSocketGatewayBlocker, ...] = (
+    "upgrade_route_not_implemented",
+    "single_use_ticket_store_not_implemented",
+    "origin_and_subprotocol_rejection_not_integration_tested",
+    "per_update_acl_revalidation_not_implemented",
+    "backpressure_and_disconnect_recovery_not_verified",
+    "multi_node_fanout_not_implemented",
+    "crdt_engine_not_admitted",
+    "websocket_load_not_verified",
 )
 OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
 OfficeSharePermission = Literal["read", "write"]
@@ -269,6 +313,85 @@ class OfficeDocumentCollaborationPreflightResponse(BaseModel):
     immutable_save_cas_required: bool = True
     raw_session_or_client_id_persisted: bool = False
     blockers: list[OfficeCrdtBlocker] = Field(default_factory=office_crdt_blockers)
+    audit_event_id: str = ""
+
+
+def office_websocket_gateway_blockers() -> list[OfficeWebSocketGatewayBlocker]:
+    return list(OFFICE_WEBSOCKET_GATEWAY_BLOCKERS)
+
+
+def validate_office_websocket_same_origin(*, browser_origin: str, request_origin: str) -> None:
+    origin_pattern = r"^https?://(?:[A-Za-z0-9.-]+|\[[0-9A-Fa-f:]+\])(?::[0-9]{1,5})?$"
+    if (
+        not isinstance(browser_origin, str)
+        or not isinstance(request_origin, str)
+        or len(browser_origin) > 255
+        or len(request_origin) > 255
+        or re.fullmatch(origin_pattern, browser_origin) is None
+        or re.fullmatch(origin_pattern, request_origin) is None
+        or not hmac.compare_digest(browser_origin, request_origin)
+    ):
+        raise OfficeDocumentPermissionError("WebSocket gateway origin is not permitted")
+
+
+class OfficeDocumentGatewayPreflightCommand(BaseModel):
+    """Metadata-only gateway contract; it cannot issue credentials or upgrade HTTP."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(pattern=r"^office-session-[a-f0-9]{32}$")
+    client_instance_id: str = Field(pattern=r"^office-client-[a-f0-9]{32}$")
+    expected_current_version_id: str = Field(pattern=r"^office-version-[a-f0-9]{32}$")
+    crdt_protocol_version: OfficeCrdtProtocolVersion = OFFICE_CRDT_PROTOCOL_VERSION
+    gateway_protocol_version: OfficeWebSocketGatewayProtocolVersion = OFFICE_WEBSOCKET_GATEWAY_PROTOCOL_VERSION
+    requested_subprotocols: list[OfficeWebSocketSubprotocol] = Field(min_length=1, max_length=1)
+    transport_capabilities: list[OfficeWebSocketTransportCapability] = Field(min_length=5, max_length=5)
+    requested_max_frame_bytes: Literal[262144] = OFFICE_CRDT_MAX_UPDATE_BYTES
+
+    @model_validator(mode="after")
+    def canonical_gateway_capabilities(self) -> OfficeDocumentGatewayPreflightCommand:
+        if self.requested_subprotocols != [OFFICE_WEBSOCKET_SUBPROTOCOL] or self.transport_capabilities != list(
+            OFFICE_WEBSOCKET_TRANSPORT_CAPABILITIES
+        ):
+            raise ValueError("WebSocket gateway capabilities are invalid")
+        return self
+
+
+class OfficeDocumentGatewayPreflightResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    current_version_id: str
+    gateway_protocol_version: OfficeWebSocketGatewayProtocolVersion = OFFICE_WEBSOCKET_GATEWAY_PROTOCOL_VERSION
+    gateway_contract_state: Literal["prepared_upgrade_closed"] = "prepared_upgrade_closed"
+    upgrade_state: Literal["http_upgrade_not_admitted"] = "http_upgrade_not_admitted"
+    endpoint_template: Literal["/v1/office/documents/{object_id}/collaboration/socket"] = (
+        "/v1/office/documents/{object_id}/collaboration/socket"
+    )
+    required_subprotocol: OfficeWebSocketSubprotocol = OFFICE_WEBSOCKET_SUBPROTOCOL
+    origin_policy: Literal["exact_same_origin_required"] = "exact_same_origin_required"
+    credential_policy: Literal["single_use_hash_bound_ticket_required_not_issued"] = (
+        "single_use_hash_bound_ticket_required_not_issued"
+    )
+    query_credentials_allowed: bool = False
+    frame_encoding: Literal["binary_only"] = "binary_only"
+    compression_admitted: bool = False
+    max_frame_bytes: int = OFFICE_CRDT_MAX_UPDATE_BYTES
+    max_queued_bytes: int = OFFICE_WEBSOCKET_MAX_QUEUED_BYTES
+    backpressure_close_code: Literal[1013] = 1013
+    heartbeat_interval_seconds: int = OFFICE_WEBSOCKET_HEARTBEAT_INTERVAL_SECONDS
+    reauthorization_interval_seconds: int = OFFICE_WEBSOCKET_REAUTHORIZATION_INTERVAL_SECONDS
+    max_connection_seconds: int = OFFICE_WEBSOCKET_MAX_CONNECTION_SECONDS
+    resume_strategy: Literal["state_vector_reconciliation_required"] = "state_vector_reconciliation_required"
+    delivery_contract: Literal["at_least_once_client_deduplication_required"] = (
+        "at_least_once_client_deduplication_required"
+    )
+    document_acl_revalidation_required: bool = True
+    per_update_acl_revalidation_required: bool = True
+    server_accepts_connections: bool = False
+    credential_issued: bool = False
+    blockers: list[OfficeWebSocketGatewayBlocker] = Field(default_factory=office_websocket_gateway_blockers)
     audit_event_id: str = ""
 
 
@@ -1172,6 +1295,56 @@ class OfficeDocumentService:
                     contract_state=response.contract_state,
                     transport_state=response.transport_state,
                     runtime_admitted=False,
+                    blocker_count=len(response.blockers),
+                )
+            }
+        )
+
+    def gateway_preflight(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentGatewayPreflightCommand,
+        browser_origin: str,
+        request_origin: str,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentGatewayPreflightResponse:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document collaboration is not permitted")
+        validate_office_websocket_same_origin(browser_origin=browser_origin, request_origin=request_origin)
+        command = OfficeDocumentGatewayPreflightCommand.model_validate(command.model_dump(mode="python"))
+        document = self.repository.get_document(user_context=user_context, object_id=object_id)
+        if not self.repository.can_write(user_context=user_context, object_id=object_id):
+            raise OfficeDocumentPermissionError("Document collaboration is not permitted")
+        if document.current_version_id != command.expected_current_version_id:
+            raise OfficeDocumentConflictError("Document has a newer saved version")
+        lease = self.repository.edit_lease(
+            user_context=user_context,
+            object_id=object_id,
+            session_id=command.session_id,
+        )
+        if lease.status != "held_by_current_session" or lease.base_version_id != document.current_version_id:
+            raise OfficeDocumentConflictError("WebSocket gateway preflight requires the current edit lease")
+        response = OfficeDocumentGatewayPreflightResponse(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            current_version_id=document.current_version_id,
+        )
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.collaboration.gateway_preflight",
+                    object_id=object_id,
+                    current_version_id=document.current_version_id,
+                    gateway_protocol_version=response.gateway_protocol_version,
+                    subprotocol_count=len(command.requested_subprotocols),
+                    transport_capability_count=len(command.transport_capabilities),
+                    gateway_contract_state=response.gateway_contract_state,
+                    upgrade_state=response.upgrade_state,
+                    server_accepts_connections=False,
+                    credential_issued=False,
                     blocker_count=len(response.blockers),
                 )
             }

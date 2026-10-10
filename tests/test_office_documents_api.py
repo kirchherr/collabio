@@ -361,6 +361,94 @@ def test_office_collaboration_preflight_is_version_session_and_write_bound_with_
     assert malformed.status_code == 422
 
 
+def test_office_gateway_preflight_is_same_origin_version_and_lease_bound_with_upgrade_closed(
+    office_api: OfficeApiHarness,
+) -> None:
+    created = create_document(office_api)
+    object_id = created["document"]["object_id"]
+    version_id = created["version"]["version_id"]
+    session_id = "office-session-" + "9" * 32
+    lease = office_api.client.post(
+        f"{BASE}/{object_id}/edit-lease",
+        headers=office_api.headers,
+        json={"session_id": session_id, "expected_current_version_id": version_id},
+    )
+    assert lease.status_code == 200
+    payload = {
+        "session_id": session_id,
+        "client_instance_id": "office-client-" + "a" * 32,
+        "expected_current_version_id": version_id,
+        "crdt_protocol_version": "collabio-office-crdt-preflight.v1",
+        "gateway_protocol_version": "collabio-office-websocket-preflight.v1",
+        "requested_subprotocols": ["collabio-office-crdt.v1"],
+        "transport_capabilities": [
+            "binary_frames_v1",
+            "bounded_backpressure_v1",
+            "heartbeat_v1",
+            "reauth_v1",
+            "resume_state_vector_v1",
+        ],
+        "requested_max_frame_bytes": 262144,
+    }
+    same_origin_headers = {**office_api.headers, "Origin": "http://testserver"}
+    response = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/gateway-preflight",
+        headers=same_origin_headers,
+        json=payload,
+    )
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo" and value["object_id"] == object_id
+    assert value["current_version_id"] == version_id
+    assert value["gateway_contract_state"] == "prepared_upgrade_closed"
+    assert value["upgrade_state"] == "http_upgrade_not_admitted"
+    assert value["endpoint_template"] == "/v1/office/documents/{object_id}/collaboration/socket"
+    assert value["required_subprotocol"] == "collabio-office-crdt.v1"
+    assert value["origin_policy"] == "exact_same_origin_required"
+    assert value["credential_policy"] == "single_use_hash_bound_ticket_required_not_issued"
+    assert value["query_credentials_allowed"] is False and value["compression_admitted"] is False
+    assert value["server_accepts_connections"] is False and value["credential_issued"] is False
+    assert "ticket" not in value and "socket_url" not in value
+    assert value["blockers"] == [
+        "upgrade_route_not_implemented",
+        "single_use_ticket_store_not_implemented",
+        "origin_and_subprotocol_rejection_not_integration_tested",
+        "per_update_acl_revalidation_not_implemented",
+        "backpressure_and_disconnect_recovery_not_verified",
+        "multi_node_fanout_not_implemented",
+        "crdt_engine_not_admitted",
+        "websocket_load_not_verified",
+    ]
+    events = json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+    assert session_id not in events and payload["client_instance_id"] not in events
+    assert "testserver" not in events
+
+    missing_origin = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/gateway-preflight",
+        headers=office_api.headers,
+        json=payload,
+    )
+    assert missing_origin.status_code == 403
+    cross_origin = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/gateway-preflight",
+        headers={**office_api.headers, "Origin": "https://attacker.example"},
+        json=payload,
+    )
+    assert cross_origin.status_code == 403
+    stale = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/gateway-preflight",
+        headers=same_origin_headers,
+        json={**payload, "expected_current_version_id": "office-version-" + "b" * 32},
+    )
+    assert stale.status_code == 409
+    malformed = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/gateway-preflight",
+        headers=same_origin_headers,
+        json={**payload, "transport_capabilities": list(reversed(payload["transport_capabilities"]))},
+    )
+    assert malformed.status_code == 422
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:
