@@ -646,8 +646,8 @@ Aufgaben:
 - [x] WebSocket Gateway vorbereiten (Roadmap 664-671 / PLANS 525-532).
 - [x] Commenting, Mentions und Change Attribution modellieren (Roadmap 648-655 / PLANS 509-516).
 - [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
-- [ ] Parser-Worker isoliert und ohne Netzwerk planen.
-- [ ] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP.
+- [x] Parser-Worker isoliert und ohne Netzwerk planen (Roadmap 672-679 / PLANS 533-540).
+- [x] Makro-Policy: erkennen, blockieren oder markieren, keine Ausfuehrung im MVP (Roadmap 680-687 / PLANS 541-548).
 - [ ] OOXML/ODF-Kompatibilitaetsmatrix erstellen.
 - [ ] Import/Export-Testkorpus anlegen.
 - [ ] Textzusammenfassung fuer markierte Bereiche.
@@ -3491,7 +3491,38 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
 679. [x] Den isolierten Office-Parser-Worker-Plan unter ADR-0182 ohne Migration, Inhaltsannahme, Job-Dispatch,
      Scheduler, Storage-/Vector-Schreibpfad, produktive Image-Zulassung oder Produktionsfreigabe geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 679 / PLANS 224 bis 540 sind unter ADR-0139 bis ADR-0182 implementiert
+680. [x] Eine versionierte, tenant-gebundene und metadatenreine `office_macro_policy.v1` eingefuehrt. Der Endpunkt
+     nimmt keinen Inhalt oder Source-Bezeichner an und haelt Parser-Dispatch, Makroausfuehrung und automatische
+     Entfernung aktiver Inhalte geschlossen.
+
+681. [x] Makrofaehige DOCM-MIME-Typen sowie eingebettete VBA-Projekte, ActiveX, OLE/Packages und externe Templates in
+     DOCX-Containern vor der Textextraktion fail closed erkannt. Unsichere, mehrdeutige, verschluesselte oder nicht
+     unterstuetzte ZIP-Strukturen werden ebenfalls blockiert.
+
+682. [x] ODF-Basic-/Script-Parts, Event-Listener und Script-URIs sowie PDF-JavaScript, Launch/OpenAction/AA und
+     eingebettete Dateien als aktive Inhalte blockiert. Der Worker fuehrt weder Makro, Skript, Aktion noch eingebettete
+     Nutzlast aus.
+
+683. [x] Blockierte Eingaben nicht extrahiert und aktive Inhalte nicht still entfernt. Diese Grenze bewahrt Originale
+     fuer eine spaetere Quarantaene-/Review-Entscheidung und verhindert, dass ein bereinigtes Dokument unbemerkt als
+     Original erscheint.
+
+684. [x] Nicht ausfuehrbare Signatur- und externe Linkindikatoren als `allow_marked` behandelt. Extraktion bleibt
+     moeglich, erzeugt aber einen generischen sichtbaren Review-Hinweis ohne Pfade, Ziele, IDs oder Inhalt in normalen
+     Logs oder Audit.
+
+685. [x] Die Policy an das Office-Lesegate und den aktuellen Tenant gebunden. Audit enthaelt nur Schema, Policy-
+     Zustand, begrenzte Zaehler und die geschlossenen Ausfuehrungs-/Dispatchwerte; die Antwort bleibt `no-store`.
+
+686. [x] Detektor-, Parser-, Service-, API- und Dashboard-Vertraege fuer DOCM, VBA, OLE, ODF-Skript, PDF-Aktion,
+     unsichere Archive und sichtbare Signaturmarkierung bestanden. Der reale responsive Dokumentstatus-Workflow
+     bestand auf Desktop und Mobil 2/2 in 11,7 Sekunden.
+
+687. [x] Die begrenzte native Office-Makro-Policy unter ADR-0183 ohne Migration, Inhaltsannahme am Policy-Endpunkt,
+     Makroausfuehrung, automatische Bereinigung, Quarantaene-Workflow, Policy-Receipt-Persistenz, produktiven
+     Parser-Dispatch oder Produktionsfreigabe geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 687 / PLANS 224 bis 548 sind unter ADR-0139 bis ADR-0183 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

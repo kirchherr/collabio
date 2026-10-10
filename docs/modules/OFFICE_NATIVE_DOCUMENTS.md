@@ -1,9 +1,29 @@
 # Native Office Documents
 
-Status: Roadmap 252–679 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 679 / PLANS 540 isolated parser-worker plan
+Status: Roadmap 252–687 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 687 / PLANS 548 bounded macro policy
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0182; current movement: `ARCHITECTURE_DECISIONS/ADR-0182-isolated-native-office-parser-worker-plan.md`
+Decisions: ADR-0079 through ADR-0183; current movement: `ARCHITECTURE_DECISIONS/ADR-0183-bounded-native-office-macro-policy.md`
+
+## Bounded macro policy (Roadmap 680–687)
+
+The tenant-scoped `office_macro_policy.v1` describes and enforces one fail-closed rule before text extraction. Native
+DOCM MIME and DOCX-contained VBA, ActiveX, OLE/package or external-template indicators are blocked. ODF Basic/script
+parts, event listeners and script URIs, plus PDF JavaScript, launch/open/additional actions and embedded files, are
+also blocked. Unsafe, ambiguous, encrypted or unsupported archive structures cannot bypass inspection.
+
+Blocked inputs are not extracted and active content is never executed. The parser does not silently strip content,
+because that would make a modified file appear to be its original. Nonexecuting signature and external-link
+indicators may be extracted only as `allow_marked`; the returned warning is generic and contains no path, target,
+identifier or document content.
+
+The policy endpoint itself accepts no content or source identifier, is tenant/read-gated and emits metadata-only
+audit. Parser dispatch, execution, automatic sanitization and policy-receipt persistence remain false. The responsive
+**Dokumentstatus** shows the block/mark behavior and closed execution state.
+
+Focused detector, parser, service, API and dashboard contracts pass together with the exact desktop/mobile workflow.
+A complete OOXML/ODF/PDF malicious corpus, quarantine/operator review, persisted and restorable policy receipts and
+productive parser-image admission remain explicit later gates.
 
 ## Isolated parser-worker plan (Roadmap 672–679)
 

@@ -2,6 +2,46 @@
 
 Updated: 2026-10-10
 
+Roadmap 680 through 687 / PLANS 541 through 548 are complete under ADR-0183. Native Office now has one tenant-scoped,
+metadata-only `office_macro_policy.v1` and an enforced pre-extraction active-content barrier in the existing isolated
+rich-document worker. The policy endpoint accepts no content, SourceObject ID or version ID.
+
+Native macro-enabled DOCM MIME and nominal DOCX containers with VBA, ActiveX, OLE/package or attached-template
+indicators are blocked. ODF Basic/script parts, event listeners and script URIs, and PDF JavaScript, launch/open/
+additional actions or embedded files are also blocked. Unsafe, ambiguous, encrypted or unsupported ZIP structures
+fail closed. Blocked input is never text-extracted and no macro, script, action or embedded payload is executed.
+
+The worker does not silently remove active content. Nonexecuting signature and external-link indicators may pass only
+as `allow_marked`; extraction then carries one generic visible review warning without archive paths, relationship
+targets, source identifiers or content. Normal logs and metadata-only audit exclude those values. Parser dispatch,
+automatic sanitization and a persisted policy receipt remain false.
+
+The responsive **Dokumentstatus** explains the block/mark behavior and the closed execution boundary. Product commit
+`e33a7066` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the detector,
+parser, service, API and dashboard contracts. The final exact responsive desktop/mobile lifecycle workflow passed 2/2
+in 11.7 seconds. Final Work-E2E and review API image IDs are
+`sha256:f86970da23fbab5284d814ddc388c4fc2d9098fa86295851aecb9b13f8df85d6` and
+`sha256:8cf664cd537bd081c4e45d12533c0fa249fb6244c1b71590b1d8ae1335f5f880`.
+
+The complete final quality gate passed Ruff, found 918 format-conformant files, passed Mypy over 613 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:69bdc25afb7f16f2cbc6cd598c732443d2f286662b0dc76af78f6c294d2e2820`.
+
+The first focused invocation stopped before tests on Ruff's import order. The second reached Mypy and identified
+Python bytes' lack of `casefold`; changing the byte normalization to `lower` corrected the type and behavior. The
+unchanged final focused and complete gates then passed. These were implementation diagnostics, not product failures.
+
+The isolated PostgreSQL test container and all temporary remote and local Makro-Policy files were removed. No
+transient quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and the review API is
+healthy with failing streak zero. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services
+and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=macro-policy-e33a7066`.
+
+This slice adds no migration, policy-endpoint content intake, macro execution, automatic sanitization, quarantine or
+operator workflow, policy-receipt persistence, productive parser dispatch or production release. The next Office
+step is the OOXML/ODF compatibility matrix. GitHub publication remains pending under the content-specific approval
+requirement.
+
 Roadmap 672 through 679 / PLANS 533 through 540 are complete under ADR-0182. Native Office now exposes the existing
 bounded PDF, ODT and DOCX development parser through a tenant-scoped, metadata-only
 `office_parser_worker_plan.v1` boundary. The endpoint accepts no content, SourceObject ID or source-version ID and
