@@ -110,6 +110,12 @@ from suite.platform.office_import_compatibility import OfficeImportCompatibility
 from suite.platform.office_interchange_corpus import OfficeInterchangeCorpusResponse
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse
+from suite.platform.office_rag_answers import (
+    OfficeRagAnswerCommand,
+    OfficeRagAnswerResponse,
+    OfficeRagAnswerService,
+    OfficeRagAnswerUnavailable,
+)
 from suite.platform.office_read_aloud import (
     OfficeReadAloudCapabilityResponse,
     OfficeReadAloudCommand,
@@ -243,6 +249,7 @@ class OfficeRoute(APIRoute):
                 OfficeAIOutlineUnavailable,
                 OfficeAIPolicyComparisonUnavailable,
                 OfficeAIRiskMarkingUnavailable,
+                OfficeRagAnswerUnavailable,
             ):
                 return JSONResponse({"detail": "Office AI request is unavailable"}, status_code=502)
 
@@ -343,6 +350,12 @@ def build_office_ai_risk_marking_service(
 
 def build_office_source_search_service(*, document_service: OfficeDocumentService) -> OfficeSourceSearchService:
     return OfficeSourceSearchService(documents=document_service)
+
+
+def build_office_rag_answer_service(
+    *, document_service: OfficeDocumentService, source_search: OfficeSourceSearchService, gateway: Any
+) -> OfficeRagAnswerService:
+    return OfficeRagAnswerService(documents=document_service, source_search=source_search, gateway=gateway)
 
 
 def build_office_dictation_service(
@@ -659,6 +672,20 @@ def register_office_routes(
     ) -> Any:
         return request.app.state.office_source_search_service.search(
             user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/rag-answers", response_model=OfficeRagAnswerResponse)
+    def answer_document_question(
+        object_id: str,
+        command: OfficeRagAnswerCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_rag_answer_service.answer(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
             object_id=object_id,
             command=command,
         )

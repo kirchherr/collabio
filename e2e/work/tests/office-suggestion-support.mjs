@@ -11,6 +11,7 @@ export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(ob
 export const policyComparisonPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/policy-comparisons`;
 export const riskMarkingPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/risk-markings`;
 export const sourceSearchPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/source-searches`;
+export const ragAnswerPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rag-answers`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -237,6 +238,41 @@ export async function searchDocumentSources(page, objectId, query, expectedSourc
   await expect(card).toHaveCount(1);
   await expect(card).toContainText(expectedSource.document.title);
   expect(await page.locator("#suggestion-source-report").evaluate((report) => report.scrollWidth <= report.clientWidth)).toBe(true);
+  expect(await page.locator("#suggestions-panel").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);
+  return result;
+}
+
+export async function answerDocumentQuestion(page, objectId, question, expectedSource) {
+  await page.locator("#suggestion-rag-question").fill(question);
+  await expect(page.locator("#suggestion-rag-answer")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === ragAnswerPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-rag-answer").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.answer_supported).toBe(true);
+  expect(result.confidence).toBe("source_grounded_unverified");
+  expect(result.retrieval_policy_id).toBe("office_current_version_keyword_rag_v1");
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  const source = result.citations.find((item) => item.object_id === expectedSource.document.object_id);
+  expect(source).toBeTruthy();
+  expect(source.version_id).toBe(expectedSource.version.version_id);
+  expect(source.authoritative_acl_validated).toBe(true);
+  expect(source.exact_current_version_validated).toBe(true);
+  await expect(page.locator("#suggestion-rag-report")).toBeVisible();
+  await expect(page.locator("#suggestion-rag-title")).toHaveText("AI-Antwort · Quellen prüfen");
+  await expect(page.locator("#suggestion-rag-body")).not.toBeEmpty();
+  const card = page.locator("#suggestion-rag-citations .ai-source-item").filter({ hasText: expectedSource.version.version_id });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText(expectedSource.document.title);
+  expect(await page.locator("#suggestion-rag-report").evaluate((report) => report.scrollWidth <= report.clientWidth)).toBe(true);
   expect(await page.locator("#suggestions-panel").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);
   return result;
 }

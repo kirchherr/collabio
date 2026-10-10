@@ -458,6 +458,7 @@ from suite.platform.office_api import (
     build_office_ai_translation_service,
     build_office_dictation_service,
     build_office_document_service,
+    build_office_rag_answer_service,
     build_office_read_aloud_service,
     build_office_review_service,
     build_office_source_search_service,
@@ -23326,6 +23327,11 @@ def build_app() -> FastAPI:
     )
     app.state.office_source_search_service = build_office_source_search_service(
         document_service=app.state.office_document_service
+    )
+    app.state.office_rag_answer_service = build_office_rag_answer_service(
+        document_service=app.state.office_document_service,
+        source_search=app.state.office_source_search_service,
+        gateway=llm_gateway,
     )
     app.state.office_dictation_service = build_office_dictation_service(
         document_service=app.state.office_document_service, voice_guard=voice_guard

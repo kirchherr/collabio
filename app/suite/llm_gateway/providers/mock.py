@@ -10,6 +10,8 @@ class MockLLMProvider:
             )
         if "OUTLINE_FORMAT_V1" in prompt:
             return "- Main topic\n  - Supporting point\n- Next step"
+        if "Authorized source blocks:" in prompt:
+            return "Synthetic local-model answer. Verify the statement against the cited authorized source version."
         normalized = " ".join(prompt.split())
         preview = normalized[:180]
         return f"[mock:{model_id}] {preview}"

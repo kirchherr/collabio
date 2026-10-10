@@ -1236,6 +1236,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/{object_id}/ai/policy-comparisons",
         "/v1/office/documents/{object_id}/ai/risk-markings",
         "/v1/office/documents/{object_id}/ai/source-searches",
+        "/v1/office/documents/{object_id}/ai/rag-answers",
         "/v1/office/documents/{object_id}/voice/dictation-capability",
         "/v1/office/documents/{object_id}/voice/dictations",
         "/v1/office/documents/{object_id}/voice/read-aloud-capability",
@@ -1380,6 +1381,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tests/test_office_read_aloud.py" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md" in office_native["evidence_refs"]
     assert "tests/test_office_collaboration_load_proof.py" in office_native["evidence_refs"]
+    assert "ARCHITECTURE_DECISIONS/ADR-0196-native-office-rag-document-answers.md" in office_native["evidence_refs"]
+    assert "tests/test_office_rag_answers.py" in office_native["evidence_refs"]
     assert {
         "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
         "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
@@ -1396,8 +1399,13 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "load_proof_revalidates_every_update_and_rejects_revoked_acl_and_foreign_tenant",
         "load_proof_verifies_deduplication_state_vector_resume_convergence_and_backpressure",
         "websocket_load_and_production_collaboration_runtime_remain_closed",
+        "rag_answers_require_tenant_ai_and_rag_policy_with_an_admitted_local_model",
+        "rag_sources_are_authoritatively_reauthorized_and_exact_current_versions_only",
+        "rag_answers_show_server_derived_versioned_citations_and_are_untrusted",
+        "rag_answers_are_transient_nonindexable_write_free_and_cannot_trigger_actions",
+        "rag_without_authorized_sources_skips_model_inference",
     }.issubset(office_native["guardrails"])
-    assert office_native["next_action"] == "implement_native_office_rag_answers_with_exact_version_citations"
+    assert office_native["next_action"] == "complete_native_office_release_review_before_resuming_deferred_crm"
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1419,6 +1427,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/{object_id}/ai/policy-comparisons", "POST"),
         ("/v1/office/documents/{object_id}/ai/risk-markings", "POST"),
         ("/v1/office/documents/{object_id}/ai/source-searches", "POST"),
+        ("/v1/office/documents/{object_id}/ai/rag-answers", "POST"),
         ("/v1/office/documents/{object_id}/voice/dictation-capability", "GET"),
         ("/v1/office/documents/{object_id}/voice/dictations", "POST"),
         ("/v1/office/documents/{object_id}/voice/read-aloud-capability", "GET"),

@@ -843,6 +843,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Eine begrenzte Quellensuche durchsucht nur aktuell autorisiert lesbare Dokumentfassungen "
                         "ohne AI, Vektorindex oder RAG-Kontext und zeigt jeden Treffer mit exakter Objekt-, Versions-, "
                         "Klassifikations-, ACL- und Inhalts-Hash-Bindung. "
+                        "Dokumentfragen verwenden diese begrenzte Suche als fluechtigen RAG-Kontext, revalidieren "
+                        "jede Quelle unmittelbar vor der lokalen Inferenz erneut und zeigen nur serverseitig "
+                        "abgeleitete Zitate mit exakter aktueller Version. Ohne autorisierte Quelle wird kein Modell "
+                        "aufgerufen; Antworten bleiben ungeprueft, nicht gespeichert und koennen keine Aktion "
+                        "ausloesen. "
                         "Explizites Push-to-talk-Diktat prueft vor der Aufnahme Tenant-Policy, aktuelle Version und "
                         "Schreibrecht. Browser-Spracherkennung bleibt ohne ausdrueckliche externe Providerfreigabe "
                         "gesperrt; Collabio laedt oder speichert kein Roh-Audio. Das hash-auditierte Transkript wird "
@@ -984,6 +989,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/operations/office_collaboration_load_proof.py",
                         "tests/test_office_collaboration_load_proof.py",
                         "tests/golden/office_collaboration_load_proof/current_report.json",
+                        "ARCHITECTURE_DECISIONS/ADR-0196-native-office-rag-document-answers.md",
+                        "app/suite/platform/office_rag_answers.py",
+                        "tests/test_office_rag_answers.py",
+                        "e2e/work/tests/office-rag-responsive.spec.mjs",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -999,6 +1008,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/ai/policy-comparisons",
                         "/v1/office/documents/{object_id}/ai/risk-markings",
                         "/v1/office/documents/{object_id}/ai/source-searches",
+                        "/v1/office/documents/{object_id}/ai/rag-answers",
                         "/v1/office/documents/{object_id}/voice/dictation-capability",
                         "/v1/office/documents/{object_id}/voice/dictations",
                         "/v1/office/documents/{object_id}/voice/read-aloud-capability",
@@ -1078,6 +1088,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
                         "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
                         "source_search_uses_no_ai_vector_index_rag_context_or_persistence",
+                        "rag_answers_require_tenant_ai_and_rag_policy_with_an_admitted_local_model",
+                        "rag_sources_are_authoritatively_reauthorized_and_exact_current_versions_only",
+                        "rag_answers_show_server_derived_versioned_citations_and_are_untrusted",
+                        "rag_answers_are_transient_nonindexable_write_free_and_cannot_trigger_actions",
+                        "rag_without_authorized_sources_skips_model_inference",
                         "dictation_requires_explicit_push_to_talk_current_version_write_acl_and_tenant_voice_policy",
                         "browser_speech_recognition_requires_explicit_external_ai_policy_admission",
                         "dictation_uploads_and_stores_no_raw_audio_and_persists_no_transcript",
@@ -1123,7 +1138,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="implement_native_office_rag_answers_with_exact_version_citations",
+                    next_action="complete_native_office_release_review_before_resuming_deferred_crm",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

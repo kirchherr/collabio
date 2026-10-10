@@ -46,6 +46,7 @@ from suite.platform.office_api import (
     build_office_ai_summary_service,
     build_office_ai_translation_service,
     build_office_dictation_service,
+    build_office_rag_answer_service,
     build_office_read_aloud_service,
     build_office_source_search_service,
     build_office_suggestion_service,
@@ -148,7 +149,7 @@ synthetic_policy = base_policy.model_copy(
     update={
         "tenant_id": WORK_E2E_TENANT_ID,
         "ai_enabled": True,
-        "rag_enabled": False,
+        "rag_enabled": True,
         "voice_enabled": True,
         "external_ai_enabled": True,
         "raw_audio_storage_allowed": False,
@@ -387,6 +388,11 @@ app.state.office_ai_risk_marking_service = build_office_ai_risk_marking_service(
 )
 app.state.office_source_search_service = build_office_source_search_service(
     document_service=app.state.office_document_service
+)
+app.state.office_rag_answer_service = build_office_rag_answer_service(
+    document_service=app.state.office_document_service,
+    source_search=app.state.office_source_search_service,
+    gateway=app.state.llm_gateway,
 )
 app.state.office_dictation_service = build_office_dictation_service(
     document_service=app.state.office_document_service, voice_guard=app.state.voice_guard
