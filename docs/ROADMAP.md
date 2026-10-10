@@ -642,7 +642,7 @@ Aufgaben:
 - [x] Native Dokument-Metadaten- und Version-APIs erstellen (Roadmap 252/253).
 - [ ] Weitergehende Kollaborations- und Interchange-Vertraege fuer Dokumente ausbauen.
 - [x] Draft, Collaborative State, Saved Version, Business Record und WORM Record modellieren (Roadmap 641-647 / PLANS 502-508).
-- [ ] CRDT Service vorbereiten.
+- [x] CRDT Service vorbereiten (Roadmap 656-663 / PLANS 517-524).
 - [ ] WebSocket Gateway vorbereiten.
 - [x] Commenting, Mentions und Change Attribution modellieren (Roadmap 648-655 / PLANS 509-516).
 - [x] Soft Locks und Versioning Service implementieren (Roadmap 632-640 / PLANS 493-501).
@@ -3397,7 +3397,38 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      Migration, Notification-Outbox, E-Mail, Push, Zugriffserweiterung, Rollen-/Gruppenexpansion, RAG/Search-Indexing,
      CRDT, WebSocket oder produktive Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 655 / PLANS 224 bis 516 sind unter ADR-0139 bis ADR-0179 implementiert
+656. [x] Einen versionierten, metadatenreinen CRDT-Preflight-Vertrag fuer binaere Updates und State Vectors
+     definiert. Protokollversion, Faehigkeiten, 256-KiB-Updategrenze und 50-Bearbeiter-Ziel sind explizit; der Vertrag
+     nimmt weder Delta-Bytes noch Dokumentinhalt an.
+
+657. [x] Jeden Preflight an Mandant, exaktes Dokument, aktuelle immutable Version, aktuelles Schreibrecht und die
+     vom selben Browser gehaltene aktuelle Bearbeitungs-Lease gebunden. Veraltete Versionen und fremde Sitzungen
+     bleiben konfliktbehaftet geschlossen.
+
+658. [x] Die Antwort fail closed als `prepared_runtime_closed` und `websocket_not_admitted` modelliert. CRDT-Engine,
+     dauerhaftes Update-Log, Restore-Replay, Manipulationsfuzzing, 50-Editor-Lastnachweis und WebSocket-Gateway werden
+     als geordnete offene Blocker ausgewiesen.
+
+659. [x] Sitzungs- und Client-IDs nur transient zur Anfragepruefung verwendet. Keine rohe ID, kein Dokumentinhalt
+     und kein Update-Body werden persistiert oder auditiert; Audit enthaelt nur Version, Protokoll, Anzahl der
+     Faehigkeiten, geschlossene Zustaende und Blockeranzahl.
+
+660. [x] Den responsiven **Dokumentstatus** um einen Live-CRDT-Status erweitert. Nur eine aktuelle Schreib-Lease darf
+     den Preflight abrufen; die UI zeigt klar, dass Runtime und WebSocket geschlossen und Restore-, Fuzzing- und
+     Lastnachweise offen sind.
+
+661. [x] Service-, API- und Capability-Manifest-Vertraege fuer exakte Faehigkeiten, kanonische Reihenfolge,
+     Versions-/Lease-Bindung, Schreibsperre, metadata-only Audit und unveraenderte persistente Dokumentzustaende
+     abgedeckt. Fuenfzig getrennte Client-Metadaten pruefen die Zieldeklaration, ohne einen Lasttest zu behaupten.
+
+662. [x] Ruff, Format und fokussiertes Mypy sowie die betroffenen Service-, API- und Roadmap-Tests bestanden. Der
+     reale responsive Dokumentstatus-Workflow bestand auf Desktop und Mobil 2/2 in 11,0 Sekunden.
+
+663. [x] Die begrenzte native Office-CRDT-Service-Vorbereitung unter ADR-0180 ohne Migration, CRDT-Engine,
+     Updateannahme, Durable Log, Presence, Merge, WebSocket, Restore-Claim, 50-Editor-Lastclaim oder produktive
+     Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 663 / PLANS 224 bis 524 sind unter ADR-0139 bis ADR-0180 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

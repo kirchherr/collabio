@@ -909,6 +909,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "ARCHITECTURE_DECISIONS/ADR-0083-native-office-saved-version-reuse.md",
                         "ARCHITECTURE_DECISIONS/ADR-0084-native-office-document-discovery.md",
                         "ARCHITECTURE_DECISIONS/ADR-0085-native-office-history-pagination.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -979,7 +980,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="extend_native_document_workflows_with_tenant_and_docx_admission_kept_separate",
+                    next_action="prepare_bounded_office_websocket_gateway_without_runtime_admission",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",

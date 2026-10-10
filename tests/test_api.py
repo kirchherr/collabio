@@ -1296,6 +1296,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "ARCHITECTURE_DECISIONS/ADR-0105-native-office-backlinks.md" in office_native["evidence_refs"]
     assert "table_captions_use_stable_unique_local_ids_and_order_derived_numbers" in office_native["guardrails"]
     assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md"
+        in office_native["evidence_refs"]
+    )
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()

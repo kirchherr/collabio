@@ -1,9 +1,31 @@
 # Native Office Documents
 
-Status: Roadmap 252–655 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 655 / PLANS 516 comments, mentions and change attribution
+Status: Roadmap 252–663 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 663 / PLANS 524 CRDT service preflight
 Module: `office_documents` / version 0.8.0
-Decisions: ADR-0079 through ADR-0179; current movement: `ARCHITECTURE_DECISIONS/ADR-0179-bounded-native-office-mentions-and-change-attribution.md`
+Decisions: ADR-0079 through ADR-0180; current movement: `ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md`
+
+## Bounded CRDT service preflight (Roadmap 656–663)
+
+The metadata-only `collabio-office-crdt-preflight.v1` contract prepares binary-update and state-vector compatibility
+without accepting either payload. Capabilities must be unique and canonically ordered. The response publishes a
+future 256 KiB update ceiling and fifty-editor target while returning only `prepared_runtime_closed` and
+`websocket_not_admitted`.
+
+Every preflight retains the Office write gate and revalidates the exact tenant, document write ACL, current immutable
+version and current edit lease held by the same bounded browser session. Browser session and client instance IDs remain
+request-transient. No document, version, lease or collaboration state is written, and audit contains only bounded
+protocol, count and closed-state metadata.
+
+The response explicitly names missing engine admission, durable update log, restore replay, malicious-update fuzzing,
+fifty-editor load evidence and WebSocket gateway admission. The responsive **Dokumentstatus** displays those closed
+boundaries only when the current session can write and holds the lease. It opens no socket and preserves the local
+draft.
+
+Focused Ruff, format and Mypy pass together with the affected service, API and capability tests. The real responsive
+desktop/mobile lifecycle workflow passes 2/2 in 11.0 seconds. Fifty distinct metadata handshakes verify stateless
+behavior but are not a load test. CRDT engine, update ingestion, durable sequencing, presence, merge, WebSocket,
+recovery and productive admission remain closed.
 
 ## Bounded comments, mentions and change attribution (Roadmap 648–655)
 

@@ -2,6 +2,44 @@
 
 Updated: 2026-10-10
 
+Roadmap 656 through 663 / PLANS 517 through 524 are complete under ADR-0180. Native Office now exposes one strict,
+metadata-only `collabio-office-crdt-preflight.v1` compatibility boundary for binary updates and state vectors. It
+publishes a future 256 KiB update ceiling and fifty-editor target but accepts no update bytes, state vector, awareness
+payload or document content.
+
+Every preflight rechecks the Office write gate, tenant/document write ACL, exact current immutable version and active
+current-version edit lease held by the same browser session. Session and client instance IDs remain request-transient.
+The operation writes no document, version, lease or collaboration state, and audit retains only version, protocol,
+capability count, closed-state values and blocker count.
+
+Success means `prepared_runtime_closed` and `websocket_not_admitted`; runtime admission is false. CRDT engine,
+durable update log, restore replay, malicious-update fuzzing, fifty-editor load evidence and WebSocket gateway remain
+explicit blockers. The **Dokumentstatus** dialog now shows that boundary without opening a socket or changing the local
+draft.
+
+Product commit `aefa8161` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed, followed
+by the affected service, API and capability tests. The real responsive desktop/mobile lifecycle workflow passed 2/2
+in 11.0 seconds. Final Work-E2E and review API image IDs are
+`sha256:a772b7acfbf01c7e134643277573283a253db898c628fed1626c58a4b5ba20cf` and
+`sha256:a70157e8bcec451971602f751947a8ef871cbbfeb1382c39941232a2a649eb5e`.
+
+The complete final quality gate passed Ruff, found 910 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Its first invocation stopped before
+Mypy and Pytest on one formatter-only assertion layout; the exact formatter form was applied and the unchanged full
+gate passed. Final quality image ID is
+`sha256:f04f158df45f51fd1e757bcefce8954ae29903cfad98d23e3cb1d7c6b5b5273e`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and four inventoried remote CRDT scripts were removed. No transient quality or Work-E2E runner remains;
+regular and review APIs both return `ok`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent
+services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=crdt-preflight-aefa8161`.
+
+Fifty distinct client metadata values exercise stateless preflight and the declared target but are not a concurrent
+load test. This slice adds no migration, CRDT engine, update ingestion, durable log, presence, merge, WebSocket,
+restore claim, load claim, external provider or production admission. GitHub publication remains pending under the
+content-specific approval requirement.
+
 Roadmap 648 through 655 / PLANS 509 through 516 are complete under ADR-0179. The existing version-bound, append-only
 Office review stream now supports canonical `@[principal-id]` mentions and an explicit event attribution containing
 the human actor, operation and exact revision. Mention parsing is fail closed, preserves first occurrence, deduplicates
