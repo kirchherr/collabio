@@ -652,7 +652,7 @@ Aufgaben:
 - [x] Import/Export-Testkorpus anlegen (Roadmap 696-703 / PLANS 557-564).
 - [x] Textzusammenfassung fuer markierte Bereiche (Roadmap 704-711 / PLANS 565-572).
 - [x] Umformulieren und Tonalitaet aendern (Roadmap 712-719 / PLANS 573-580).
-- [ ] Uebersetzen.
+- [x] Uebersetzen (Roadmap 720-727 / PLANS 581-588).
 - [ ] Gliederung erzeugen.
 - [ ] Dokument mit Richtlinie vergleichen.
 - [ ] Risiken markieren.

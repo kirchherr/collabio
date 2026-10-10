@@ -1,9 +1,32 @@
 # Native Office Documents
 
-Status: Roadmap 252–719 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 719 / PLANS 580 rewrite and tone drafts
-Module: `office_documents` / version 0.9.0
-Decisions: ADR-0079 through ADR-0187; current movement: `ARCHITECTURE_DECISIONS/ADR-0187-native-office-rewrite-and-tone-drafts.md`
+Status: Roadmap 252–727 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 727 / PLANS 588 selection translation drafts
+Module: `office_documents` / version 0.9.1
+Decisions: ADR-0079 through ADR-0188; current movement: `ARCHITECTURE_DECISIONS/ADR-0188-native-office-selection-translation-drafts.md`
+
+## Selection translation drafts (Roadmap 720–727)
+
+The read-gated translation endpoint accepts one exact current immutable version, one bounded same-block text anchor
+and one fixed target-language code. German, English, French, Spanish, Italian, Dutch, Polish, Portuguese and Ukrainian
+are admitted. The request accepts no source text, source-language claim, free instruction, model or provider. The
+server revalidates the document ACL and derives the source selection from the saved version.
+
+Each target maps to a separate approved versioned prompt. The prompt preserves meaning, facts, names, numbers,
+commitments and formality, returns translation only and treats the delimited source as untrusted data. Only tenant-
+allowed, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
+documents remain closed unless tenant, model and the exact language prompt all admit confidential data.
+
+The response binds object, version, anchor, selection hash and target language to the model, prompt and inference
+event. Source and output bodies stay out of normal logs and audit. Empty, invalid, overlong or unchanged output is
+rejected. A valid result remains visibly untrusted, transient and excluded from search/RAG indexing and document
+history.
+
+The responsive AI writing panel exposes a fixed target-language selector. The result enters the existing editable
+proposal composer with its target-language label. Saving a suggestion still requires explicit confirmation, and
+accepting it requires a separate confirmation before an immutable version is appended. Discarding changes neither
+the document nor its version count. Whole-document translation, automatic language detection, translation memory
+and automatic writes remain closed.
 
 ## Rewrite and tone drafts (Roadmap 712–719)
 
@@ -26,8 +49,7 @@ history.
 The responsive proposal panel provides summary, rewrite and fixed-tone controls. The result enters the existing
 editable proposal composer with an exact AI/tone label. Saving a suggestion still needs explicit confirmation, and
 accepting it requires a separate confirmation before an immutable version is appended. Discarding changes neither
-the document nor its version count. Free prompts, translation, whole-document inference and automatic writes remain
-closed.
+the document nor its version count. Free prompts, whole-document inference and automatic writes remain closed.
 
 ## Selection summary drafts (Roadmap 704–711)
 

@@ -5600,7 +5600,9 @@ function updateSuggestionControls() {
   $("suggestion-summary").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-rewrite").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-tone").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-translate").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-tone-select").disabled = busy;
+  $("suggestion-translation-select").disabled = busy;
   const composer = suggestions?.composer;
   const length = Array.from(composer?.replacement || "").length;
   $("suggestion-count").textContent = composer?.operation === "create" ? `${length} / 4.000 Zeichen` : "";
@@ -5799,6 +5801,18 @@ function validAIRewrite(result, suggestions, selection, operation, tone) {
     result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
     result.search_indexing_allowed === false;
 }
+function validAITranslation(result, suggestions, selection, targetLanguage) {
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && result.source_anchor?.from === selection.anchor.from &&
+    result.source_anchor?.to === selection.anchor.to && /^sha256:[a-f0-9]{64}$/.test(result.source_selection_hash || "") &&
+    result.target_language === targetLanguage && typeof result.translation === "string" &&
+    Boolean(result.translation.trim()) && Array.from(result.translation).length <= 4000 &&
+    result.translation !== selection.quote && typeof result.model_id === "string" &&
+    typeof result.prompt_template_id === "string" && typeof result.inference_audit_event_id === "string" &&
+    result.output_trust === "untrusted" && result.persisted === false && result.document_changed === false &&
+    result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
+    result.search_indexing_allowed === false;
+}
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
   const selection = selectedReviewAnchor();
@@ -5881,6 +5895,51 @@ async function transformSuggestionSelection(operation) {
     $("suggestions-status").textContent = denied(error) ?
       "Die lokale AI-Schreibassistenz ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
       "Die lokale AI-Schreibassistenz ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function translateSuggestionSelection() {
+  const suggestions = state.suggestions;
+  const selection = selectedReviewAnchor();
+  const targetLanguage = $("suggestion-translation-select").value;
+  const languageLabels = { de: "Deutsch", en: "Englisch", fr: "Französisch", es: "Spanisch", it: "Italienisch",
+    nl: "Niederländisch", pl: "Polnisch", pt: "Portugiesisch", uk: "Ukrainisch" };
+  if (!canCreateSuggestion(suggestions) || !selection || !languageLabels[targetLanguage]) return;
+  const revision = suggestions.session.revision;
+  if (!(await confirmDiscard("suggestions")) || !suggestionCurrent(suggestions) ||
+      !canCreateSuggestion(suggestions) || suggestions.session.revision !== revision) return;
+  const selected = selectedReviewAnchor();
+  if (!selected || selected.anchor.from !== selection.anchor.from || selected.anchor.to !== selection.anchor.to) return;
+  suggestions.summarizing = true;
+  $("suggestions-status").textContent = `Auswahl wird lokal nach ${languageLabels[targetLanguage]} übersetzt …`;
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/translations`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, anchor: selection.anchor,
+        target_language: targetLanguage },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validAITranslation(result, suggestions, selection, targetLanguage)) throw new ApiError(502, true);
+    clearSuggestionComposer(suggestions);
+    suggestions.composer = { operation: "create", suggestionId: null, anchor: selection.anchor, quote: selection.quote,
+      replacement: result.translation, revision: 0, documentRevision: revision, aiDraft: true,
+      aiOperation: "translate", aiTargetLanguage: targetLanguage,
+      inferenceAuditEventId: result.inference_audit_event_id };
+    $("suggestion-composer-title").textContent = `${languageLabels[targetLanguage]} als Änderungsvorschlag`;
+    $("suggestion-before").textContent = selection.quote;
+    $("suggestion-replacement").value = result.translation;
+    $("suggestion-ai-label").textContent = `AI-Entwurf · ungeprüft · Zielsprache: ${languageLabels[targetLanguage]}. Inhalt prüfen, bevor Sie den Vorschlag ausdrücklich speichern.`;
+    $("suggestion-ai-label").hidden = false;
+    $("suggestion-composer").hidden = false;
+    $("suggestions-status").textContent = "Lokaler AI-Entwurf erstellt. Übersetzung prüfen und ausdrücklich bestätigen.";
+    $("suggestion-replacement").focus(); $("suggestion-replacement").select();
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die lokale Übersetzung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die lokale Übersetzung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6434,6 +6493,8 @@ $("suggestion-rewrite").addEventListener("mousedown", (event) => { if (event.but
 $("suggestion-rewrite").addEventListener("click", () => transformSuggestionSelection("rewrite"));
 $("suggestion-tone").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-tone").addEventListener("click", () => transformSuggestionSelection("tone"));
+$("suggestion-translate").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
+$("suggestion-translate").addEventListener("click", translateSuggestionSelection);
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

@@ -41,6 +41,7 @@ from suite.platform.modules import (
 from suite.platform.office_api import (
     build_office_ai_rewrite_service,
     build_office_ai_summary_service,
+    build_office_ai_translation_service,
     build_office_suggestion_service,
 )
 from suite.platform.principal_store import PgPrincipalDirectory
@@ -363,6 +364,9 @@ app.state.office_ai_summary_service = build_office_ai_summary_service(
     document_service=app.state.office_document_service, gateway=app.state.llm_gateway
 )
 app.state.office_ai_rewrite_service = build_office_ai_rewrite_service(
+    document_service=app.state.office_document_service, gateway=app.state.llm_gateway
+)
+app.state.office_ai_translation_service = build_office_ai_translation_service(
     document_service=app.state.office_document_service, gateway=app.state.llm_gateway
 )
 crm_repository = FailureInjectableCrmRepository(database_dsn=os.environ["SUITE_DATABASE_DSN"])

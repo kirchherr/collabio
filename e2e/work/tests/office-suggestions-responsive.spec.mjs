@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
 import { createOfficeDocument, officeEditor, officeVersions, openOffice } from "./office-support.mjs";
-import { confirmSuggestion, openSuggestion, openSuggestions, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, summarizeSuggestion } from "./office-suggestion-support.mjs";
+import { confirmSuggestion, openSuggestion, openSuggestions, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, summarizeSuggestion, translateSuggestion } from "./office-suggestion-support.mjs";
 
 async function expectSuggestionLayout(page) {
   await expect(page.locator("#suggestions-panel")).toBeInViewport();
@@ -34,6 +34,12 @@ test("Office text proposals and confirmed decisions fit desktop, tablet and mobi
   await page.locator("#discard-confirm").click();
   await rewriteSuggestion(page, objectId, "responsible team confirms the next step", { operation: "tone", tone: "friendly" });
   await expect(page.locator("#suggestion-ai-label")).toContainText("Ton: Freundlich");
+  expect(await officeVersions(page, objectId)).toHaveLength(1);
+  await page.locator("#suggestion-cancel").click();
+  await expect(page.locator("#discard-dialog")).toBeVisible();
+  await page.locator("#discard-confirm").click();
+  await translateSuggestion(page, objectId, "responsible team confirms the next step", "de");
+  await expect(page.locator("#suggestion-ai-label")).toContainText("Zielsprache: Deutsch");
   expect(await officeVersions(page, objectId)).toHaveLength(1);
   await page.locator("#suggestion-cancel").click();
   await expect(page.locator("#discard-dialog")).toBeVisible();

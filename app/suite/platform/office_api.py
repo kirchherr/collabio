@@ -30,6 +30,12 @@ from suite.platform.office_ai_summary import (
     OfficeAISummaryService,
     OfficeAISummaryUnavailable,
 )
+from suite.platform.office_ai_translation import (
+    OfficeAITranslationCommand,
+    OfficeAITranslationResponse,
+    OfficeAITranslationService,
+    OfficeAITranslationUnavailable,
+)
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository, PgOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError
 from suite.platform.office_documents import (
@@ -192,7 +198,7 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
             except (SourceObjectStorageError, PsycopgError, OfficeImageUnavailable):
                 return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
-            except (OfficeAISummaryUnavailable, OfficeAIRewriteUnavailable):
+            except (OfficeAISummaryUnavailable, OfficeAIRewriteUnavailable, OfficeAITranslationUnavailable):
                 return JSONResponse({"detail": "Office AI request is unavailable"}, status_code=502)
 
         return guarded
@@ -266,6 +272,12 @@ def build_office_ai_summary_service(*, document_service: OfficeDocumentService, 
 
 def build_office_ai_rewrite_service(*, document_service: OfficeDocumentService, gateway: Any) -> OfficeAIRewriteService:
     return OfficeAIRewriteService(documents=document_service, gateway=gateway)
+
+
+def build_office_ai_translation_service(
+    *, document_service: OfficeDocumentService, gateway: Any
+) -> OfficeAITranslationService:
+    return OfficeAITranslationService(documents=document_service, gateway=gateway)
 
 
 def register_office_routes(
@@ -499,6 +511,20 @@ def register_office_routes(
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_ai_rewrite_service.transform(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/translations", response_model=OfficeAITranslationResponse)
+    def translate_document_selection(
+        object_id: str,
+        command: OfficeAITranslationCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_ai_translation_service.translate(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
             object_id=object_id,
