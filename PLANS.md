@@ -1445,12 +1445,40 @@ that the missing server contract was found and closed; confirm name, alternative
 endpoint, dependency, external request, provider, worker, recovery store, HTML, URL, arbitrary attribute,
 cross-document or cross-tenant transfer, or DOCX DrawingML admission.
 
+485. [x] Add optional canonical `hidden: true` and `locked: true` states to standalone root shapes and complete root
+shape groups. Keep omission visible and editable, and reject either state on grouped member shapes.
+
+486. [x] Enforce one identical browser and authoritative-server boolean contract. Persist only literal `true`, omit
+internal nulls canonically and fail closed on false, numbers, strings, unknown keys and member-level root states.
+
+487. [x] Extend the responsive object navigator with searchable state labels and atomic show, hide, lock and unlock
+actions for one through twenty complete roots. Keep hidden roots reachable in canonical document order.
+
+488. [x] Suppress hidden roots in the editor and semantic print/PDF while preserving them in canonical document
+content. Explain in the UI that hiding neither deletes nor protects content and is not a confidentiality boundary.
+
+489. [x] Disable dialog, handle, pointer, touch, keyboard and multi-object mutations for locked roots while retaining
+selection, navigation, visibility controls and unlock. Treat this as accidental-edit protection, never as ACL,
+authorization or a collaborative lease.
+
+490. [x] Snapshot and revalidate the authorized session, exact document instance, current write access and strict
+root ID/type/order tuple. Reject stale, duplicate, unsorted or changed targets without mutation and commit every
+effective state action as one validated transaction and one undo unit.
+
+491. [x] Pass two focused Python schema contracts, 22/22 strict model tests, targeted desktop/mobile workflows and
+the complete 46/46 native-shape matrix in 5.3 minutes. Cover confirmed save, immutable history, comparison, navigator
+recovery, semantic print and undo/redo; pass Ruff, formatting, Mypy over 607 source files and full Pytest.
+
+492. [x] Close bounded native Office object visibility and editing protection under ADR-0176 without a migration,
+new endpoint, dependency, external request, provider, worker, recovery store, security label, access-control change,
+collaborative lock, cross-document or cross-tenant transfer, or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 623 / PLANS 484. Preserve bounded accessible object names and alternative text across browser/server validation, navigation, editor labels, semantic print, comparison and immutable versions. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and fail-closed session/document/root revalidation together with transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 631 / PLANS 492. Preserve root-only canonical visibility and accidental-edit protection, the explicit statement that neither is access control, navigator recovery for hidden roots, print suppression, one-step history and fail-closed session/document/root revalidation. Preserve bounded accessible object names and alternative text across browser/server validation, navigation, editor labels, semantic print, comparison and immutable versions. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

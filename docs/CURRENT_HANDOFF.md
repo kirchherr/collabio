@@ -2,6 +2,47 @@
 
 Updated: 2026-10-10
 
+Roadmap 624 through 631 / PLANS 485 through 492 are complete under ADR-0176. Standalone root shapes and complete root
+shape groups now support optional canonical `hidden: true` and `locked: true` states. Omission remains visible and
+editable; grouped member shapes cannot carry either root state. Browser and authoritative server accept only literal
+true and reject false, numbers, strings, unknown attributes and member-level root states.
+
+The responsive object navigator describes and searches both states and applies show, hide, lock and unlock to one
+through twenty complete roots atomically. Hidden objects leave editor layout and semantic print/PDF while remaining in
+canonical document order and recoverable from the navigator. Locked roots remain selectable, but ordinary dialog,
+handle, pointer, touch, keyboard and multi-object mutations are disabled until unlock. The UI explicitly states that
+hiding is not confidentiality and locking is not authorization or a collaborative lease.
+
+Every state action revalidates the current authorized session, exact document and strict root ID/type/order tuple.
+Stale, duplicate, unsorted, missing or changed targets fail without mutation. A successful action is one validated
+document transaction and undo unit. Confirmed save, immutable predecessor reads, navigator recovery, semantic print,
+comparison and undo/redo consume the canonical states.
+
+Product commit `2f726a33` is local on `kirchherr/kb-write-unit-of-work`. Two focused Python schema contracts and the
+22/22 strict model tests passed. Targeted desktop and mobile workflows each passed, followed by the complete 46/46
+native-shape matrix in 5.3 minutes. The first broad browser invocation unintentionally used the default 36-test set;
+its existing blocked-API case failed because `--no-deps` intentionally omitted that service, while 33 unrelated cases
+passed. The new test first exposed overly broad descendant locators and then the established saved-version-only print
+gate; both tests were corrected to assert root state and save before print, without weakening product behavior.
+
+Complete repository quality passed with Ruff, 904 format-conformant files, Mypy over 607 source files and Pytest to
+100 percent; only the known Starlette/AnyIO warning remains. Final Work-E2E, review API and quality image IDs are
+`sha256:aaa5fb58b7a57ae613768784a5a00d2afa353bf52c907e6b8056a7bb7be42285`,
+`sha256:fd26c8747eb20212dfc7ee76258efc424de9534d532eb24de054944f703d563b` and
+`sha256:17c12b3b47658250f698a7909fbc21443f6165f981a420d60937e03adabaf6ff`.
+
+The review API twice exceeded its Compose health timeout during a cold start and reported unhealthy; immediate later
+inspection showed normal Uvicorn readiness, failing streak zero and `{"status":"ok"}`. No import error occurred. The
+change adds no migration, new endpoint, dependency, external request, provider, worker, recovery store, security label,
+access-control change, collaborative lock, cross-document or cross-tenant transfer, DOCX engine or production
+admission. GitHub publication remains pending under the explicit content-specific approval requirement for the
+internal handoff, roadmap, ADRs and dev001 operations record.
+
+All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified `/tmp/collabio-roadmap-624` transfer directory were removed. No
+transient quality or Work-E2E runner remains. Regular and review APIs both return `ok`; review PostgreSQL, MinIO,
+decoder and API remain healthy, and the inspected `tricert`, `trijob`, `tripax` and `webcut` projects were untouched.
+
 Roadmap 617 through 623 / PLANS 478 through 484 are complete under ADR-0175. Standalone shapes, grouped member shapes
 and complete root shape groups now support an optional object name of at most 80 characters and alternative text of
 at most 500 characters. Browser and authoritative server enforce identical nonempty, exactly trimmed plain-text

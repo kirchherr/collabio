@@ -1,9 +1,34 @@
 # Native Office Documents
 
-Status: Roadmap 252–623 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 623 / PLANS 484 accessible shape and group metadata
+Status: Roadmap 252–631 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 631 / PLANS 492 object visibility and editing protection
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0175; current movement: `ARCHITECTURE_DECISIONS/ADR-0175-bounded-accessible-native-office-shape-metadata.md`
+Decisions: ADR-0079 through ADR-0176; current movement: `ARCHITECTURE_DECISIONS/ADR-0176-bounded-native-office-object-visibility-protection.md`
+
+## Bounded object visibility and editing protection (Roadmap 624–631)
+
+Standalone root shapes and complete root shape groups may carry optional canonical `hidden: true` and `locked: true`
+attributes. Omission means visible and editable. Grouped member shapes cannot carry either root state. Browser and
+authoritative server accept only literal `true`; false, numbers, strings, unknown keys and member-level states fail
+closed. Internal null values are omitted before persistence.
+
+The responsive object navigator exposes state labels and show, hide, lock and unlock actions for one through twenty
+complete roots. Hidden roots disappear from the editor and semantic print/PDF but remain in canonical document order
+and are recoverable through the navigator. Hiding does not delete or protect content and is never a confidentiality
+boundary. The UI says so explicitly.
+
+Locked roots remain selectable and discoverable while ordinary dialog, handle, pointer, touch, keyboard and
+multi-object mutations are disabled. Visibility controls and unlock stay available. Locking prevents accidental edits;
+it is not an ACL, authorization decision or collaborative lease. Every state action revalidates the current authorized
+session, exact document and strict root ID/type/order tuple, then commits all selected roots in one validated
+transaction and undo unit. Stale, duplicate, unsorted or changed targets fail without mutation.
+
+Two focused Python schema contracts, 22/22 strict model tests, targeted desktop/mobile workflows and the complete
+46/46 native-shape matrix pass. Confirmed save, immutable history, comparison, navigator recovery, semantic print and
+undo/redo are covered. The complete quality gate passes Ruff, formatting, Mypy over 607 source files and Pytest to 100
+percent. The feature adds no migration, new endpoint, dependency, external request, provider, worker, recovery store,
+security label, access-control change, collaborative lock, cross-document or cross-tenant transfer, ordinary-tenant
+activation, document engine or DOCX DrawingML admission.
 
 ## Bounded accessible shape and group metadata (Roadmap 617–623)
 

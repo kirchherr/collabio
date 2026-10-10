@@ -3267,7 +3267,41 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      neuen Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, HTML, URL, beliebige Attribute,
      dokument- oder tenantuebergreifende Uebertragung oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 623 / PLANS 224 bis 484 sind unter ADR-0139 bis ADR-0175 implementiert
+624. [x] Eigenstaendige Wurzelformen und vollstaendige Wurzelformgruppen um die optionalen kanonischen Zustaende
+     `hidden: true` und `locked: true` erweitert. Ausgelassene Werte bleiben sichtbar und bearbeitbar; gruppierte
+     Mitgliedsformen duerfen die Wurzelzustaende nicht tragen.
+
+625. [x] Browser und autoritative Servervalidierung auf exakt denselben booleschen Vertrag festgelegt: Nur der
+     Literalwert `true` darf gespeichert werden. `false`, Zahlen, Zeichenketten, unbekannte Attribute und Zustaende an
+     Gruppenmitgliedern werden fail-closed abgewiesen; interne Nullwerte werden kanonisch ausgelassen.
+
+626. [x] Die responsive Objektliste um durchsuchbare Zustandsbezeichnungen und atomare Aktionen zum Einblenden,
+     Ausblenden, Sperren und Entsperren fuer ein bis zwanzig vollstaendige Wurzelobjekte erweitert. Ausgeblendete
+     Objekte bleiben dort in kanonischer Dokumentreihenfolge auffindbar.
+
+627. [x] Ausgeblendete Wurzelobjekte in Editor und semantischem Druck/PDF unterdrueckt, ohne sie aus dem Dokument zu
+     loeschen oder ihren Inhalt zu schuetzen. Die UI erklaert ausdruecklich, dass Sichtbarkeit keine Vertraulichkeits-
+     oder Berechtigungsgrenze ist.
+
+628. [x] Gesperrte Wurzelobjekte gegen Dialog-, Handle-, Maus-, Touch-, Tastatur- und Mehrfachauswahl-Mutationen
+     geschuetzt, waehrend Auswahl, Navigation, Ein-/Ausblenden und Entsperren erreichbar bleiben. Der Schutz verhindert
+     versehentliche Bearbeitung und ersetzt weder ACL noch Autorisierung oder kollaborative Sperren.
+
+629. [x] Jede Zustandsaenderung an die aktuelle autorisierte Dokumentsitzung, Schreibberechtigung und exakte
+     Wurzel-ID-/Typ-/Reihenfolge gebunden. Veraltete, doppelte, unsortierte oder geaenderte Ziele scheitern ohne Mutation;
+     eine wirksame Aktion ist genau eine validierte Dokumenttransaktion und ein Undo-Schritt.
+
+630. [x] Zwei fokussierte Python-Schemavertraege, 22/22 strikte Modelltests, gezielte Desktop-/Mobile-Workflows und die
+     vollstaendige native Formmatrix 46/46 in 5,3 Minuten bestanden. Bestaetigtes Speichern, immutable Historie,
+     Vergleich, Objektlisten-Wiederherstellung, semantischer Druck sowie Undo/Redo sind abgedeckt; der vollstaendige
+     Qualitaetslauf bestand Ruff, Format, Mypy ueber 607 Quelldateien und Pytest bis 100 Prozent.
+
+631. [x] Begrenzte Sichtbarkeit und Bearbeitungsschutz fuer native Office-Formen und -Gruppen unter ADR-0176 ohne
+     Migration, neuen Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, Sicherheitslabel,
+     Zugriffskontrolle, kollaborative Sperre, dokument- oder tenantuebergreifende Uebertragung oder DOCX-DrawingML-
+     Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 631 / PLANS 224 bis 492 sind unter ADR-0139 bis ADR-0176 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das
