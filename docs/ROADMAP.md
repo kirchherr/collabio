@@ -654,7 +654,7 @@ Aufgaben:
 - [x] Umformulieren und Tonalitaet aendern (Roadmap 712-719 / PLANS 573-580).
 - [x] Uebersetzen (Roadmap 720-727 / PLANS 581-588).
 - [x] Gliederung erzeugen (Roadmap 728-735 / PLANS 589-596).
-- [ ] Dokument mit Richtlinie vergleichen.
+- [x] Dokument mit Richtlinie vergleichen (Roadmap 736-743 / PLANS 597-604).
 - [ ] Risiken markieren.
 - [ ] Quellen suchen und versioniert anzeigen.
 - [ ] Diktat in Dokumente ueber Voice Transcript Flow.

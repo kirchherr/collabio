@@ -24,6 +24,12 @@ from suite.platform.office_ai_outline import (
     OfficeAIOutlineService,
     OfficeAIOutlineUnavailable,
 )
+from suite.platform.office_ai_policy_comparison import (
+    OfficeAIPolicyComparisonCommand,
+    OfficeAIPolicyComparisonResponse,
+    OfficeAIPolicyComparisonService,
+    OfficeAIPolicyComparisonUnavailable,
+)
 from suite.platform.office_ai_rewrite import (
     OfficeAIRewriteCommand,
     OfficeAIRewriteResponse,
@@ -209,6 +215,7 @@ class OfficeRoute(APIRoute):
                 OfficeAIRewriteUnavailable,
                 OfficeAITranslationUnavailable,
                 OfficeAIOutlineUnavailable,
+                OfficeAIPolicyComparisonUnavailable,
             ):
                 return JSONResponse({"detail": "Office AI request is unavailable"}, status_code=502)
 
@@ -293,6 +300,12 @@ def build_office_ai_translation_service(
 
 def build_office_ai_outline_service(*, document_service: OfficeDocumentService, gateway: Any) -> OfficeAIOutlineService:
     return OfficeAIOutlineService(documents=document_service, gateway=gateway)
+
+
+def build_office_ai_policy_comparison_service(
+    *, document_service: OfficeDocumentService, gateway: Any
+) -> OfficeAIPolicyComparisonService:
+    return OfficeAIPolicyComparisonService(documents=document_service, gateway=gateway)
 
 
 def register_office_routes(
@@ -554,6 +567,20 @@ def register_office_routes(
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_ai_outline_service.generate(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/policy-comparisons", response_model=OfficeAIPolicyComparisonResponse)
+    def compare_document_with_policy(
+        object_id: str,
+        command: OfficeAIPolicyComparisonCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_ai_policy_comparison_service.compare(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
             object_id=object_id,

@@ -8,6 +8,7 @@ export const summaryPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(ob
 export const rewritePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rewrites`;
 export const translationPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/translations`;
 export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/outlines`;
+export const policyComparisonPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/policy-comparisons`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -150,6 +151,32 @@ export async function outlineSuggestion(page, objectId, selectedText, detail = "
   await expect(page.locator("#suggestion-ai-label")).toBeVisible();
   await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
   await expect(page.locator("#suggestion-replacement")).toHaveValue(result.outline);
+  return result;
+}
+
+export async function compareDocumentWithPolicy(page, objectId, policy) {
+  await page.locator("#suggestion-policy-document").selectOption(policy.document.object_id);
+  await expect(page.locator("#suggestion-policy-compare")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === policyComparisonPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-policy-compare").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.policy_citation.object_id).toBe(policy.document.object_id);
+  expect(result.policy_citation.version_id).toBe(policy.version.version_id);
+  expect(result.policy_citation.authoritative_acl_validated).toBe(true);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  await expect(page.locator("#suggestion-policy-report")).toBeVisible();
+  await expect(page.locator("#suggestion-policy-title")).toHaveText("AI-Vergleich · ungeprüft");
+  await expect(page.locator("#suggestion-policy-body")).toContainText("FINDING:");
+  await expect(page.locator("#suggestion-policy-citation")).toContainText(policy.version.version_id);
   return result;
 }
 

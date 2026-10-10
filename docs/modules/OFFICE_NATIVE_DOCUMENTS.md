@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–735 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 735 / PLANS 596 selection outline drafts
-Module: `office_documents` / version 0.9.2
-Decisions: ADR-0079 through ADR-0189; current movement: `ARCHITECTURE_DECISIONS/ADR-0189-native-office-selection-outline-drafts.md`
+Status: Roadmap 252–743 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 743 / PLANS 604 policy comparison
+Module: `office_documents` / version 0.9.3
+Decisions: ADR-0079 through ADR-0190; current movement: `ARCHITECTURE_DECISIONS/ADR-0190-native-office-policy-comparison.md`
+
+## Policy comparison (Roadmap 736–743)
+
+The read-gated comparison endpoint accepts one exact current source version and a different readable policy object
+with its exact current version. The browser sends only those identifiers. The server revalidates both authoritative
+ACLs and current-version identities, extracts bounded native text from both immutable versions and rejects empty or
+over-16,000-character sources instead of truncating them.
+
+One fixed approved prompt treats both delimited sources as untrusted data and forbids legal or regulatory approval.
+Only a tenant-allowed, drafting-approved local model behind the Local LLM Gateway is eligible. The higher source
+classification controls policy admission; confidential and restricted input remains closed unless tenant, model and
+the exact prompt all admit confidential data.
+
+The model must return one fixed status and bounded finding/recommendation lines with at least one finding. Invalid or
+oversized output fails closed. The response binds the exact source version and hash to an ACL-validated policy object,
+version, title and hash. Audit stores only IDs, status, counts and hashes without document, prompt or output bodies.
+
+The responsive writing panel displays a dismissible read-only **AI-Vergleich · ungeprüft** report and the exact policy
+citation. It persists nothing, changes neither document nor version count, triggers no follow-up action and is excluded
+from search and RAG indexing. Compliance certification, free prompts, durable comparisons and automatic edits or
+approvals remain closed.
 
 ## Selection outline drafts (Roadmap 728–735)
 

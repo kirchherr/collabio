@@ -1233,6 +1233,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/{object_id}/ai/rewrites",
         "/v1/office/documents/{object_id}/ai/translations",
         "/v1/office/documents/{object_id}/ai/outlines",
+        "/v1/office/documents/{object_id}/ai/policy-comparisons",
         "/v1/office/documents/{object_id}/versions",
         "/v1/office/documents/{object_id}/outbound-references",
         "/v1/office/documents/{object_id}/backlinks",
@@ -1288,6 +1289,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "office_ai_rewrite_uses_only_tenant_admitted_local_drafting_models_and_approved_prompts",
         "rewrite_modes_and_tones_are_fixed_without_browser_prompt_or_model_selection",
         "ai_rewrite_output_is_untrusted_transient_and_requires_two_confirmations_before_save",
+        "policy_comparison_revalidates_both_exact_current_versions_and_authoritative_acls",
+        "policy_comparison_uses_only_fixed_approved_prompt_and_tenant_admitted_local_model",
+        "policy_comparison_returns_exact_policy_citation_and_strict_bounded_findings",
+        "policy_comparison_is_untrusted_transient_nonindexable_and_cannot_trigger_actions",
         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
         "read_only_and_historical_content_cannot_be_replaced",
         "table_edits_are_bounded_reversible_local_drafts",
@@ -1353,6 +1358,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tests/test_office_ai_translation.py" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0189-native-office-selection-outline-drafts.md" in office_native["evidence_refs"]
     assert "tests/test_office_ai_outline.py" in office_native["evidence_refs"]
+    assert "ARCHITECTURE_DECISIONS/ADR-0190-native-office-policy-comparison.md" in office_native["evidence_refs"]
+    assert "tests/test_office_ai_policy_comparison.py" in office_native["evidence_refs"]
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()
@@ -1371,6 +1378,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         ("/v1/office/documents/{object_id}/ai/rewrites", "POST"),
         ("/v1/office/documents/{object_id}/ai/translations", "POST"),
         ("/v1/office/documents/{object_id}/ai/outlines", "POST"),
+        ("/v1/office/documents/{object_id}/ai/policy-comparisons", "POST"),
         ("/v1/office/documents/{object_id}/versions", "GET"),
         ("/v1/office/documents/{object_id}/versions", "POST"),
         ("/v1/office/documents/{object_id}/collaboration/preflight", "POST"),

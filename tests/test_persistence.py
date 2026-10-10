@@ -69,6 +69,7 @@ def test_prompt_registry_adds_missing_system_prompts_without_overwriting_existin
     assert registry.get("document_translate_uk_v1").approval_status == "approved"
     assert registry.get("document_outline_concise_v1").approval_status == "approved"
     assert registry.get("document_outline_detailed_v1").approval_status == "approved"
+    assert registry.get("document_policy_comparison_v1").approval_status == "approved"
     stored = json.loads(path.read_text(encoding="utf-8"))
     assert next(row for row in stored if row["prompt_template_id"] == "document_summary_v1")["version"] == (
         "tenant-pinned"

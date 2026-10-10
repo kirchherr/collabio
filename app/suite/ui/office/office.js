@@ -3803,6 +3803,7 @@ function renderDocuments() {
   $("documents-retry").hidden = !state.listRetry;
   $("documents-retry").disabled = state.listLoading;
   $("documents-retry").textContent = state.listRetry === "restart" ? "Liste neu laden" : "Erneut versuchen";
+  renderPolicyDocumentOptions();
   updateReuseControls();
 }
 
@@ -5576,8 +5577,46 @@ function clearSuggestions() {
   $("suggestion-replacement").value = "";
   $("suggestion-ai-label").hidden = true;
   $("suggestion-composer").hidden = true;
+  $("suggestion-policy-report").hidden = true;
+  $("suggestion-policy-body").textContent = "";
+  $("suggestion-policy-status").textContent = "";
+  $("suggestion-policy-citation").textContent = "";
   $("suggestions-more").hidden = true;
   $("suggestion-new").disabled = true;
+}
+function renderPolicyDocumentOptions() {
+  const select = $("suggestion-policy-document");
+  const previous = select.value;
+  const candidates = state.documents.filter((entry) => entry.object_id !== state.session?.objectId);
+  select.replaceChildren(new Option("Richtlinie wählen …", ""));
+  for (const entry of candidates) {
+    const option = new Option(entry.title, entry.object_id);
+    option.dataset.versionId = entry.current_version_id;
+    select.append(option);
+  }
+  select.value = candidates.some((entry) => entry.object_id === previous) ? previous : "";
+}
+function selectedPolicyDocument() {
+  const objectId = $("suggestion-policy-document").value;
+  return state.documents.find((entry) => entry.object_id === objectId && entry.object_id !== state.session?.objectId) || null;
+}
+function clearPolicyComparison(suggestions = state.suggestions) {
+  if (suggestions) suggestions.policyComparison = null;
+  $("suggestion-policy-report").hidden = true;
+  $("suggestion-policy-report").removeAttribute("data-status");
+  $("suggestion-policy-body").textContent = "";
+  $("suggestion-policy-status").textContent = "";
+  $("suggestion-policy-citation").textContent = "";
+}
+function renderPolicyComparison(suggestions) {
+  const result = suggestions?.policyComparison;
+  if (!result) { clearPolicyComparison(suggestions); return; }
+  const statusLabels = { conform: "Keine Abweichung erkannt", deviation: "Mögliche Abweichung erkannt", unclear: "Prüfung nicht eindeutig" };
+  $("suggestion-policy-status").textContent = statusLabels[result.status];
+  $("suggestion-policy-body").textContent = result.comparison;
+  $("suggestion-policy-citation").textContent = `Richtlinie: ${result.policy_citation.title} · Version ${result.policy_citation.version_id}`;
+  $("suggestion-policy-report").dataset.status = result.status;
+  $("suggestion-policy-report").hidden = false;
 }
 function canCreateSuggestion(suggestions = state.suggestions) {
   return !suggestionBusy(suggestions) && !suggestions.uncertain && !suggestions.loading && suggestions.canCreate &&
@@ -5602,6 +5641,11 @@ function updateSuggestionControls() {
   $("suggestion-tone").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-translate").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-outline").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  const policy = selectedPolicyDocument();
+  $("suggestion-policy-compare").disabled = busy || !suggestionCurrent(suggestions) || !policy || isDirty() ||
+    suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId;
+  $("suggestion-policy-document").disabled = busy;
+  $("suggestion-policy-dismiss").disabled = busy;
   $("suggestion-tone-select").disabled = busy;
   $("suggestion-translation-select").disabled = busy;
   $("suggestion-outline-detail").disabled = busy;
@@ -5650,7 +5694,8 @@ async function loadSuggestions(append = false) {
     suggestions = { session, context: state.context, versionId: session.version.version_id, controller: new AbortController(),
       listRequest: 0, detailRequest: 0, items: [], selectedId: null, detail: null, nextCursor: null,
       loading: false, canCreate: false, currentVersionId: null, composer: null, attempt: null,
-      preparing: false, saving: false, settling: false, summarizing: false, uncertain: false, conflict: false };
+      preparing: false, saving: false, settling: false, summarizing: false, uncertain: false, conflict: false,
+      policyComparison: null };
     state.suggestions = suggestions;
   }
   if (suggestions.saving || suggestions.preparing || suggestions.uncertain || (append && !suggestions.nextCursor)) return false;
@@ -5828,6 +5873,22 @@ function validAIOutline(result, suggestions, selection, detail) {
     result.requires_explicit_suggestion_confirmation === true && result.rag_indexing_allowed === false &&
     result.search_indexing_allowed === false;
 }
+function validAIPolicyComparison(result, suggestions, policy) {
+  const lines = typeof result?.comparison === "string" ? result.comparison.split(/\r?\n/).filter((line) => line.trim()) : [];
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && /^sha256:[a-f0-9]{64}$/.test(result.source_content_hash || "") &&
+    result.policy_citation?.object_id === policy.object_id && result.policy_citation.version_id === policy.current_version_id &&
+    result.policy_citation.title === policy.title && /^sha256:[a-f0-9]{64}$/.test(result.policy_citation.content_hash || "") &&
+    result.policy_citation.authoritative_acl_validated === true && ["conform", "deviation", "unclear"].includes(result.status) &&
+    lines.length >= 2 && lines.length <= 12 && lines[0] === `STATUS: ${result.status}` &&
+    lines.slice(1).every((line) => /^(FINDING|RECOMMENDATION): \S/u.test(line)) &&
+    result.finding_count === lines.slice(1).filter((line) => line.startsWith("FINDING: ")).length &&
+    result.finding_count >= 1 && Array.from(result.comparison).length <= 6000 &&
+    typeof result.model_id === "string" && typeof result.prompt_template_id === "string" &&
+    typeof result.inference_audit_event_id === "string" && result.output_trust === "untrusted" &&
+    result.requires_human_review === true && result.persisted === false && result.document_changed === false &&
+    result.automatic_action_allowed === false && result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
+}
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
   const selection = selectedReviewAnchor();
@@ -5997,6 +6058,37 @@ async function outlineSuggestionSelection() {
     $("suggestions-status").textContent = denied(error) ?
       "Die lokale Gliederung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
       "Die lokale Gliederung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function compareDocumentWithPolicy() {
+  const suggestions = state.suggestions;
+  const policy = selectedPolicyDocument();
+  if (!suggestionCurrent(suggestions) || $("suggestion-policy-compare").disabled || !policy) return;
+  const revision = suggestions.session.revision;
+  suggestions.summarizing = true;
+  clearPolicyComparison(suggestions);
+  $("suggestions-status").textContent = "Dokument und Richtlinie werden lokal verglichen …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/policy-comparisons`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId, policy_object_id: policy.object_id,
+        policy_version_id: policy.current_version_id },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        selectedPolicyDocument()?.object_id !== policy.object_id || !validAIPolicyComparison(result, suggestions, policy)) {
+      throw new ApiError(502, true);
+    }
+    suggestions.policyComparison = result;
+    renderPolicyComparison(suggestions);
+    $("suggestions-status").textContent = "Lokaler AI-Vergleich erstellt. Befunde anhand der zitierten Richtlinienversion prüfen.";
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Der lokale Richtlinienvergleich ist für eines der Dokumente oder diesen Tenant nicht freigegeben." :
+      "Der lokale Richtlinienvergleich ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6554,6 +6646,9 @@ $("suggestion-translate").addEventListener("mousedown", (event) => { if (event.b
 $("suggestion-translate").addEventListener("click", translateSuggestionSelection);
 $("suggestion-outline").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-outline").addEventListener("click", outlineSuggestionSelection);
+$("suggestion-policy-compare").addEventListener("click", compareDocumentWithPolicy);
+$("suggestion-policy-document").addEventListener("change", () => { clearPolicyComparison(); updateSuggestionControls(); });
+$("suggestion-policy-dismiss").addEventListener("click", () => { clearPolicyComparison(); updateSuggestionControls(); });
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

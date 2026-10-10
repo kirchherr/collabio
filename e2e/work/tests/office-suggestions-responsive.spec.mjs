@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { ARTIFACT_DIR, BASE_URL, monitorPage } from "./support.mjs";
-import { createOfficeDocument, officeEditor, officeVersions, openOffice } from "./office-support.mjs";
-import { confirmSuggestion, openSuggestion, openSuggestions, outlineSuggestion, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, summarizeSuggestion, translateSuggestion } from "./office-suggestion-support.mjs";
+import { createOfficeDocument, officeEditor, officeVersions, openOffice, openOfficeDocument, showDocumentList } from "./office-support.mjs";
+import { compareDocumentWithPolicy, confirmSuggestion, openSuggestion, openSuggestions, outlineSuggestion, prepareSuggestion, prepareSuggestionDecision, rewriteSuggestion, summarizeSuggestion, translateSuggestion } from "./office-suggestion-support.mjs";
 
 async function expectSuggestionLayout(page) {
   await expect(page.locator("#suggestions-panel")).toBeInViewport();
@@ -20,7 +20,16 @@ test("Office text proposals and confirmed decisions fit desktop, tablet and mobi
   await openOffice(page);
   const first = await createOfficeDocument(page, `Synthetic responsive suggestion ${testInfo.project.name}`, "Plan 😀 review: responsible team confirms the next step.");
   const objectId = first.document.object_id;
+  await showDocumentList(page);
+  const policy = await createOfficeDocument(page, `Synthetic approval policy ${testInfo.project.name}`, "POLICY requires manager approval before milestone 42 is committed.");
+  await openOfficeDocument(page, objectId);
   await openSuggestions(page, objectId);
+  await compareDocumentWithPolicy(page, objectId, policy);
+  await expect(page.locator("#suggestion-policy-citation")).toContainText(policy.document.title);
+  expect(await officeVersions(page, objectId)).toHaveLength(1);
+  expect(await officeVersions(page, policy.document.object_id)).toHaveLength(1);
+  await page.locator("#suggestion-policy-dismiss").click();
+  await expect(page.locator("#suggestion-policy-report")).toBeHidden();
   await summarizeSuggestion(page, objectId, "responsible team confirms the next step");
   await expect(page.locator("#document-save")).toBeDisabled();
   expect(await officeVersions(page, objectId)).toHaveLength(1);
