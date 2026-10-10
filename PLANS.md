@@ -1420,12 +1420,37 @@ cancellation, obscured roots and complete groups. After compacting the mobile to
 dependency, external request, provider, worker, recovery store, browser or clipboard persistence, cross-document or
 cross-tenant transfer, content write, nested group or DOCX DrawingML admission.
 
+478. [x] Add optional canonical object names of at most 80 characters and alternative text of at most 500 characters
+to standalone shapes, grouped member shapes and complete root shape groups. Keep omission byte-compatible for every
+existing document.
+
+479. [x] Enforce the same browser and authoritative-server plain-text contract: nonempty exactly trimmed strings,
+no C0/C1 controls, surrogates or Unicode line/paragraph separators, and fail-closed rejection for booleans, unknown
+attributes and limit violations.
+
+480. [x] Extend the responsive shape dialog with shape name and alternative text plus group name and group
+alternative text. Commit accepted changes inside the existing validated shape/group transaction and one undo unit.
+
+481. [x] Make names the primary object-navigator label and alternative text searchable detail while retaining shape
+text, kind, document position and logical anchor. Insert every document-derived value as DOM text only.
+
+482. [x] Preserve names and alternative text through editor accessibility labels, semantic print/PDF, comparison,
+confirmed save, immutable history, duplication, grouping operations and independent document reuse.
+
+483. [x] Pass two focused Python schema contracts, 21/21 strict model tests, 4/4 targeted desktop/mobile workflows
+and the complete 43/43 native-shape matrix in 5.0 minutes. Retain the first 422 save rejection as diagnostic proof
+that the missing server contract was found and closed; confirm name, alternative text, search and position live.
+
+484. [x] Close bounded accessible native Office shape and group metadata under ADR-0175 without a migration, new
+endpoint, dependency, external request, provider, worker, recovery store, HTML, URL, arbitrary attribute,
+cross-document or cross-tenant transfer, or DOCX DrawingML admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 616 / PLANS 477. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and fail-closed session/document/root revalidation together with transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
+- Native Office is complete through Roadmap 623 / PLANS 484. Preserve bounded accessible object names and alternative text across browser/server validation, navigation, editor labels, semantic print, comparison and immutable versions. Preserve the bounded document-ordered object navigator, its atomic twenty-object cap and fail-closed session/document/root revalidation together with transient root-object multi-selection, atomic logical-anchor alignment/equal distribution, common front/behind-text layer changes, collective movement, pointer/touch dragging, collective X/Y or aspect-locked resizing, relative rotation, the exact numeric transform inspector, bounded common appearance, current-session appearance copy/paste, stable collective top-level document ordering, exact one-based stable-block placement, atomic collective ungrouping of complete same-anchor groups and current-session regrouping with original wrappers plus current members. Keep stable IDs, exact order, one-step history, the explicit bounded rendered-center mapping for positioned members and no clipboard/browser persistence. Preserve the complete native document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Preserve the Roadmap-482 fail-closed proof that Chromium does not restart `:first` for named section pages. Continue with the next coherent bounded Office authoring loop. Public links, external guests, delegated share administration, custom or recurring access windows, notifications, full spreadsheet/workbook semantics, cross-table formulas, named ranges, sheet semantics, live chart data, rich embedded previews, non-document file objects, transitive reference graphs, content-wide reference search, persistent backlink indexing, URL previews, arbitrary or downloaded fonts and shape style strings, automatic crop translation, absolute physical page anchors, arbitrary wrap contours, mixed or nested shape groups, arbitrary connectors, arbitrary drag ordering, per-section first-page variants and number restarts without a proven segmented PDF pipeline, continuous tracked changes, live collaboration and DOCX interchange remain separate, and all engine/fidelity gates stay closed.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

@@ -1,9 +1,28 @@
 # Native Office Documents
 
-Status: Roadmap 252–616 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 616 / PLANS 477 bounded object selection navigator
+Status: Roadmap 252–623 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 623 / PLANS 484 accessible shape and group metadata
 Module: `office_documents` / version 0.1.0
-Decisions: ADR-0079 through ADR-0174; current movement: `ARCHITECTURE_DECISIONS/ADR-0174-bounded-native-office-object-selection-navigator.md`
+Decisions: ADR-0079 through ADR-0175; current movement: `ARCHITECTURE_DECISIONS/ADR-0175-bounded-accessible-native-office-shape-metadata.md`
+
+## Bounded accessible shape and group metadata (Roadmap 617–623)
+
+Standalone shapes, grouped member shapes and complete root shape groups may carry one optional object name of at most
+80 characters and one optional alternative text of at most 500 characters. Browser and authoritative server require
+nonempty exactly trimmed plain text and reject C0/C1 controls, surrogates, Unicode line/paragraph separators,
+booleans, unknown attributes and limit violations. Omission remains canonical and keeps existing documents
+byte-compatible.
+
+The responsive shape dialog edits member metadata alongside established shape attributes and group metadata alongside
+established group layout. One accepted edit remains one validated document transaction and undo unit. The object
+navigator uses a name as the primary label and searches alternative text together with visible text, kind, position
+and anchor. All document-derived values enter the UI as DOM text.
+
+Editor accessibility labels, semantic print/PDF, comparison, confirmed save, immutable history, duplication,
+grouping operations and independent reuse preserve the canonical metadata. Two focused Python schema contracts,
+21/21 strict model tests, 4/4 targeted desktop/mobile workflows and the complete 43/43 native-shape matrix pass. The
+feature adds no migration, new endpoint, dependency, external request, provider, worker, recovery store, HTML, URL,
+arbitrary attribute, cross-document or cross-tenant transfer, or DOCX DrawingML admission.
 
 ## Bounded object selection navigator (Roadmap 610–616)
 

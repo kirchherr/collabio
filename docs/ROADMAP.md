@@ -3238,7 +3238,36 @@ Clipboard-Schicht, Tabellenkalkulations-Engine, Tenant-Aktivierung oder DOCX-Zul
      externen Abruf, Provider, Worker, Recovery-Speicher, Browser-/Clipboard-Persistenz, dokument- oder
      tenantuebergreifende Uebertragung, Inhaltsaenderung, verschachtelte Gruppe oder DOCX-DrawingML-Zulassung geschlossen.
 
-Native Office bleibt vor CRM. Roadmap 363 bis 616 / PLANS 224 bis 477 sind unter ADR-0139 bis ADR-0174 implementiert
+617. [x] Eigenstaendige Formen, Gruppenmitglieder und vollstaendige Formgruppen um einen optionalen Objektnamen bis
+     80 Zeichen und einen optionalen Alternativtext bis 500 Zeichen erweitert. Fehlende Werte bleiben kanonisch
+     ausgelassen und bestehende Dokumente unveraendert kompatibel.
+
+618. [x] Browser und autoritative Servervalidierung auf identische Klartextgrenzen festgelegt: nichtleere exakt
+     getrimmte Zeichenketten, keine C0-/C1-Steuerzeichen, Surrogate oder Unicode-Zeilen-/Absatztrenner. Unbekannte
+     Attribute, Boolesche Werte und Grenzueberschreitungen werden fail-closed abgewiesen.
+
+619. [x] Den responsiven Formdialog um Objektname und Alternativtext sowie den Gruppenbereich um Gruppenname und
+     Gruppenalternativtext erweitert. Eine bestaetigte Aenderung bleibt Teil derselben validierten Dokumenttransaktion
+     und desselben Undo-Schritts wie die uebrigen Form- oder Gruppenattribute.
+
+620. [x] Die Objektliste so erweitert, dass Namen als primaere Bezeichnung und Alternativtexte als durchsuchbare
+     Beschreibung erscheinen. Formtext, Formart, Dokumentposition und Anker bleiben zusaetzlich suchbar; alle Werte
+     werden ausschliesslich als DOM-Text gerendert.
+
+621. [x] Objektnamen und Alternativtexte in barrierefreie Editorbezeichnungen, semantischen Druck/PDF, Vergleich,
+     bestaetigtes Speichern, immutable Historie und unabhaengige Wiederverwendung uebernommen. Duplizierung und
+     Gruppenoperationen erhalten die Metadaten zusammen mit dem kanonischen Objekt.
+
+622. [x] Zwei fokussierte Python-Schemavertraege, 21/21 strikte Modelltests, 4/4 gezielte Desktop-/Mobile-Workflows
+     und die vollstaendige native Formmatrix 43/43 in 5,0 Minuten bestanden. Der erste 422-Browserlauf bleibt als
+     Diagnose fuer die danach geschlossene Serververtrag-Luecke dokumentiert; Live-Review bestaetigt Name, Suche,
+     Alternativtext und Position.
+
+623. [x] Begrenzte barrierefreie Metadaten fuer native Office-Formen und -Gruppen unter ADR-0175 ohne Migration,
+     neuen Endpunkt, Abhaengigkeit, externen Abruf, Provider, Worker, Recovery-Speicher, HTML, URL, beliebige Attribute,
+     dokument- oder tenantuebergreifende Uebertragung oder DOCX-DrawingML-Zulassung geschlossen.
+
+Native Office bleibt vor CRM. Roadmap 363 bis 623 / PLANS 224 bis 484 sind unter ADR-0139 bis ADR-0175 implementiert
 beziehungsweise als expliziter PDF-Machbarkeits-Gate geschlossen.
 Der fokussierte Service-, API-, PostgreSQL-, Principal-, Migrations- und Restore-Lauf sowie der exakte responsive
 Desktop-/Mobile-Browserlauf bestanden. HTML, TSV, Anker, Strukturabbildungen und Bereichsaktionen werden nur in das

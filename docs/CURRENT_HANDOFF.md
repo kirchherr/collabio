@@ -2,6 +2,44 @@
 
 Updated: 2026-10-10
 
+Roadmap 617 through 623 / PLANS 478 through 484 are complete under ADR-0175. Standalone shapes, grouped member shapes
+and complete root shape groups now support an optional object name of at most 80 characters and alternative text of
+at most 500 characters. Browser and authoritative server enforce identical nonempty, exactly trimmed plain-text
+rules and reject controls, surrogates, Unicode line/paragraph separators, booleans, unknown attributes and limit
+violations. Existing omission remains canonical.
+
+The responsive shape dialog edits shape and group metadata inside the established transaction and one-step history
+boundary. The object navigator uses names as primary labels and searches alternative text together with visible text,
+kind, document position and logical anchor. Editor accessibility labels, semantic print/PDF, comparison, confirmed
+save, immutable history, duplication, grouping operations and independent reuse preserve the metadata.
+
+Product commit `32dfe01c` is local on `kirchherr/kb-write-unit-of-work`. Two focused Python schema contracts passed,
+the strict model passed 21/21, targeted desktop/mobile workflows passed 4/4 in 1.6 minutes and the complete native
+shape matrix passed 43/43 in 5.0 minutes. The first targeted browser run reached the UI but both desktop saves returned
+422, exposing the missing authoritative server allowlist; the identical Python contract and hostile-input tests were
+then added and every rerun passed. A host-level Node check was unavailable because dev001 intentionally has no Node
+binary; the pinned Work-E2E image built and executed the JavaScript tests successfully.
+
+Live review at `http://192.168.0.108:42880/office?review=shape-accessibility` confirms the saved accessible label and
+the object navigator result **Freigabeschritt**, with position, kind, alternative text and visible text. The navigator
+search is left open for direct inspection; no live-review document mutation or save was made.
+
+Complete repository quality passed with Ruff, 904 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. Final Work-E2E, review API and quality image IDs are
+`sha256:ff2cb1f99ee1488572a20d0b223d0e4f189113232410b7e0d668db598b2c9420`,
+`sha256:616f61974cbb0035ec28ada7a219b98305d42e042ab496178e3c495c36232ca3` and
+`sha256:9c99cc4f3efb5ba48bc7bc90e32090caf5b3db01e656e78fba4cea94e93c6c99`.
+
+The exact `collabio-postgres-test-1` container, verified `/tmp/collabio-roadmap-617` transfer directory and local
+transfer archives were removed. No transient quality, test or Work-E2E runner remains. Regular and review APIs both
+return `ok`; review PostgreSQL, MinIO, decoder and API remain healthy and unrelated projects were untouched.
+
+The change adds no migration, new endpoint, dependency, external request, provider, worker, recovery store, HTML,
+URL, arbitrary attribute, cross-document or cross-tenant transfer, DOCX engine or production admission. GitHub
+publication remains pending under the explicit content-specific approval requirement for the internal handoff,
+roadmap, ADRs and dev001 operations record.
+
 Roadmap 610 through 616 / PLANS 471 through 477 are complete under ADR-0174. The responsive **Objektliste ...**
 enumerates every standalone root shape and complete root group in canonical document order, including objects behind
 text or otherwise visually obscured. Authors can search text, kind, member text, document position and anchor, filter
