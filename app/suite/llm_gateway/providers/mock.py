@@ -1,5 +1,7 @@
 class MockLLMProvider:
     def complete(self, *, model_id: str, prompt: str) -> str:
+        if "RISK_MARKING_FORMAT_V1" in prompt:
+            return "STATUS: risks\nRISK: high|commitment|1|Confirm the named commitment before relying on it."
         if "POLICY_COMPARISON_FORMAT_V1" in prompt:
             return (
                 "STATUS: unclear\n"

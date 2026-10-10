@@ -36,6 +36,12 @@ from suite.platform.office_ai_rewrite import (
     OfficeAIRewriteService,
     OfficeAIRewriteUnavailable,
 )
+from suite.platform.office_ai_risk_marking import (
+    OfficeAIRiskMarkingCommand,
+    OfficeAIRiskMarkingResponse,
+    OfficeAIRiskMarkingService,
+    OfficeAIRiskMarkingUnavailable,
+)
 from suite.platform.office_ai_summary import (
     OfficeAISummaryCommand,
     OfficeAISummaryResponse,
@@ -216,6 +222,7 @@ class OfficeRoute(APIRoute):
                 OfficeAITranslationUnavailable,
                 OfficeAIOutlineUnavailable,
                 OfficeAIPolicyComparisonUnavailable,
+                OfficeAIRiskMarkingUnavailable,
             ):
                 return JSONResponse({"detail": "Office AI request is unavailable"}, status_code=502)
 
@@ -306,6 +313,12 @@ def build_office_ai_policy_comparison_service(
     *, document_service: OfficeDocumentService, gateway: Any
 ) -> OfficeAIPolicyComparisonService:
     return OfficeAIPolicyComparisonService(documents=document_service, gateway=gateway)
+
+
+def build_office_ai_risk_marking_service(
+    *, document_service: OfficeDocumentService, gateway: Any
+) -> OfficeAIRiskMarkingService:
+    return OfficeAIRiskMarkingService(documents=document_service, gateway=gateway)
 
 
 def register_office_routes(
@@ -581,6 +594,20 @@ def register_office_routes(
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_ai_policy_comparison_service.compare(
+            user_context=context.user_context,
+            tenant_policy=context.tenant_policy,
+            object_id=object_id,
+            command=command,
+        )
+
+    @router.post("/{object_id}/ai/risk-markings", response_model=OfficeAIRiskMarkingResponse)
+    def mark_document_risks(
+        object_id: str,
+        command: OfficeAIRiskMarkingCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_ai_risk_marking_service.mark(
             user_context=context.user_context,
             tenant_policy=context.tenant_policy,
             object_id=object_id,

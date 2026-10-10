@@ -5581,6 +5581,9 @@ function clearSuggestions() {
   $("suggestion-policy-body").textContent = "";
   $("suggestion-policy-status").textContent = "";
   $("suggestion-policy-citation").textContent = "";
+  $("suggestion-risk-report").hidden = true;
+  $("suggestion-risk-status").textContent = "";
+  $("suggestion-risk-list").replaceChildren();
   $("suggestions-more").hidden = true;
   $("suggestion-new").disabled = true;
 }
@@ -5618,6 +5621,43 @@ function renderPolicyComparison(suggestions) {
   $("suggestion-policy-report").dataset.status = result.status;
   $("suggestion-policy-report").hidden = false;
 }
+function clearRiskMarking(suggestions = state.suggestions) {
+  if (suggestions) suggestions.riskMarking = null;
+  $("suggestion-risk-report").hidden = true;
+  $("suggestion-risk-report").removeAttribute("data-status");
+  $("suggestion-risk-status").textContent = "";
+  $("suggestion-risk-list").replaceChildren();
+}
+function showRiskAnchor(risk) {
+  const suggestions = state.suggestions;
+  if (!suggestionCurrent(suggestions) || suggestions.riskMarking?.source_version_id !== suggestions.versionId) return;
+  const transaction = state.editor.state.tr.setSelection(
+    TextSelection.create(state.editor.state.doc, risk.anchor.from, risk.anchor.to)
+  );
+  state.editor.view.dispatch(transaction.scrollIntoView());
+  state.editor.commands.focus();
+}
+function renderRiskMarking(suggestions) {
+  const result = suggestions?.riskMarking;
+  if (!result) { clearRiskMarking(suggestions); return; }
+  $("suggestion-risk-status").textContent = result.status === "clear" ?
+    "Keine potenziellen Risiken erkannt. Das Ergebnis muss weiterhin fachlich geprüft werden." :
+    `${result.risk_count} potenzielle Risiken erkannt · höchste Einstufung: ${result.highest_severity}.`;
+  const labels = { legal: "Recht", financial: "Finanzen", privacy: "Datenschutz", security: "Sicherheit",
+    operational: "Betrieb", commitment: "Verpflichtung", low: "Niedrig", medium: "Mittel", high: "Hoch" };
+  const list = $("suggestion-risk-list");
+  list.replaceChildren(); list.className = "ai-risk-list";
+  result.risks.forEach((risk) => {
+    const item = node("article", undefined, "ai-risk-item"); item.dataset.severity = risk.severity;
+    const meta = node("div", undefined, "ai-risk-meta");
+    meta.append(node("span", labels[risk.severity], "ai-risk-chip"), node("span", labels[risk.category], "ai-risk-chip"));
+    const jump = node("button", "Stelle anzeigen", "quiet-button"); jump.type = "button";
+    jump.addEventListener("click", () => showRiskAnchor(risk));
+    item.append(meta, node("blockquote", risk.source_excerpt), node("p", risk.explanation), jump); list.append(item);
+  });
+  $("suggestion-risk-report").dataset.status = result.status;
+  $("suggestion-risk-report").hidden = false;
+}
 function canCreateSuggestion(suggestions = state.suggestions) {
   return !suggestionBusy(suggestions) && !suggestions.uncertain && !suggestions.loading && suggestions.canCreate &&
     suggestions.session.canWrite && !suggestions.session.historical && !suggestions.session.conflict && !isDirty() && suggestions.currentVersionId === suggestions.versionId;
@@ -5641,11 +5681,14 @@ function updateSuggestionControls() {
   $("suggestion-tone").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-translate").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
   $("suggestion-outline").disabled = !canCreateSuggestion(suggestions) || !selectedReviewAnchor();
+  $("suggestion-risk-mark").disabled = busy || !suggestionCurrent(suggestions) || isDirty() ||
+    suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId;
   const policy = selectedPolicyDocument();
   $("suggestion-policy-compare").disabled = busy || !suggestionCurrent(suggestions) || !policy || isDirty() ||
     suggestions.session.historical || suggestions.currentVersionId !== suggestions.versionId;
   $("suggestion-policy-document").disabled = busy;
   $("suggestion-policy-dismiss").disabled = busy;
+  $("suggestion-risk-dismiss").disabled = busy;
   $("suggestion-tone-select").disabled = busy;
   $("suggestion-translation-select").disabled = busy;
   $("suggestion-outline-detail").disabled = busy;
@@ -5695,7 +5738,7 @@ async function loadSuggestions(append = false) {
       listRequest: 0, detailRequest: 0, items: [], selectedId: null, detail: null, nextCursor: null,
       loading: false, canCreate: false, currentVersionId: null, composer: null, attempt: null,
       preparing: false, saving: false, settling: false, summarizing: false, uncertain: false, conflict: false,
-      policyComparison: null };
+      policyComparison: null, riskMarking: null };
     state.suggestions = suggestions;
   }
   if (suggestions.saving || suggestions.preparing || suggestions.uncertain || (append && !suggestions.nextCursor)) return false;
@@ -5888,6 +5931,29 @@ function validAIPolicyComparison(result, suggestions, policy) {
     typeof result.inference_audit_event_id === "string" && result.output_trust === "untrusted" &&
     result.requires_human_review === true && result.persisted === false && result.document_changed === false &&
     result.automatic_action_allowed === false && result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
+}
+function validAIRiskMarking(result, suggestions) {
+  const severities = ["low", "medium", "high"], categories = ["legal", "financial", "privacy", "security", "operational", "commitment"];
+  const severityRank = { low: 1, medium: 2, high: 3 };
+  const actualHighestSeverity = Array.isArray(result?.risks) && result.risks.length ?
+    result.risks.reduce((highest, risk) => severityRank[risk.severity] > severityRank[highest] ? risk.severity : highest, "low") : null;
+  return result?.tenant_id === suggestions.context.tenantId && result.object_id === suggestions.session.objectId &&
+    result.source_version_id === suggestions.versionId && /^sha256:[a-f0-9]{64}$/.test(result.source_content_hash || "") &&
+    ["clear", "risks"].includes(result.status) && Number.isInteger(result.risk_count) && result.risk_count >= 0 &&
+    result.risk_count <= 8 && Array.isArray(result.risks) && result.risks.length === result.risk_count &&
+    (result.status === "clear" ? result.risk_count === 0 && result.highest_severity === null :
+      result.risk_count > 0 && severities.includes(result.highest_severity) &&
+      result.highest_severity === actualHighestSeverity) &&
+    result.risks.every((risk) => severities.includes(risk.severity) && categories.includes(risk.category) &&
+      Number.isInteger(risk.anchor?.from) && Number.isInteger(risk.anchor?.to) && risk.anchor.from >= 1 &&
+      risk.anchor.to > risk.anchor.from && typeof risk.source_excerpt === "string" && Boolean(risk.source_excerpt) &&
+      Array.from(risk.source_excerpt).length <= 2000 && typeof risk.explanation === "string" &&
+      Boolean(risk.explanation.trim()) && Array.from(risk.explanation).length <= 500) &&
+    typeof result.model_id === "string" && typeof result.prompt_template_id === "string" &&
+    typeof result.inference_audit_event_id === "string" && result.output_trust === "untrusted" &&
+    result.requires_human_review === true && result.persisted === false && result.document_changed === false &&
+    result.automatic_action_allowed === false && result.compliance_decision_allowed === false &&
+    result.rag_indexing_allowed === false && result.search_indexing_allowed === false;
 }
 async function summarizeSuggestionSelection() {
   const suggestions = state.suggestions;
@@ -6089,6 +6155,33 @@ async function compareDocumentWithPolicy() {
     $("suggestions-status").textContent = denied(error) ?
       "Der lokale Richtlinienvergleich ist für eines der Dokumente oder diesen Tenant nicht freigegeben." :
       "Der lokale Richtlinienvergleich ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
+  } finally {
+    if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
+  }
+}
+async function markDocumentRisks() {
+  const suggestions = state.suggestions;
+  if (!suggestionCurrent(suggestions) || $("suggestion-risk-mark").disabled) return;
+  const revision = suggestions.session.revision;
+  suggestions.summarizing = true;
+  clearRiskMarking(suggestions);
+  $("suggestions-status").textContent = "Dokument wird lokal auf Risiken geprüft …";
+  updateSuggestionControls();
+  try {
+    const result = await api(`${suggestionBase(suggestions).replace(/\/suggestions$/, "")}/ai/risk-markings`, {
+      method: "POST", signal: suggestions.controller.signal,
+      body: { expected_current_version_id: suggestions.versionId },
+    }, suggestions.context);
+    if (!suggestionCurrent(suggestions) || suggestions.session.revision !== revision ||
+        !validAIRiskMarking(result, suggestions)) throw new ApiError(502, true);
+    suggestions.riskMarking = result;
+    renderRiskMarking(suggestions);
+    $("suggestions-status").textContent = "Lokale AI-Risikoprüfung erstellt. Fundstellen fachlich prüfen.";
+  } catch (error) {
+    if (!suggestionCurrent(suggestions)) return;
+    $("suggestions-status").textContent = denied(error) ?
+      "Die lokale Risikoprüfung ist für dieses Dokument oder diesen Tenant nicht freigegeben." :
+      "Die lokale Risikoprüfung ist gerade nicht verfügbar. Das Dokument wurde nicht geändert.";
   } finally {
     if (suggestionCurrent(suggestions)) { suggestions.summarizing = false; updateSuggestionControls(); }
   }
@@ -6647,8 +6740,10 @@ $("suggestion-translate").addEventListener("click", translateSuggestionSelection
 $("suggestion-outline").addEventListener("mousedown", (event) => { if (event.button === 0) event.preventDefault(); });
 $("suggestion-outline").addEventListener("click", outlineSuggestionSelection);
 $("suggestion-policy-compare").addEventListener("click", compareDocumentWithPolicy);
+$("suggestion-risk-mark").addEventListener("click", markDocumentRisks);
 $("suggestion-policy-document").addEventListener("change", () => { clearPolicyComparison(); updateSuggestionControls(); });
 $("suggestion-policy-dismiss").addEventListener("click", () => { clearPolicyComparison(); updateSuggestionControls(); });
+$("suggestion-risk-dismiss").addEventListener("click", () => { clearRiskMarking(); updateSuggestionControls(); });
 $("suggestion-replacement").addEventListener("input", () => {
   const suggestions = state.suggestions;
   if (!suggestionCurrent(suggestions) || suggestions.composer?.operation !== "create" || suggestionBusy(suggestions) || suggestions.uncertain) return;

@@ -9,6 +9,7 @@ export const rewritePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(ob
 export const translationPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/translations`;
 export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/outlines`;
 export const policyComparisonPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/policy-comparisons`;
+export const riskMarkingPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/risk-markings`;
 export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
 export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
 
@@ -177,6 +178,33 @@ export async function compareDocumentWithPolicy(page, objectId, policy) {
   await expect(page.locator("#suggestion-policy-title")).toHaveText("AI-Vergleich · ungeprüft");
   await expect(page.locator("#suggestion-policy-body")).toContainText("FINDING:");
   await expect(page.locator("#suggestion-policy-citation")).toContainText(policy.version.version_id);
+  return result;
+}
+
+export async function markDocumentRisks(page, objectId) {
+  await expect(page.locator("#suggestion-risk-mark")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === riskMarkingPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-risk-mark").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.status).toBe("risks");
+  expect(result.risk_count).toBeGreaterThan(0);
+  expect(result.risks).toHaveLength(result.risk_count);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  expect(result.compliance_decision_allowed).toBe(false);
+  await expect(page.locator("#suggestion-risk-report")).toBeVisible();
+  await expect(page.locator("#suggestion-risk-title")).toHaveText("AI-Risikoprüfung · ungeprüft");
+  await expect(page.locator(".ai-risk-item")).toHaveCount(result.risk_count);
+  await page.locator(".ai-risk-item .quiet-button").first().click();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(result.risks[0].source_excerpt);
   return result;
 }
 
