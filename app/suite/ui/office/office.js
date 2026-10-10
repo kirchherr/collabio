@@ -66,6 +66,7 @@ function officeEditSessionId() {
   return created;
 }
 const editSessionId = officeEditSessionId();
+const collaborationClientId = editSessionId.replace("office-session-", "office-client-");
 const state = {
   context: null, epoch: 0, listRequest: 0, documents: [], canCreate: false,
   session: null, editor: null, listLoading: false, listQuery: "", listCursor: null, listCursors: new Set(),
@@ -570,6 +571,46 @@ function lifecycleResponseMatches(value, session) {
     value.business_record_requires_human_confirmation === true && value.ai_may_commit_business_record === false;
 }
 
+function collaborationPreflightMatches(value, session) {
+  const blockers = ["crdt_engine_not_admitted", "durable_update_log_not_implemented",
+    "restore_replay_not_verified", "malicious_update_fuzzing_not_verified",
+    "fifty_editor_load_not_verified", "websocket_gateway_not_admitted"];
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.current_version_id === session.metadata?.current_version_id &&
+    value.protocol_version === "collabio-office-crdt-preflight.v1" &&
+    value.contract_state === "prepared_runtime_closed" && value.transport_state === "websocket_not_admitted" &&
+    value.client_capability_state === "compatible" && value.runtime_admitted === false &&
+    value.target_concurrent_editors === 50 && value.max_update_bytes === 262144 &&
+    value.document_acl_revalidation_required === true && value.update_acl_revalidation_required === true &&
+    value.immutable_save_cas_required === true && value.raw_session_or_client_id_persisted === false &&
+    JSON.stringify(value.blockers) === JSON.stringify(blockers) && typeof value.audit_event_id === "string";
+}
+
+async function loadCollaborationPreflight(session, context) {
+  if (!session.canWrite || !editLeaseGranted(session)) {
+    $("lifecycle-live-collaboration").textContent = "Preflight nicht verfügbar; Schreibrecht und aktuelle Bearbeitungs-Lease sind erforderlich.";
+    return;
+  }
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/collaboration/preflight`, {
+      method: "POST",
+      body: { session_id: editSessionId, client_instance_id: collaborationClientId,
+        expected_current_version_id: session.metadata.current_version_id,
+        protocol_version: "collabio-office-crdt-preflight.v1",
+        capabilities: ["awareness_v1", "binary_update_v1", "state_vector_v1"] },
+    }, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!collaborationPreflightMatches(value, session)) throw new ApiError(502, true);
+    $("lifecycle-live-collaboration").textContent =
+      "Vertrag für Binärupdates und State Vector vorbereitet; Runtime und WebSocket bleiben geschlossen. Ziel: 50 gleichzeitige Bearbeiter. Restore-, Fuzzing- und Lastnachweise sind noch offen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-live-collaboration").textContent = denied(error)
+      ? "Preflight nicht mehr berechtigt; Live-Zusammenarbeit bleibt geschlossen."
+      : "Preflight konnte nicht bestätigt werden; Live-Zusammenarbeit bleibt geschlossen.";
+  }
+}
+
 async function loadDocumentLifecycle() {
   const session = state.session, context = state.context;
   if (!sessionCurrent(session) || !session.objectId) return;
@@ -588,6 +629,8 @@ async function loadDocumentLifecycle() {
     $("lifecycle-working").textContent = "Nur innerhalb der aktuellen Anfrage; kein Dokumentinhalt wird daraus gespeichert.";
     $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
     $("lifecycle-collaborative").textContent = collaborative;
+    await loadCollaborationPreflight(session, context);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
     $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
     $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
@@ -606,6 +649,7 @@ function openDocumentLifecycle() {
   closeDocumentLifecycle();
   $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
   $("lifecycle-collaborative").textContent = "Status wird geladen …";
+  $("lifecycle-live-collaboration").textContent = "Preflight wird geladen …";
   $("lifecycle-saved").textContent = "Status wird geladen …";
   $("lifecycle-business").textContent = "Übergang noch geschlossen.";
   $("lifecycle-worm").textContent = "Übergang noch geschlossen.";

@@ -9,6 +9,7 @@ from suite.ai_control_plane.models import UserContext
 from suite.platform.office_document_repository import InMemoryOfficeDocumentRepository
 from suite.platform.office_document_schema import OfficeDocumentInvalidContentError, validate_office_document
 from suite.platform.office_documents import (
+    OfficeDocumentCollaborationPreflightCommand,
     OfficeDocumentConflictError,
     OfficeDocumentCreateCommand,
     OfficeDocumentEditLeaseCommand,
@@ -823,6 +824,96 @@ def test_document_lifecycle_separates_ephemeral_work_saved_versions_and_closed_r
     audit_payload = canonical_json([event.model_dump() for event in service.audit.events])
     assert session_id not in audit_payload
     assert any(event.event_type == "office.documents.lifecycle.read" for event in service.audit.events)
+
+
+def test_collaboration_preflight_binds_acl_version_session_and_closed_runtime_without_state_writes(
+    office: Any,
+) -> None:
+    service, repository, user = office
+    created = service.create(
+        user_context=user,
+        command=create_command("collaboration-preflight-create"),
+        write_enabled=True,
+    )
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    session_id = "office-session-" + "d" * 32
+    service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=session_id,
+            expected_current_version_id=created.version.version_id,
+        ),
+        write_enabled=True,
+    )
+    for index in range(50):
+        response = service.collaboration_preflight(
+            user_context=user,
+            object_id=object_id,
+            command=OfficeDocumentCollaborationPreflightCommand(
+                session_id=session_id,
+                client_instance_id=f"office-client-{index:032x}",
+                expected_current_version_id=created.version.version_id,
+                capabilities=["awareness_v1", "binary_update_v1", "state_vector_v1"],
+            ),
+            write_enabled=True,
+        )
+        assert response.contract_state == "prepared_runtime_closed"
+        assert response.transport_state == "websocket_not_admitted" and not response.runtime_admitted
+        assert response.target_concurrent_editors == 50 and response.max_update_bytes == 262144
+        assert response.document_acl_revalidation_required and response.update_acl_revalidation_required
+        assert response.immutable_save_cas_required and not response.raw_session_or_client_id_persisted
+        assert "fifty_editor_load_not_verified" in response.blockers
+    assert len(repository.documents) == len(repository.saved_versions) == len(repository.edit_leases) == 1
+    audit_payload = canonical_json([event.model_dump(mode="json") for event in service.audit.events])
+    assert session_id not in audit_payload and "office-client-" not in audit_payload
+    assert sum(event.event_type == "office.documents.collaboration.preflight" for event in service.audit.events) == 50
+
+    with pytest.raises(OfficeDocumentConflictError):
+        service.collaboration_preflight(
+            user_context=user,
+            object_id=object_id,
+            command=OfficeDocumentCollaborationPreflightCommand(
+                session_id="office-session-" + "e" * 32,
+                client_instance_id="office-client-" + "e" * 32,
+                expected_current_version_id=created.version.version_id,
+                capabilities=["binary_update_v1", "state_vector_v1"],
+            ),
+            write_enabled=True,
+        )
+    with pytest.raises(OfficeDocumentPermissionError):
+        service.collaboration_preflight(
+            user_context=user,
+            object_id=object_id,
+            command=OfficeDocumentCollaborationPreflightCommand(
+                session_id=session_id,
+                client_instance_id="office-client-" + "f" * 32,
+                expected_current_version_id=created.version.version_id,
+                capabilities=["binary_update_v1", "state_vector_v1"],
+            ),
+            write_enabled=False,
+        )
+
+
+@pytest.mark.parametrize(
+    "capabilities",
+    [
+        ["binary_update_v1"],
+        ["binary_update_v1", "binary_update_v1", "state_vector_v1"],
+        ["state_vector_v1", "binary_update_v1"],
+    ],
+)
+def test_collaboration_preflight_capabilities_are_complete_unique_and_canonical(capabilities: list[str]) -> None:
+    with pytest.raises(ValidationError):
+        OfficeDocumentCollaborationPreflightCommand.model_validate(
+            {
+                "session_id": "office-session-" + "1" * 32,
+                "client_instance_id": "office-client-" + "2" * 32,
+                "expected_current_version_id": "office-version-" + "3" * 32,
+                "capabilities": capabilities,
+            }
+        )
 
 
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(

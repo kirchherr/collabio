@@ -303,6 +303,64 @@ def test_office_lifecycle_api_models_ephemeral_collaborative_and_record_boundari
     assert malformed.status_code == 422
 
 
+def test_office_collaboration_preflight_is_version_session_and_write_bound_with_runtime_closed(
+    office_api: OfficeApiHarness,
+) -> None:
+    created = create_document(office_api)
+    object_id = created["document"]["object_id"]
+    version_id = created["version"]["version_id"]
+    session_id = "office-session-" + "4" * 32
+    lease = office_api.client.post(
+        f"{BASE}/{object_id}/edit-lease",
+        headers=office_api.headers,
+        json={"session_id": session_id, "expected_current_version_id": version_id},
+    )
+    assert lease.status_code == 200
+    payload = {
+        "session_id": session_id,
+        "client_instance_id": "office-client-" + "5" * 32,
+        "expected_current_version_id": version_id,
+        "protocol_version": "collabio-office-crdt-preflight.v1",
+        "capabilities": ["awareness_v1", "binary_update_v1", "state_vector_v1"],
+    }
+    response = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/preflight",
+        headers=office_api.headers,
+        json=payload,
+    )
+    assert response.status_code == 200 and response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["tenant_id"] == "tenant-demo" and value["object_id"] == object_id
+    assert value["current_version_id"] == version_id
+    assert value["contract_state"] == "prepared_runtime_closed"
+    assert value["transport_state"] == "websocket_not_admitted" and value["runtime_admitted"] is False
+    assert value["target_concurrent_editors"] == 50 and value["max_update_bytes"] == 262144
+    assert value["raw_session_or_client_id_persisted"] is False
+    assert value["blockers"] == [
+        "crdt_engine_not_admitted",
+        "durable_update_log_not_implemented",
+        "restore_replay_not_verified",
+        "malicious_update_fuzzing_not_verified",
+        "fifty_editor_load_not_verified",
+        "websocket_gateway_not_admitted",
+    ]
+    events = json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+    assert session_id not in events and payload["client_instance_id"] not in events
+
+    stale = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/preflight",
+        headers=office_api.headers,
+        json={**payload, "expected_current_version_id": "office-version-" + "6" * 32},
+    )
+    assert stale.status_code == 409
+    malformed = office_api.client.post(
+        f"{BASE}/{object_id}/collaboration/preflight",
+        headers=office_api.headers,
+        json={**payload, "capabilities": ["state_vector_v1", "binary_update_v1"]},
+    )
+    assert malformed.status_code == 422
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

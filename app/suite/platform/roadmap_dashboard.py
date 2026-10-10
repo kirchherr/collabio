@@ -808,6 +808,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "folgen der Dokumentreihenfolge getrennt von Abbildungen. "
                         "Versionsgebundene Kommentare erlauben bestaetigte Antworten, Erledigen und Wiedereroeffnen; "
                         "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
+                        "Ein metadatenreiner CRDT-Preflight bindet Protokollfaehigkeiten an Mandant, Dokument, "
+                        "aktuelle immutable Version, Schreibrecht und aktuelle Bearbeitungs-Lease. Runtime und "
+                        "WebSocket bleiben bis zu Engine-, Restore-, Fuzzing- und 50-Editor-Nachweisen geschlossen. "
                         "Textvorschlaege zeigen Vorher und Nachher; bestaetigte Annahme speichert Entscheidung und "
                         "neue Dokumentversion gemeinsam, Ablehnung bewahrt die unveraenderte Fassung. "
                         "Eine Druckansicht bereitet exakte gespeicherte Fassungen fuer den Browserdruck oder "
@@ -872,6 +875,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-discovery-responsive.spec.mjs",
                         "e2e/work/tests/office-history-pagination.spec.mjs",
                         "e2e/work/tests/office-history-pagination-responsive.spec.mjs",
+                        "e2e/work/tests/office-lifecycle-responsive.spec.mjs",
                         "e2e/work/tests/office-search.spec.mjs",
                         "e2e/work/tests/office-tables.spec.mjs",
                         "e2e/work/tests/office-tables-responsive.spec.mjs",
@@ -912,6 +916,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/{object_id}/versions",
                         "/v1/office/documents/{object_id}/outbound-references",
                         "/v1/office/documents/{object_id}/backlinks",
+                        "/v1/office/documents/{object_id}/collaboration/preflight",
                         "/v1/office/documents/{object_id}/review-threads",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}",
                         "/v1/office/documents/{object_id}/review-threads/{thread_id}/events",
@@ -939,6 +944,9 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "version_pages_follow_immutable_lineage_with_fresh_parent_acl",
                         "history_append_preserves_exact_selections_comparisons_and_local_drafts",
                         "history_cursors_bind_document_context_and_never_authorize_access",
+                        "crdt_preflight_requires_current_write_acl_version_and_edit_lease",
+                        "crdt_runtime_and_websocket_remain_closed_until_separate_evidence",
+                        "collaboration_session_and_client_ids_are_not_persisted_or_audited",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",

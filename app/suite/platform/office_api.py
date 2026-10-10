@@ -23,6 +23,8 @@ from suite.platform.office_documents import (
     OFFICE_DOCUMENTS_MODULE_ID,
     OFFICE_DOCUMENTS_WRITE_FEATURE_ID,
     OfficeDocumentBacklinksResponse,
+    OfficeDocumentCollaborationPreflightCommand,
+    OfficeDocumentCollaborationPreflightResponse,
     OfficeDocumentConflictError,
     OfficeDocumentContentResponse,
     OfficeDocumentCreateCommand,
@@ -564,6 +566,24 @@ def register_office_routes(
             object_id=object_id,
             session_id=session_id,
             write_enabled=_write_enabled(request, context),
+        )
+
+    @router.post(
+        "/{object_id}/collaboration/preflight",
+        response_model=OfficeDocumentCollaborationPreflightResponse,
+        dependencies=[Depends(write_gate)],
+    )
+    def collaboration_preflight(
+        object_id: str,
+        command: OfficeDocumentCollaborationPreflightCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.collaboration_preflight(
+            user_context=context.user_context,
+            object_id=object_id,
+            command=command,
+            write_enabled=True,
         )
 
     @router.get("/{object_id}/review-threads", response_model=ReviewListResponse)

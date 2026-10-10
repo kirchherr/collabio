@@ -43,6 +43,26 @@ OFFICE_DOCUMENT_SOURCE_SYSTEM = "collabio_office_native"
 OFFICE_BACKLINK_PAGE_MAX = 50
 OFFICE_BACKLINK_SCAN_LIMIT = 50
 OFFICE_EDIT_LEASE_SECONDS = 90
+OfficeCrdtProtocolVersion = Literal["collabio-office-crdt-preflight.v1"]
+OfficeCrdtBlocker = Literal[
+    "crdt_engine_not_admitted",
+    "durable_update_log_not_implemented",
+    "restore_replay_not_verified",
+    "malicious_update_fuzzing_not_verified",
+    "fifty_editor_load_not_verified",
+    "websocket_gateway_not_admitted",
+]
+OFFICE_CRDT_PROTOCOL_VERSION: OfficeCrdtProtocolVersion = "collabio-office-crdt-preflight.v1"
+OFFICE_CRDT_MAX_UPDATE_BYTES = 262144
+OFFICE_CRDT_TARGET_CONCURRENT_EDITORS = 50
+OFFICE_CRDT_BLOCKERS: tuple[OfficeCrdtBlocker, ...] = (
+    "crdt_engine_not_admitted",
+    "durable_update_log_not_implemented",
+    "restore_replay_not_verified",
+    "malicious_update_fuzzing_not_verified",
+    "fifty_editor_load_not_verified",
+    "websocket_gateway_not_admitted",
+)
 OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
 OfficeSharePermission = Literal["read", "write"]
 OFFICE_INFORMATION_CLASSIFICATION_RANK = {
@@ -201,6 +221,54 @@ class OfficeDocumentLifecycleResponse(BaseModel):
     save_requires_current_version: bool = True
     business_record_requires_human_confirmation: bool = True
     ai_may_commit_business_record: bool = False
+    audit_event_id: str = ""
+
+
+def office_crdt_blockers() -> list[OfficeCrdtBlocker]:
+    return list(OFFICE_CRDT_BLOCKERS)
+
+
+class OfficeDocumentCollaborationPreflightCommand(BaseModel):
+    """Metadata-only client contract; it does not admit a CRDT runtime."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    session_id: str = Field(pattern=r"^office-session-[a-f0-9]{32}$")
+    client_instance_id: str = Field(pattern=r"^office-client-[a-f0-9]{32}$")
+    expected_current_version_id: str = Field(pattern=r"^office-version-[a-f0-9]{32}$")
+    protocol_version: OfficeCrdtProtocolVersion = OFFICE_CRDT_PROTOCOL_VERSION
+    capabilities: list[Literal["awareness_v1", "binary_update_v1", "state_vector_v1"]] = Field(
+        min_length=2, max_length=3
+    )
+
+    @model_validator(mode="after")
+    def canonical_capabilities(self) -> OfficeDocumentCollaborationPreflightCommand:
+        if self.capabilities != sorted(set(self.capabilities)) or not {
+            "binary_update_v1",
+            "state_vector_v1",
+        }.issubset(self.capabilities):
+            raise ValueError("Collaboration capabilities are invalid")
+        return self
+
+
+class OfficeDocumentCollaborationPreflightResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    current_version_id: str
+    protocol_version: OfficeCrdtProtocolVersion = OFFICE_CRDT_PROTOCOL_VERSION
+    contract_state: Literal["prepared_runtime_closed"] = "prepared_runtime_closed"
+    transport_state: Literal["websocket_not_admitted"] = "websocket_not_admitted"
+    client_capability_state: Literal["compatible"] = "compatible"
+    runtime_admitted: bool = False
+    target_concurrent_editors: int = OFFICE_CRDT_TARGET_CONCURRENT_EDITORS
+    max_update_bytes: int = OFFICE_CRDT_MAX_UPDATE_BYTES
+    document_acl_revalidation_required: bool = True
+    update_acl_revalidation_required: bool = True
+    immutable_save_cas_required: bool = True
+    raw_session_or_client_id_persisted: bool = False
+    blockers: list[OfficeCrdtBlocker] = Field(default_factory=office_crdt_blockers)
     audit_event_id: str = ""
 
 
@@ -1060,6 +1128,51 @@ class OfficeDocumentService:
                     business_record_state=response.business_record_state,
                     worm_record_state=response.worm_record_state,
                     ai_may_commit_business_record=False,
+                )
+            }
+        )
+
+    def collaboration_preflight(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        command: OfficeDocumentCollaborationPreflightCommand,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentCollaborationPreflightResponse:
+        if not self.writes_available or not write_enabled:
+            raise OfficeDocumentPermissionError("Document collaboration is not permitted")
+        command = OfficeDocumentCollaborationPreflightCommand.model_validate(command.model_dump(mode="python"))
+        document = self.repository.get_document(user_context=user_context, object_id=object_id)
+        if not self.repository.can_write(user_context=user_context, object_id=object_id):
+            raise OfficeDocumentPermissionError("Document collaboration is not permitted")
+        if document.current_version_id != command.expected_current_version_id:
+            raise OfficeDocumentConflictError("Document has a newer saved version")
+        lease = self.repository.edit_lease(
+            user_context=user_context,
+            object_id=object_id,
+            session_id=command.session_id,
+        )
+        if lease.status != "held_by_current_session" or lease.base_version_id != document.current_version_id:
+            raise OfficeDocumentConflictError("Document collaboration requires the current edit lease")
+        response = OfficeDocumentCollaborationPreflightResponse(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            current_version_id=document.current_version_id,
+        )
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.collaboration.preflight",
+                    object_id=object_id,
+                    current_version_id=document.current_version_id,
+                    protocol_version=response.protocol_version,
+                    capability_count=len(command.capabilities),
+                    contract_state=response.contract_state,
+                    transport_state=response.transport_state,
+                    runtime_admitted=False,
+                    blocker_count=len(response.blockers),
                 )
             }
         )
