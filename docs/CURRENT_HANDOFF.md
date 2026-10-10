@@ -2,6 +2,48 @@
 
 Updated: 2026-10-10
 
+Roadmap 712 through 719 / PLANS 573 through 580 are complete under ADR-0187. Native Office can now rewrite one
+marked text range or apply one of five fixed tones: neutral, professional, friendly, formal or concise. The endpoint
+accepts the exact current immutable version, one native selection anchor and the fixed operation only. The server
+revalidates the authoritative document ACL and derives the selected text from the saved version; the browser cannot
+send source text, a free instruction, model, provider or target language.
+
+Every operation maps to an approved versioned prompt that preserves language, meaning, facts, names, numbers and
+commitments and treats the delimited source as untrusted data. The common inference policy now rejects unapproved
+prompts. JSON registries merge missing built-in prompts without replacing existing custom rows. Only tenant-admitted,
+drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted content stays
+closed until tenant, model and exact prompt all admit the confidential class.
+
+The result is validated, visibly labelled **AI-Entwurf · ungeprüft** with its operation or tone, remains transient and
+changes neither document content nor version count. It fills the existing editable proposal composer. A user must
+explicitly confirm suggestion creation and later explicitly accept that suggestion before a new immutable document
+version can exist. Audit stores model, prompt, exact source IDs and input/output hashes without prompt, source or
+output bodies. Product commit `4bb96536` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
+passed 2/2 in 22.9 seconds, and the unchanged complete Office suggestion suite passed 10/10 in 1.5 minutes after its
+negative-path API dependency was started. The final browser report hash is
+`sha256:c9e89f820c3d98a604260d35f992bae61ce13a2b9a4448af64557dcd5962e69b`; desktop, tablet and mobile screenshot
+hashes are `sha256:dd71e9e562cb968fef9a33fdfb00ce587a04cf89142a2b1af37f72ff84c7dbf1`,
+`sha256:91b19bcbf9089807803e55dc579c9fce90b50f22fec573330fe64f5cbd4754c1` and
+`sha256:55740e6b4b0cf5ff1ec17c477b018a3ee95c614af7d93cc18485d4c8a7e14c88`. Work-E2E and review API image IDs are
+`sha256:f40b5c6b6b5d7ad30ded6adddcfc4e13b8a9baaad2c4e254aaaf195510545bea` and
+`sha256:2580ba54cbbcbc5ed496e16953b4a88f26f674858ff15e1178bf83766ae226d8`.
+
+The complete final quality gate passed Ruff, found 930 format-conformant files, passed Mypy over 621 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API and both temporary transfer patches were removed. No
+transient runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=rewrite-tone-4bb96536`.
+
+This slice adds no migration, durable AI draft, free-form prompting, caller-selected model/provider, automatic
+suggestion/save, whole-document inference, translation, indexing or production admission. The next Office step is
+translation on the same exact-version, local-model and explicit-confirmation boundary. GitHub publication remains
+pending under the content-specific approval requirement.
+
 Roadmap 704 through 711 / PLANS 565 through 572 are complete under ADR-0186. Native Office can summarize one marked
 text range from the exact current immutable document version. The server revalidates the authoritative document ACL,
 derives the selected text from the saved version and binds the inference to the exact object, version, anchor and
