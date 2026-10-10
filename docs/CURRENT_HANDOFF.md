@@ -29,13 +29,14 @@ Complete quality passes Ruff, finds 964 format-conformant files, passes Mypy ove
 `sha256:cd59c3c667b5bc6bce2e8822f0c4784fd42098c6c61cd1ee562241002662704e` and
 `sha256:bbb6b9fd191f386e79e8cefcf26722b9edf92321ac96e0fde6621e1b11e0595e`.
 
-All four Phase-3 Office exit criteria are now closed. The next action is complete quality, final review-runtime
-verification, content-specific GitHub publication and UI acceptance before resuming deferred CRM account onboarding.
+All four Phase-3 Office exit criteria are now closed. Complete quality and final review-runtime verification passed,
+and the content-specific GitHub publication updated the existing pull-request branch through `8e5b01b9`. UI acceptance
+is the remaining closeout step before resuming deferred CRM account onboarding.
 The review target is `http://192.168.0.108:42880/office?review=rag-adr0196` with asset keys `office.css?v=12` and
 `editor.js?v=8`. Exact isolated test dependencies, the interrupted broad browser runner and named transfer files are
 removed; no transient quality or Work-E2E runner remains. Review PostgreSQL, MinIO, decoder and API stay available.
-Regular and review APIs both return `ok`. Product commit `ed1276ea` is local on
-`kirchherr/kb-write-unit-of-work`; GitHub publication remains pending under the content-specific approval requirement.
+Regular and review APIs both return `ok`. Product commit `ed1276ea` and documentation closeout `8e5b01b9` are
+published on `kirchherr/kb-write-unit-of-work` in the existing pull request.
 
 Roadmap 776 through 783 / PLANS 637 through 644 are complete under ADR-0195. The former fifty-client sequential
 preflight loop has been replaced by a deterministic isolated load harness with fifty genuinely parallel worker

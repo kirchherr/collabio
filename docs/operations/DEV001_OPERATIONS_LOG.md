@@ -1,5 +1,16 @@
 # dev001 Collabio Operations Log
 
+## 2026-10-10 Native Office Phase 3 GitHub publication
+
+- Published the fully validated native Office branch from `add05b45` through `8e5b01b9` to
+  `origin/kirchherr/kb-write-unit-of-work`, updating the existing pull request.
+- The publication contains 69 commits and closes native Office through Roadmap 791 / PLANS 652 under ADR-0196.
+- Post-push tracking verification reported `0 0` divergence between the local and origin branch. The only local
+  untracked files remain the operator-owned `erp_modul.md` and `review.md`; neither file was changed or published.
+- No service lifecycle, database, tenant, pilot or runtime state changed during publication. The existing review
+  runtime remains available for explicit UI acceptance at
+  `http://192.168.0.108:42880/office?review=rag-adr0196`.
+
 This append-only operator log records Collabio Docker lifecycle, migration, restore, and port-affecting work on `dev001`. Collabio uses `/home/extern/collabio` and the explicit Compose project name `collabio`. Tricert resources are outside this log and must not be touched.
 
 | UTC date | Operation | Scope and result | Coordination |
