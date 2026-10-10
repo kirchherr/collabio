@@ -788,6 +788,43 @@ def test_edit_lease_coordinates_sessions_without_replacing_version_cas(office: A
     assert any(event.event_type == "office.documents.edit_lease.release_requested" for event in service.audit.events)
 
 
+def test_document_lifecycle_separates_ephemeral_work_saved_versions_and_closed_record_transitions(
+    office: Any,
+) -> None:
+    service, _repository, user = office
+    created = service.create(user_context=user, command=create_command("lifecycle-create"), write_enabled=True)
+    object_id = created.document.object_id
+    user.readable_object_ids.add(object_id)
+    session_id = "office-session-" + "c" * 32
+    service.acquire_edit_lease(
+        user_context=user,
+        object_id=object_id,
+        command=OfficeDocumentEditLeaseCommand(
+            session_id=session_id, expected_current_version_id=created.version.version_id
+        ),
+        write_enabled=True,
+    )
+
+    lifecycle = service.lifecycle(user_context=user, object_id=object_id, session_id=session_id, write_enabled=True)
+    assert lifecycle.current_version_id == created.version.version_id
+    assert lifecycle.working_data == "request_transient"
+    assert lifecycle.draft_state == "browser_memory_only"
+    assert lifecycle.collaborative_state == "held_by_current_session"
+    assert lifecycle.collaborative_base_version_id == created.version.version_id
+    assert lifecycle.saved_version_state == "current_immutable_version"
+    assert lifecycle.business_record_state == lifecycle.worm_record_state == "transition_closed"
+    assert lifecycle.save_requires_human_confirmation and lifecycle.save_requires_current_version
+    assert lifecycle.business_record_requires_human_confirmation and not lifecycle.ai_may_commit_business_record
+
+    read_only_view = service.lifecycle(
+        user_context=user, object_id=object_id, session_id=session_id, write_enabled=False
+    )
+    assert read_only_view.collaborative_state == "unavailable"
+    audit_payload = canonical_json([event.model_dump() for event in service.audit.events])
+    assert session_id not in audit_payload
+    assert any(event.event_type == "office.documents.lifecycle.read" for event in service.audit.events)
+
+
 def test_document_information_classification_is_versioned_audited_and_admin_controls_downgrades(
     office: Any,
 ) -> None:

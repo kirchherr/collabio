@@ -181,6 +181,29 @@ class OfficeDocumentEditLeaseState(BaseModel):
     lease_seconds: int = OFFICE_EDIT_LEASE_SECONDS
 
 
+class OfficeDocumentLifecycleResponse(BaseModel):
+    """Authoritative boundary between ephemeral work and durable records."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    object_id: str
+    current_version_id: str
+    working_data: Literal["request_transient"] = "request_transient"
+    draft_state: Literal["browser_memory_only"] = "browser_memory_only"
+    collaborative_state: Literal["unavailable", "available", "held_by_current_session", "held_by_other"]
+    collaborative_base_version_id: str
+    collaborative_expires_at_utc: str | None = None
+    saved_version_state: Literal["current_immutable_version"] = "current_immutable_version"
+    business_record_state: Literal["transition_closed"] = "transition_closed"
+    worm_record_state: Literal["transition_closed"] = "transition_closed"
+    save_requires_human_confirmation: bool = True
+    save_requires_current_version: bool = True
+    business_record_requires_human_confirmation: bool = True
+    ai_may_commit_business_record: bool = False
+    audit_event_id: str = ""
+
+
 def validate_office_document_query(query: str) -> str:
     if (
         not isinstance(query, str)
@@ -989,6 +1012,56 @@ class OfficeDocumentService:
             "office.documents.edit_lease.taken_over"
             if state.takeover_performed
             else "office.documents.edit_lease.requested",
+        )
+
+    def lifecycle(
+        self,
+        *,
+        user_context: UserContext,
+        object_id: str,
+        session_id: str,
+        write_enabled: bool = False,
+    ) -> OfficeDocumentLifecycleResponse:
+        command = OfficeDocumentEditLeaseReleaseCommand(session_id=session_id)
+        document = self.repository.get_document(user_context=user_context, object_id=object_id)
+        if (
+            self.writes_available
+            and write_enabled
+            and self.repository.can_write(user_context=user_context, object_id=object_id)
+        ):
+            lease = self.repository.edit_lease(
+                user_context=user_context, object_id=object_id, session_id=command.session_id
+            )
+        else:
+            lease = OfficeDocumentEditLeaseState(
+                tenant_id=user_context.tenant_id,
+                object_id=object_id,
+                status="unavailable",
+                base_version_id=document.current_version_id,
+                lease_revision=0,
+            )
+        response = OfficeDocumentLifecycleResponse(
+            tenant_id=document.tenant_id,
+            object_id=document.object_id,
+            current_version_id=document.current_version_id,
+            collaborative_state=lease.status,
+            collaborative_base_version_id=lease.base_version_id,
+            collaborative_expires_at_utc=lease.expires_at_utc,
+        )
+        return response.model_copy(
+            update={
+                "audit_event_id": self._audit(
+                    user_context,
+                    "office.documents.lifecycle.read",
+                    object_id=object_id,
+                    current_version_id=document.current_version_id,
+                    collaborative_state=lease.status,
+                    draft_persistence=response.draft_state,
+                    business_record_state=response.business_record_state,
+                    worm_record_state=response.worm_record_state,
+                    ai_may_commit_business_record=False,
+                )
+            }
         )
 
     def release_edit_lease(

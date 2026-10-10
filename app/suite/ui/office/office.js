@@ -553,6 +553,66 @@ async function submitEditLeaseTakeover(event) {
   else $("edit-lease-dialog-status").textContent = "Die Übernahme konnte nicht bestätigt werden. Bitte prüfen Sie den Bearbeitungsstatus erneut.";
 }
 
+function closeDocumentLifecycle() {
+  if ($("lifecycle-dialog").open) $("lifecycle-dialog").close();
+  $("lifecycle-status").textContent = "";
+}
+
+function lifecycleResponseMatches(value, session) {
+  return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
+    value.current_version_id === session.metadata?.current_version_id &&
+    value.working_data === "request_transient" && value.draft_state === "browser_memory_only" &&
+    ["unavailable", "available", "held_by_current_session", "held_by_other"].includes(value.collaborative_state) &&
+    value.collaborative_base_version_id === value.current_version_id &&
+    value.saved_version_state === "current_immutable_version" &&
+    value.business_record_state === "transition_closed" && value.worm_record_state === "transition_closed" &&
+    value.save_requires_human_confirmation === true && value.save_requires_current_version === true &&
+    value.business_record_requires_human_confirmation === true && value.ai_may_commit_business_record === false;
+}
+
+async function loadDocumentLifecycle() {
+  const session = state.session, context = state.context;
+  if (!sessionCurrent(session) || !session.objectId) return;
+  $("lifecycle-refresh").disabled = true;
+  $("lifecycle-status").textContent = "Dokumentstatus wird geprüft …";
+  try {
+    const value = await api(`/v1/office/documents/${encodeURIComponent(session.objectId)}/lifecycle?session_id=${encodeURIComponent(editSessionId)}`);
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    if (!lifecycleResponseMatches(value, session)) throw new ApiError(502, true);
+    const collaborative = {
+      held_by_current_session: `Bearbeitung für diese Sitzung reserviert${value.collaborative_expires_at_utc ? ` bis ${dateLabel(value.collaborative_expires_at_utc)}` : ""}.`,
+      held_by_other: "Eine andere Sitzung bearbeitet die aktuelle gespeicherte Version.",
+      available: "Die aktuelle gespeicherte Version ist nicht reserviert.",
+      unavailable: "Für diese Sitzung ist kein bestätigter Bearbeitungsstatus verfügbar.",
+    }[value.collaborative_state];
+    $("lifecycle-working").textContent = "Nur innerhalb der aktuellen Anfrage; kein Dokumentinhalt wird daraus gespeichert.";
+    $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
+    $("lifecycle-collaborative").textContent = collaborative;
+    $("lifecycle-saved").textContent = `Aktuelle immutable Version ${value.current_version_id}.`;
+    $("lifecycle-business").textContent = "Übergang geschlossen; eine spätere Freigabe braucht ausdrückliche menschliche Bestätigung.";
+    $("lifecycle-worm").textContent = "Übergang geschlossen; es wurde kein WORM Evidence Record erzeugt.";
+    $("lifecycle-status").textContent = "Zustände autoritativ geprüft. AI darf keinen Business Record auslösen.";
+  } catch (error) {
+    if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
+    $("lifecycle-status").textContent = denied(error) ? "Der Dokumentstatus ist nicht mehr verfügbar." : "Der Dokumentstatus konnte nicht bestätigt werden.";
+  } finally {
+    if (sessionCurrent(session) && state.context === context) $("lifecycle-refresh").disabled = false;
+  }
+}
+
+function openDocumentLifecycle() {
+  const session = state.session;
+  if (!sessionCurrent(session) || !session.objectId || session.loading) return;
+  closeDocumentLifecycle();
+  $("lifecycle-draft").textContent = `Nur in diesem Browser${isDirty() ? " · ungespeicherte Änderungen vorhanden" : " · keine ungespeicherten Änderungen"}.`;
+  $("lifecycle-collaborative").textContent = "Status wird geladen …";
+  $("lifecycle-saved").textContent = "Status wird geladen …";
+  $("lifecycle-business").textContent = "Übergang noch geschlossen.";
+  $("lifecycle-worm").textContent = "Übergang noch geschlossen.";
+  $("lifecycle-dialog").showModal();
+  void loadDocumentLifecycle();
+}
+
 function normalizedDocument(document) {
   officeImageReferences(document);
   officeBookmarkInventory(document);
@@ -758,6 +818,7 @@ function updateEditorState() {
   $("document-reload").disabled = Boolean(session?.saving || session?.loading || !session?.objectId);
   $("document-reload").textContent = session?.historical ? "Aktuelle Version" : "Neu laden";
   $("document-print").disabled = !printAllowed();
+  $("document-lifecycle").disabled = Boolean(!session?.objectId || session?.loading || session?.saving);
   $("document-share").disabled = Boolean(!session?.objectId || !session?.canShare || session?.loading || session?.saving);
   $("history-refresh").disabled = Boolean(!session?.objectId || session?.loading || session?.saving || session?.restoring || session?.history.loading);
   $("history-more").disabled = $("history-refresh").disabled;
@@ -3414,6 +3475,7 @@ function clearWorkspace() {
   const previousSession = state.session, previousContext = state.context;
   releaseEditLease(previousSession, previousContext);
   closeEditLeaseDialog();
+  closeDocumentLifecycle();
   pageControls.close();
   imageControls.close();
   shapeControls.close();
@@ -5835,6 +5897,11 @@ $("edit-lease-confirm").addEventListener("change", () => {
 });
 $("edit-lease-cancel").addEventListener("click", closeEditLeaseDialog);
 $("edit-lease-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeEditLeaseDialog(); });
+$("document-lifecycle").addEventListener("click", openDocumentLifecycle);
+$("lifecycle-refresh").addEventListener("click", loadDocumentLifecycle);
+$("lifecycle-close").addEventListener("click", closeDocumentLifecycle);
+$("lifecycle-done").addEventListener("click", closeDocumentLifecycle);
+$("lifecycle-dialog").addEventListener("cancel", (event) => { event.preventDefault(); closeDocumentLifecycle(); });
 $("document-title").addEventListener("input", () => { if (state.session) contentChanged(state.session); });
 $("document-classification").addEventListener("change", () => {
   setDocumentClassification($("document-classification").value);

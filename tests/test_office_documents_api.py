@@ -264,6 +264,45 @@ def test_office_edit_lease_api_coordinates_sessions_and_requires_explicit_takeov
     assert first_session not in events and second_session not in events
 
 
+def test_office_lifecycle_api_models_ephemeral_collaborative_and_record_boundaries(
+    office_api: OfficeApiHarness,
+) -> None:
+    created = create_document(office_api)
+    object_id = created["document"]["object_id"]
+    version_id = created["version"]["version_id"]
+    session_id = "office-session-" + "3" * 32
+    lease = office_api.client.post(
+        f"{BASE}/{object_id}/edit-lease",
+        headers=office_api.headers,
+        json={"session_id": session_id, "expected_current_version_id": version_id},
+    )
+    assert lease.status_code == 200
+
+    response = office_api.client.get(
+        f"{BASE}/{object_id}/lifecycle", params={"session_id": session_id}, headers=office_api.headers
+    )
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    value = response.json()
+    assert value["current_version_id"] == version_id
+    assert value["working_data"] == "request_transient"
+    assert value["draft_state"] == "browser_memory_only"
+    assert value["collaborative_state"] == "held_by_current_session"
+    assert value["saved_version_state"] == "current_immutable_version"
+    assert value["business_record_state"] == value["worm_record_state"] == "transition_closed"
+    assert value["save_requires_human_confirmation"] is True
+    assert value["save_requires_current_version"] is True
+    assert value["business_record_requires_human_confirmation"] is True
+    assert value["ai_may_commit_business_record"] is False
+    events = json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
+    assert session_id not in events
+
+    malformed = office_api.client.get(
+        f"{BASE}/{object_id}/lifecycle", params={"session_id": "browser-token"}, headers=office_api.headers
+    )
+    assert malformed.status_code == 422
+
+
 def test_office_share_api_requires_admin_confirmation_and_fresh_acl_version(
     office_api: OfficeApiHarness,
 ) -> None:

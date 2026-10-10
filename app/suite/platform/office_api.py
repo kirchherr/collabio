@@ -31,6 +31,7 @@ from suite.platform.office_documents import (
     OfficeDocumentEditLeaseState,
     OfficeDocumentHistoryRequestError,
     OfficeDocumentHistoryResponse,
+    OfficeDocumentLifecycleResponse,
     OfficeDocumentListRequestError,
     OfficeDocumentListResponse,
     OfficeDocumentNotFoundError,
@@ -504,8 +505,8 @@ def register_office_routes(
     @router.get("/{object_id}/edit-lease", response_model=OfficeDocumentEditLeaseState)
     def get_document_edit_lease(
         object_id: str,
-        session_id: str,
         request: Request,
+        session_id: str = Query(pattern=r"^office-session-[a-f0-9]{32}$"),
         context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
     ) -> Any:
         return request.app.state.office_document_service.edit_lease(
@@ -549,6 +550,20 @@ def register_office_routes(
             object_id=object_id,
             command=command,
             write_enabled=True,
+        )
+
+    @router.get("/{object_id}/lifecycle", response_model=OfficeDocumentLifecycleResponse)
+    def get_document_lifecycle(
+        object_id: str,
+        request: Request,
+        session_id: str = Query(pattern=r"^office-session-[a-f0-9]{32}$"),
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_document_service.lifecycle(
+            user_context=context.user_context,
+            object_id=object_id,
+            session_id=session_id,
+            write_enabled=_write_enabled(request, context),
         )
 
     @router.get("/{object_id}/review-threads", response_model=ReviewListResponse)
