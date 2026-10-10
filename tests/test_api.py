@@ -1378,6 +1378,8 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "tests/test_office_dictation.py" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0194-native-office-explicit-read-aloud.md" in office_native["evidence_refs"]
     assert "tests/test_office_read_aloud.py" in office_native["evidence_refs"]
+    assert "ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md" in office_native["evidence_refs"]
+    assert "tests/test_office_collaboration_load_proof.py" in office_native["evidence_refs"]
     assert {
         "source_search_revalidates_current_source_and_every_candidate_acl_and_version",
         "source_search_is_bounded_current_version_only_and_returns_exact_version_citations",
@@ -1390,8 +1392,12 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "browser_speech_synthesis_requires_explicit_external_provider_policy_admission",
         "read_aloud_generates_uploads_and_stores_no_server_audio_and_persists_no_selection",
         "read_aloud_is_explicit_read_only_transient_and_available_to_authorized_readers",
+        "isolated_load_proof_runs_fifty_parallel_editors_and_four_hundred_unique_updates",
+        "load_proof_revalidates_every_update_and_rejects_revoked_acl_and_foreign_tenant",
+        "load_proof_verifies_deduplication_state_vector_resume_convergence_and_backpressure",
+        "websocket_load_and_production_collaboration_runtime_remain_closed",
     }.issubset(office_native["guardrails"])
-    assert office_native["next_action"] == "prove_native_office_50_concurrent_editors_per_document"
+    assert office_native["next_action"] == "implement_native_office_rag_answers_with_exact_version_citations"
     registered_routes = {
         (path, method.upper())
         for path, operations in app.openapi()["paths"].items()

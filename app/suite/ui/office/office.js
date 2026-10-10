@@ -574,7 +574,7 @@ function lifecycleResponseMatches(value, session) {
 function collaborationPreflightMatches(value, session) {
   const blockers = ["crdt_engine_not_admitted", "durable_update_log_not_implemented",
     "restore_replay_not_verified", "malicious_update_fuzzing_not_verified",
-    "fifty_editor_load_not_verified", "websocket_gateway_not_admitted"];
+    "websocket_gateway_not_admitted"];
   return value?.tenant_id === state.context.tenantId && value.object_id === session.objectId &&
     value.current_version_id === session.metadata?.current_version_id &&
     value.protocol_version === "collabio-office-crdt-preflight.v1" &&
@@ -583,6 +583,7 @@ function collaborationPreflightMatches(value, session) {
     value.target_concurrent_editors === 50 && value.max_update_bytes === 262144 &&
     value.document_acl_revalidation_required === true && value.update_acl_revalidation_required === true &&
     value.immutable_save_cas_required === true && value.raw_session_or_client_id_persisted === false &&
+    value.isolated_load_proof_state === "verified_50_parallel_editors" && value.websocket_load_verified === false &&
     JSON.stringify(value.blockers) === JSON.stringify(blockers) && typeof value.audit_event_id === "string";
 }
 
@@ -602,7 +603,7 @@ async function loadCollaborationPreflight(session, context) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return false;
     if (!collaborationPreflightMatches(value, session)) throw new ApiError(502, true);
     $("lifecycle-live-collaboration").textContent =
-      "Vertrag für Binärupdates und State Vector vorbereitet; Runtime und WebSocket bleiben geschlossen. Ziel: 50 gleichzeitige Bearbeiter. Restore-, Fuzzing- und Lastnachweise sind noch offen.";
+      "Isolierter Lastnachweis mit 50 parallelen Bearbeitern bestanden: ACL je Update, Reautorisierung, Deduplizierung, State-Vector-Resume, Konvergenz und Backpressure. Runtime und WebSocket bleiben bis zu Engine-, Restore-, Fuzzing- und Transportnachweisen geschlossen.";
     return true;
   } catch (error) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return false;

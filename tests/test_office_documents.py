@@ -865,7 +865,8 @@ def test_collaboration_preflight_binds_acl_version_session_and_closed_runtime_wi
         assert response.target_concurrent_editors == 50 and response.max_update_bytes == 262144
         assert response.document_acl_revalidation_required and response.update_acl_revalidation_required
         assert response.immutable_save_cas_required and not response.raw_session_or_client_id_persisted
-        assert "fifty_editor_load_not_verified" in response.blockers
+        assert response.isolated_load_proof_state == "verified_50_parallel_editors"
+        assert not response.websocket_load_verified and "fifty_editor_load_not_verified" not in response.blockers
     assert len(repository.documents) == len(repository.saved_versions) == len(repository.edit_leases) == 1
     audit_payload = canonical_json([event.model_dump(mode="json") for event in service.audit.events])
     assert session_id not in audit_payload and "office-client-" not in audit_payload

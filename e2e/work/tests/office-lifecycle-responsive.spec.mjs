@@ -95,8 +95,8 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   await expect(page.locator("#lifecycle-dialog")).toBeVisible();
   await expect(page.locator("#lifecycle-draft")).toContainText("ungespeicherte Änderungen vorhanden");
   await expect(page.locator("#lifecycle-collaborative")).toContainText("für diese Sitzung reserviert");
-  await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Runtime und WebSocket bleiben geschlossen");
-  await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Restore-, Fuzzing- und Lastnachweise sind noch offen");
+  await expect(page.locator("#lifecycle-live-collaboration")).toContainText("50 parallelen Bearbeitern bestanden");
+  await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Runtime und WebSocket bleiben");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("Same-Origin, Subprotocol, Binärframes");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("HTTP-Upgrade, Zugangsticket und Verbindungen bleiben geschlossen");
   await expect(page.locator("#lifecycle-parser-worker")).toContainText("No-Network-, Read-only- und Non-root-Profil geplant");

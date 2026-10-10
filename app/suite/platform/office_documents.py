@@ -59,7 +59,6 @@ OfficeCrdtBlocker = Literal[
     "durable_update_log_not_implemented",
     "restore_replay_not_verified",
     "malicious_update_fuzzing_not_verified",
-    "fifty_editor_load_not_verified",
     "websocket_gateway_not_admitted",
 ]
 OFFICE_CRDT_PROTOCOL_VERSION: OfficeCrdtProtocolVersion = "collabio-office-crdt-preflight.v1"
@@ -70,7 +69,6 @@ OFFICE_CRDT_BLOCKERS: tuple[OfficeCrdtBlocker, ...] = (
     "durable_update_log_not_implemented",
     "restore_replay_not_verified",
     "malicious_update_fuzzing_not_verified",
-    "fifty_editor_load_not_verified",
     "websocket_gateway_not_admitted",
 )
 OfficeWebSocketGatewayProtocolVersion = Literal["collabio-office-websocket-preflight.v1"]
@@ -322,6 +320,8 @@ class OfficeDocumentCollaborationPreflightResponse(BaseModel):
     update_acl_revalidation_required: bool = True
     immutable_save_cas_required: bool = True
     raw_session_or_client_id_persisted: bool = False
+    isolated_load_proof_state: Literal["verified_50_parallel_editors"] = "verified_50_parallel_editors"
+    websocket_load_verified: bool = False
     blockers: list[OfficeCrdtBlocker] = Field(default_factory=office_crdt_blockers)
     audit_event_id: str = ""
 

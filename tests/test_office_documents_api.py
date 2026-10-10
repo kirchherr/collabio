@@ -336,12 +336,13 @@ def test_office_collaboration_preflight_is_version_session_and_write_bound_with_
     assert value["transport_state"] == "websocket_not_admitted" and value["runtime_admitted"] is False
     assert value["target_concurrent_editors"] == 50 and value["max_update_bytes"] == 262144
     assert value["raw_session_or_client_id_persisted"] is False
+    assert value["isolated_load_proof_state"] == "verified_50_parallel_editors"
+    assert value["websocket_load_verified"] is False
     assert value["blockers"] == [
         "crdt_engine_not_admitted",
         "durable_update_log_not_implemented",
         "restore_replay_not_verified",
         "malicious_update_fuzzing_not_verified",
-        "fifty_editor_load_not_verified",
         "websocket_gateway_not_admitted",
     ]
     events = json.dumps([event.model_dump(mode="json") for event in office_api.service.audit.events])
@@ -851,7 +852,7 @@ def test_office_shell_has_strict_same_origin_csp_and_no_external_editor_assets(o
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert 'href="/office/assets/office.css?v=11"' in response.text
-    assert 'src="/office/editor.js?v=6"' in response.text
+    assert 'src="/office/editor.js?v=7"' in response.text
     assert 'src="https://' not in response.text
 
 

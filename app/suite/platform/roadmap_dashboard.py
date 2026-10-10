@@ -809,8 +809,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Versionsgebundene Kommentare erlauben bestaetigte Antworten, Erledigen und Wiedereroeffnen; "
                         "Textanker bleiben an ihrer urspruenglichen gespeicherten Fassung. "
                         "Ein metadatenreiner CRDT-Preflight bindet Protokollfaehigkeiten an Mandant, Dokument, "
-                        "aktuelle immutable Version, Schreibrecht und aktuelle Bearbeitungs-Lease. Runtime und "
-                        "WebSocket bleiben bis zu Engine-, Restore-, Fuzzing- und 50-Editor-Nachweisen geschlossen. "
+                        "aktuelle immutable Version, Schreibrecht und aktuelle Bearbeitungs-Lease. Ein isolierter "
+                        "Nachweis belegt 50 parallele Bearbeiter mit ACL-Revalidierung, Resume, Konvergenz und "
+                        "Backpressure; Runtime und WebSocket bleiben bis zu Engine-, Restore-, Fuzzing- und "
+                        "Transportnachweisen geschlossen. "
                         "Der darauf aufbauende Gateway-Preflight legt Same-Origin, Subprotocol, binaere Frames, "
                         "Backpressure, Heartbeat, Reautorisierung und State-Vector-Resume fest, gibt aber weder "
                         "Zugangsticket noch Upgrade oder Verbindung frei. "
@@ -978,6 +980,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "app/suite/platform/office_read_aloud.py",
                         "tests/test_office_read_aloud.py",
                         "e2e/work/tests/office-read-aloud-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md",
+                        "app/suite/operations/office_collaboration_load_proof.py",
+                        "tests/test_office_collaboration_load_proof.py",
+                        "tests/golden/office_collaboration_load_proof/current_report.json",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -1080,6 +1086,11 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "browser_speech_synthesis_requires_explicit_external_provider_policy_admission",
                         "read_aloud_generates_uploads_and_stores_no_server_audio_and_persists_no_selection",
                         "read_aloud_is_explicit_read_only_transient_and_available_to_authorized_readers",
+                        "isolated_load_proof_runs_fifty_parallel_editors_and_four_hundred_unique_updates",
+                        "load_proof_revalidates_every_update_and_rejects_revoked_acl_and_foreign_tenant",
+                        "load_proof_verifies_deduplication_state_vector_resume_convergence_and_backpressure",
+                        "load_proof_contains_no_document_body_or_persisted_raw_session_identifier",
+                        "websocket_load_and_production_collaboration_runtime_remain_closed",
                         "find_replace_is_bounded_literal_and_local_until_confirmed_save",
                         "read_only_and_historical_content_cannot_be_replaced",
                         "table_edits_are_bounded_reversible_local_drafts",
@@ -1112,7 +1123,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "rag_and_search_indexing_false",
                         "docx_engine_and_production_admission_remain_separate",
                     ),
-                    next_action="prove_native_office_50_concurrent_editors_per_document",
+                    next_action="implement_native_office_rag_answers_with_exact_version_citations",
                 ),
                 RoadmapCapability(
                     capability_id="office_edit_source_admission",
