@@ -192,7 +192,23 @@ def _valid_table_grid(rows: Any) -> bool:
 
 
 _TABLE_FORMULA_ERRORS = {"#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"}
-_TABLE_FORMULA_NAMES = {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"}
+_TABLE_FORMULA_NAMES = {
+    "SUM",
+    "AVERAGE",
+    "MIN",
+    "MAX",
+    "COUNT",
+    "IF",
+    "AND",
+    "OR",
+    "NOT",
+    "ROUND",
+    "ABS",
+    "POWER",
+    "SQRT",
+    "PRODUCT",
+    "MEDIAN",
+}
 _TABLE_NUMBER = re.compile(r"[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?")
 
 
@@ -253,6 +269,11 @@ def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
         if reference:
             tokens.append(("ref", reference.group()))
             index += len(reference.group())
+            continue
+        comparison = re.match(r"(?:<=|>=|<>|=|<|>)", source[index:])
+        if comparison:
+            tokens.append(("compare", comparison.group()))
+            index += len(comparison.group())
             continue
         name = next((candidate for candidate in _TABLE_FORMULA_NAMES if source.startswith(candidate, index)), None)
         if name:
@@ -337,40 +358,72 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
             position += 1
             return value
 
-        def primary() -> float:
+        def bounded(value: float) -> float:
+            if not math.isfinite(value) or abs(value) > 1e15:
+                raise _TableFormulaError("#LIMIT!")
+            return value
+
+        def rounded(value: float, digits: float) -> float:
+            if not digits.is_integer() or not -10 <= digits <= 10:
+                raise _TableFormulaError("#WERT!")
+            places = int(digits)
+            factor = 10 ** abs(places)
+            scaled = value * factor if places >= 0 else value / factor
+            integer = math.copysign(math.floor(abs(scaled) + 0.5), scaled)
+            return bounded(integer / factor if places >= 0 else integer * factor)
+
+        def primary(active: bool = True) -> float:
             if peek() == "error":
-                raise _TableFormulaError(take("error"))
+                code = take("error")
+                if active:
+                    raise _TableFormulaError(code)
+                return 0.0
             if peek() == "number":
-                return float(take("number"))
+                value = float(take("number"))
+                return value if active else 0.0
             if peek() == "ref":
-                target = point(take("ref"))
-                return numeric(*target)
+                reference = take("ref")
+                return numeric(*point(reference)) if active else 0.0
             if peek() == "(":
                 take("(")
-                value = expression()
+                value = expression(active)
                 take(")")
                 return value
             if peek() == "name":
                 name = take("name")
                 take("(")
+                if name == "IF":
+                    condition = expression(active)
+                    take(",")
+                    truthy = expression(active and condition != 0)
+                    take(",")
+                    falsy = expression(active and condition == 0)
+                    take(")")
+                    return (truthy if condition != 0 else falsy) if active else 0.0
                 values: list[float] = []
                 if peek() != ")":
                     while True:
                         if peek() == "ref" and tokens[position + 1][0] == ":":
-                            first = point(take("ref"))
+                            first_reference = take("ref")
                             take(":")
-                            last = point(take("ref"))
-                            for row_index in range(min(first[0], last[0]), max(first[0], last[0]) + 1):
-                                for column_index in range(min(first[1], last[1]), max(first[1], last[1]) + 1):
-                                    values.append(numeric(row_index, column_index))
+                            last_reference = take("ref")
+                            if active:
+                                first, last = point(first_reference), point(last_reference)
+                                for row_index in range(min(first[0], last[0]), max(first[0], last[0]) + 1):
+                                    for column_index in range(min(first[1], last[1]), max(first[1], last[1]) + 1):
+                                        values.append(numeric(row_index, column_index))
+                            else:
+                                values.append(0.0)
                         else:
-                            values.append(expression())
+                            values.append(expression(active))
                         if peek() != ",":
                             break
                         take(",")
                 take(")")
                 if not values or len(values) > 4000:
                     raise _TableFormulaError("#LIMIT!")
+                if not active:
+                    return 0.0
                 if name == "SUM":
                     return sum(values)
                 if name == "AVERAGE":
@@ -379,35 +432,84 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
                     return min(values)
                 if name == "MAX":
                     return max(values)
-                return float(len(values))
+                if name == "COUNT":
+                    return float(len(values))
+                if name == "PRODUCT":
+                    return bounded(math.prod(values))
+                if name == "MEDIAN":
+                    ordered = sorted(values)
+                    middle = len(ordered) // 2
+                    return ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+                if name == "AND":
+                    return 1.0 if all(value != 0 for value in values) else 0.0
+                if name == "OR":
+                    return 1.0 if any(value != 0 for value in values) else 0.0
+                if name == "NOT" and len(values) == 1:
+                    return 1.0 if values[0] == 0 else 0.0
+                if name == "ABS" and len(values) == 1:
+                    return abs(values[0])
+                if name == "ROUND" and len(values) == 2:
+                    return rounded(values[0], values[1])
+                if name == "POWER" and len(values) == 2:
+                    try:
+                        value = values[0] ** values[1]
+                    except OverflowError:
+                        raise _TableFormulaError("#LIMIT!") from None
+                    except (ValueError, ZeroDivisionError):
+                        raise _TableFormulaError("#WERT!") from None
+                    if not isinstance(value, (int, float)):
+                        raise _TableFormulaError("#WERT!")
+                    return bounded(float(value))
+                if name == "SQRT" and len(values) == 1 and values[0] >= 0:
+                    return math.sqrt(values[0])
+                raise _TableFormulaError("#WERT!")
             raise _TableFormulaError("#WERT!")
 
-        def unary() -> float:
+        def unary(active: bool = True) -> float:
             if peek() == "+":
                 take("+")
-                return unary()
+                return unary(active)
             if peek() == "-":
                 take("-")
-                return -unary()
-            return primary()
+                return -unary(active)
+            return primary(active)
 
-        def term() -> float:
-            value = unary()
+        def term(active: bool = True) -> float:
+            value = unary(active)
             while peek() in {"*", "/"}:
                 operator = take(peek())
-                right = unary()
-                if operator == "/" and right == 0:
+                right = unary(active)
+                if active and operator == "/" and right == 0:
                     raise _TableFormulaError("#DIV/0!")
-                value = value * right if operator == "*" else value / right
+                value = (value * right if operator == "*" else value / right) if active else 0.0
             return value
 
-        def expression() -> float:
-            value = term()
+        def additive(active: bool = True) -> float:
+            value = term(active)
             while peek() in {"+", "-"}:
                 operator = take(peek())
-                right = term()
+                right = term(active)
                 value = value + right if operator == "+" else value - right
             return value
+
+        def expression(active: bool = True) -> float:
+            left = additive(active)
+            if peek() != "compare":
+                return left
+            operator = take("compare")
+            right = additive(active)
+            if not active:
+                return 0.0
+            return float(
+                {
+                    "=": left == right,
+                    "<>": left != right,
+                    "<": left < right,
+                    "<=": left <= right,
+                    ">": left > right,
+                    ">=": left >= right,
+                }[operator]
+            )
 
         value = expression()
         if peek() != "end":
@@ -430,6 +532,86 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
     return True
 
 
+_CHART_COLORS = ("teal", "blue", "orange", "purple")
+_CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
+_CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
+
+
+def _chart_source(value: Any) -> tuple[str, int, int, int, int] | None:
+    if not isinstance(value, dict) or set(value) != {"tableId", "range"}:
+        return None
+    table_id, cell_range = value.get("tableId"), value.get("range")
+    if (
+        not isinstance(table_id, str)
+        or re.fullmatch(r"table-[a-f0-9]{24}", table_id) is None
+        or not isinstance(cell_range, str)
+    ):
+        return None
+    match = _CHART_RANGE.fullmatch(cell_range)
+    if match is None:
+        return None
+    left, top = ord(match.group(1)) - 65, int(match.group(2)) - 1
+    right, bottom = ord(match.group(3)) - 64, int(match.group(4))
+    if not 2 <= right - left <= 5 or not 2 <= bottom - top <= 13:
+        return None
+    return table_id, top, left, bottom, right
+
+
+def _chart_data_from_table(
+    table: dict[str, Any], source: Any, kind: str
+) -> tuple[list[str], list[dict[str, Any]]] | None:
+    parsed = _chart_source(source)
+    rows = table.get("content")
+    if parsed is None or not isinstance(rows, list) or not _valid_table_grid(rows):
+        return None
+    _, top, left, bottom, right = parsed
+    cells = [row["content"] for row in rows]
+    if (
+        bottom > len(cells)
+        or right > len(cells[0])
+        or (kind == "pie" and right - left != 2)
+        or any(
+            cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
+            for row in cells
+            for cell in row
+        )
+    ):
+        return None
+    selected = [row[left:right] for row in cells[top:bottom]]
+
+    def label(cell: dict[str, Any]) -> str:
+        text = _table_cell_text(cell)
+        if not _valid_literal(text, 1, 60):
+            raise ValueError
+        return text
+
+    def number(cell: dict[str, Any]) -> int | float:
+        attrs = cell.get("attrs", {})
+        text = attrs.get("formulaResult") if attrs.get("formula") is not None else _table_cell_text(cell)
+        if not isinstance(text, str) or _CHART_NUMBER.fullmatch(text) is None:
+            raise ValueError
+        value = float(text.replace(",", "."))
+        if not math.isfinite(value) or not -1_000_000_000 <= value <= 1_000_000_000:
+            raise ValueError
+        return int(value) if value.is_integer() else value
+
+    try:
+        categories = [label(row[0]) for row in selected[1:]]
+        series = [
+            {
+                "name": label(cell),
+                "color": _CHART_COLORS[index],
+                "values": [number(row[index + 1]) for row in selected[1:]],
+            }
+            for index, cell in enumerate(selected[0][1:])
+        ]
+    except (ValueError, IndexError):
+        return None
+    if len(set(categories)) != len(categories) or len({entry["name"] for entry in series}) != len(series):
+        return None
+    return categories, series
+
+
 def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     """Validate structure and resource limits before canonicalization or storage."""
     nodes = 0
@@ -442,6 +624,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     bookmark_labels: set[str] = set()
     figure_ids: set[str] = set()
     table_ids: set[str] = set()
+    table_nodes: dict[str, dict[str, Any]] = {}
     numbered_tables = 0
     table_formulas = 0
     document_fields: set[str] = set()
@@ -455,6 +638,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     shape_ids: set[str] = set()
     shape_group_ids: set[str] = set()
     chart_ids: set[str] = set()
+    linked_charts: list[dict[str, Any]] = []
 
     def reject() -> None:
         raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
@@ -749,10 +933,14 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             identifier = attrs.get("id")
             categories = attrs.get("categories")
             series = attrs.get("series")
+            source = attrs.get("source")
+            expected_chart_attrs = {"id", "kind", "title", "altText", "legend", "categories", "series"}
+            if source is not None:
+                expected_chart_attrs.add("source")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
-                or set(attrs) != {"id", "kind", "title", "altText", "legend", "categories", "series"}
+                or set(attrs) != expected_chart_attrs
                 or not isinstance(identifier, str)
                 or re.fullmatch(r"chart-[a-f0-9]{24}", identifier) is None
                 or identifier in chart_ids
@@ -768,6 +956,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not isinstance(series, list)
                 or not 1 <= len(series) <= 4
                 or (attrs.get("kind") == "pie" and len(series) != 1)
+                or (source is not None and _chart_source(source) is None)
             ):
                 reject()
             names: set[str] = set()
@@ -783,7 +972,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or not isinstance(entry.get("values"), list)
                     or len(entry["values"]) != len(categories)
                     or any(
-                        type(number) is not int or not -1_000_000_000 <= number <= 1_000_000_000
+                        type(number) not in {int, float}
+                        or not math.isfinite(number)
+                        or not -1_000_000_000 <= number <= 1_000_000_000
                         for number in entry["values"]
                     )
                     or (attrs.get("kind") != "line" and any(number < 0 for number in entry["values"]))
@@ -794,6 +985,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
                 reject()
             chart_ids.add(identifier)
+            if source is not None:
+                linked_charts.append(attrs)
             characters += (
                 len(attrs["title"])
                 + len(attrs["altText"])
@@ -1159,6 +1352,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     if numbered_tables > 100:
                         reject()
                     table_ids.add(identifier)
+                    table_nodes[identifier] = node
                 if attrs.get("style") not in {None, "minimal", "banded", "accent"}:
                     reject()
                 if attrs.get("width") not in {None, "compact", "wide"}:
@@ -1217,11 +1411,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or not isinstance(formula, str)
                     or not 2 <= len(formula) <= 256
                     or formula != formula.strip()
-                    or re.fullmatch(r"=[A-Z0-9$#\-+*/().,:! ]+", formula) is None
+                    or re.fullmatch(r"=[A-Z0-9$#\-+*/().,:! <>=]+", formula) is None
                     or re.search(r"[#!]", formula_identifiers) is not None
                     or "$" in unmatched_formula_anchors
                     or any(
-                        token not in {"SUM", "AVERAGE", "MIN", "MAX", "COUNT"} and re.fullmatch(r"[A-T]", token) is None
+                        token not in _TABLE_FORMULA_NAMES and re.fullmatch(r"[A-T]", token) is None
                         for token in re.findall(r"[A-Z]+", formula_identifiers)
                     )
                     or not isinstance(formula_result, str)
@@ -1409,6 +1603,12 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
     if document.get("type") != "doc":
         reject()
     visit(document, 0)
+    for chart in linked_charts:
+        source = _chart_source(chart["source"])
+        table = table_nodes.get(source[0]) if source is not None else None
+        data = _chart_data_from_table(table, chart["source"], chart["kind"]) if table is not None else None
+        if data is None or chart["categories"] != data[0] or chart["series"] != data[1]:
+            reject()
     if len(canonical_json(document).encode("utf-8")) > MAX_DOCUMENT_BYTES:
         reject()
     return document

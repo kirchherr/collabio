@@ -1,9 +1,13 @@
+import { officeTableAttributes, officeTableCellAttributes, officeTableCellText, officeTableGrid } from "./office-tables.mjs";
+
 export const OFFICE_CHART_LIMIT = 20;
 export const OFFICE_CHART_KINDS = ["bar", "line", "pie"];
 export const OFFICE_CHART_COLORS = ["teal", "blue", "orange", "purple"];
 
 const colorValues = { teal: "#0f766e", blue: "#2563eb", orange: "#ea580c", purple: "#7e22ce" };
 const kindLabels = { bar: "Säulendiagramm", line: "Liniendiagramm", pie: "Kreisdiagramm" };
+const chartRange = /^([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})$/u;
+const chartNumber = /^-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?$/u;
 
 function literal(value, minimum, maximum) {
   return typeof value === "string" && value.length >= minimum && value.length <= maximum && value === value.trim() &&
@@ -13,8 +17,10 @@ function literal(value, minimum, maximum) {
 }
 
 export function officeChartAttributes(value) {
-  const keys = ["altText", "categories", "id", "kind", "legend", "series", "title"];
-  if (!value || Object.keys(value).sort().join(",") !== keys.sort().join(",") ||
+  const baseKeys = ["altText", "categories", "id", "kind", "legend", "series", "title"];
+  const keys = value?.source == null ? baseKeys : [...baseKeys, "source"];
+  const actualKeys = Object.keys(value || {}).filter((key) => key !== "source" || value.source != null);
+  if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
       !literal(value.title, 1, 120) || !literal(value.altText, 1, 500) || typeof value.legend !== "boolean" ||
       !Array.isArray(value.categories) || value.categories.length < 1 || value.categories.length > 12 ||
@@ -24,8 +30,8 @@ export function officeChartAttributes(value) {
   const series = value.series.map((entry) => {
     if (!entry || Object.keys(entry).sort().join(",") !== "color,name,values" || !literal(entry.name, 1, 60) ||
         !OFFICE_CHART_COLORS.includes(entry.color) || !Array.isArray(entry.values) ||
-        entry.values.length !== value.categories.length || entry.values.some((number) => !Number.isInteger(number) ||
-          number < -1000000000 || number > 1000000000) ||
+        entry.values.length !== value.categories.length || entry.values.some((number) => typeof number !== "number" ||
+          !Number.isFinite(number) || number < -1000000000 || number > 1000000000) ||
         (value.kind !== "line" && entry.values.some((number) => number < 0))) {
       throw new Error("chart-series");
     }
@@ -34,13 +40,86 @@ export function officeChartAttributes(value) {
   if (new Set(series.map((entry) => entry.name)).size !== series.length ||
       new Set(series.map((entry) => entry.color)).size !== series.length ||
       (value.kind === "pie" && !series[0].values.some((number) => number > 0))) throw new Error("chart-series");
-  return { id: value.id, kind: value.kind, title: value.title, altText: value.altText, legend: value.legend,
+  const result = { id: value.id, kind: value.kind, title: value.title, altText: value.altText, legend: value.legend,
     categories: [...value.categories], series };
+  if (value.source != null) result.source = officeChartSource(value.source);
+  return result;
+}
+
+export function officeChartSource(value) {
+  if (!value || Object.keys(value).sort().join(",") !== "range,tableId" ||
+      !/^table-[a-f0-9]{24}$/u.test(value.tableId) || typeof value.range !== "string") {
+    throw new Error("chart-source");
+  }
+  const match = chartRange.exec(value.range);
+  if (!match) throw new Error("chart-source");
+  const left = match[1].charCodeAt(0) - 65, top = Number(match[2]) - 1;
+  const right = match[3].charCodeAt(0) - 64, bottom = Number(match[4]);
+  if (right - left < 2 || bottom - top < 2 || right - left > 5 || bottom - top > 13) throw new Error("chart-source");
+  return { tableId: value.tableId, range: value.range };
+}
+
+function sourceTable(document, tableId) {
+  let found = null;
+  const walk = (node) => {
+    if (found || !node || typeof node !== "object") return;
+    if (node.type === "table" && officeTableAttributes(node.attrs).tableId === tableId) { found = node; return; }
+    for (const child of node.content || []) walk(child);
+  };
+  walk(document);
+  if (!found) throw new Error("chart-source");
+  return found;
+}
+
+function sourceCellText(cell, numeric = false) {
+  const attrs = officeTableCellAttributes(cell.attrs);
+  const text = attrs.formula != null ? attrs.formulaResult : officeTableCellText(cell);
+  if (numeric) {
+    if (!chartNumber.test(text) || text.startsWith("#")) throw new Error("chart-source-value");
+    const value = Number(text.replace(",", "."));
+    if (!Number.isFinite(value) || value < -1000000000 || value > 1000000000) throw new Error("chart-source-value");
+    return value;
+  }
+  if (!literal(text, 1, 60)) throw new Error("chart-source-label");
+  return text;
+}
+
+export function officeChartDataFromDocument(document, source, kind) {
+  const binding = officeChartSource(source), table = sourceTable(document, binding.tableId), grid = officeTableGrid(table);
+  if (table.content.some((row) => row.content.some((cell) => {
+    const attrs = officeTableCellAttributes(cell.attrs); return attrs.colspan !== 1 || attrs.rowspan !== 1;
+  }))) throw new Error("chart-source-grid");
+  const match = chartRange.exec(binding.range), left = match[1].charCodeAt(0) - 65, top = Number(match[2]) - 1;
+  const right = match[3].charCodeAt(0) - 64, bottom = Number(match[4]);
+  if (right > grid.columns || bottom > grid.rows || (kind === "pie" && right - left !== 2)) throw new Error("chart-source-range");
+  const rows = table.content.slice(top, bottom).map((row) => row.content.slice(left, right));
+  const categories = rows.slice(1).map((row) => sourceCellText(row[0]));
+  const series = rows[0].slice(1).map((cell, index) => ({ name: sourceCellText(cell), color: OFFICE_CHART_COLORS[index],
+    values: rows.slice(1).map((row) => sourceCellText(row[index + 1], true)) }));
+  if (new Set(categories).size !== categories.length || new Set(series.map((entry) => entry.name)).size !== series.length) {
+    throw new Error("chart-source-label");
+  }
+  return { categories, series };
+}
+
+export function officeChartBindingMatches(document, value) {
+  const chart = officeChartAttributes(value);
+  if (!chart.source) return true;
+  const derived = officeChartDataFromDocument(document, chart.source, chart.kind);
+  return JSON.stringify({ categories: chart.categories, series: chart.series }) === JSON.stringify(derived);
+}
+
+export function validateOfficeChartBindings(document) {
+  const walk = (node) => {
+    if (node?.type === "chart" && !officeChartBindingMatches(document, node.attrs)) throw new Error("chart-source-stale");
+    for (const child of node?.content || []) walk(child);
+  };
+  walk(document); return document;
 }
 
 export function officeChartDescription(value) {
   const chart = officeChartAttributes(value);
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"} · ${chart.altText}`;
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
 }
 
 function chartTable(chart, dom) {

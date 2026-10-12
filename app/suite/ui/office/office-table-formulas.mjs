@@ -22,7 +22,9 @@ function tokenize(source) {
     if (rest.startsWith("#BEZUG!")) { tokens.push({ type: "error", value: "#BEZUG!" }); index += 7; continue; }
     const ref = /^\$?[A-T]\$?(?:[1-9][0-9]{0,2})/u.exec(rest);
     if (ref) { tokens.push({ type: "ref", value: ref[0] }); index += ref[0].length; continue; }
-    const name = /^(?:SUM|AVERAGE|MIN|MAX|COUNT)/u.exec(rest);
+    const comparison = /^(?:<=|>=|<>|=|<|>)/u.exec(rest);
+    if (comparison) { tokens.push({ type: "compare", value: comparison[0] }); index += comparison[0].length; continue; }
+    const name = /^(?:AVERAGE|PRODUCT|MEDIAN|POWER|ROUND|COUNT|SQRT|SUM|MIN|MAX|IF|AND|OR|NOT|ABS)/u.exec(rest);
     if (name) { tokens.push({ type: "name", value: name[0] }); index += name[0].length; continue; }
     if ("+-*/(),:".includes(rest[0])) { tokens.push({ type: rest[0], value: rest[0] }); index += 1; continue; }
     throw formulaError("#WERT!");
@@ -42,40 +44,75 @@ function parseFormula(source, context) {
   const peek = () => tokens[position]; const take = (type) => {
     if (peek().type !== type) throw formulaError("#WERT!"); return tokens[position++];
   };
-  const primary = () => {
-    if (peek().type === "error") throw formulaError(take("error").value);
-    if (peek().type === "number") return take("number").value;
-    if (peek().type === "ref") return context.value(take("ref").value);
-    if (peek().type === "(") { take("("); const value = expression(); take(")"); return value; }
+  const bounded = (value) => {
+    if (!Number.isFinite(value) || Math.abs(value) > 1e15) throw formulaError("#LIMIT!");
+    return value;
+  };
+  const rounded = (value, digits) => {
+    if (!Number.isInteger(digits) || digits < -10 || digits > 10) throw formulaError("#WERT!");
+    const factor = 10 ** Math.abs(digits), scaled = digits >= 0 ? value * factor : value / factor;
+    const integer = Math.sign(scaled) * Math.floor(Math.abs(scaled) + 0.5);
+    return bounded(digits >= 0 ? integer / factor : integer * factor);
+  };
+  const primary = (active = true) => {
+    if (peek().type === "error") { const code = take("error").value; if (active) throw formulaError(code); return 0; }
+    if (peek().type === "number") { const value = take("number").value; return active ? value : 0; }
+    if (peek().type === "ref") { const reference = take("ref").value; return active ? context.value(reference) : 0; }
+    if (peek().type === "(") { take("("); const value = expression(active); take(")"); return value; }
     if (peek().type === "name") {
-      const name = take("name").value; take("("); const values = [];
+      const name = take("name").value; take("(");
+      if (name === "IF") {
+        const condition = expression(active); take(",");
+        const truthy = expression(active && condition !== 0); take(",");
+        const falsy = expression(active && condition === 0); take(")");
+        return active ? (condition !== 0 ? truthy : falsy) : 0;
+      }
+      const values = [];
       if (peek().type !== ")") {
         while (true) {
           if (peek().type === "ref" && tokens[position + 1]?.type === ":") {
             const from = take("ref").value; take(":"); const to = take("ref").value;
-            values.push(...context.range(from, to));
-          } else values.push(expression());
+            if (active) values.push(...context.range(from, to)); else values.push(0);
+          } else values.push(expression(active));
           if (peek().type !== ",") break; take(",");
         }
       }
       take(")");
       if (!values.length || values.length > 4000) throw formulaError("#LIMIT!");
+      if (!active) return 0;
       if (name === "SUM") return values.reduce((total, value) => total + value, 0);
       if (name === "AVERAGE") return values.reduce((total, value) => total + value, 0) / values.length;
       if (name === "MIN") return Math.min(...values);
       if (name === "MAX") return Math.max(...values);
       if (name === "COUNT") return values.length;
+      if (name === "PRODUCT") return bounded(values.reduce((total, value) => total * value, 1));
+      if (name === "MEDIAN") { const sorted = [...values].sort((left, right) => left - right), middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
+      if (name === "AND") return values.every((value) => value !== 0) ? 1 : 0;
+      if (name === "OR") return values.some((value) => value !== 0) ? 1 : 0;
+      if (name === "NOT" && values.length === 1) return values[0] === 0 ? 1 : 0;
+      if (name === "ABS" && values.length === 1) return Math.abs(values[0]);
+      if (name === "ROUND" && values.length === 2) return rounded(values[0], values[1]);
+      if (name === "POWER" && values.length === 2) { const value = values[0] ** values[1];
+        if (Number.isNaN(value)) throw formulaError("#WERT!"); return bounded(value); }
+      if (name === "SQRT" && values.length === 1 && values[0] >= 0) return Math.sqrt(values[0]);
     }
     throw formulaError("#WERT!");
   };
-  const unary = () => peek().type === "+" ? (take("+"), unary()) : peek().type === "-" ? (take("-"), -unary()) : primary();
-  const term = () => { let value = unary(); while (["*", "/"].includes(peek().type)) {
-    const operator = take(peek().type).type; const right = unary();
-    if (operator === "/" && right === 0) throw formulaError("#DIV/0!"); value = operator === "*" ? value * right : value / right;
+  const unary = (active = true) => peek().type === "+" ? (take("+"), unary(active)) :
+    peek().type === "-" ? (take("-"), -unary(active)) : primary(active);
+  const term = (active = true) => { let value = unary(active); while (["*", "/"].includes(peek().type)) {
+    const operator = take(peek().type).type; const right = unary(active);
+    if (active && operator === "/" && right === 0) throw formulaError("#DIV/0!");
+    value = active ? (operator === "*" ? value * right : value / right) : 0;
   } return value; };
-  const expression = () => { let value = term(); while (["+", "-"].includes(peek().type)) {
-    const operator = take(peek().type).type; const right = term(); value = operator === "+" ? value + right : value - right;
+  const additive = (active = true) => { let value = term(active); while (["+", "-"].includes(peek().type)) {
+    const operator = take(peek().type).type; const right = term(active); value = operator === "+" ? value + right : value - right;
   } return value; };
+  const expression = (active = true) => { const left = additive(active); if (peek().type !== "compare") return left;
+    const operator = take("compare").value, right = additive(active); if (!active) return 0;
+    return ({ "=": left === right, "<>": left !== right, "<": left < right, "<=": left <= right,
+      ">": left > right, ">=": left >= right })[operator] ? 1 : 0; };
   const value = expression(); if (peek().type !== "end") throw formulaError("#WERT!"); return value;
 }
 

@@ -1382,6 +1382,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "ARCHITECTURE_DECISIONS/ADR-0195-native-office-fifty-editor-load-proof.md" in office_native["evidence_refs"]
     assert "tests/test_office_collaboration_load_proof.py" in office_native["evidence_refs"]
     assert "ARCHITECTURE_DECISIONS/ADR-0196-native-office-rag-document-answers.md" in office_native["evidence_refs"]
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0197-native-office-calculations-and-linked-charts.md"
+        in office_native["evidence_refs"]
+    )
     assert "tests/test_office_rag_answers.py" in office_native["evidence_refs"]
     assert {
         "source_search_revalidates_current_source_and_every_candidate_acl_and_version",

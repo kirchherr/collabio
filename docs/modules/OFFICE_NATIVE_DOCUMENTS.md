@@ -1039,25 +1039,39 @@ Editor, immutable history, comparison and print share the same representation. N
 external content, implicit grant, relational migration or engine path is introduced. Decision:
 [ADR-0129](../../ARCHITECTURE_DECISIONS/ADR-0129-native-office-document-objects.md).
 
-## Inert native charts (Roadmap 317–320)
+## Native calculations and linked charts (Roadmap 317–320 and 792–799)
 
 **Diagramm einfügen …** creates a top-level atomic bar, line or pie chart from a bounded tab-separated literal table.
 The saved object contains a fresh stable ID, title, alternative text, legend flag, one to twelve unique categories and
-one to four uniquely named integer series using a fixed four-color vocabulary. Bar and pie values are nonnegative;
-line values may be negative. Pie charts use exactly one series with at least one positive value. Documents contain at
-most twenty charts.
+one to four uniquely named finite decimal series using a fixed four-color vocabulary. Bar and pie values are
+nonnegative; line values may be negative. Pie charts use exactly one series with at least one positive value. Documents
+contain at most twenty charts.
 
-The model has no formula, URL, external source, arbitrary markup, style, query or executable field. Browser and server
-validate exact keys, top-level placement, IDs, lengths, character classes, colors and integer ranges independently.
+Under ADR-0197, a chart may instead bind to one exact two-through-thirteen-row and two-through-five-column range of a
+numbered table in the same document. The first row supplies unique series names, the first column supplies unique
+categories and the remaining cells contain bounded decimal literals or verified formula results. Pie sources contain
+exactly two columns. The stored source has only `tableId` and an A1 range; URLs, external workbooks and queries are not
+accepted.
+
+Native table formulas now support comparisons, transitive references and `SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`,
+`IF`, `AND`, `OR`, `NOT`, `ROUND`, `ABS`, `POWER`, `SQRT`, `PRODUCT` and `MEDIAN`. German aliases and semicolon
+separators normalize to the canonical grammar. Relative, absolute and mixed references keep their existing
+copy/fill/structural behavior. `IF` evaluates only the selected branch. Browser and server independently recalculate
+results and preserve explicit `#BEZUG!`, `#DIV/0!`, `#ZYKLUS!`, `#WERT!` and `#LIMIT!` outcomes.
+
+After an accepted table edit, formulas and linked chart snapshots update together without creating a version. Before
+confirmed CAS save, the browser verifies every binding; the server independently resolves the numbered source table,
+re-derives the exact snapshot and rejects missing sources, merged grids, stale or forged values, invalid ranges and
+unknown fields. Immutable history therefore records a deterministic table, formula-result and chart snapshot for each
+version.
+
 Rendering creates inert DOM, or internal SVG geometry for lines, only after validation. An exact hidden data table,
 title, alternative text and optional legend keep the result accessible without turning the chart into an embedded
-application.
-
-The responsive dialog provides preview, insert, edit, fresh-ID duplicate, one-position movement and removal. Each
-accepted change is one isolated undo step. Confirmed CAS save, immutable history, reload, comparison and print use the
-same canonical data. The existing Office JSON recovery contract applies; there is no migration, object-storage write,
-network read or engine admission. Decision:
-[ADR-0130](../../ARCHITECTURE_DECISIONS/ADR-0130-native-office-inert-charts.md).
+application. The responsive dialog provides preview, insert, edit, fresh-ID duplicate, one-position movement and
+removal. Manual charts remain supported. The existing Office JSON recovery contract applies; there is no migration,
+object-storage write, network read, spreadsheet engine or engine admission. Decisions:
+[ADR-0130](../../ARCHITECTURE_DECISIONS/ADR-0130-native-office-inert-charts.md) and
+[ADR-0197](../../ARCHITECTURE_DECISIONS/ADR-0197-native-office-calculations-and-linked-charts.md).
 
 ## Merged table cells and semantic headers (Roadmap 321–324)
 

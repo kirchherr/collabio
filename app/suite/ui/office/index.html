@@ -187,11 +187,13 @@
           <div class="chart-fields"><label>Diagrammtyp<select id="chart-kind"><option value="bar">Säulen</option><option value="line">Linien</option><option value="pie">Kreis</option></select></label><label>Titel<input id="chart-name" maxlength="120" required /></label></div>
           <label>Alternativtext<textarea id="chart-alt" maxlength="500" rows="3" required></textarea></label>
           <label class="check-row"><input id="chart-legend" type="checkbox" checked /> Legende anzeigen</label>
+          <label class="check-row"><input id="chart-linked" type="checkbox" /> Mit einer nummerierten Tabelle verknüpfen</label>
+          <div class="chart-fields" id="chart-source-fields" hidden><label>Quelltabelle<select id="chart-source-table"></select></label><label>Zellbereich<input id="chart-source-range" maxlength="12" value="A1:C5" autocomplete="off" placeholder="A1:C5" /></label></div>
           <label>Datentabelle<textarea id="chart-data" rows="7" spellcheck="false" aria-describedby="chart-data-help" required></textarea></label>
-          <p id="chart-data-help" class="paragraph-help">Tabulator-getrennt: erste Spalte Kategorien, erste Zeile Namen der Datenreihen. Bis zu 12 Kategorien und vier Reihen; Kreisdiagramme verwenden genau eine nichtnegative Reihe.</p>
+          <p id="chart-data-help" class="paragraph-help">Manuell oder aus dem verknüpften Tabellenbereich: erste Spalte Kategorien, erste Zeile Namen der Datenreihen. Bis zu 12 Kategorien und vier Reihen; Kreisdiagramme verwenden genau eine nichtnegative Reihe. Verknüpfte Werte werden nach Tabellen- und Formeländerungen automatisch aktualisiert.</p>
           <div class="chart-preview-stage" id="chart-preview" aria-label="Diagrammvorschau"></div>
           <div class="chart-fields"><button class="button secondary" id="chart-previous" type="button" hidden>Diagramm eine Position früher</button><button class="button secondary" id="chart-next" type="button" hidden>Diagramm eine Position später</button><button class="button secondary" id="chart-duplicate" type="button" hidden>Diagramm duplizieren</button><button class="button danger" id="chart-remove" type="button" hidden>Aus Entwurf entfernen</button></div>
-          <p class="paragraph-help">Diagramme speichern nur begrenzte Ganzzahlen und Klartext. Formeln, Makros, externe Datenquellen und eingebetteter Code sind ausgeschlossen.</p>
+          <p class="paragraph-help">Diagramme speichern begrenzte Dezimalzahlen und Klartext. Eine Verknüpfung darf nur auf eine nummerierte Tabelle derselben Dokumentfassung zeigen. Makros, externe Datenquellen und eingebetteter Code sind ausgeschlossen.</p>
           <p id="chart-status" role="status" aria-live="polite"></p>
         </div><footer><button class="button secondary" id="chart-cancel" type="button">Abbrechen</button><button class="button primary" id="chart-apply" type="submit">In Entwurf einfügen</button></footer>
       </form>
@@ -453,7 +455,7 @@
     <dialog class="office-dialog compact" id="table-formula-dialog" aria-labelledby="table-formula-title">
       <form id="table-formula-form"><header><h2 id="table-formula-title">Tabellenformel</h2><button class="icon-button" id="table-formula-close" type="button" aria-label="Tabellenformel schließen">×</button></header>
         <div class="dialog-body"><p id="table-formula-summary"></p><label>Formel<input id="table-formula-source" type="text" maxlength="256" required autocomplete="off" placeholder="=SUM(B2:B10)" /></label>
-          <p class="paragraph-help">Bei mehreren Zellen gilt die Eingabe für die linke obere Zelle und wird mit relativen, festen oder gemischten Bezügen wie A1, $A$1, $A1 und A$1 über die Auswahl ausgefüllt. Unterstützt werden lokale Zellbezüge A1 bis T200, +, −, ×, ÷ sowie SUM, AVERAGE, MIN, MAX und COUNT. Deutsche Funktionsnamen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
+          <p class="paragraph-help">Bei mehreren Zellen gilt die Eingabe für die linke obere Zelle und wird mit relativen, festen oder gemischten Bezügen wie A1, $A$1, $A1 und A$1 über die Auswahl ausgefüllt. Unterstützt werden lokale Zellbezüge A1 bis T200, Vergleiche, +, −, ×, ÷ sowie SUM, AVERAGE, MIN, MAX, COUNT, IF/WENN, AND/UND, OR/ODER, NOT/NICHT, ROUND/RUNDEN, ABS, POWER/POTENZ, SQRT/WURZEL, PRODUCT/PRODUKT und MEDIAN. Deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
         <footer><button class="quiet-button" id="table-formula-remove" type="button">Formeln entfernen</button><button class="button secondary" id="table-formula-cancel" type="button">Abbrechen</button><button class="button primary" id="table-formula-apply" type="submit">Formel übernehmen</button></footer>
       </form>
     </dialog>
@@ -514,6 +516,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=8"></script>
+    <script type="module" src="/office/editor.js?v=9"></script>
   </body>
 </html>

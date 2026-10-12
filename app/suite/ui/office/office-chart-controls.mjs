@@ -1,12 +1,13 @@
 import { Node } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { closeHistory } from "@tiptap/pm/history";
-import { OFFICE_CHART_COLORS, OFFICE_CHART_LIMIT, officeChartAttributes, officeChartElement } from "./office-charts.mjs";
+import { OFFICE_CHART_COLORS, OFFICE_CHART_LIMIT, officeChartAttributes, officeChartDataFromDocument, officeChartElement } from "./office-charts.mjs";
+import { officeTableGrid, officeTableInventory } from "./office-tables.mjs";
 
 export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "categories", "series"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -36,8 +37,9 @@ function parseData(text, kind) {
   if (width < 2 || width > 5 || cells.some((row) => row.length !== width) || (kind === "pie" && width !== 2)) throw new Error("chart-data");
   const categories = cells.slice(1).map((row) => row[0]);
   const series = cells[0].slice(1).map((name, seriesIndex) => ({ name, color: OFFICE_CHART_COLORS[seriesIndex],
-    values: cells.slice(1).map((row) => { if (!/^-?(?:0|[1-9][0-9]{0,9})$/.test(row[seriesIndex + 1])) throw new Error("chart-value");
-      const number = Number(row[seriesIndex + 1]); if (!Number.isSafeInteger(number)) throw new Error("chart-value"); return number; }) }));
+    values: cells.slice(1).map((row) => { if (!/^-?(?:0|[1-9][0-9]{0,9})(?:[.,][0-9]{1,10})?$/.test(row[seriesIndex + 1])) throw new Error("chart-value");
+      const number = Number(row[seriesIndex + 1].replace(",", "."));
+      if (!Number.isFinite(number) || number < -1000000000 || number > 1000000000) throw new Error("chart-value"); return number; }) }));
   return { categories, series };
 }
 
@@ -58,10 +60,23 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       return node?.type.name === "chart" && node.attrs.id === action.attrs.id; })()));
   const identifier = () => { const bytes = new Uint8Array(12); crypto.getRandomValues(bytes);
     return `chart-${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`; };
+  const tableNode = (tableId) => {
+    let found = null;
+    const walk = (node) => { if (found) return; if (node.type === "table" && node.attrs?.tableId === tableId) { found = node; return; }
+      for (const child of node.content || []) walk(child); };
+    walk(action.editor.getJSON()); return found;
+  };
+  const defaultRange = (tableId, kind) => {
+    const table = tableNode(tableId); if (!table) return "A1:C5"; const grid = officeTableGrid(table);
+    const columns = Math.min(grid.columns, kind === "pie" ? 2 : 3), rows = Math.min(grid.rows, 5);
+    return columns >= 2 && rows >= 2 ? `A1:${String.fromCharCode(64 + columns)}${rows}` : "A1:B2";
+  };
+  const source = () => ({ tableId: $("chart-source-table").value, range: $("chart-source-range").value.trim().toUpperCase() });
   const read = (id = action?.attrs?.id || action?.id || (action.id = identifier())) => {
-    const kind = $("chart-kind").value, data = parseData($("chart-data").value, kind);
+    const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
+    const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
-      legend: $("chart-legend").checked, ...data });
+      legend: $("chart-legend").checked, ...data, ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
@@ -73,9 +88,15 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-previous").disabled = !editing || action.rootIndex === 0;
     $("chart-next").disabled = !editing || action.rootIndex >= action.editor.state.doc.childCount - 1;
   };
-  const preview = () => { try { const attrs = read(); $("chart-preview").replaceChildren(officeChartElement(attrs));
+  const sourceState = () => { const linked = $("chart-linked").checked;
+    $("chart-source-fields").hidden = !linked; $("chart-source-table").disabled = !linked; $("chart-source-range").disabled = !linked;
+    $("chart-data").readOnly = linked; };
+  const preview = () => { sourceState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
+      $("chart-preview").replaceChildren(officeChartElement(attrs));
       $("chart-status").textContent = "Vorschau und zugängliche Datentabelle sind aktuell."; $("chart-apply").disabled = false; }
-    catch { $("chart-preview").replaceChildren(); $("chart-status").textContent = "Titel, Alternativtext und Tabellendaten prüfen.";
+    catch { $("chart-preview").replaceChildren(); $("chart-status").textContent = $("chart-linked").checked ?
+      "Nummerierte Quelltabelle und Bereich prüfen. Erste Zeile und Spalte müssen eindeutige Beschriftungen enthalten." :
+      "Titel, Alternativtext und Tabellendaten prüfen.";
       $("chart-apply").disabled = true; } };
   const open = () => {
     if (!allowed()) return; const selection = selected(), editing = Boolean(selection);
@@ -84,19 +105,32 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
       editing, position: editing ? selection.from : null, attrs, rootIndex: null };
     if (editing) { let index = 0; state.editor.state.doc.forEach((_node, offset) => { if (offset === action.position) action.rootIndex = index; index += 1; }); }
+    const tables = officeTableInventory(state.editor.getJSON()); $("chart-source-table").replaceChildren(...tables.map((entry) => {
+      const option = document.createElement("option"); option.value = entry.id; option.textContent = entry.label; return option; }));
     $("chart-title").textContent = editing ? "Diagramm bearbeiten" : "Diagramm einfügen";
     $("chart-kind").value = attrs?.kind || "bar"; $("chart-name").value = attrs?.title || "Quartalsübersicht";
     $("chart-alt").value = attrs?.altText || "Vergleich der Werte nach Kategorie."; $("chart-legend").checked = attrs?.legend ?? true;
+    $("chart-linked").checked = Boolean(attrs?.source); $("chart-linked").disabled = !tables.length && !attrs?.source;
+    if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range; }
+    else if (tables.length) { $("chart-source-table").value = tables[0].id;
+      $("chart-source-range").value = defaultRange(tables[0].id, $("chart-kind").value); }
     $("chart-data").value = attrs ? serializeData(attrs) : "Kategorie\tPlan\tIst\nQ1\t120\t110\nQ2\t140\t152\nQ3\t160\t171\nQ4\t180\t176";
     updateButtons(); $("chart-dialog").showModal(); preview(); $("chart-kind").focus();
   };
   const dispatch = (transaction, message) => { validate(transaction.doc); close(); state.editor.view.dispatch(closeHistory(transaction).scrollIntoView());
     state.editor.view.dispatch(closeHistory(state.editor.state.tr)); focus(state.editor); update(); notice(message); };
   $("chart-options").addEventListener("click", open); $("chart-form").addEventListener("input", preview);
+  $("chart-linked").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
+    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value); } preview(); });
+  $("chart-source-table").addEventListener("change", () => { $("chart-source-range").value =
+    defaultRange($("chart-source-table").value, $("chart-kind").value); preview(); });
+  $("chart-kind").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
+    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value); } preview(); });
   $("chart-form").addEventListener("submit", (event) => { event.preventDefault(); if (!current()) { close(); return; }
     try { const attrs = read(), node = action.editor.schema.nodes.chart.create(attrs);
       const transaction = action.editing ? action.editor.state.tr.setNodeMarkup(action.position, undefined, attrs) : action.editor.state.tr.replaceSelectionWith(node, false);
-      dispatch(transaction, action.editing ? "Diagramm aktualisiert." : "Inertes Diagramm in den Entwurf eingefügt."); }
+      dispatch(transaction, action.editing ? "Diagramm aktualisiert." : attrs.source ?
+        "Mit Tabelle verknüpftes Diagramm in den Entwurf eingefügt." : "Diagramm in den Entwurf eingefügt."); }
     catch { $("chart-status").textContent = "Das Diagramm konnte nicht übernommen werden."; } });
   $("chart-duplicate").addEventListener("click", () => { if (!current() || !action.editing || count() >= OFFICE_CHART_LIMIT) return;
     try { const source = officeChartAttributes(action.editor.state.doc.nodeAt(action.position).attrs);

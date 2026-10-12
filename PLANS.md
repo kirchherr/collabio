@@ -1986,12 +1986,42 @@ a citation uses the ordinary exact-version document read path and therefore reau
 hash-only audit, zero-write and desktop/mobile behavior; close the final Phase-3 Office exit criterion under ADR-0196
 without a migration, vector index, durable AI result, cloud provider or production admission.
 
+653. [x] Extend native table calculations under ADR-0197 with comparisons plus conditional, logical, rounding,
+absolute-value, power, square-root, product and median functions while retaining transitive recalculation and cycles.
+
+654. [x] Normalize German function names and separators to one canonical formula grammar. Evaluate only the selected
+`IF` branch so an unreachable error cannot invalidate an otherwise valid calculation.
+
+655. [x] Keep formula results finite and bounded and expose deterministic reference, division, cycle, value and
+resource-limit errors. Independently recalculate every saved result in the browser and server.
+
+656. [x] Let bar, line and pie charts optionally bind to one bounded rectangular range in a numbered native table.
+Use the first row as series names, the first column as categories and accept verified finite decimal values.
+
+657. [x] Recalculate formulas and all affected linked chart snapshots in the same local editor transaction after a
+table edit. Preserve manual charts and immutable version snapshots.
+
+658. [x] Re-resolve linked table IDs and ranges server-side before every save and reject missing tables, merged grids,
+out-of-range sources, stale or forged snapshots, unknown fields, URLs and nonnumeric results.
+
+659. [x] Add accessible source-table and range controls, a read-only derived-data preview and responsive chart
+rendering. Prove automatic update, undo-safe editing, two immutable versions, reload and no viewport overflow.
+
+660. [x] Close native Office calculations and linked charts under ADR-0197 with focused schema/API and model tests,
+desktop/mobile browser proof, visual review and the complete repository quality gate; add no migration or engine.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 791 / PLANS 652. RAG-backed document answers now reauthorize every exact current source version, use only admitted local models, expose server-derived citations and remain transient, write-free and action-free. The content-specific GitHub publication is complete through `8e5b01b9`; finish UI acceptance before resuming deferred CRM account onboarding. Preserve all earlier AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion, print, recovery and quality contracts. Cloud AI without tenant admission, free prompts, automatic save or action, compliance certification, confidential inference without explicit registry admission, public links, external guests, full spreadsheet semantics, live collaboration and DOCX interchange remain closed until their separate evidence gates pass.
+- Native Office is complete through Roadmap 799 / PLANS 660. Common document calculations now include comparisons,
+  conditional/logical and bounded numeric functions; native charts can follow verified decimal and formula results from
+  one numbered table range. Continue Office with named ranges, cross-table references and lookup/date functions as a
+  separate coherent loop before deferred CRM onboarding. Preserve all earlier AI, voice, interchange, collaboration,
+  object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
+  print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,
+  public links, external guests, live collaboration and DOCX interchange remain closed until their separate gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
 - Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
 - Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.

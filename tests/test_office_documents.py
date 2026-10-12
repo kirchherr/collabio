@@ -252,6 +252,100 @@ def test_native_document_accepts_only_bounded_inert_table_formulas_and_matching_
             validate_office_document(candidate)
 
 
+def test_native_document_recalculates_advanced_formula_results_with_lazy_conditions() -> None:
+    def cell(text: str, formula: str | None = None) -> dict[str, Any]:
+        attrs = {"formula": formula, "formulaResult": text} if formula else None
+        return {
+            "type": "tableCell",
+            **({"attrs": attrs} if attrs else {}),
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+
+    table: dict[str, Any] = {
+        "type": "table",
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("5"),
+                    cell("2"),
+                    cell("8.33", "=IF(A1>B1,ROUND(POWER(A1,2)/3,2),1/0)"),
+                    cell("18.5", "=PRODUCT(A1:B1)+MEDIAN(A1:B1)+SQRT(4)+ABS(-3)"),
+                ],
+            },
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("1", "=AND(C1=8.33,NOT(A1=B1),OR(0,1))"),
+                    cell("26.83", "=C1+D1"),
+                    cell("7", "=IF(0,1/0,7)"),
+                    cell("#WERT!", "=SQRT(-1)"),
+                ],
+            },
+        ],
+    }
+    document: dict[str, Any] = {"type": "doc", "content": [table]}
+    assert validate_office_document(document) == document
+    for formula, result in (("=ROUND(1,11)", "#WERT!"), ("=POWER(10,20)", "#LIMIT!"), ("=NOT(1,2)", "#WERT!")):
+        candidate = deepcopy(document)
+        candidate["content"][0]["content"][1]["content"][3] = cell(result, formula)
+        assert validate_office_document(candidate) == candidate
+
+
+def test_native_linked_chart_must_match_its_numbered_table_range_exactly() -> None:
+    def cell(text: str, formula: str | None = None) -> dict[str, Any]:
+        return {
+            "type": "tableCell",
+            **({"attrs": {"formula": formula, "formulaResult": text}} if formula else {}),
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+
+    table_id = "table-" + "b" * 24
+    table: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": table_id, "caption": "Quarterly values"},
+        "content": [
+            {"type": "tableRow", "content": [cell("Quarter"), cell("Plan"), cell("Actual")]},
+            {"type": "tableRow", "content": [cell("Q1"), cell("1.5"), cell("2.25")]},
+            {"type": "tableRow", "content": [cell("Q2"), cell("3"), cell("3.75", "=ROUND(B3*1.25,2)")]},
+        ],
+    }
+    chart: dict[str, Any] = {
+        "type": "chart",
+        "attrs": {
+            "id": "chart-" + "c" * 24,
+            "kind": "bar",
+            "title": "Quarterly plan",
+            "altText": "Plan and actual values for two quarters.",
+            "legend": True,
+            "categories": ["Q1", "Q2"],
+            "series": [
+                {"name": "Plan", "color": "teal", "values": [1.5, 3]},
+                {"name": "Actual", "color": "blue", "values": [2.25, 3.75]},
+            ],
+            "source": {"tableId": table_id, "range": "A1:C3"},
+        },
+    }
+    document: dict[str, Any] = {"type": "doc", "content": [table, chart]}
+    assert validate_office_document(document) == document
+    invalid: list[dict[str, Any]] = []
+    stale = deepcopy(document)
+    stale["content"][1]["attrs"]["series"][0]["values"][0] = 99
+    invalid.append(stale)
+    missing = deepcopy(document)
+    missing["content"][1]["attrs"]["source"]["tableId"] = "table-" + "d" * 24
+    invalid.append(missing)
+    outside = deepcopy(document)
+    outside["content"][1]["attrs"]["source"]["range"] = "A1:C4"
+    invalid.append(outside)
+    external = deepcopy(document)
+    external["content"][1]["attrs"]["source"]["url"] = "https://example.invalid/data"
+    invalid.append(external)
+    for candidate in invalid:
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(candidate)
+
+
 @pytest.mark.parametrize(
     "node",
     [
@@ -314,8 +408,11 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
             {"name": "Actual", "color": "blue", "values": [110, 152, 171, 176]},
         ],
     }
-    document = {"type": "doc", "content": [{"type": "chart", "attrs": attrs}]}
+    document: dict[str, Any] = {"type": "doc", "content": [{"type": "chart", "attrs": attrs}]}
     assert validate_office_document(document) == document
+    decimal = deepcopy(document)
+    decimal["content"][0]["attrs"]["series"][0]["values"][0] = 1.5
+    assert validate_office_document(decimal) == decimal
     pie = {**attrs, "kind": "pie", "series": [{"name": "Share", "color": "orange", "values": [1, 2, 3, 4]}]}
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": pie}]})
     invalid = [
@@ -329,7 +426,7 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "series": attrs["series"] * 3},
         {**attrs, "series": [{"name": "Plan", "color": "url", "values": [1, 2, 3, 4]}]},
         {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [1, 2]}]},
-        {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [1.5, 2, 3, 4]}]},
+        {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [float("nan"), 2, 3, 4]}]},
         {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [-1, 2, 3, 4]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [0, 0, 0, 0]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [-1, 2, 3, 4]}]},

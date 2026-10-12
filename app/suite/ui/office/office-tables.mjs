@@ -18,15 +18,20 @@ export function officeTableFormulaSource(value) {
   if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
   const source = value.trim().replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
-    .replace(/\bANZAHL\b/giu, "COUNT").toUpperCase();
+    .replace(/\bANZAHL\b/giu, "COUNT").replace(/\bWENN\b/giu, "IF")
+    .replace(/\bUND\b/giu, "AND").replace(/\bODER\b/giu, "OR")
+    .replace(/\bNICHT\b/giu, "NOT").replace(/\bRUNDEN\b/giu, "ROUND")
+    .replace(/\bPOTENZ\b/giu, "POWER").replace(/\bWURZEL\b/giu, "SQRT")
+    .replace(/\bPRODUKT\b/giu, "PRODUCT").toUpperCase();
   const identifiers = source.replaceAll("#BEZUG!", "");
   const unmatchedAnchors = identifiers.replace(/\$?[A-T]\$?[1-9][0-9]{0,2}/gu, "");
   if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
-      !/^=[A-Z0-9$#\-+*/().,:! ]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
+      !/^=[A-Z0-9$#\-+*/().,:! <>=]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
     throw new TypeError("Invalid Office table formula");
   }
   for (const match of identifiers.matchAll(/[A-Z]+/gu)) {
-    if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT"].includes(match[0]) && !/^[A-T]$/u.test(match[0])) {
+    if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER",
+      "SQRT", "PRODUCT", "MEDIAN"].includes(match[0]) && !/^[A-T]$/u.test(match[0])) {
       throw new TypeError("Invalid Office table formula");
     }
   }

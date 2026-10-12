@@ -60,6 +60,9 @@ Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwick
   durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
   CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
+- Native Office ist durch Roadmap 799 / PLANS 660 um bedingte, logische und gebundene numerische Tabellenformeln
+  sowie automatisch aktualisierte Diagramme aus einer nummerierten Tabellenquelle erweitert. Benannte Bereiche,
+  tabellenuebergreifende Referenzen, Lookup-/Datumsfunktionen und externe Arbeitsmappen bleiben getrennte Schritte.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
 
 ## Globale Definition Of Done
@@ -658,6 +661,8 @@ Aufgaben:
 - [x] Risiken markieren (Roadmap 744-751 / PLANS 605-612).
 - [x] Quellen suchen und versioniert anzeigen (Roadmap 752-759 / PLANS 613-620).
 - [x] RAG-backed Dokumentantworten mit erneut autorisierten, versionsgenauen Quellen (Roadmap 784-791 / PLANS 645-652).
+- [x] Bounded Tabellenberechnungen und automatisch aktualisierte Diagramme aus nummerierten Tabellenbereichen
+  (Roadmap 792-799 / PLANS 653-660).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

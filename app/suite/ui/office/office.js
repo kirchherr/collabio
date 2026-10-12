@@ -24,7 +24,7 @@ import { officeShapeAttributes } from "./office-shapes.mjs";
 import { officeShapeExtension, installOfficeShapeControls } from "./office-shape-controls.mjs";
 import { installOfficeShapeMultiSelection } from "./office-shape-multi-selection-controls.mjs";
 import { officeChartExtension, installOfficeChartControls } from "./office-chart-controls.mjs";
-import { officeChartAttributes } from "./office-charts.mjs";
+import { officeChartAttributes, officeChartDataFromDocument, validateOfficeChartBindings } from "./office-charts.mjs";
 import { officeShapeGroupAttributes } from "./office-shape-groups.mjs";
 import { officeShapeGroupExtension } from "./office-shape-group-extension.mjs";
 import { OFFICE_PARAGRAPH_VALUES, officeParagraphAttributes, officeParagraphDOMAttributes, officeParagraphDescription } from "./office-paragraph.mjs";
@@ -1014,9 +1014,11 @@ function normalizedDocument(document) {
 }
 
 function draftSnapshot() {
+  const document = normalizedDocument(state.editor.getJSON());
+  validateOfficeChartBindings(document);
   return { title: $("document-title").value.trim(),
     information_classification: officeInformationClassification($("document-classification").value),
-    document: normalizedDocument(state.editor.getJSON()) };
+    document };
 }
 
 function isDirty() {
@@ -3915,12 +3917,24 @@ function refreshTableFormulaResults(editor) {
     }
     return false;
   });
-  if (!replacements.length) return false;
   let transaction = editor.state.tr;
   for (const item of replacements.reverse()) {
     transaction = transaction.setNodeMarkup(item.position, undefined, item.replacement.attrs)
       .replaceWith(item.position + 1, item.position + 1 + item.entry.content.size, item.replacement.content);
   }
+  const calculatedDocument = transaction.doc.toJSON();
+  try {
+    transaction.doc.descendants((entry, position) => {
+      if (entry.type.name !== "chart") return;
+      const current = officeChartAttributes(entry.attrs);
+      if (!current.source) return false;
+      const data = officeChartDataFromDocument(calculatedDocument, current.source, current.kind);
+      const next = officeChartAttributes({ ...current, ...data });
+      if (JSON.stringify(current) !== JSON.stringify(next)) transaction.setNodeMarkup(position, undefined, next);
+      return false;
+    });
+  } catch { return false; }
+  if (!transaction.docChanged) return false;
   try { validateEditorDocument(transaction.doc); }
   catch { return false; }
   state.formulaRecalculating = true;

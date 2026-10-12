@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeChartAttributes, officeChartDescription } from "../office-charts.mjs";
+import { officeChartAttributes, officeChartBindingMatches, officeChartDataFromDocument, officeChartDescription,
+  validateOfficeChartBindings } from "../office-charts.mjs";
+import { officeTableFromTSV, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const attrs = { id: "chart-" + "a".repeat(24), kind: "bar", title: "Quarterly plan",
   altText: "Plan and actual values rise across four quarters.", legend: true,
@@ -10,17 +12,38 @@ const attrs = { id: "chart-" + "a".repeat(24), kind: "bar", title: "Quarterly pl
     { name: "Actual", color: "blue", values: [110, 152, 171, 176] },
   ] };
 
-test("Office charts admit only bounded inert literal datasets", () => {
+test("Office charts admit bounded literal decimal datasets", () => {
   expect(officeChartAttributes(attrs)).toEqual(attrs);
   expect(officeChartAttributes({ ...attrs, kind: "pie", series: [{ name: "Share", color: "orange", values: [1, 2, 3, 4] }] }).kind).toBe("pie");
   for (const invalid of [{ ...attrs, kind: "script" }, { ...attrs, title: "" }, { ...attrs, onclick: "run()" },
     { ...attrs, categories: ["Q1", "Q1"] }, { ...attrs, series: [{ name: "Plan", color: "url", values: [1, 2, 3, 4] }] },
-    { ...attrs, series: [{ name: "Plan", color: "teal", values: [1.5, 2, 3, 4] }] },
     { ...attrs, series: [{ name: "Plan", color: "teal", values: [-1, 2, 3, 4] }] }]) {
     expect(() => officeChartAttributes(invalid)).toThrow();
   }
   expect(officeChartAttributes({ ...attrs, kind: "line",
     series: [{ name: "Delta", color: "purple", values: [-1, 2, 3, 4] }] }).kind).toBe("line");
+  expect(officeChartAttributes({ ...attrs,
+    series: [{ name: "Plan", color: "teal", values: [1.5, 2.25, 3.75, 4.125] }] }).series[0].values[3]).toBe(4.125);
+});
+
+test("Office charts derive exact decimal snapshots from a numbered table and detect stale data", () => {
+  let table = officeTableFromTSV("Quartal\tPlan\tIst\nQ1\t1.5\t2.25\nQ2\t3\t0");
+  table.attrs = { tableId: "table-" + "b".repeat(24), caption: "Quartalswerte" };
+  table = setOfficeTableFormula(table, { row: 2, column: 2, formula: "=ROUND(B3*1.25,2)" });
+  const source = { tableId: table.attrs.tableId, range: "A1:C3" };
+  const data = officeChartDataFromDocument({ type: "doc", content: [table] }, source, "bar");
+  expect(data).toEqual({ categories: ["Q1", "Q2"], series: [
+    { name: "Plan", color: "teal", values: [1.5, 3] },
+    { name: "Ist", color: "blue", values: [2.25, 3.75] },
+  ] });
+  const linked = { ...attrs, categories: data.categories, series: data.series, source };
+  const document = { type: "doc", content: [table, { type: "chart", attrs: linked }] };
+  expect(officeChartBindingMatches(document, linked)).toBe(true);
+  expect(validateOfficeChartBindings(document)).toBe(document);
+  const stale = structuredClone(document); stale.content[1].attrs.series[0].values[0] = 99;
+  expect(officeChartBindingMatches(stale, stale.content[1].attrs)).toBe(false);
+  expect(() => validateOfficeChartBindings(stale)).toThrow();
+  expect(officeChartDescription(linked)).toContain("verknüpft mit A1:C3");
 });
 
 test("Office chart descriptions and comparisons expose exact data changes", () => {

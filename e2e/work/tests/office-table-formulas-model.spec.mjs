@@ -24,6 +24,31 @@ test("Office formulas normalize German input support functions and remain remova
   expect(text(table.content[1].content[1])).toBe("4");
 });
 
+test("Office formulas evaluate comparisons conditions logic rounding and advanced numeric functions transitively", () => {
+  let table = officeTableFromTSV("5\t2\t0\t0\n0\t0\t0\t0");
+  table = setOfficeTableFormula(table, { row: 0, column: 2,
+    formula: "=WENN(A1>B1;RUNDEN(POTENZ(A1;2)/3;2);1/0)" });
+  table = setOfficeTableFormula(table, { row: 0, column: 3,
+    formula: "=PRODUKT(A1:B1)+MEDIAN(A1:B1)+WURZEL(4)+ABS(-3)" });
+  table = setOfficeTableFormula(table, { row: 1, column: 0,
+    formula: "=UND(C1=8.33;NICHT(A1=B1);ODER(0;1))" });
+  table = setOfficeTableFormula(table, { row: 1, column: 1, formula: "=C1+D1" });
+  expect(table.content.flatMap((row) => row.content).map(text)).toEqual(["5", "2", "8.33", "18.5", "1", "26.83", "0", "0"]);
+  expect(table.content[0].content[2].attrs.formula).toBe("=IF(A1>B1,ROUND(POWER(A1,2)/3,2),1/0)");
+});
+
+test("Office advanced formulas fail closed on invalid arity domains and bounded results", () => {
+  const table = officeTableFromTSV("1\t0");
+  for (const [formula, result] of [["=SQRT(-1)", "#WERT!"], ["=ROUND(1,11)", "#WERT!"],
+    ["=POWER(10,20)", "#LIMIT!"], ["=IF(0,1/0,7)", "7"]]) {
+    const calculated = setOfficeTableFormula(table, { row: 0, column: 1, formula });
+    expect(text(calculated.content[0].content[1])).toBe(result);
+  }
+  for (const formula of ["=NOT(1,2)", "=IF(1,2)", "=ROUND(1)"]) {
+    expect(text(setOfficeTableFormula(table, { row: 0, column: 1, formula }).content[0].content[1])).toBe("#WERT!");
+  }
+});
+
 test("Office formulas preserve absolute and mixed row and column anchors", () => {
   let table = officeTableFromTSV("2\t3\t0\n4\t6\t0");
   table = setOfficeTableFormula(table, { row: 1, column: 2, formula: "=SUM($A$1;$B1;A$2)" });

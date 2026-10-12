@@ -1,6 +1,45 @@
 # Current Project Handoff
 
-Updated: 2026-10-10
+Updated: 2026-10-12
+
+Roadmap 792 through 799 / PLANS 653 through 660 are complete under ADR-0197. Native Office table formulas now add
+comparisons, lazy `IF`, logical operations, deterministic rounding, absolute value, power, square root, product and
+median while retaining canonical German aliases, relative/absolute/mixed references, transitive recalculation, cycle
+detection and bounded explicit errors. Browser and server independently recalculate every stored formula result.
+
+Bar, line and pie charts can now bind to one exact bounded range of a numbered table in the same document. Formula
+and decimal values update the linked chart snapshot in the same local editor transaction. Confirmed saves verify every
+binding twice: the browser rejects stale local snapshots and the server independently resolves the table ID and range,
+re-derives data and rejects missing sources, merged grids, stale or forged values, URLs and unknown fields. Manual
+charts remain supported and now accept bounded finite decimals.
+
+Focused Office schema/API tests pass 82/82 and the formula/chart model block passes 17/17. The complete linked-table
+workflow passes 2/2 on desktop and mobile: it imports a formula table, numbers it, creates a linked chart, edits a
+source value, observes formula plus chart recalculation, saves two immutable versions and reloads the exact result.
+Visual review passed on both profiles without document-page overflow. Desktop/mobile screenshot hashes are
+`sha256:01510222e1a5ff88827a3b10e5b16edac8d69d3f992accf686486d4a01456881` and
+`sha256:e07dc2aeb48c3947823558bd8c89585262ec89f9fd9b6417391893fe0801f8a5`; report hash is
+`sha256:879997b7f1b164cb2206b42c40630f6e99d21ca9b9ca00f26dcc8b2cfcae4e41`.
+
+The complete quality gate passes Ruff, finds 969 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:e530e672c72c5189d900d08aafa0f34f2d22ecd5691a946b1877bb6655ae9d91`,
+`sha256:e48fceb8237bb881d500f20e4a626d88c45823f1331cbba1669e751c0a531992` and
+`sha256:e46e575cf2486dce9a607820fa61ee8eef5ef7eafdcabcbe05c00273daa38ffb`. Review remains on the
+existing isolated runtime at `http://192.168.0.108:42880/office?review=table-chart-adr0197` with asset keys
+`office.css?v=12` and `editor.js?v=9`. GitHub publication for this content remains pending under the
+content-specific approval rule. CRM onboarding remains deferred; the next separate Office loop is named ranges,
+cross-table references and lookup/date functions.
+
+The exact isolated PostgreSQL test container, the interrupted broad Work-E2E runner and the named transfer directory
+are removed. No transient test or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first server-focused run exposed an obsolete formula-function allowlist and the second isolated check exposed a
+Python `POWER` limit error being remapped too broadly; both product paths were corrected before the green 82-case
+run. One incorrectly composed Work-E2E invocation inherited the runner entrypoint, began the broad matrix and was
+stopped after an unrelated blocked-API DNS failure; the exact model block then passed. The first complete quality run
+found only six new test-fixture typing errors; explicit JSON fixture types fixed them before the final green gate.
 
 Roadmap 784 through 791 / PLANS 645 through 652 are complete under ADR-0196. Native Office now answers bounded
 document questions only when tenant AI and RAG policy admit the request and an approved tenant-allowed local RAG model
