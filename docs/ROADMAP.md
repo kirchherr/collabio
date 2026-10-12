@@ -665,6 +665,8 @@ Aufgaben:
   (Roadmap 792-799 / PLANS 653-660).
 - [x] Benannte Tabellenbereiche, tabellenuebergreifende Formeln, exakte numerische Suche und deterministische
   Datumsfunktionen (Roadmap 800-807 / PLANS 661-668).
+- [x] Exakte bedingte Aggregation, feste kanonische Zahlen-/Datumsdarstellung und erweiterte Bearbeitung verknuepfter
+  Diagramme mit Zeilen- oder Spaltenorientierung (Roadmap 808-815 / PLANS 669-676).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

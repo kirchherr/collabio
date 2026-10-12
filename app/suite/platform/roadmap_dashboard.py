@@ -1003,6 +1003,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-table-formulas-model.spec.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0198-native-office-named-ranges-and-cross-table-formulas.md",
                         "e2e/work/tests/office-table-named-ranges-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0199-native-office-conditional-aggregation-presentation-and-chart-editing.md",
+                        "e2e/work/tests/office-conditional-chart-responsive.spec.mjs",
                     ),
                     api_routes=(
                         "/v1/office/documents",

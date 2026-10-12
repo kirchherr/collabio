@@ -32,7 +32,7 @@ import { OFFICE_CHARACTER_VALUES, OFFICE_FONT_FAMILIES, OFFICE_HIGHLIGHT_COLORS,
 import { OFFICE_STYLE_LIMIT, OFFICE_STYLE_PRESETS, officeStyles, officeStyleFor, officeTextblockAttributes } from "./office-styles.mjs";
 import { OFFICE_LINK_MAX, officeAutomaticLinkContent, officeAutomaticLinks, officeLinkDOMAttributes, officeLinkHref } from "./office-links.mjs";
 import { OFFICE_BOOKMARK_LIMIT, officeBookmarkAttributes, officeBookmarkDescription, officeBookmarkInventory, officeReferenceInventory, officeCrossReferenceAttributes, officeCrossReferenceDescription } from "./office-bookmarks.mjs";
-import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
+import { OFFICE_NUMBERED_TABLE_LIMIT, duplicateOfficeTableColumns, duplicateOfficeTableRows, moveOfficeTableColumns, moveOfficeTableRows, officeTableAttributes, officeTableCaption, officeTableCellAttributes, officeTableCellDOMAttributes, officeTableCellText, officeTableDisplayValue, officeTableDOMAttributes, officeTableFormulaSource, officeTableFragment, officeTableGrid, officeTableInventory, officeTableReorderInfo, officeTableSortInfo, sortOfficeTable } from "./office-tables.mjs";
 import { clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, officeTableRangeDefinitions, pasteOfficeTableCells, recalculateOfficeDocumentFormulas, recalculateOfficeTableFormulas, remapOfficeTableFormulas, remapOfficeTableRangeDefinitions } from "./office-table-formulas.mjs";
 import { officeBibliographyLabel, officeCitationAttributes, officeCitationLabel, officeCitationSources, officeDocumentFields, officeEquationAttributes, officeFieldAttributes, officeNoteAttributes, officeOpaqueId, officeSemanticInventory } from "./office-semantics.mjs";
 import { OFFICE_DOCUMENT_REFERENCE_LIMIT, officeDocumentReferenceAttributes, officeDocumentReferenceDescription, officeDocumentReferenceKey, officeDocumentReferenceResolutions } from "./office-document-references.mjs";
@@ -129,9 +129,25 @@ const OfficeTableCellStyle = Extension.create({
     return [{ types: ["tableCell", "tableHeader"], attributes: {
       background: attribute("data-office-cell-fill"), verticalAlign: attribute("data-office-cell-vertical"),
       horizontalAlign: attribute("data-office-cell-align"), padding: attribute("data-office-cell-padding"),
-      border: attribute("data-office-cell-border"), formula: attribute("data-office-cell-formula"),
+      border: attribute("data-office-cell-border"), numberFormat: attribute("data-office-number-format"),
+      formula: attribute("data-office-cell-formula"),
       formulaResult: attribute("data-office-cell-formula-result"),
     } }];
+  },
+  addProseMirrorPlugins() {
+    return [new Plugin({ key: new PluginKey("officeTableNumberPresentation"), props: {
+      decorations(editorState) {
+        const decorations = [];
+        editorState.doc.descendants((node, position) => {
+          if (!["tableCell", "tableHeader"].includes(node.type.name) || !node.attrs.numberFormat) return;
+          const raw = node.attrs.formulaResult || node.textContent.trim();
+          const display = officeTableDisplayValue(raw, node.attrs.numberFormat);
+          if (display != null) decorations.push(Decoration.node(position, position + node.nodeSize,
+            { "data-office-display-value": display }));
+        });
+        return DecorationSet.create(editorState.doc, decorations);
+      },
+    } })];
   },
 });
 const OfficePageBreak = Node.create({
@@ -3312,6 +3328,7 @@ function openTableCellStyle() {
   $("table-cell-horizontal").value = uniform("horizontalAlign");
   $("table-cell-padding").value = uniform("padding");
   $("table-cell-border").value = uniform("border");
+  $("table-cell-number-format").value = uniform("numberFormat");
   $("table-cell-style-summary").textContent = `${positions.length} ${positions.length === 1 ? "Zelle" : "Zellen"} ausgewählt.`;
   $("table-cell-style-dialog").showModal();
   $("table-cell-fill").focus();
@@ -3512,6 +3529,7 @@ function commitTableCellStyle(event, reset = false) {
   const horizontal = $("table-cell-horizontal").value;
   const padding = $("table-cell-padding").value;
   const border = $("table-cell-border").value;
+  const numberFormat = $("table-cell-number-format").value;
   const chosen = (value, current) => reset ? null : value === "mixed" ? current : value === "default" ? null : value;
   try {
     let transaction = action.editor.state.tr;
@@ -3525,6 +3543,7 @@ function commitTableCellStyle(event, reset = false) {
         horizontalAlign: chosen(horizontal, current.horizontalAlign),
         padding: chosen(padding, current.padding),
         border: chosen(border, current.border),
+        numberFormat: chosen(numberFormat, current.numberFormat),
       });
       transaction = transaction.setNodeMarkup(position, undefined, attrs);
     }

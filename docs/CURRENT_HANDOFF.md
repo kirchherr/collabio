@@ -2,6 +2,49 @@
 
 Updated: 2026-10-12
 
+Roadmap 808 through 815 / PLANS 669 through 676 are complete under ADR-0199. Native Office formulas now support exact
+numeric `SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` over bounded local or named
+ranges. The functions run inside the existing document-wide dependency graph and retain deterministic cross-table
+cycles, explicit errors and the 4,000-value bound. Browser and server independently recalculate every saved result.
+
+Table cells now store one fixed presentation identifier for integer, two-decimal, percent, EUR or UTC-derived ISO/German
+date display. Canonical cell text and `formulaResult` stay numeric; a ProseMirror decoration derives localized visible
+text without feeding it back into calculations or linked charts. The server rejects unknown formats, nonnumeric values,
+nonintegral date serials and dates outside 1900 through 9999.
+
+Linked charts can now read an exact numbered-table range by columns or by rows, persist that orientation in the verified
+binding and optionally show visible value labels. Source table, range, orientation, type, title, alternative text and
+legend remain editable in the existing dialog. Browser and server re-derive snapshots and reject stale, forged,
+missing, merged or out-of-range sources before confirmed version save.
+
+Focused Office schema/API tests pass 86/86 and the final formula/chart model block passes 22/22. The saved-version
+desktop/mobile workflow passes 2/2 in 21.3 seconds. It calculates `SUMMEWENN`, preserves a canonical result behind EUR
+presentation, creates a row-oriented linked chart with value labels, edits its type/title, saves and reloads the exact
+immutable result. Visual review passed; desktop/mobile screenshot hashes are
+`sha256:edc216bbebf24094168a30df6f0ed837df024be3ede27605090ba96be8aecae2` and
+`sha256:583925c60e27b7a877e23fbb7e46a7d611fcb01694fa2868274b7476e569b4e5`.
+
+The complete quality gate passes Ruff, finds 977 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:7f82515c81925c0fe6f29ba89c37f2659415c257325721fb2197123c6a28389f` and
+`sha256:7d31db4a3a33ff0205501750ab137a9676776fdbeb6b273a09e4472203338b92`. Review remains on the isolated runtime at
+`http://192.168.0.108:42880/office?review=conditional-chart-adr0199` with asset keys `office.css?v=13` and
+`editor.js?v=11`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container, named transfer directory and task-owned interrupted broad Work-E2E runner
+are removed. No transient quality or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first responsive run showed that an imperative DOM attribute was removed by ProseMirror reconciliation; number/date
+presentation now uses a document decoration and the unchanged workflow passes. One incorrectly composed model command
+inherited the runner entrypoint and began the broad matrix; it was interrupted and its exact remaining container later
+removed. Full quality then found only two Ruff condition-order suggestions and four test-fixture typing errors; all were
+corrected before the green final gate.
+
+The next separate Office loop is multiple-criteria aggregation, richer date/text formulas and chart-axis/presentation
+controls. CRM account onboarding remains deferred by the user's Office-first priority.
+
 Roadmap 800 through 807 / PLANS 661 through 668 are complete under ADR-0198. Native Office now stores at most 100
 canonical document-wide named ranges. Each name binds one stable numbered-table ID to one exact bounded rectangle and
 can feed formulas in any other table. The browser evaluates all formulas as one document dependency graph with shared

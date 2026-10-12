@@ -8,19 +8,21 @@ export const OFFICE_TABLE_CELL_VERTICAL_ALIGNMENTS = ["middle", "bottom"];
 export const OFFICE_TABLE_CELL_HORIZONTAL_ALIGNMENTS = ["center", "right"];
 export const OFFICE_TABLE_CELL_PADDINGS = ["compact", "spacious"];
 export const OFFICE_TABLE_CELL_BORDERS = ["none", "strong"];
+export const OFFICE_TABLE_NUMBER_FORMATS = ["number-0", "number-2", "percent-0", "percent-2", "currency-eur", "date-iso", "date-de"];
 export const OFFICE_TABLE_STYLES = ["minimal", "banded", "accent"];
 export const OFFICE_TABLE_WIDTHS = ["compact", "wide"];
 export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
 export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"];
-const officeTableFormulaFunctions = ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "IF", "AND", "OR", "NOT", "ROUND",
-  "ABS", "POWER", "SQRT", "PRODUCT", "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
+const officeTableFormulaFunctions = ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "SUMIF", "COUNTIF", "AVERAGEIF",
+  "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER", "SQRT", "PRODUCT", "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
 
 export function officeTableFormulaSource(value) {
   if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
   const source = value.trim().replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
-    .replace(/\bANZAHL\b/giu, "COUNT").replace(/\bWENN\b/giu, "IF")
+    .replace(/\bSUMMEWENN\b/giu, "SUMIF").replace(/\bZÄHLENWENN\b/giu, "COUNTIF")
+    .replace(/\bMITTELWERTWENN\b/giu, "AVERAGEIF").replace(/\bANZAHL\b/giu, "COUNT").replace(/\bWENN\b/giu, "IF")
     .replace(/\bUND\b/giu, "AND").replace(/\bODER\b/giu, "OR")
     .replace(/\bNICHT\b/giu, "NOT").replace(/\bRUNDEN\b/giu, "ROUND")
     .replace(/\bPOTENZ\b/giu, "POWER").replace(/\bWURZEL\b/giu, "SQRT")
@@ -57,7 +59,7 @@ export function officeTableFormulaResult(value) {
 
 export function officeTableCellAttributes(value = {}) {
   if (Object.entries(value).some(([key, entry]) =>
-    !["colspan", "rowspan", "colwidth", "background", "verticalAlign", "horizontalAlign", "padding", "border", "formula", "formulaResult"].includes(key) && entry != null)) {
+    !["colspan", "rowspan", "colwidth", "background", "verticalAlign", "horizontalAlign", "padding", "border", "numberFormat", "formula", "formulaResult"].includes(key) && entry != null)) {
     throw new TypeError("Invalid Office table cell");
   }
   if (!value || !Number.isInteger(value.colspan ?? 1) || !Number.isInteger(value.rowspan ?? 1) ||
@@ -68,6 +70,7 @@ export function officeTableCellAttributes(value = {}) {
       (value.horizontalAlign != null && !OFFICE_TABLE_CELL_HORIZONTAL_ALIGNMENTS.includes(value.horizontalAlign)) ||
       (value.padding != null && !OFFICE_TABLE_CELL_PADDINGS.includes(value.padding)) ||
       (value.border != null && !OFFICE_TABLE_CELL_BORDERS.includes(value.border)) ||
+      (value.numberFormat != null && !OFFICE_TABLE_NUMBER_FORMATS.includes(value.numberFormat)) ||
       ((value.formula == null) !== (value.formulaResult == null)) ||
       (value.formula != null && ((value.colspan ?? 1) !== 1 || (value.rowspan ?? 1) !== 1))) {
     throw new TypeError("Invalid Office table cell");
@@ -78,6 +81,7 @@ export function officeTableCellAttributes(value = {}) {
   if (value.horizontalAlign != null) result.horizontalAlign = value.horizontalAlign;
   if (value.padding != null) result.padding = value.padding;
   if (value.border != null) result.border = value.border;
+  if (value.numberFormat != null) result.numberFormat = value.numberFormat;
   if (value.formula != null) {
     result.formula = officeTableFormulaSource(value.formula);
     result.formulaResult = officeTableFormulaResult(value.formulaResult);
@@ -92,6 +96,7 @@ export function officeTableCellDOMAttributes(value = {}) {
   if (attrs.horizontalAlign) result["data-office-cell-align"] = attrs.horizontalAlign;
   if (attrs.padding) result["data-office-cell-padding"] = attrs.padding;
   if (attrs.border) result["data-office-cell-border"] = attrs.border;
+  if (attrs.numberFormat) result["data-office-number-format"] = attrs.numberFormat;
   if (attrs.formula) {
     result["data-office-cell-formula"] = attrs.formula;
     result["data-office-cell-formula-result"] = attrs.formulaResult;
@@ -106,7 +111,27 @@ export function officeTableCellStyleDescription(value = {}) {
   if (attrs.horizontalAlign) result.push(`Horizontal ${attrs.horizontalAlign}`);
   if (attrs.padding) result.push(`Innenabstand ${attrs.padding}`);
   if (attrs.border) result.push(`Rahmen ${attrs.border}`);
+  if (attrs.numberFormat) result.push(`Zahlenformat ${attrs.numberFormat}`);
   return result;
+}
+
+export function officeTableDisplayValue(value, format) {
+  if (!OFFICE_TABLE_NUMBER_FORMATS.includes(format) || typeof value !== "string" ||
+      !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?$/u.test(value)) return null;
+  const number = Number(value); if (!Number.isFinite(number) || Math.abs(number) > 1e15) return null;
+  if (format.startsWith("date-")) {
+    if (!Number.isInteger(number)) return null;
+    const date = new Date(number * 86400000);
+    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) return null;
+    const year = String(date.getUTCFullYear()).padStart(4, "0"), month = String(date.getUTCMonth() + 1).padStart(2, "0"),
+      day = String(date.getUTCDate()).padStart(2, "0");
+    return format === "date-iso" ? `${year}-${month}-${day}` : `${day}.${month}.${year}`;
+  }
+  const digits = format.endsWith("-2") || format === "currency-eur" ? 2 : 0;
+  const presented = format.startsWith("percent-") ? number * 100 : number;
+  const text = new Intl.NumberFormat("de-DE", { minimumFractionDigits: digits, maximumFractionDigits: digits,
+    useGrouping: true }).format(presented);
+  return format.startsWith("percent-") ? `${text} %` : format === "currency-eur" ? `${text} €` : text;
 }
 
 export function officeTableGrid(value) {

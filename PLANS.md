@@ -2034,14 +2034,38 @@ tables, merged target grids, out-of-range definitions, cross-table cycles and st
 668. [x] Prove the block with focused schema/API tests, 16 formula-model cases, a desktop/mobile saved-version workflow,
 visual review and the complete repository quality gate. Add no migration, external engine, network read or auto-save.
 
+669. [x] Add exact numeric `SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` under
+ADR-0199. Accept only local or named bounded ranges, one numeric criterion and equal-sized optional result ranges.
+
+670. [x] Evaluate conditional aggregates inside the existing document-wide dependency graph with shared memoization,
+cross-table references, deterministic cycles and explicit value, division and resource-limit errors.
+
+671. [x] Add a fixed cell-presentation vocabulary for integer, two-decimal, percent, EUR and UTC-derived ISO/German
+date display while retaining the canonical numeric cell or formula result as the sole calculation value.
+
+672. [x] Render formatted values through document decorations in editor and print without rewriting source values.
+Expose the formats in the existing multi-cell dialog with mixed-selection preservation and one-step undo/reset.
+
+673. [x] Let linked charts read their exact numbered-table source either by columns or by rows. Preserve the chosen
+orientation in the immutable binding and re-derive category/series snapshots after every table or formula change.
+
+674. [x] Add optional visible chart value labels and retain editability of source table, range, orientation, type,
+title, alternative text and legend in the accessible chart dialog.
+
+675. [x] Independently validate conditional results, finite numeric presentation, deterministic dates, chart source
+orientation and snapshots on the server. Reject free formats, stale/forged values, missing tables and invalid ranges.
+
+676. [x] Prove the block with focused schema/API tests, 22 formula/chart model cases, a desktop/mobile saved-version
+workflow, visual review and the complete repository quality gate. Add no migration, network source or external engine.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 807 / PLANS 668. Document-wide named ranges now support cross-table
-  calculations, exact numeric lookup and deterministic date functions while native charts continue to follow verified
-  decimal and formula results. Continue Office with conditional aggregation, text/date presentation and chart editing as
+- Native Office is complete through Roadmap 815 / PLANS 676. Exact numeric conditional aggregation, fixed canonical
+  number/date presentation and row- or column-oriented linked-chart editing now build on document-wide named ranges.
+  Continue Office with multiple-criteria aggregation, richer date/text formulas and chart-axis/presentation controls as
   separate coherent loops before deferred CRM onboarding. Preserve all earlier AI, voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=12" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=13" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -188,10 +188,11 @@
           <div class="chart-fields"><label>Diagrammtyp<select id="chart-kind"><option value="bar">Säulen</option><option value="line">Linien</option><option value="pie">Kreis</option></select></label><label>Titel<input id="chart-name" maxlength="120" required /></label></div>
           <label>Alternativtext<textarea id="chart-alt" maxlength="500" rows="3" required></textarea></label>
           <label class="check-row"><input id="chart-legend" type="checkbox" checked /> Legende anzeigen</label>
+          <label class="check-row"><input id="chart-data-labels" type="checkbox" /> Werte am Diagramm anzeigen</label>
           <label class="check-row"><input id="chart-linked" type="checkbox" /> Mit einer nummerierten Tabelle verknüpfen</label>
-          <div class="chart-fields" id="chart-source-fields" hidden><label>Quelltabelle<select id="chart-source-table"></select></label><label>Zellbereich<input id="chart-source-range" maxlength="12" value="A1:C5" autocomplete="off" placeholder="A1:C5" /></label></div>
+          <div class="chart-fields" id="chart-source-fields" hidden><label>Quelltabelle<select id="chart-source-table"></select></label><label>Datenreihen<select id="chart-source-orientation"><option value="columns">aus Spalten</option><option value="rows">aus Zeilen</option></select></label><label>Zellbereich<input id="chart-source-range" maxlength="12" value="A1:C5" autocomplete="off" placeholder="A1:C5" /></label></div>
           <label>Datentabelle<textarea id="chart-data" rows="7" spellcheck="false" aria-describedby="chart-data-help" required></textarea></label>
-          <p id="chart-data-help" class="paragraph-help">Manuell oder aus dem verknüpften Tabellenbereich: erste Spalte Kategorien, erste Zeile Namen der Datenreihen. Bis zu 12 Kategorien und vier Reihen; Kreisdiagramme verwenden genau eine nichtnegative Reihe. Verknüpfte Werte werden nach Tabellen- und Formeländerungen automatisch aktualisiert.</p>
+          <p id="chart-data-help" class="paragraph-help">Manuell oder aus dem verknüpften Tabellenbereich: Kategorien und Datenreihen können spalten- oder zeilenweise gelesen werden. Bis zu 12 Kategorien und vier Reihen; Kreisdiagramme verwenden genau eine nichtnegative Reihe. Verknüpfte Werte werden nach Tabellen- und Formeländerungen automatisch aktualisiert.</p>
           <div class="chart-preview-stage" id="chart-preview" aria-label="Diagrammvorschau"></div>
           <div class="chart-fields"><button class="button secondary" id="chart-previous" type="button" hidden>Diagramm eine Position früher</button><button class="button secondary" id="chart-next" type="button" hidden>Diagramm eine Position später</button><button class="button secondary" id="chart-duplicate" type="button" hidden>Diagramm duplizieren</button><button class="button danger" id="chart-remove" type="button" hidden>Aus Entwurf entfernen</button></div>
           <p class="paragraph-help">Diagramme speichern begrenzte Dezimalzahlen und Klartext. Eine Verknüpfung darf nur auf eine nummerierte Tabelle derselben Dokumentfassung zeigen. Makros, externe Datenquellen und eingebetteter Code sind ausgeschlossen.</p>
@@ -427,7 +428,8 @@
           <label>Horizontale Ausrichtung<select id="table-cell-horizontal"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label>
           <label>Innenabstand<select id="table-cell-padding"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Normal</option><option value="compact">Kompakt</option><option value="spacious">Großzügig</option></select></label>
           <label>Rahmen<select id="table-cell-border"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Vom Tabellenstil</option><option value="none">Ohne</option><option value="strong">Stark</option></select></label>
-        </div><p class="paragraph-help">Es werden ausschließlich feste, drucksichere Werte gespeichert. Zeichenformat und explizite Absatzausrichtung bleiben unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
+          <label>Zahlen- und Datumsformat<select id="table-cell-number-format"><option value="mixed" hidden>Gemischt – unverändert</option><option value="default">Standardwert</option><option value="number-0">Zahl ohne Dezimalstellen</option><option value="number-2">Zahl mit zwei Dezimalstellen</option><option value="percent-0">Prozent ohne Dezimalstellen</option><option value="percent-2">Prozent mit zwei Dezimalstellen</option><option value="currency-eur">Währung EUR</option><option value="date-iso">Datum JJJJ-MM-TT</option><option value="date-de">Datum TT.MM.JJJJ</option></select></label>
+        </div><p class="paragraph-help">Zahlen- und Datumsformate ändern nur die sichtbare Darstellung. Der kanonische Wert bleibt für Formeln und Diagramme unverändert.</p><p id="table-cell-style-status" role="status" aria-live="polite"></p></div>
         <footer><button class="button secondary" id="table-cell-style-reset" type="button">Standard</button><button class="button secondary" id="table-cell-style-cancel" type="button">Abbrechen</button><button class="button primary" id="table-cell-style-apply" type="submit">Auf Auswahl anwenden</button></footer>
       </form>
     </dialog>
@@ -456,7 +458,7 @@
     <dialog class="office-dialog compact" id="table-formula-dialog" aria-labelledby="table-formula-title">
       <form id="table-formula-form"><header><h2 id="table-formula-title">Tabellenformel</h2><button class="icon-button" id="table-formula-close" type="button" aria-label="Tabellenformel schließen">×</button></header>
         <div class="dialog-body"><p id="table-formula-summary"></p><label>Formel<input id="table-formula-source" type="text" maxlength="256" required autocomplete="off" placeholder="=SUM(B2:B10)" /></label>
-          <p class="paragraph-help">Lokale Bezüge unterstützen A1 bis T200 und $-Anker. Benannte Bereiche rechnen über nummerierte Tabellen hinweg. Zusätzlich stehen XLOOKUP/XVERWEIS für exakte numerische Zuordnungen sowie DATE/DATUM, YEAR/JAHR, MONTH/MONAT und DAY/TAG bereit. SUM, AVERAGE, MIN, MAX, COUNT, IF, AND, OR, NOT, ROUND, ABS, POWER, SQRT, PRODUCT und MEDIAN bleiben verfügbar; deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros, volatile Zeitwerte und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
+          <p class="paragraph-help">Lokale Bezüge unterstützen A1 bis T200 und $-Anker. Benannte Bereiche rechnen über nummerierte Tabellen hinweg. SUMIF/SUMMEWENN, COUNTIF/ZÄHLENWENN und AVERAGEIF/MITTELWERTWENN filtern nach einem exakten Zahlenwert. Zusätzlich stehen XLOOKUP/XVERWEIS sowie DATE/DATUM, YEAR/JAHR, MONTH/MONAT und DAY/TAG bereit. Deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros, volatile Zeitwerte und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
         <footer><button class="quiet-button" id="table-formula-remove" type="button">Formeln entfernen</button><button class="button secondary" id="table-formula-cancel" type="button">Abbrechen</button><button class="button primary" id="table-formula-apply" type="submit">Formel übernehmen</button></footer>
       </form>
     </dialog>
@@ -523,6 +525,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=10"></script>
+    <script type="module" src="/office/editor.js?v=11"></script>
   </body>
 </html>

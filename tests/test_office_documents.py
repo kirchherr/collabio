@@ -388,6 +388,65 @@ def test_native_document_detects_cross_table_named_range_cycles() -> None:
         validate_office_document(stale)
 
 
+def test_native_document_validates_conditional_aggregates_and_number_formats() -> None:
+    def cell(text: str, formula: str | None = None, number_format: str | None = None) -> dict[str, Any]:
+        attrs: dict[str, Any] = {}
+        if formula:
+            attrs.update({"formula": formula, "formulaResult": text})
+        if number_format:
+            attrs["numberFormat"] = number_format
+        return {
+            "type": "tableCell",
+            **({"attrs": attrs} if attrs else {}),
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+
+    source_id = "table-" + "e" * 24
+    source: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": source_id, "caption": "Conditional values"},
+        "content": [
+            {"type": "tableRow", "content": [cell("1"), cell("10")]},
+            {"type": "tableRow", "content": [cell("2"), cell("20")]},
+            {"type": "tableRow", "content": [cell("1"), cell("30")]},
+        ],
+    }
+    result: dict[str, Any] = {
+        "type": "table",
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("40", "=SUMIF(KEYS,1,VALUES)", "currency-eur"),
+                    cell("2", "=COUNTIF(KEYS,1)", "number-0"),
+                    cell("20", "=AVERAGEIF(KEYS,1,VALUES)", "number-2"),
+                    cell("20738", "=DATE(2026,10,12)", "date-de"),
+                ],
+            }
+        ],
+    }
+    document: dict[str, Any] = {
+        "type": "doc",
+        "attrs": {
+            "tableRanges": [
+                {"name": "KEYS", "tableId": source_id, "range": "A1:A3"},
+                {"name": "VALUES", "tableId": source_id, "range": "B1:B3"},
+            ]
+        },
+        "content": [source, result],
+    }
+    assert validate_office_document(document) == document
+    forged = deepcopy(document)
+    forged["content"][1]["content"][0]["content"][0]["attrs"]["formulaResult"] = "41"
+    forged["content"][1]["content"][0]["content"][0]["content"][0]["content"][0]["text"] = "41"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(forged)
+    invalid_format = deepcopy(document)
+    invalid_format["content"][1]["content"][0]["content"][1]["attrs"]["numberFormat"] = "custom-js"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(invalid_format)
+
+
 def test_native_linked_chart_must_match_its_numbered_table_range_exactly() -> None:
     def cell(text: str, formula: str | None = None) -> dict[str, Any]:
         return {
@@ -440,6 +499,45 @@ def test_native_linked_chart_must_match_its_numbered_table_range_exactly() -> No
     for candidate in invalid:
         with pytest.raises(OfficeDocumentInvalidContentError):
             validate_office_document(candidate)
+
+
+def test_native_linked_chart_accepts_row_series_orientation_and_data_labels() -> None:
+    def cell(text: str) -> dict[str, Any]:
+        return {"type": "tableCell", "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}]}
+
+    table_id = "table-" + "d" * 24
+    table: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": table_id, "caption": "Rows"},
+        "content": [
+            {"type": "tableRow", "content": [cell("Series"), cell("Q1"), cell("Q2")]},
+            {"type": "tableRow", "content": [cell("Plan"), cell("10"), cell("20")]},
+            {"type": "tableRow", "content": [cell("Actual"), cell("12"), cell("18")]},
+        ],
+    }
+    chart: dict[str, Any] = {
+        "type": "chart",
+        "attrs": {
+            "id": "chart-" + "e" * 24,
+            "kind": "line",
+            "title": "Rows as series",
+            "altText": "Plan and actual values by quarter.",
+            "legend": True,
+            "dataLabels": True,
+            "categories": ["Q1", "Q2"],
+            "series": [
+                {"name": "Plan", "color": "teal", "values": [10, 20]},
+                {"name": "Actual", "color": "blue", "values": [12, 18]},
+            ],
+            "source": {"tableId": table_id, "range": "A1:C3", "orientation": "rows"},
+        },
+    }
+    document: dict[str, Any] = {"type": "doc", "content": [table, chart]}
+    assert validate_office_document(document) == document
+    stale = deepcopy(document)
+    stale["content"][1]["attrs"]["source"]["orientation"] = "columns"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(stale)
 
 
 @pytest.mark.parametrize(

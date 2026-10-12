@@ -4,8 +4,8 @@ const formulaErrors = new Set(["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIM
 const numericText = /^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u;
 const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
 const namedRangePattern = /^[A-Z][A-Z0-9_]{0,31}$/u;
-const formulaFunctions = ["XLOOKUP", "AVERAGE", "PRODUCT", "MEDIAN", "POWER", "ROUND", "COUNT", "SQRT", "SUM",
-  "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS", "DATE", "YEAR", "MONTH", "DAY"];
+const formulaFunctions = ["AVERAGEIF", "XLOOKUP", "COUNTIF", "PRODUCT", "AVERAGE", "MEDIAN", "SUMIF", "POWER",
+  "ROUND", "COUNT", "SQRT", "SUM", "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS", "DATE", "YEAR", "MONTH", "DAY"];
 const dayMilliseconds = 86400000;
 
 function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
@@ -106,6 +106,21 @@ function parseFormula(source, context) {
         const match = lookup.findIndex((value) => value === search);
         if (match < 0) throw formulaError("#BEZUG!");
         return returned[match];
+      }
+      if (["SUMIF", "COUNTIF", "AVERAGEIF"].includes(name)) {
+        const tested = rangeArgument(active); take(","); const criterion = expression(active);
+        let returned = tested;
+        if (peek().type === ",") { take(","); returned = rangeArgument(active); }
+        take(")");
+        if (!active) return 0;
+        if ((name === "COUNTIF" && returned !== tested) || tested.length !== returned.length || tested.length > 4000) {
+          throw formulaError("#WERT!");
+        }
+        const matches = tested.flatMap((value, index) => value === criterion ? [returned[index]] : []);
+        if (name === "COUNTIF") return matches.length;
+        if (!matches.length && name === "AVERAGEIF") throw formulaError("#DIV/0!");
+        return name === "SUMIF" ? matches.reduce((total, value) => total + value, 0) :
+          matches.reduce((total, value) => total + value, 0) / matches.length;
       }
       const values = [];
       if (peek().type !== ")") {

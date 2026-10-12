@@ -1,9 +1,9 @@
 # Native Office Documents
 
-Status: Roadmap 252–791 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 791 / PLANS 652 versioned RAG document answers
-Module: `office_documents` / version 0.9.9
-Decisions: ADR-0079 through ADR-0196; current movement: `ARCHITECTURE_DECISIONS/ADR-0196-native-office-rag-document-answers.md`
+Status: Roadmap 252–815 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 815 / PLANS 676 conditional calculations and linked-chart editing
+Module: `office_documents` / version 0.9.10
+Decisions: ADR-0079 through ADR-0199; current movement: `ARCHITECTURE_DECISIONS/ADR-0199-native-office-conditional-aggregation-presentation-and-chart-editing.md`
 
 ## Versioned RAG document answers (Roadmap 784–791)
 
@@ -1092,6 +1092,24 @@ remain contiguous. A definition is removed if its rectangle is destroyed, or ato
 independently resolves every name and table range, recalculates cross-table dependencies, detects cycles and rejects
 stale or forged results before accepting a version. This adds no migration or external spreadsheet engine. Decision:
 [ADR-0198](../../ARCHITECTURE_DECISIONS/ADR-0198-native-office-named-ranges-and-cross-table-formulas.md).
+
+### Conditional aggregation, presentation and chart editing (Roadmap 808–815)
+
+`SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` compare a local or named numeric range
+with one exact numeric criterion. Sum and average may read an equally sized result range; count accepts exactly the
+tested range and criterion. The functions use the existing document graph and 4,000-value bound. An empty average
+returns `#DIV/0!`; mismatched ranges or arity return `#WERT!`.
+
+The cell-format dialog now offers fixed integer, two-decimal, percent, EUR and date presentations. Stored text and
+`formulaResult` remain canonical numeric values. A ProseMirror decoration derives the localized visible text, so
+formula evaluation and linked charts never parse the presentation. Server validation accepts only the fixed vocabulary,
+finite numeric sources and valid UTC-derived dates between 1900 and 9999.
+
+Linked chart bindings can treat either columns or rows as data series. The exact orientation is stored with the table
+ID and range and participates in the existing browser/server snapshot validation. Authors can show bounded value labels
+and edit source table, range, orientation, type, title, alternative text and legend before confirmed save. The feature
+adds no free format strings, custom code, external workbook, network source or migration. Decision:
+[ADR-0199](../../ARCHITECTURE_DECISIONS/ADR-0199-native-office-conditional-aggregation-presentation-and-chart-editing.md).
 
 ## Merged table cells and semantic headers (Roadmap 321–324)
 

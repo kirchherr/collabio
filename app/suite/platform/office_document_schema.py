@@ -199,6 +199,9 @@ _TABLE_FORMULA_NAMES = {
     "MIN",
     "MAX",
     "COUNT",
+    "SUMIF",
+    "COUNTIF",
+    "AVERAGEIF",
     "IF",
     "AND",
     "OR",
@@ -737,6 +740,27 @@ def _valid_document_table_formula_results(document: dict[str, Any], definitions:
                         return returned[lookup.index(search)]
                     except ValueError:
                         raise _TableFormulaError("#BEZUG!") from None
+                if name in {"SUMIF", "COUNTIF", "AVERAGEIF"}:
+                    tested = range_argument(active)
+                    take(",")
+                    criterion = expression(active)
+                    returned = tested
+                    separate_result = False
+                    if peek() == ",":
+                        take(",")
+                        returned = range_argument(active)
+                        separate_result = True
+                    take(")")
+                    if not active:
+                        return 0.0
+                    if (name == "COUNTIF" and separate_result) or len(tested) != len(returned) or len(tested) > 4000:
+                        raise _TableFormulaError("#WERT!")
+                    matches = [returned[index] for index, value in enumerate(tested) if value == criterion]
+                    if name == "COUNTIF":
+                        return float(len(matches))
+                    if not matches and name == "AVERAGEIF":
+                        raise _TableFormulaError("#DIV/0!")
+                    return sum(matches) if name == "SUMIF" else sum(matches) / len(matches)
                 values: list[float] = []
                 if peek() != ")":
                     while True:
@@ -892,8 +916,8 @@ _CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
 
 
-def _chart_source(value: Any) -> tuple[str, int, int, int, int] | None:
-    if not isinstance(value, dict) or set(value) != {"tableId", "range"}:
+def _chart_source(value: Any) -> tuple[str, int, int, int, int, str] | None:
+    if not isinstance(value, dict) or set(value) not in ({"tableId", "range"}, {"tableId", "range", "orientation"}):
         return None
     table_id, cell_range = value.get("tableId"), value.get("range")
     if (
@@ -907,9 +931,14 @@ def _chart_source(value: Any) -> tuple[str, int, int, int, int] | None:
         return None
     left, top = ord(match.group(1)) - 65, int(match.group(2)) - 1
     right, bottom = ord(match.group(3)) - 64, int(match.group(4))
-    if not 2 <= right - left <= 5 or not 2 <= bottom - top <= 13:
+    orientation = value.get("orientation", "columns")
+    if orientation not in {"columns", "rows"} or right - left < 2 or bottom - top < 2:
         return None
-    return table_id, top, left, bottom, right
+    if orientation == "columns" and (right - left > 5 or bottom - top > 13):
+        return None
+    if orientation == "rows" and (right - left > 13 or bottom - top > 5):
+        return None
+    return table_id, top, left, bottom, right, orientation
 
 
 def _chart_data_from_table(
@@ -919,12 +948,12 @@ def _chart_data_from_table(
     rows = table.get("content")
     if parsed is None or not isinstance(rows, list) or not _valid_table_grid(rows):
         return None
-    _, top, left, bottom, right = parsed
+    _, top, left, bottom, right, orientation = parsed
     cells = [row["content"] for row in rows]
     if (
         bottom > len(cells)
         or right > len(cells[0])
-        or (kind == "pie" and right - left != 2)
+        or (kind == "pie" and (right - left != 2 if orientation == "columns" else bottom - top != 2))
         or any(
             cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
             for row in cells
@@ -951,15 +980,26 @@ def _chart_data_from_table(
         return int(value) if value.is_integer() else value
 
     try:
-        categories = [label(row[0]) for row in selected[1:]]
-        series = [
-            {
-                "name": label(cell),
-                "color": _CHART_COLORS[index],
-                "values": [number(row[index + 1]) for row in selected[1:]],
-            }
-            for index, cell in enumerate(selected[0][1:])
-        ]
+        if orientation == "columns":
+            categories = [label(row[0]) for row in selected[1:]]
+            series = [
+                {
+                    "name": label(cell),
+                    "color": _CHART_COLORS[index],
+                    "values": [number(row[index + 1]) for row in selected[1:]],
+                }
+                for index, cell in enumerate(selected[0][1:])
+            ]
+        else:
+            categories = [label(cell) for cell in selected[0][1:]]
+            series = [
+                {
+                    "name": label(row[0]),
+                    "color": _CHART_COLORS[index],
+                    "values": [number(cell) for cell in row[1:]],
+                }
+                for index, row in enumerate(selected[1:])
+            ]
     except (ValueError, IndexError):
         return None
     if len(set(categories)) != len(categories) or len({entry["name"] for entry in series}) != len(series):
@@ -1315,6 +1355,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             expected_chart_attrs = {"id", "kind", "title", "altText", "legend", "categories", "series"}
             if source is not None:
                 expected_chart_attrs.add("source")
+            if "dataLabels" in attrs:
+                expected_chart_attrs.add("dataLabels")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1325,6 +1367,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or len(chart_ids) >= 20
                 or attrs.get("kind") not in {"bar", "line", "pie"}
                 or type(attrs.get("legend")) is not bool
+                or ("dataLabels" in attrs and type(attrs.get("dataLabels")) is not bool)
                 or not _valid_literal(attrs.get("title"), 1, 120)
                 or not _valid_literal(attrs.get("altText"), 1, 500)
                 or not isinstance(categories, list)
@@ -1751,6 +1794,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 "horizontalAlign",
                 "padding",
                 "border",
+                "numberFormat",
                 "formula",
                 "formulaResult",
             }:
@@ -1773,6 +1817,18 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             if attrs.get("border") not in {None, "none", "strong"}:
                 reject()
             formula, formula_result = attrs.get("formula"), attrs.get("formulaResult")
+            number_format = attrs.get("numberFormat")
+            if number_format not in {
+                None,
+                "number-0",
+                "number-2",
+                "percent-0",
+                "percent-2",
+                "currency-eur",
+                "date-iso",
+                "date-de",
+            }:
+                reject()
             if (formula is None) != (formula_result is None):
                 reject()
             if formula is not None:
@@ -1803,6 +1859,22 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or content != [{"type": "paragraph", "content": result_content}]
                 ):
                     reject()
+            if number_format is not None:
+                raw_number = formula_result if formula is not None else _table_cell_text(node)
+                if not isinstance(raw_number, str) or _TABLE_NUMBER.fullmatch(raw_number) is None:
+                    reject()
+                numeric_number = float(raw_number.replace(",", "."))
+                if not math.isfinite(numeric_number) or abs(numeric_number) > 1e15:
+                    reject()
+                if number_format.startswith("date-"):
+                    if not numeric_number.is_integer():
+                        reject()
+                    try:
+                        formatted_date = date(1970, 1, 1) + timedelta(days=int(numeric_number))
+                    except (OverflowError, ValueError):
+                        reject()
+                    if not 1900 <= formatted_date.year <= 9999:
+                        reject()
         elif kind == "doc":
             root_attributes = {"styles", "page", "running", "documentFields", "citationSources", "tableRanges"}
             if depth != 0 or set(attrs) - root_attributes:

@@ -46,6 +46,20 @@ test("Office charts derive exact decimal snapshots from a numbered table and det
   expect(officeChartDescription(linked)).toContain("verknüpft mit A1:C3");
 });
 
+test("Office linked charts can interpret rows as series and retain data-label presentation", () => {
+  const table = officeTableFromTSV("Series\tQ1\tQ2\nPlan\t10\t20\nActual\t12\t18");
+  table.attrs = { tableId: "table-" + "c".repeat(24), caption: "Quarterly rows" };
+  const source = { tableId: table.attrs.tableId, range: "A1:C3", orientation: "rows" };
+  const data = officeChartDataFromDocument({ type: "doc", content: [table] }, source, "line");
+  expect(data).toEqual({ categories: ["Q1", "Q2"], series: [
+    { name: "Plan", color: "teal", values: [10, 20] },
+    { name: "Actual", color: "blue", values: [12, 18] },
+  ] });
+  expect(officeChartAttributes({ ...attrs, ...data, source, dataLabels: true })).toMatchObject({
+    source, dataLabels: true,
+  });
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };

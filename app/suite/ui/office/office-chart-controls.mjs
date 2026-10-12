@@ -7,7 +7,7 @@ import { officeTableGrid, officeTableInventory } from "./office-tables.mjs";
 export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "categories", "series", "source"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "dataLabels", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -66,17 +66,20 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       for (const child of node.content || []) walk(child); };
     walk(action.editor.getJSON()); return found;
   };
-  const defaultRange = (tableId, kind) => {
+  const defaultRange = (tableId, kind, orientation = "columns") => {
     const table = tableNode(tableId); if (!table) return "A1:C5"; const grid = officeTableGrid(table);
-    const columns = Math.min(grid.columns, kind === "pie" ? 2 : 3), rows = Math.min(grid.rows, 5);
+    const columns = Math.min(grid.columns, orientation === "rows" ? 5 : kind === "pie" ? 2 : 3),
+      rows = Math.min(grid.rows, orientation === "rows" ? kind === "pie" ? 2 : 3 : 5);
     return columns >= 2 && rows >= 2 ? `A1:${String.fromCharCode(64 + columns)}${rows}` : "A1:B2";
   };
-  const source = () => ({ tableId: $("chart-source-table").value, range: $("chart-source-range").value.trim().toUpperCase() });
+  const source = () => ({ tableId: $("chart-source-table").value, range: $("chart-source-range").value.trim().toUpperCase(),
+    orientation: $("chart-source-orientation").value });
   const read = (id = action?.attrs?.id || action?.id || (action.id = identifier())) => {
     const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
     const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
-      legend: $("chart-legend").checked, ...data, ...(binding ? { source: binding } : {}) });
+      legend: $("chart-legend").checked, dataLabels: $("chart-data-labels").checked,
+      ...data, ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
@@ -90,6 +93,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   };
   const sourceState = () => { const linked = $("chart-linked").checked;
     $("chart-source-fields").hidden = !linked; $("chart-source-table").disabled = !linked; $("chart-source-range").disabled = !linked;
+    $("chart-source-orientation").disabled = !linked;
     $("chart-data").readOnly = linked; };
   const preview = () => { sourceState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
       $("chart-preview").replaceChildren(officeChartElement(attrs));
@@ -110,10 +114,13 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-title").textContent = editing ? "Diagramm bearbeiten" : "Diagramm einfügen";
     $("chart-kind").value = attrs?.kind || "bar"; $("chart-name").value = attrs?.title || "Quartalsübersicht";
     $("chart-alt").value = attrs?.altText || "Vergleich der Werte nach Kategorie."; $("chart-legend").checked = attrs?.legend ?? true;
+    $("chart-data-labels").checked = attrs?.dataLabels ?? false;
     $("chart-linked").checked = Boolean(attrs?.source); $("chart-linked").disabled = !tables.length && !attrs?.source;
-    if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range; }
+    if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range;
+      $("chart-source-orientation").value = attrs.source.orientation || "columns"; }
     else if (tables.length) { $("chart-source-table").value = tables[0].id;
-      $("chart-source-range").value = defaultRange(tables[0].id, $("chart-kind").value); }
+      $("chart-source-orientation").value = "columns";
+      $("chart-source-range").value = defaultRange(tables[0].id, $("chart-kind").value, "columns"); }
     $("chart-data").value = attrs ? serializeData(attrs) : "Kategorie\tPlan\tIst\nQ1\t120\t110\nQ2\t140\t152\nQ3\t160\t171\nQ4\t180\t176";
     updateButtons(); $("chart-dialog").showModal(); preview(); $("chart-kind").focus();
   };
@@ -121,11 +128,15 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     state.editor.view.dispatch(closeHistory(state.editor.state.tr)); focus(state.editor); update(); notice(message); };
   $("chart-options").addEventListener("click", open); $("chart-form").addEventListener("input", preview);
   $("chart-linked").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
-    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value); } preview(); });
+    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value,
+      $("chart-source-orientation").value); } preview(); });
   $("chart-source-table").addEventListener("change", () => { $("chart-source-range").value =
-    defaultRange($("chart-source-table").value, $("chart-kind").value); preview(); });
+    defaultRange($("chart-source-table").value, $("chart-kind").value, $("chart-source-orientation").value); preview(); });
+  $("chart-source-orientation").addEventListener("change", () => { $("chart-source-range").value =
+    defaultRange($("chart-source-table").value, $("chart-kind").value, $("chart-source-orientation").value); preview(); });
   $("chart-kind").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
-    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value); } preview(); });
+    $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value,
+      $("chart-source-orientation").value); } preview(); });
   $("chart-form").addEventListener("submit", (event) => { event.preventDefault(); if (!current()) { close(); return; }
     try { const attrs = read(), node = action.editor.schema.nodes.chart.create(attrs);
       const transaction = action.editing ? action.editor.state.tr.setNodeMarkup(action.position, undefined, attrs) : action.editor.state.tr.replaceSelectionWith(node, false);

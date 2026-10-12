@@ -18,11 +18,13 @@ function literal(value, minimum, maximum) {
 
 export function officeChartAttributes(value) {
   const baseKeys = ["altText", "categories", "id", "kind", "legend", "series", "title"];
-  const keys = value?.source == null ? baseKeys : [...baseKeys, "source"];
-  const actualKeys = Object.keys(value || {}).filter((key) => key !== "source" || value.source != null);
+  const keys = [...baseKeys, ...(value?.source == null ? [] : ["source"]),
+    ...(value?.dataLabels == null ? [] : ["dataLabels"])];
+  const actualKeys = Object.keys(value || {}).filter((key) => !["source", "dataLabels"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
       !literal(value.title, 1, 120) || !literal(value.altText, 1, 500) || typeof value.legend !== "boolean" ||
+      (value.dataLabels != null && typeof value.dataLabels !== "boolean") ||
       !Array.isArray(value.categories) || value.categories.length < 1 || value.categories.length > 12 ||
       value.categories.some((category) => !literal(category, 1, 60)) || new Set(value.categories).size !== value.categories.length ||
       !Array.isArray(value.series) || value.series.length < 1 || value.series.length > 4 ||
@@ -42,12 +44,14 @@ export function officeChartAttributes(value) {
       (value.kind === "pie" && !series[0].values.some((number) => number > 0))) throw new Error("chart-series");
   const result = { id: value.id, kind: value.kind, title: value.title, altText: value.altText, legend: value.legend,
     categories: [...value.categories], series };
+  if (value.dataLabels != null) result.dataLabels = value.dataLabels;
   if (value.source != null) result.source = officeChartSource(value.source);
   return result;
 }
 
 export function officeChartSource(value) {
-  if (!value || Object.keys(value).sort().join(",") !== "range,tableId" ||
+  const keys = Object.keys(value || {}).sort().join(",");
+  if (!value || !["range,tableId", "orientation,range,tableId"].includes(keys) ||
       !/^table-[a-f0-9]{24}$/u.test(value.tableId) || typeof value.range !== "string") {
     throw new Error("chart-source");
   }
@@ -55,8 +59,12 @@ export function officeChartSource(value) {
   if (!match) throw new Error("chart-source");
   const left = match[1].charCodeAt(0) - 65, top = Number(match[2]) - 1;
   const right = match[3].charCodeAt(0) - 64, bottom = Number(match[4]);
-  if (right - left < 2 || bottom - top < 2 || right - left > 5 || bottom - top > 13) throw new Error("chart-source");
-  return { tableId: value.tableId, range: value.range };
+  const orientation = value.orientation || "columns";
+  if (!["columns", "rows"].includes(orientation) || right - left < 2 || bottom - top < 2 ||
+      (orientation === "columns" ? right - left > 5 || bottom - top > 13 : right - left > 13 || bottom - top > 5)) {
+    throw new Error("chart-source");
+  }
+  return { tableId: value.tableId, range: value.range, ...(value.orientation == null ? {} : { orientation }) };
 }
 
 function sourceTable(document, tableId) {
@@ -91,11 +99,16 @@ export function officeChartDataFromDocument(document, source, kind) {
   }))) throw new Error("chart-source-grid");
   const match = chartRange.exec(binding.range), left = match[1].charCodeAt(0) - 65, top = Number(match[2]) - 1;
   const right = match[3].charCodeAt(0) - 64, bottom = Number(match[4]);
-  if (right > grid.columns || bottom > grid.rows || (kind === "pie" && right - left !== 2)) throw new Error("chart-source-range");
+  const orientation = binding.orientation || "columns";
+  if (right > grid.columns || bottom > grid.rows ||
+      (kind === "pie" && (orientation === "columns" ? right - left !== 2 : bottom - top !== 2))) throw new Error("chart-source-range");
   const rows = table.content.slice(top, bottom).map((row) => row.content.slice(left, right));
-  const categories = rows.slice(1).map((row) => sourceCellText(row[0]));
-  const series = rows[0].slice(1).map((cell, index) => ({ name: sourceCellText(cell), color: OFFICE_CHART_COLORS[index],
-    values: rows.slice(1).map((row) => sourceCellText(row[index + 1], true)) }));
+  const categories = orientation === "columns" ? rows.slice(1).map((row) => sourceCellText(row[0])) :
+    rows[0].slice(1).map((cell) => sourceCellText(cell));
+  const series = orientation === "columns" ? rows[0].slice(1).map((cell, index) => ({ name: sourceCellText(cell),
+    color: OFFICE_CHART_COLORS[index], values: rows.slice(1).map((row) => sourceCellText(row[index + 1], true)) })) :
+    rows.slice(1).map((row, index) => ({ name: sourceCellText(row[0]), color: OFFICE_CHART_COLORS[index],
+      values: row.slice(1).map((cell) => sourceCellText(cell, true)) }));
   if (new Set(categories).size !== categories.length || new Set(series.map((entry) => entry.name)).size !== series.length) {
     throw new Error("chart-source-label");
   }
@@ -196,5 +209,9 @@ export function officeChartElement(value, dom = document) {
   const legendEntries = chart.kind === "pie" ? chart.categories.map((name, index) => ({ name, color: OFFICE_CHART_COLORS[index % 4] })) : chart.series;
   for (const entry of legendEntries) { const item = dom.createElement("span"), swatch = dom.createElement("i");
     swatch.style.background = colorValues[entry.color]; item.append(swatch, entry.name); legend.append(item); }
-  figure.append(title, visual, labels, legend, chartTable(chart, dom)); return figure;
+  const values = dom.createElement("div"); values.className = "office-chart-value-labels"; values.hidden = !chart.dataLabels;
+  chart.categories.forEach((category, index) => chart.series.forEach((entry) => {
+    const label = dom.createElement("span"); label.textContent = `${category} · ${entry.name}: ${entry.values[index]}`; values.append(label);
+  }));
+  figure.append(title, visual, labels, legend, values, chartTable(chart, dom)); return figure;
 }

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { clearOfficeTableFormula, clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeDocumentFormulas, recalculateOfficeTableFormulas, remapOfficeTableFormulas, remapOfficeTableRangeDefinitions, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { officeTableDisplayValue, officeTableFormulaSource } from "../office-tables.mjs";
 
 const text = (cell) => cell.content[0].content?.[0]?.text || "";
 
@@ -64,6 +65,30 @@ test("Office named ranges calculate across tables with exact lookup and determin
   ] }, content: [source, result] });
   expect(document.content[1].content[0].content.map(text)).toEqual(["12", "2048"]);
   expect(document.content[1].content[0].content[0].attrs.formulaResult).toBe("12");
+});
+
+test("Office conditional aggregates use exact numeric criteria across local and named ranges", () => {
+  const source = officeTableFromTSV("1\t10\n2\t20\n1\t30");
+  source.attrs = { tableId: `table-${"c".repeat(24)}`, caption: "Values" };
+  const result = officeTableFromTSV("0\t0\t0"); result.attrs = { tableId: `table-${"d".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUMIF(KEYS,1,VALUES)", formulaResult: "0" };
+  result.content[0].content[1].attrs = { formula: "=COUNTIF(KEYS,1)", formulaResult: "0" };
+  result.content[0].content[2].attrs = { formula: "=AVERAGEIF(KEYS,1,VALUES)", formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "KEYS", tableId: source.attrs.tableId, range: "A1:A3" },
+    { name: "VALUES", tableId: source.attrs.tableId, range: "B1:B3" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map((cell) => cell.attrs.formulaResult)).toEqual(["40", "2", "20"]);
+  expect(officeTableFormulaSource("=SUMMEWENN(KEYS;1;VALUES)+ZÄHLENWENN(KEYS;2)+MITTELWERTWENN(KEYS;1;VALUES)"))
+    .toBe("=SUMIF(KEYS,1,VALUES)+COUNTIF(KEYS,2)+AVERAGEIF(KEYS,1,VALUES)");
+});
+
+test("Office table presentation formats keep canonical numeric values separate", () => {
+  expect(officeTableDisplayValue("1234.5", "currency-eur")).toBe("1.234,50 €");
+  expect(officeTableDisplayValue("0.125", "percent-2")).toBe("12,50 %");
+  expect(officeTableDisplayValue("20738", "date-de")).toBe("12.10.2026");
+  expect(officeTableDisplayValue("20738", "date-iso")).toBe("2026-10-12");
+  expect(officeTableDisplayValue("1.5", "date-de")).toBeNull();
 });
 
 test("Office named ranges propagate cross-table cycles and follow structural mapping", () => {
