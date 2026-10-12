@@ -3,6 +3,10 @@ import { officeTableCellAttributes, officeTableCellText, officeTableFormulaSourc
 const formulaErrors = new Set(["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"]);
 const numericText = /^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u;
 const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
+const namedRangePattern = /^[A-Z][A-Z0-9_]{0,31}$/u;
+const formulaFunctions = ["XLOOKUP", "AVERAGE", "PRODUCT", "MEDIAN", "POWER", "ROUND", "COUNT", "SQRT", "SUM",
+  "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS", "DATE", "YEAR", "MONTH", "DAY"];
+const dayMilliseconds = 86400000;
 
 function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
 
@@ -24,8 +28,10 @@ function tokenize(source) {
     if (ref) { tokens.push({ type: "ref", value: ref[0] }); index += ref[0].length; continue; }
     const comparison = /^(?:<=|>=|<>|=|<|>)/u.exec(rest);
     if (comparison) { tokens.push({ type: "compare", value: comparison[0] }); index += comparison[0].length; continue; }
-    const name = /^(?:AVERAGE|PRODUCT|MEDIAN|POWER|ROUND|COUNT|SQRT|SUM|MIN|MAX|IF|AND|OR|NOT|ABS)/u.exec(rest);
+    const name = new RegExp(`^(?:${formulaFunctions.join("|")})(?=\\s*\\()`, "u").exec(rest);
     if (name) { tokens.push({ type: "name", value: name[0] }); index += name[0].length; continue; }
+    const named = /^[A-Z][A-Z0-9_]{0,31}/u.exec(rest);
+    if (named) { tokens.push({ type: "named", value: named[0] }); index += named[0].length; continue; }
     if ("+-*/(),:".includes(rest[0])) { tokens.push({ type: rest[0], value: rest[0] }); index += 1; continue; }
     throw formulaError("#WERT!");
   }
@@ -54,10 +60,35 @@ function parseFormula(source, context) {
     const integer = Math.sign(scaled) * Math.floor(Math.abs(scaled) + 0.5);
     return bounded(digits >= 0 ? integer / factor : integer * factor);
   };
+  const dateSerial = (year, month, day) => {
+    if (![year, month, day].every(Number.isInteger) || year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+      throw formulaError("#WERT!");
+    }
+    const timestamp = Date.UTC(year, month - 1, day), date = new Date(timestamp);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw formulaError("#WERT!");
+    return timestamp / dayMilliseconds;
+  };
+  const datePart = (serial, part) => {
+    if (!Number.isInteger(serial)) throw formulaError("#WERT!");
+    const date = new Date(serial * dayMilliseconds);
+    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) throw formulaError("#WERT!");
+    return part === "YEAR" ? date.getUTCFullYear() : part === "MONTH" ? date.getUTCMonth() + 1 : date.getUTCDate();
+  };
+  const rangeArgument = (active = true) => {
+    if (peek().type === "ref" && tokens[position + 1]?.type === ":") {
+      const from = take("ref").value; take(":"); const to = take("ref").value;
+      return active ? context.range(from, to) : [0];
+    }
+    if (peek().type === "named") {
+      const name = take("named").value; return active ? context.namedRange(name) : [0];
+    }
+    throw formulaError("#WERT!");
+  };
   const primary = (active = true) => {
     if (peek().type === "error") { const code = take("error").value; if (active) throw formulaError(code); return 0; }
     if (peek().type === "number") { const value = take("number").value; return active ? value : 0; }
     if (peek().type === "ref") { const reference = take("ref").value; return active ? context.value(reference) : 0; }
+    if (peek().type === "named") { const name = take("named").value; return active ? context.namedValue(name) : 0; }
     if (peek().type === "(") { take("("); const value = expression(active); take(")"); return value; }
     if (peek().type === "name") {
       const name = take("name").value; take("(");
@@ -67,12 +98,21 @@ function parseFormula(source, context) {
         const falsy = expression(active && condition === 0); take(")");
         return active ? (condition !== 0 ? truthy : falsy) : 0;
       }
+      if (name === "XLOOKUP") {
+        const search = expression(active); take(","); const lookup = rangeArgument(active); take(",");
+        const returned = rangeArgument(active); take(")");
+        if (!active) return 0;
+        if (lookup.length !== returned.length || lookup.length > 4000) throw formulaError("#WERT!");
+        const match = lookup.findIndex((value) => value === search);
+        if (match < 0) throw formulaError("#BEZUG!");
+        return returned[match];
+      }
       const values = [];
       if (peek().type !== ")") {
         while (true) {
-          if (peek().type === "ref" && tokens[position + 1]?.type === ":") {
-            const from = take("ref").value; take(":"); const to = take("ref").value;
-            if (active) values.push(...context.range(from, to)); else values.push(0);
+          if ((peek().type === "ref" && tokens[position + 1]?.type === ":") ||
+              (peek().type === "named" && [",", ")"].includes(tokens[position + 1]?.type))) {
+            values.push(...rangeArgument(active));
           } else values.push(expression(active));
           if (peek().type !== ",") break; take(",");
         }
@@ -96,6 +136,8 @@ function parseFormula(source, context) {
       if (name === "POWER" && values.length === 2) { const value = values[0] ** values[1];
         if (Number.isNaN(value)) throw formulaError("#WERT!"); return bounded(value); }
       if (name === "SQRT" && values.length === 1 && values[0] >= 0) return Math.sqrt(values[0]);
+      if (name === "DATE" && values.length === 3) return dateSerial(values[0], values[1], values[2]);
+      if (["YEAR", "MONTH", "DAY"].includes(name) && values.length === 1) return datePart(values[0], name);
     }
     throw formulaError("#WERT!");
   };
@@ -116,49 +158,133 @@ function parseFormula(source, context) {
   const value = expression(); if (peek().type !== "end") throw formulaError("#WERT!"); return value;
 }
 
-export function recalculateOfficeTableFormulas(value) {
-  const info = officeTableReorderInfo(value); const result = structuredClone(value);
-  const cells = result.content.map((row) => row.content); const states = new Map(); const memo = new Map();
-  let formulaCount = 0;
-  const key = (row, column) => `${row}:${column}`;
-  const numericValue = (row, column) => {
-    const id = key(row, column); const cell = cells[row][column]; const attrs = cell.attrs || {};
-    if (attrs.formula != null) return evaluate(row, column);
-    const text = officeTableCellText(cell);
-    if (!text) return 0;
+function rangeCoordinates(value, rows, columns) {
+  const match = /^([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})$/u.exec(value);
+  if (!match) throw new TypeError("Invalid Office named table range");
+  const first = { row: Number(match[2]) - 1, column: match[1].charCodeAt(0) - 65 };
+  const last = { row: Number(match[4]) - 1, column: match[3].charCodeAt(0) - 65 };
+  if (first.row > last.row || first.column > last.column || last.row >= rows || last.column >= columns) {
+    throw new TypeError("Invalid Office named table range");
+  }
+  return { first, last };
+}
+
+export function officeTableRangeDefinitions(value = []) {
+  if (!Array.isArray(value) || value.length > 100) throw new TypeError("Invalid Office named table ranges");
+  const names = new Set();
+  return value.map((entry) => {
+    if (!entry || Object.keys(entry).sort().join(",") !== "name,range,tableId" ||
+        typeof entry.name !== "string" || !namedRangePattern.test(entry.name) || /^[A-T][1-9][0-9]{0,2}$/u.test(entry.name) ||
+        formulaFunctions.includes(entry.name) || names.has(entry.name) ||
+        typeof entry.tableId !== "string" || !/^table-[a-f0-9]{24}$/u.test(entry.tableId) ||
+        typeof entry.range !== "string" || !/^([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})$/u.test(entry.range)) {
+      throw new TypeError("Invalid Office named table range");
+    }
+    names.add(entry.name); return { name: entry.name, tableId: entry.tableId, range: entry.range };
+  });
+}
+
+export function remapOfficeTableRangeDefinitions(value, tableId, rows, columns) {
+  const definitions = officeTableRangeDefinitions(value); const mapped = [];
+  const axis = (from, to, entries) => {
+    const indexes = entries.flatMap((entry, index) => entry.source >= from && entry.source < to ? [index] : []);
+    if (!indexes.length || indexes.at(-1) - indexes[0] + 1 !== indexes.length) return null;
+    return { from: indexes[0], to: indexes.at(-1) + 1 };
+  };
+  for (const definition of definitions) {
+    if (definition.tableId !== tableId) { mapped.push(definition); continue; }
+    const match = rangeCoordinates(definition.range, 200, 20);
+    const row = axis(match.first.row, match.last.row + 1, rows), column = axis(match.first.column, match.last.column + 1, columns);
+    if (!row || !column) continue;
+    mapped.push({ ...definition, range: `${String.fromCharCode(65 + column.from)}${row.from + 1}:` +
+      `${String.fromCharCode(65 + column.to - 1)}${row.to}` });
+  }
+  return officeTableRangeDefinitions(mapped);
+}
+
+function calculateOfficeFormulaTables(tables, definitions = []) {
+  const tableMap = new Map(tables.map((entry) => [entry.key, {
+    ...entry, info: officeTableReorderInfo(entry.table), cells: entry.table.content.map((row) => row.content),
+  }]));
+  const named = new Map();
+  for (const definition of definitions) {
+    const table = tableMap.get(definition.tableId); if (!table) throw new TypeError("Invalid Office named table range");
+    const range = rangeCoordinates(definition.range, table.info.rows, table.info.columns);
+    named.set(definition.name, { table, ...range });
+  }
+  const states = new Map(), memo = new Map(), errors = new Map(); let formulaCount = 0;
+  const key = (table, row, column) => `${table.key}:${row}:${column}`;
+  const numericValue = (table, row, column) => {
+    const cell = table.cells[row][column];
+    if (cell.attrs?.formula != null) return evaluate(table, row, column);
+    const text = officeTableCellText(cell); if (!text) return 0;
     if (!numericText.test(text)) throw formulaError("#WERT!");
     const number = Number(text.replace(",", ".")); if (!Number.isFinite(number)) throw formulaError("#WERT!"); return number;
   };
-  const evaluate = (row, column) => {
-    const id = key(row, column); if (memo.has(id)) return memo.get(id);
+  const valuesFor = (definition) => {
+    const values = [];
+    for (let row = definition.first.row; row <= definition.last.row; row += 1) {
+      for (let column = definition.first.column; column <= definition.last.column; column += 1) {
+        values.push(numericValue(definition.table, row, column));
+      }
+    }
+    return values;
+  };
+  const evaluate = (table, row, column) => {
+    const id = key(table, row, column); if (memo.has(id)) return memo.get(id);
+    if (errors.has(id)) throw formulaError(errors.get(id));
     if (states.get(id) === "visiting") throw formulaError("#ZYKLUS!"); states.set(id, "visiting");
-    const source = cells[row][column].attrs?.formula;
-    if (source == null) return numericValue(row, column);
+    const source = table.cells[row][column].attrs?.formula;
+    if (source == null) return numericValue(table, row, column);
     const context = {
-      value(reference) { const point = referenceCoordinates(reference, info.rows, info.columns); return numericValue(point.row, point.column); },
+      value(reference) { const point = referenceCoordinates(reference, table.info.rows, table.info.columns);
+        return numericValue(table, point.row, point.column); },
       range(from, to) {
-        const first = referenceCoordinates(from, info.rows, info.columns), last = referenceCoordinates(to, info.rows, info.columns);
-        const values = [];
+        const first = referenceCoordinates(from, table.info.rows, table.info.columns);
+        const last = referenceCoordinates(to, table.info.rows, table.info.columns), values = [];
         for (let rowIndex = Math.min(first.row, last.row); rowIndex <= Math.max(first.row, last.row); rowIndex += 1) {
           for (let columnIndex = Math.min(first.column, last.column); columnIndex <= Math.max(first.column, last.column); columnIndex += 1) {
-            values.push(numericValue(rowIndex, columnIndex));
+            values.push(numericValue(table, rowIndex, columnIndex));
           }
         }
         return values;
       },
+      namedRange(name) { const definition = named.get(name); if (!definition) throw formulaError("#BEZUG!"); return valuesFor(definition); },
+      namedValue(name) { const definition = named.get(name); if (!definition) throw formulaError("#BEZUG!");
+        const values = valuesFor(definition); if (values.length !== 1) throw formulaError("#WERT!"); return values[0]; },
     };
-    const evaluated = parseFormula(source, context); states.set(id, "done"); memo.set(id, evaluated); return evaluated;
+    try {
+      const calculated = parseFormula(source, context); states.set(id, "done"); memo.set(id, calculated); return calculated;
+    } catch (error) {
+      const code = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!";
+      states.set(id, "done"); errors.set(id, code); throw formulaError(code);
+    }
   };
-  for (let row = 0; row < info.rows; row += 1) for (let column = 0; column < info.columns; column += 1) {
-    const cell = cells[row][column]; if (cell.attrs?.formula == null) continue;
-    formulaCount += 1; if (formulaCount > 1000 || cell.type !== "tableCell") throw new TypeError("Invalid Office table formula");
-    let formulaResult;
-    try { formulaResult = formatFormulaNumber(evaluate(row, column)); }
-    catch (error) { formulaResult = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!"; }
-    cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula: cell.attrs.formula, formulaResult });
-    cell.content = [{ type: "paragraph", ...(formulaResult ? { content: [{ type: "text", text: formulaResult }] } : {}) }];
+  for (const table of tableMap.values()) for (let row = 0; row < table.info.rows; row += 1) {
+    for (let column = 0; column < table.info.columns; column += 1) {
+      const cell = table.cells[row][column]; if (cell.attrs?.formula == null) continue;
+      formulaCount += 1; if (formulaCount > 1000 || cell.type !== "tableCell") throw new TypeError("Invalid Office table formula");
+      let formulaResult;
+      try { formulaResult = formatFormulaNumber(evaluate(table, row, column)); }
+      catch (error) { formulaResult = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!"; }
+      cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula: cell.attrs.formula, formulaResult });
+      cell.content = [{ type: "paragraph", content: [{ type: "text", text: formulaResult }] }];
+    }
   }
-  return result;
+}
+
+export function recalculateOfficeTableFormulas(value) {
+  const result = structuredClone(value); calculateOfficeFormulaTables([{ key: "local", table: result }]); return result;
+}
+
+export function recalculateOfficeDocumentFormulas(value) {
+  if (!value || value.type !== "doc" || !Array.isArray(value.content)) throw new TypeError("Invalid Office formula document");
+  const result = structuredClone(value), definitions = officeTableRangeDefinitions(result.attrs?.tableRanges || []), tables = [];
+  const visit = (node) => {
+    if (node?.type === "table") tables.push({ key: node.attrs?.tableId || `local-${tables.length}`, table: node });
+    for (const child of node?.content || []) visit(child);
+  };
+  visit(result); calculateOfficeFormulaTables(tables, definitions); return result;
 }
 
 export function setOfficeTableFormula(value, options) {

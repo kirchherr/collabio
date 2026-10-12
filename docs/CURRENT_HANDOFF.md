@@ -2,6 +2,47 @@
 
 Updated: 2026-10-12
 
+Roadmap 800 through 807 / PLANS 661 through 668 are complete under ADR-0198. Native Office now stores at most 100
+canonical document-wide named ranges. Each name binds one stable numbered-table ID to one exact bounded rectangle and
+can feed formulas in any other table. The browser evaluates all formulas as one document dependency graph with shared
+memoization, error propagation and cross-table cycle detection. Row and column insertion, deletion, movement and
+duplication remap definitions while their cells remain contiguous; removing a numbered target removes its definitions.
+
+Exact numeric `XLOOKUP`/`XVERWEIS` and deterministic `DATE`/`DATUM`, `YEAR`/`JAHR`, `MONTH`/`MONAT` and `DAY`/`TAG`
+are available with canonical German normalization. Volatile clock functions, approximate or text lookup, external
+workbooks, network sources, macros and automatic actions remain closed. The server independently resolves every name,
+table ID and range, recalculates the complete cross-table graph and rejects missing, merged, out-of-range, cyclic,
+stale or forged results before accepting a version. No migration or external spreadsheet engine was added.
+
+Focused Office schema/API tests pass 84/84 and the final formula model block passes 16/16. The saved-version named-range
+workflow passes 2/2 on desktop and mobile against the final review runtime. It numbers a source table, names one exact
+cell, calculates from a second table with a normalized date formula, saves and reloads the immutable result. Visual
+review passed; desktop/mobile screenshot hashes are
+`sha256:7105776952617e758e54aa1e649b9b6075d2015bbe476a23db1aa63f2c8f97b0` and
+`sha256:c585626c2cedbf412678feb6e9fbd5719094b001c2b52436feef685168426ed9`.
+
+The complete quality gate passes Ruff, finds 959 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:9b9634d4fb161345a2c3c5d58d2bb8c5ea4d3565da3dfa5535df79125486c0c9` and
+`sha256:786e1b61a8a818175e2f528a603203bd34228f4fd26fe8fd33d568bda8f0a701`. Review remains on the existing isolated
+runtime at `http://192.168.0.108:42880/office?review=named-ranges-adr0198` with asset keys `office.css?v=12` and
+`editor.js?v=10`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container and named transfer directory are removed, and no transient quality or
+browser runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and image decoder are healthy,
+review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first formula-model run retained the former assumption that `U1` was always invalid; it is now a valid unresolved
+name and correctly produces `#BEZUG!`, so that expectation was updated without weakening external-workbook rejection.
+Focused quality then found one line-length issue, two formatting updates and one local-variable name collision; all
+were corrected before the green final gate. One malformed source-sync command held `git.lock`; only its exact process
+tree and three waiting commands started by this task were stopped before the verified patches were applied. No service,
+volume, persistent data or unrelated project was changed by that cleanup.
+
+The next separate Office loop is conditional aggregation, text/date presentation and richer linked-chart editing.
+CRM account onboarding remains deferred by the user's Office-first priority.
+
 Roadmap 792 through 799 / PLANS 653 through 660 are complete under ADR-0197. Native Office table formulas now add
 comparisons, lazy `IF`, logical operations, deterministic rounding, absolute value, power, square root, product and
 median while retaining canonical German aliases, relative/absolute/mixed references, transitive recalculation, cycle

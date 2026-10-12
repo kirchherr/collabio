@@ -80,10 +80,11 @@
               <button class="button secondary" id="table-layout" type="button" aria-haspopup="dialog" aria-controls="table-layout-dialog" disabled>Tabellenlayout …</button>
               <button class="button secondary" id="table-sort" type="button" aria-haspopup="dialog" aria-controls="table-sort-dialog" disabled>Sortieren …</button>
               <button class="button secondary" id="table-formula" type="button" aria-haspopup="dialog" aria-controls="table-formula-dialog" disabled>Formel …</button>
+              <button class="button secondary" id="table-range" type="button" aria-haspopup="dialog" aria-controls="table-range-dialog" disabled>Bereich benennen …</button>
               <button class="button secondary" id="table-caption" type="button" aria-haspopup="dialog" aria-controls="table-caption-dialog" disabled>Beschriftung …</button>
               <button class="quiet-button" id="table-delete" type="button" disabled>Tabelle entfernen …</button>
             </div>
-            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften und bleiben beim Duplizieren und Umordnen geschützt. Word-/Excel-Tabellen lassen sich sicher aus der Zwischenablage einfügen. Formeln arbeiten nur mit lokalen Zellen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
+            <p class="table-help">Kopfzeile und Kopfspalte erzeugen semantische Überschriften. Word-/Excel-Tabellen lassen sich sicher einfügen. Benannte Bereiche verbinden nummerierte Tabellen; Formeln können damit dokumentweit rechnen. Tab: nächste Zelle; am Ende eine neue Zeile. Umschalt+Tab: zurück.</p>
             <p id="table-message" role="status" aria-live="polite"></p>
           </section>
           <section class="find-panel" id="find-panel" aria-label="Suchen und Ersetzen" hidden>
@@ -455,8 +456,14 @@
     <dialog class="office-dialog compact" id="table-formula-dialog" aria-labelledby="table-formula-title">
       <form id="table-formula-form"><header><h2 id="table-formula-title">Tabellenformel</h2><button class="icon-button" id="table-formula-close" type="button" aria-label="Tabellenformel schließen">×</button></header>
         <div class="dialog-body"><p id="table-formula-summary"></p><label>Formel<input id="table-formula-source" type="text" maxlength="256" required autocomplete="off" placeholder="=SUM(B2:B10)" /></label>
-          <p class="paragraph-help">Bei mehreren Zellen gilt die Eingabe für die linke obere Zelle und wird mit relativen, festen oder gemischten Bezügen wie A1, $A$1, $A1 und A$1 über die Auswahl ausgefüllt. Unterstützt werden lokale Zellbezüge A1 bis T200, Vergleiche, +, −, ×, ÷ sowie SUM, AVERAGE, MIN, MAX, COUNT, IF/WENN, AND/UND, OR/ODER, NOT/NICHT, ROUND/RUNDEN, ABS, POWER/POTENZ, SQRT/WURZEL, PRODUCT/PRODUKT und MEDIAN. Deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
+          <p class="paragraph-help">Lokale Bezüge unterstützen A1 bis T200 und $-Anker. Benannte Bereiche rechnen über nummerierte Tabellen hinweg. Zusätzlich stehen XLOOKUP/XVERWEIS für exakte numerische Zuordnungen sowie DATE/DATUM, YEAR/JAHR, MONTH/MONAT und DAY/TAG bereit. SUM, AVERAGE, MIN, MAX, COUNT, IF, AND, OR, NOT, ROUND, ABS, POWER, SQRT, PRODUCT und MEDIAN bleiben verfügbar; deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros, volatile Zeitwerte und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
         <footer><button class="quiet-button" id="table-formula-remove" type="button">Formeln entfernen</button><button class="button secondary" id="table-formula-cancel" type="button">Abbrechen</button><button class="button primary" id="table-formula-apply" type="submit">Formel übernehmen</button></footer>
+      </form>
+    </dialog>
+    <dialog class="office-dialog compact" id="table-range-dialog" aria-labelledby="table-range-title">
+      <form id="table-range-form"><header><h2 id="table-range-title">Bereich benennen</h2><button class="icon-button" id="table-range-close" type="button" aria-label="Benannten Bereich schließen">×</button></header>
+        <div class="dialog-body"><p id="table-range-summary"></p><label>Name<input id="table-range-name" type="text" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_]{0,31}" required autocomplete="off" placeholder="UMSATZ_2026" /></label><p class="paragraph-help">Der Name verweist auf die aktuelle Auswahl in dieser nummerierten Tabelle. Verwenden Sie ihn direkt in Formeln, zum Beispiel <code>=SUM(UMSATZ_2026)</code> oder <code>=XLOOKUP(A2;ARTIKEL_IDS;PREISE)</code>. Namen gelten im ganzen Dokument.</p><p id="table-range-status" role="status" aria-live="polite"></p></div>
+        <footer><button class="quiet-button" id="table-range-remove" type="button">Namen entfernen</button><button class="button secondary" id="table-range-cancel" type="button">Abbrechen</button><button class="button primary" id="table-range-apply" type="submit">Bereich speichern</button></footer>
       </form>
     </dialog>
     <dialog class="office-dialog reuse-dialog" id="reuse-dialog" aria-labelledby="reuse-heading">
@@ -516,6 +523,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=9"></script>
+    <script type="module" src="/office/editor.js?v=10"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { clearOfficeTableFormula, clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeTableFormulas, remapOfficeTableFormulas, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { clearOfficeTableFormula, clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeDocumentFormulas, recalculateOfficeTableFormulas, remapOfficeTableFormulas, remapOfficeTableRangeDefinitions, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const text = (cell) => cell.content[0].content?.[0]?.text || "";
 
@@ -49,6 +49,42 @@ test("Office advanced formulas fail closed on invalid arity domains and bounded 
   }
 });
 
+test("Office named ranges calculate across tables with exact lookup and deterministic dates", () => {
+  const source = officeTableFromTSV("101\t5\t2\n102\t7\t3");
+  source.attrs = { tableId: `table-${"a".repeat(24)}`, caption: "Source" };
+  const result = officeTableFromTSV("0\t0\n0\t0"); result.attrs = { tableId: `table-${"b".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUM(SALES)+XLOOKUP(102,ITEM_IDS,PRICES)", formulaResult: "#WERT!" };
+  result.content[0].content[0].content = [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  result.content[0].content[1].attrs = { formula: "=YEAR(DATE(2026,10,12))+MONTH(DATE(2026,10,12))+DAY(DATE(2026,10,12))", formulaResult: "#WERT!" };
+  result.content[0].content[1].content = [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  const document = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "ITEM_IDS", tableId: source.attrs.tableId, range: "A1:A2" },
+    { name: "PRICES", tableId: source.attrs.tableId, range: "B1:B2" },
+    { name: "SALES", tableId: source.attrs.tableId, range: "C1:C2" },
+  ] }, content: [source, result] });
+  expect(document.content[1].content[0].content.map(text)).toEqual(["12", "2048"]);
+  expect(document.content[1].content[0].content[0].attrs.formulaResult).toBe("12");
+});
+
+test("Office named ranges propagate cross-table cycles and follow structural mapping", () => {
+  const left = officeTableFromTSV("0\t0"), right = officeTableFromTSV("0\t0");
+  left.attrs = { tableId: `table-${"c".repeat(24)}`, caption: "Left" };
+  right.attrs = { tableId: `table-${"d".repeat(24)}`, caption: "Right" };
+  left.content[0].content[0].attrs = { formula: "=RIGHT_VALUE", formulaResult: "#WERT!" };
+  right.content[0].content[0].attrs = { formula: "=LEFT_VALUE", formulaResult: "#WERT!" };
+  for (const table of [left, right]) table.content[0].content[0].content =
+    [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  const ranges = [
+    { name: "LEFT_VALUE", tableId: left.attrs.tableId, range: "A1:A1" },
+    { name: "RIGHT_VALUE", tableId: right.attrs.tableId, range: "A1:A1" },
+  ];
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: ranges }, content: [left, right] });
+  expect(calculated.content.map((table) => text(table.content[0].content[0]))).toEqual(["#ZYKLUS!", "#ZYKLUS!"]);
+  expect(remapOfficeTableRangeDefinitions(ranges, left.attrs.tableId,
+    [{ source: 0, duplicate: true }, { source: 0, duplicate: false }], [{ source: 0 }, { source: 1 }]))
+    .toContainEqual({ name: "LEFT_VALUE", tableId: left.attrs.tableId, range: "A1:A2" });
+});
+
 test("Office formulas preserve absolute and mixed row and column anchors", () => {
   let table = officeTableFromTSV("2\t3\t0\n4\t6\t0");
   table = setOfficeTableFormula(table, { row: 1, column: 2, formula: "=SUM($A$1;$B1;A$2)" });
@@ -89,7 +125,8 @@ test("Office formulas expose deterministic reference division cycle and syntax e
   table = officeTableFromTSV("=B1\t=A1");
   expect(table.content[0].content.map(text)).toEqual(["#ZYKLUS!", "#ZYKLUS!"]);
   expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1, formula: "=FOO(A1)" })).toThrow();
-  expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1, formula: "=U1" })).toThrow();
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t2"),
+    { row: 0, column: 1, formula: "=U1" }).content[0].content[1])).toBe("#BEZUG!");
   expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1,
     formula: "='[external.xlsx]Sheet1'!A1" })).toThrow();
 });

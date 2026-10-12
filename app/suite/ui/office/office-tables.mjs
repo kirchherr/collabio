@@ -13,6 +13,8 @@ export const OFFICE_TABLE_WIDTHS = ["compact", "wide"];
 export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
 export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"];
+const officeTableFormulaFunctions = ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "IF", "AND", "OR", "NOT", "ROUND",
+  "ABS", "POWER", "SQRT", "PRODUCT", "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
 
 export function officeTableFormulaSource(value) {
   if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
@@ -22,16 +24,23 @@ export function officeTableFormulaSource(value) {
     .replace(/\bUND\b/giu, "AND").replace(/\bODER\b/giu, "OR")
     .replace(/\bNICHT\b/giu, "NOT").replace(/\bRUNDEN\b/giu, "ROUND")
     .replace(/\bPOTENZ\b/giu, "POWER").replace(/\bWURZEL\b/giu, "SQRT")
-    .replace(/\bPRODUKT\b/giu, "PRODUCT").toUpperCase();
+    .replace(/\bPRODUKT\b/giu, "PRODUCT").replace(/\bXVERWEIS\b/giu, "XLOOKUP")
+    .replace(/\bDATUM\b/giu, "DATE").replace(/\bJAHR\b/giu, "YEAR")
+    .replace(/\bMONAT\b/giu, "MONTH").replace(/\bTAG\b/giu, "DAY").toUpperCase();
   const identifiers = source.replaceAll("#BEZUG!", "");
   const unmatchedAnchors = identifiers.replace(/\$?[A-T]\$?[1-9][0-9]{0,2}/gu, "");
   if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
-      !/^=[A-Z0-9$#\-+*/().,:! <>=]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
+      !/^=[A-Z0-9_$#\-+*/().,:! <>=]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
     throw new TypeError("Invalid Office table formula");
   }
-  for (const match of identifiers.matchAll(/[A-Z]+/gu)) {
-    if (!["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER",
-      "SQRT", "PRODUCT", "MEDIAN"].includes(match[0]) && !/^[A-T]$/u.test(match[0])) {
+  for (const match of identifiers.matchAll(/([A-Z][A-Z0-9_]{0,31})\s*\(/gu)) {
+    if (!officeTableFormulaFunctions.includes(match[1])) {
+      throw new TypeError("Invalid Office table formula");
+    }
+  }
+  const withoutFunctions = identifiers.replace(/([A-Z][A-Z0-9_]{0,31})\s*(?=\()/gu, "");
+  for (const match of withoutFunctions.matchAll(/[A-Z][A-Z0-9_]{0,31}/gu)) {
+    if (!/^[A-T]$/u.test(match[0]) && !/^[A-Z][A-Z0-9_]{0,31}$/u.test(match[0])) {
       throw new TypeError("Invalid Office table formula");
     }
   }

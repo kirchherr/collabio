@@ -1073,6 +1073,26 @@ object-storage write, network read, spreadsheet engine or engine admission. Deci
 [ADR-0130](../../ARCHITECTURE_DECISIONS/ADR-0130-native-office-inert-charts.md) and
 [ADR-0197](../../ARCHITECTURE_DECISIONS/ADR-0197-native-office-calculations-and-linked-charts.md).
 
+### Named ranges and cross-table formulas (Roadmap 800–807)
+
+**Bereich benennen …** binds the current rectangular simple-cell selection to the stable ID of its numbered table.
+The document stores at most 100 unique canonical names with exact `A1:T200` rectangles. Names cannot look like cell
+references or supported functions. They contain no title snapshot, URL, external workbook, query or executable source.
+The dialog shows the exact table number and coordinate and supports replacement and removal before confirmed save.
+
+Local A1 references still resolve inside their containing table. A named single cell can be used as a scalar; a named
+rectangle can feed aggregate functions from any other table in the document. `XLOOKUP`/`XVERWEIS` performs bounded
+exact numeric lookup across equal-length local or named ranges. `DATE`/`DATUM`, `YEAR`/`JAHR`, `MONTH`/`MONAT` and
+`DAY`/`TAG` use deterministic UTC day numbers relative to 1970-01-01. Current-time functions, approximate and text
+lookup, external connections and automatic actions remain unavailable.
+
+The browser evaluates all formula cells through one document dependency graph and updates their stored snapshots in a
+single local editor transaction. Insertion, deletion, movement and duplication remap a named rectangle when its cells
+remain contiguous. A definition is removed if its rectangle is destroyed, or atomically with its table ID. The server
+independently resolves every name and table range, recalculates cross-table dependencies, detects cycles and rejects
+stale or forged results before accepting a version. This adds no migration or external spreadsheet engine. Decision:
+[ADR-0198](../../ARCHITECTURE_DECISIONS/ADR-0198-native-office-named-ranges-and-cross-table-formulas.md).
+
 ## Merged table cells and semantic headers (Roadmap 321–324)
 
 Native table cells retain canonical column spans from one through twenty and row spans from one through two hundred.

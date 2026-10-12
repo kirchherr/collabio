@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import re
+from datetime import date, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -208,8 +209,15 @@ _TABLE_FORMULA_NAMES = {
     "SQRT",
     "PRODUCT",
     "MEDIAN",
+    "XLOOKUP",
+    "DATE",
+    "YEAR",
+    "MONTH",
+    "DAY",
 }
 _TABLE_NUMBER = re.compile(r"[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?")
+_TABLE_RANGE_NAME = re.compile(r"[A-Z][A-Z0-9_]{0,31}")
+_TABLE_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 
 
 class _TableFormulaError(ValueError):
@@ -275,10 +283,22 @@ def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
             tokens.append(("compare", comparison.group()))
             index += len(comparison.group())
             continue
-        name = next((candidate for candidate in _TABLE_FORMULA_NAMES if source.startswith(candidate, index)), None)
+        name = next(
+            (
+                candidate
+                for candidate in sorted(_TABLE_FORMULA_NAMES, key=len, reverse=True)
+                if source.startswith(candidate, index) and re.match(r"\s*\(", source[index + len(candidate) :])
+            ),
+            None,
+        )
         if name:
             tokens.append(("name", name))
             index += len(name)
+            continue
+        named = _TABLE_RANGE_NAME.match(source[index:])
+        if named:
+            tokens.append(("named", named.group()))
+            index += len(named.group())
             continue
         if source[index] in "+-*/(),:":
             tokens.append((source[index], source[index]))
@@ -532,6 +552,341 @@ def _valid_table_formula_results(rows: list[dict[str, Any]]) -> bool:
     return True
 
 
+def _valid_document_table_formula_results(document: dict[str, Any], definitions: list[dict[str, str]]) -> bool:
+    tables: list[tuple[str, dict[str, Any]]] = []
+
+    def collect(node: dict[str, Any]) -> None:
+        if node.get("type") == "table":
+            identifier = node.get("attrs", {}).get("tableId")
+            tables.append((identifier or f"local-{len(tables)}", node))
+        for child in node.get("content", []):
+            collect(child)
+
+    collect(document)
+    table_map = {key: table for key, table in tables}
+    table_shapes: dict[str, tuple[int, int]] = {}
+    for key, table in tables:
+        rows = table["content"]
+        columns = len(rows[0]["content"])
+        if any(
+            len(row["content"]) != columns
+            or any(
+                cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
+                for cell in row["content"]
+            )
+            for row in rows
+        ):
+            if any(cell.get("attrs", {}).get("formula") is not None for row in rows for cell in row["content"]):
+                return False
+            continue
+        table_shapes[key] = (len(rows), columns)
+
+    named: dict[str, tuple[str, int, int, int, int]] = {}
+    for definition in definitions:
+        table_key = definition["tableId"]
+        shape = table_shapes.get(table_key)
+        match = _TABLE_RANGE.fullmatch(definition["range"])
+        if shape is None or match is None:
+            return False
+        top, left = int(match.group(2)) - 1, ord(match.group(1)) - 65
+        bottom, right = int(match.group(4)) - 1, ord(match.group(3)) - 65
+        if top > bottom or left > right or bottom >= shape[0] or right >= shape[1]:
+            return False
+        named[definition["name"]] = (table_key, top, left, bottom, right)
+
+    states: dict[tuple[str, int, int], str] = {}
+    memo: dict[tuple[str, int, int], float] = {}
+    errors: dict[tuple[str, int, int], str] = {}
+
+    def point(table_key: str, reference: str) -> tuple[int, int]:
+        match = re.fullmatch(r"\$?([A-T])\$?([1-9][0-9]{0,2})", reference)
+        row = int(match.group(2)) - 1 if match else -1
+        column = ord(match.group(1)) - 65 if match else -1
+        rows, columns = table_shapes[table_key]
+        if row < 0 or row >= rows or column < 0 or column >= columns:
+            raise _TableFormulaError("#BEZUG!")
+        return row, column
+
+    def numeric(table_key: str, row: int, column: int) -> float:
+        cell = table_map[table_key]["content"][row]["content"][column]
+        if cell.get("attrs", {}).get("formula") is not None:
+            return evaluate(table_key, row, column)
+        text = _table_cell_text(cell)
+        if not text:
+            return 0.0
+        if _TABLE_NUMBER.fullmatch(text) is None:
+            raise _TableFormulaError("#WERT!")
+        value = float(text.replace(",", "."))
+        if not math.isfinite(value):
+            raise _TableFormulaError("#WERT!")
+        return value
+
+    def named_values(name: str) -> list[float]:
+        definition = named.get(name)
+        if definition is None:
+            raise _TableFormulaError("#BEZUG!")
+        table_key, top, left, bottom, right = definition
+        return [numeric(table_key, row, column) for row in range(top, bottom + 1) for column in range(left, right + 1)]
+
+    def evaluate(table_key: str, row: int, column: int) -> float:
+        key = (table_key, row, column)
+        if key in memo:
+            return memo[key]
+        if key in errors:
+            raise _TableFormulaError(errors[key])
+        if states.get(key) == "visiting":
+            raise _TableFormulaError("#ZYKLUS!")
+        states[key] = "visiting"
+        source = table_map[table_key]["content"][row]["content"][column].get("attrs", {}).get("formula")
+        if source is None:
+            return numeric(table_key, row, column)
+        tokens = _table_formula_tokens(source)
+        position = 0
+
+        def peek() -> str:
+            return tokens[position][0]
+
+        def take(kind: str) -> Any:
+            nonlocal position
+            if peek() != kind:
+                raise _TableFormulaError("#WERT!")
+            value = tokens[position][1]
+            position += 1
+            return value
+
+        def bounded(value: float) -> float:
+            if not math.isfinite(value) or abs(value) > 1e15:
+                raise _TableFormulaError("#LIMIT!")
+            return value
+
+        def rounded(value: float, digits: float) -> float:
+            if not digits.is_integer() or not -10 <= digits <= 10:
+                raise _TableFormulaError("#WERT!")
+            places = int(digits)
+            factor = 10 ** abs(places)
+            scaled = value * factor if places >= 0 else value / factor
+            integer = math.copysign(math.floor(abs(scaled) + 0.5), scaled)
+            return bounded(integer / factor if places >= 0 else integer * factor)
+
+        def range_argument(active: bool = True) -> list[float]:
+            if peek() == "ref" and tokens[position + 1][0] == ":":
+                first_reference = take("ref")
+                take(":")
+                last_reference = take("ref")
+                if not active:
+                    return [0.0]
+                first, last = point(table_key, first_reference), point(table_key, last_reference)
+                return [
+                    numeric(table_key, row_index, column_index)
+                    for row_index in range(min(first[0], last[0]), max(first[0], last[0]) + 1)
+                    for column_index in range(min(first[1], last[1]), max(first[1], last[1]) + 1)
+                ]
+            if peek() == "named":
+                name = take("named")
+                return named_values(name) if active else [0.0]
+            raise _TableFormulaError("#WERT!")
+
+        def primary(active: bool = True) -> float:
+            if peek() == "error":
+                code = take("error")
+                if active:
+                    raise _TableFormulaError(code)
+                return 0.0
+            if peek() == "number":
+                value = float(take("number"))
+                return value if active else 0.0
+            if peek() == "ref":
+                reference = take("ref")
+                return numeric(table_key, *point(table_key, reference)) if active else 0.0
+            if peek() == "named":
+                name = take("named")
+                if not active:
+                    return 0.0
+                resolved_values = named_values(name)
+                if len(resolved_values) != 1:
+                    raise _TableFormulaError("#WERT!")
+                return resolved_values[0]
+            if peek() == "(":
+                take("(")
+                value = expression(active)
+                take(")")
+                return value
+            if peek() == "name":
+                name = take("name")
+                take("(")
+                if name == "IF":
+                    condition = expression(active)
+                    take(",")
+                    truthy = expression(active and condition != 0)
+                    take(",")
+                    falsy = expression(active and condition == 0)
+                    take(")")
+                    return (truthy if condition != 0 else falsy) if active else 0.0
+                if name == "XLOOKUP":
+                    search = expression(active)
+                    take(",")
+                    lookup = range_argument(active)
+                    take(",")
+                    returned = range_argument(active)
+                    take(")")
+                    if not active:
+                        return 0.0
+                    if len(lookup) != len(returned) or len(lookup) > 4000:
+                        raise _TableFormulaError("#WERT!")
+                    try:
+                        return returned[lookup.index(search)]
+                    except ValueError:
+                        raise _TableFormulaError("#BEZUG!") from None
+                values: list[float] = []
+                if peek() != ")":
+                    while True:
+                        if (peek() == "ref" and tokens[position + 1][0] == ":") or (
+                            peek() == "named" and tokens[position + 1][0] in {",", ")"}
+                        ):
+                            values.extend(range_argument(active))
+                        else:
+                            values.append(expression(active))
+                        if peek() != ",":
+                            break
+                        take(",")
+                take(")")
+                if not values or len(values) > 4000:
+                    raise _TableFormulaError("#LIMIT!")
+                if not active:
+                    return 0.0
+                if name == "SUM":
+                    return sum(values)
+                if name == "AVERAGE":
+                    return sum(values) / len(values)
+                if name == "MIN":
+                    return min(values)
+                if name == "MAX":
+                    return max(values)
+                if name == "COUNT":
+                    return float(len(values))
+                if name == "PRODUCT":
+                    return bounded(math.prod(values))
+                if name == "MEDIAN":
+                    ordered = sorted(values)
+                    middle = len(ordered) // 2
+                    return ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+                if name == "AND":
+                    return 1.0 if all(value != 0 for value in values) else 0.0
+                if name == "OR":
+                    return 1.0 if any(value != 0 for value in values) else 0.0
+                if name == "NOT" and len(values) == 1:
+                    return 1.0 if values[0] == 0 else 0.0
+                if name == "ABS" and len(values) == 1:
+                    return abs(values[0])
+                if name == "ROUND" and len(values) == 2:
+                    return rounded(values[0], values[1])
+                if name == "POWER" and len(values) == 2:
+                    try:
+                        value = values[0] ** values[1]
+                    except OverflowError:
+                        raise _TableFormulaError("#LIMIT!") from None
+                    except (ValueError, ZeroDivisionError):
+                        raise _TableFormulaError("#WERT!") from None
+                    if not isinstance(value, (int, float)):
+                        raise _TableFormulaError("#WERT!")
+                    return bounded(float(value))
+                if name == "SQRT" and len(values) == 1 and values[0] >= 0:
+                    return math.sqrt(values[0])
+                if name == "DATE" and len(values) == 3 and all(value.is_integer() for value in values):
+                    try:
+                        resolved = date(int(values[0]), int(values[1]), int(values[2]))
+                    except ValueError:
+                        raise _TableFormulaError("#WERT!") from None
+                    if not 1900 <= resolved.year <= 9999:
+                        raise _TableFormulaError("#WERT!")
+                    return float((resolved - date(1970, 1, 1)).days)
+                if name in {"YEAR", "MONTH", "DAY"} and len(values) == 1 and values[0].is_integer():
+                    try:
+                        resolved = date(1970, 1, 1) + timedelta(days=int(values[0]))
+                    except (OverflowError, ValueError):
+                        raise _TableFormulaError("#WERT!") from None
+                    if not 1900 <= resolved.year <= 9999:
+                        raise _TableFormulaError("#WERT!")
+                    return float({"YEAR": resolved.year, "MONTH": resolved.month, "DAY": resolved.day}[name])
+                raise _TableFormulaError("#WERT!")
+            raise _TableFormulaError("#WERT!")
+
+        def unary(active: bool = True) -> float:
+            if peek() == "+":
+                take("+")
+                return unary(active)
+            if peek() == "-":
+                take("-")
+                return -unary(active)
+            return primary(active)
+
+        def term(active: bool = True) -> float:
+            value = unary(active)
+            while peek() in {"*", "/"}:
+                operator = take(peek())
+                right = unary(active)
+                if active and operator == "/" and right == 0:
+                    raise _TableFormulaError("#DIV/0!")
+                value = (value * right if operator == "*" else value / right) if active else 0.0
+            return value
+
+        def additive(active: bool = True) -> float:
+            value = term(active)
+            while peek() in {"+", "-"}:
+                operator = take(peek())
+                right = term(active)
+                value = value + right if operator == "+" else value - right
+            return value
+
+        def expression(active: bool = True) -> float:
+            left = additive(active)
+            if peek() != "compare":
+                return left
+            operator = take("compare")
+            right = additive(active)
+            if not active:
+                return 0.0
+            return float(
+                {
+                    "=": left == right,
+                    "<>": left != right,
+                    "<": left < right,
+                    "<=": left <= right,
+                    ">": left > right,
+                    ">=": left >= right,
+                }[operator]
+            )
+
+        try:
+            value = expression()
+            if peek() != "end":
+                raise _TableFormulaError("#WERT!")
+        except _TableFormulaError as error:
+            code = str(error) if str(error) in _TABLE_FORMULA_ERRORS else "#WERT!"
+            states[key] = "done"
+            errors[key] = code
+            raise _TableFormulaError(code) from None
+        states[key] = "done"
+        memo[key] = value
+        return value
+
+    for table_key, table in tables:
+        if table_key not in table_shapes:
+            continue
+        for row_index, row in enumerate(table["content"]):
+            for column_index, cell in enumerate(row["content"]):
+                attrs = cell.get("attrs", {})
+                if attrs.get("formula") is None:
+                    continue
+                try:
+                    result = _table_formula_result(evaluate(table_key, row_index, column_index))
+                except _TableFormulaError as error:
+                    result = str(error) if str(error) in _TABLE_FORMULA_ERRORS else "#WERT!"
+                if attrs.get("formulaResult") != result:
+                    return False
+    return True
+
+
 _CHART_COLORS = ("teal", "blue", "orange", "purple")
 _CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
@@ -652,8 +1007,31 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         "running",
         "documentFields",
         "citationSources",
+        "tableRanges",
     }:
         reject()
+    table_ranges_value = root_attrs.get("tableRanges", [])
+    if not isinstance(table_ranges_value, list) or len(table_ranges_value) > 100:
+        reject()
+    table_ranges: list[dict[str, str]] = []
+    table_range_names: set[str] = set()
+    for definition in table_ranges_value:
+        if (
+            not isinstance(definition, dict)
+            or set(definition) != {"name", "tableId", "range"}
+            or not isinstance(definition.get("name"), str)
+            or _TABLE_RANGE_NAME.fullmatch(definition["name"]) is None
+            or re.fullmatch(r"[A-T][1-9][0-9]{0,2}", definition["name"]) is not None
+            or definition["name"] in _TABLE_FORMULA_NAMES
+            or definition["name"] in table_range_names
+            or not isinstance(definition.get("tableId"), str)
+            or re.fullmatch(r"table-[a-f0-9]{24}", definition["tableId"]) is None
+            or not isinstance(definition.get("range"), str)
+            or _TABLE_RANGE.fullmatch(definition["range"]) is None
+        ):
+            reject()
+        table_range_names.add(definition["name"])
+        table_ranges.append(definition)
     fields = root_attrs.get("documentFields", [])
     if not isinstance(fields, list) or len(fields) > 50:
         reject()
@@ -1403,6 +1781,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
                 formula_identifiers = formula.replace("#BEZUG!", "") if isinstance(formula, str) else ""
                 unmatched_formula_anchors = re.sub(r"\$?[A-T]\$?[1-9][0-9]{0,2}", "", formula_identifiers)
+                formula_calls = re.findall(r"([A-Z][A-Z0-9_]{0,31})\s*\(", formula_identifiers)
                 if (
                     kind != "tableCell"
                     or table_formulas > 1000
@@ -1411,13 +1790,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     or not isinstance(formula, str)
                     or not 2 <= len(formula) <= 256
                     or formula != formula.strip()
-                    or re.fullmatch(r"=[A-Z0-9$#\-+*/().,:! <>=]+", formula) is None
+                    or re.fullmatch(r"=[A-Z0-9_$#\-+*/().,:! <>=]+", formula) is None
                     or re.search(r"[#!]", formula_identifiers) is not None
                     or "$" in unmatched_formula_anchors
-                    or any(
-                        token not in _TABLE_FORMULA_NAMES and re.fullmatch(r"[A-T]", token) is None
-                        for token in re.findall(r"[A-Z]+", formula_identifiers)
-                    )
+                    or any(token not in _TABLE_FORMULA_NAMES for token in formula_calls)
                     or not isinstance(formula_result, str)
                     or len(formula_result) > 64
                     or (
@@ -1428,7 +1804,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 ):
                     reject()
         elif kind == "doc":
-            if depth != 0 or set(attrs) - {"styles", "page", "running", "documentFields", "citationSources"}:
+            root_attributes = {"styles", "page", "running", "documentFields", "citationSources", "tableRanges"}
+            if depth != 0 or set(attrs) - root_attributes:
                 reject()
         elif attrs:
             reject()
@@ -1597,12 +1974,12 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             visit(child, depth + 1, kind)
         if kind == "table" and not _valid_table_grid(children):
             reject()
-        if kind == "table" and not _valid_table_formula_results(children):
-            reject()
 
     if document.get("type") != "doc":
         reject()
     visit(document, 0)
+    if not _valid_document_table_formula_results(document, table_ranges):
+        reject()
     for chart in linked_charts:
         source = _chart_source(chart["source"])
         table = table_nodes.get(source[0]) if source is not None else None

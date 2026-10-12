@@ -292,6 +292,102 @@ def test_native_document_recalculates_advanced_formula_results_with_lazy_conditi
         assert validate_office_document(candidate) == candidate
 
 
+def test_native_document_validates_named_cross_table_lookup_and_date_formulas() -> None:
+    def cell(text: str, formula: str | None = None) -> dict[str, Any]:
+        return {
+            "type": "tableCell",
+            **({"attrs": {"formula": formula, "formulaResult": text}} if formula else {}),
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+
+    source_id, result_id = "table-" + "a" * 24, "table-" + "b" * 24
+    source: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": source_id, "caption": "Source"},
+        "content": [
+            {"type": "tableRow", "content": [cell("101"), cell("5"), cell("2")]},
+            {"type": "tableRow", "content": [cell("102"), cell("7"), cell("3")]},
+        ],
+    }
+    result: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": result_id, "caption": "Result"},
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("12", "=SUM(SALES)+XLOOKUP(102,ITEM_IDS,PRICES)"),
+                    cell("2048", "=YEAR(DATE(2026,10,12))+MONTH(DATE(2026,10,12))+DAY(DATE(2026,10,12))"),
+                ],
+            }
+        ],
+    }
+    document: dict[str, Any] = {
+        "type": "doc",
+        "attrs": {
+            "tableRanges": [
+                {"name": "ITEM_IDS", "tableId": source_id, "range": "A1:A2"},
+                {"name": "PRICES", "tableId": source_id, "range": "B1:B2"},
+                {"name": "SALES", "tableId": source_id, "range": "C1:C2"},
+            ]
+        },
+        "content": [source, result],
+    }
+    assert validate_office_document(document) == document
+    forged = deepcopy(document)
+    forged["content"][1]["content"][0]["content"][0] = cell("13", "=SUM(SALES)+XLOOKUP(102,ITEM_IDS,PRICES)")
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(forged)
+    for invalid_range in (
+        {"name": "A1", "tableId": source_id, "range": "A1:A2"},
+        {"name": "SUM", "tableId": source_id, "range": "A1:A2"},
+        {"name": "MISSING", "tableId": "table-" + "f" * 24, "range": "A1:A2"},
+        {"name": "OUTSIDE", "tableId": source_id, "range": "A1:A3"},
+    ):
+        candidate = deepcopy(document)
+        candidate["attrs"]["tableRanges"] = [invalid_range]
+        with pytest.raises(OfficeDocumentInvalidContentError):
+            validate_office_document(candidate)
+
+
+def test_native_document_detects_cross_table_named_range_cycles() -> None:
+    def formula_cell(formula: str) -> dict[str, Any]:
+        return {
+            "type": "tableCell",
+            "attrs": {"formula": formula, "formulaResult": "#ZYKLUS!"},
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": "#ZYKLUS!"}]}],
+        }
+
+    left_id, right_id = "table-" + "c" * 24, "table-" + "d" * 24
+    document: dict[str, Any] = {
+        "type": "doc",
+        "attrs": {
+            "tableRanges": [
+                {"name": "LEFT_VALUE", "tableId": left_id, "range": "A1:A1"},
+                {"name": "RIGHT_VALUE", "tableId": right_id, "range": "A1:A1"},
+            ]
+        },
+        "content": [
+            {
+                "type": "table",
+                "attrs": {"tableId": left_id, "caption": "Left"},
+                "content": [{"type": "tableRow", "content": [formula_cell("=RIGHT_VALUE")]}],
+            },
+            {
+                "type": "table",
+                "attrs": {"tableId": right_id, "caption": "Right"},
+                "content": [{"type": "tableRow", "content": [formula_cell("=LEFT_VALUE")]}],
+            },
+        ],
+    }
+    assert validate_office_document(document) == document
+    stale = deepcopy(document)
+    stale["content"][1]["content"][0]["content"][0]["attrs"]["formulaResult"] = "0"
+    stale["content"][1]["content"][0]["content"][0]["content"][0]["content"][0]["text"] = "0"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(stale)
+
+
 def test_native_linked_chart_must_match_its_numbered_table_range_exactly() -> None:
     def cell(text: str, formula: str | None = None) -> dict[str, Any]:
         return {

@@ -2010,15 +2010,39 @@ rendering. Prove automatic update, undo-safe editing, two immutable versions, re
 660. [x] Close native Office calculations and linked charts under ADR-0197 with focused schema/API and model tests,
 desktop/mobile browser proof, visual review and the complete repository quality gate; add no migration or engine.
 
+661. [x] Add at most 100 canonical document-wide named ranges under ADR-0198. Bind each unique non-reserved name to
+one stable numbered-table ID and one exact bounded `A1:T200` rectangle without URLs or executable source data.
+
+662. [x] Add an accessible range dialog for the current simple-cell selection. Require a numbered table, show the
+exact coordinate, support replacement and removal, and keep the definition inside the local draft until version save.
+
+663. [x] Recalculate all table formulas as one document dependency graph so local references remain table-relative
+while named single cells and ranges can feed formulas in other numbered tables with shared memoization and cycles.
+
+664. [x] Add exact numeric `XLOOKUP`/`XVERWEIS` over equal-length local or named ranges with bounded size and explicit
+reference/value errors. Keep text, approximate and external-workbook lookup outside this contract.
+
+665. [x] Add deterministic `DATE`/`DATUM`, `YEAR`/`JAHR`, `MONTH`/`MONAT` and `DAY`/`TAG` over UTC day numbers. Reject
+invalid dates and retain the closure of volatile current-time functions.
+
+666. [x] Remap named rectangles through row/column insertion, deletion, movement and duplication when their cells stay
+contiguous; remove invalidated definitions and remove all definitions atomically with their numbered table target.
+
+667. [x] Independently validate named definitions and recalculate cross-table results on the server, rejecting missing
+tables, merged target grids, out-of-range definitions, cross-table cycles and stale or forged formula results.
+
+668. [x] Prove the block with focused schema/API tests, 16 formula-model cases, a desktop/mobile saved-version workflow,
+visual review and the complete repository quality gate. Add no migration, external engine, network read or auto-save.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 799 / PLANS 660. Common document calculations now include comparisons,
-  conditional/logical and bounded numeric functions; native charts can follow verified decimal and formula results from
-  one numbered table range. Continue Office with named ranges, cross-table references and lookup/date functions as a
-  separate coherent loop before deferred CRM onboarding. Preserve all earlier AI, voice, interchange, collaboration,
+- Native Office is complete through Roadmap 807 / PLANS 668. Document-wide named ranges now support cross-table
+  calculations, exact numeric lookup and deterministic date functions while native charts continue to follow verified
+  decimal and formula results. Continue Office with conditional aggregation, text/date presentation and chart editing as
+  separate coherent loops before deferred CRM onboarding. Preserve all earlier AI, voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,
   public links, external guests, live collaboration and DOCX interchange remain closed until their separate gates pass.
