@@ -2082,14 +2082,38 @@ one browser workflow, with separately reviewed screenshots and no viewport overf
 684. [x] Close the block with focused schema/API tests, 19 formula-model cases and the complete repository quality
 gate. Add no migration, external engine, production admission or new durable state.
 
+685. [x] Extend the bounded scalar grammar with double-quoted text literals under ADR-0201. Preserve literal case,
+punctuation and semicolons during German-name normalization, and escape an embedded quote with a doubled quote.
+
+686. [x] Add canonical `CONCAT`, `LEFT`, `RIGHT` and `LEN` plus `VERKETTEN`, `LINKS`, `RECHTS` and `LÄNGE`. Bound
+formula and result text, reject unsafe controls and retain `#` prefixes for explicit formula errors.
+
+687. [x] Resolve ordinary text cells and named ranges inside the existing dependency graph. Extend exact `XLOOKUP`
+to text keys and results while retaining equal-sized local or named ranges and deterministic scalar type rules.
+
+688. [x] Add deterministic `EDATE`, `EOMONTH`, `DAYS` and ISO `WEEKDAY` plus their German aliases over integer UTC
+day numbers. Clip month ends, bound offsets and supported years and reject locale-, timezone- or clock-dependent input.
+
+689. [x] Keep text and calendar formulas inside shared memoization, cross-table dependency and cycle handling. Make
+all structural formula-reference remapping skip quoted literals so reference-looking text is never rewritten.
+
+690. [x] Extend accessible formula help, preserve canonical English formulas on save and clear numeric presentation
+when a formula produces text without changing the canonical underlying result.
+
+691. [x] Independently parse and recalculate every text and calendar result on the server before confirmed version
+save. Reject invalid syntax, unsafe or oversized text, type errors, calendar overflow and stale or forged results.
+
+692. [x] Prove the block with focused schema/API tests, 22 formula-model cases, a desktop/mobile saved-version
+workflow, visual review and the complete repository quality gate. Add no migration, external engine or network source.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 823 / PLANS 684. Exact numeric multiple-criteria aggregation now builds on
-  conditional aggregation and document-wide named ranges. Continue Office with richer date/text formulas and then
-  chart-axis/presentation controls as separate coherent loops before deferred CRM onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 831 / PLANS 692. Bounded text values, exact text lookup and deterministic
+  calendar formulas now build on multiple-criteria aggregation and document-wide named ranges. Continue Office with
+  chart-axis and presentation controls as the next coherent loop before deferred CRM onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

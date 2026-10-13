@@ -2,6 +2,48 @@
 
 Updated: 2026-10-13
 
+Roadmap 824 through 831 / PLANS 685 through 692 are complete under ADR-0201. Native Office formulas now accept bounded
+double-quoted text literals, text-valued cells and named ranges, exact text `XLOOKUP`/`XVERWEIS`, and canonical
+`CONCAT`, `LEFT`, `RIGHT` and `LEN` with their German aliases. Literal case, punctuation and semicolons survive
+normalization; doubled quotes escape one quote. Text results are limited to 512 safe characters and `#` prefixes
+remain reserved for explicit formula errors.
+
+Deterministic `EDATE`/`EDATUM`, `EOMONTH`/`MONATSENDE`, `DAYS`/`TAGE` and `WEEKDAY`/`WOCHENTAG` operate on integer UTC
+day numbers. Month shifts clip to valid month ends, offsets and supported years are bounded, and weekday numbering is
+ISO Monday 1 through Sunday 7. The functions use no locale, timezone, current-time source or external service.
+
+The browser recalculates the local draft inside the existing document-wide dependency graph. The server independently
+parses, resolves and recalculates every stored result before immutable version save. Structural row and column
+reference rewriting skips quoted literals. Unsafe or oversized text, invalid scalar types, missing references,
+calendar overflow and stale or forged results fail closed.
+
+Focused Office schema/API tests pass 88/88 and all 22 formula-model cases pass. The desktop/mobile saved-version
+workflow passes 2/2 in 19.1 seconds, persists German-authored formulas under canonical names and reloads text lookup
+and calendar results. Visual review passed without page overflow; desktop/mobile screenshot hashes are
+`sha256:a1795f648c4f98d16d00977d64c7e11a2212ca032e994d932935f653aa225390` and
+`sha256:ad209c5a0afda706178f6878db99c14605f875094c6ae0608ff9c8a4ebf6be6d`.
+
+The complete quality gate passes Ruff, finds 962 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+The review target is `http://192.168.0.108:42880/office?review=text-date-formulas-adr0201` with asset keys
+`office.css?v=13` and `editor.js?v=13`. The final Work-E2E and review API images are
+`sha256:dcaaff420e8c040cab073f405beda7b6c787333272a325749e7b780c918a2341` and
+`sha256:6df0d4668353dbdc8a5023070e33102ad3b77e05f50d8a4c7fb552520ee9b3aa`. GitHub publication remains pending under
+the content-specific approval rule.
+
+The only browser diagnostic was an initially stale Office bundle baked into the review API image. The unchanged
+responsive workflow passed after rebuilding and recreating that exact review API. Focused static quality also applied
+the formatter and removed two Python variable-name collisions. No assertion, resource bound or timeout was weakened.
+
+The exact isolated PostgreSQL test container, empty ADR-0201 browser-artifact directory and temporary transfer files
+are removed. No transient quality or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The next separate Office loop is chart-axis and presentation control. CRM account onboarding remains deferred by the
+user's Office-first priority.
+
 Roadmap 816 through 823 / PLANS 677 through 684 are complete under ADR-0200. Native Office formulas now support exact
 numeric `SUMIFS`/`SUMMEWENNS`, `COUNTIFS`/`ZÄHLENWENNS` and `AVERAGEIFS`/`MITTELWERTWENNS`. Sum and average accept
 one local or named result range; all three functions accept one through ten local or named criteria-range/value pairs.

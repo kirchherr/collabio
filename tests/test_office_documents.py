@@ -388,6 +388,57 @@ def test_native_document_detects_cross_table_named_range_cycles() -> None:
         validate_office_document(stale)
 
 
+def test_native_document_validates_text_lookup_and_calendar_formulas() -> None:
+    def cell(text: str, formula: str | None = None) -> dict[str, Any]:
+        return {
+            "type": "tableCell",
+            **({"attrs": {"formula": formula, "formulaResult": text}} if formula else {}),
+            "content": [{"type": "paragraph", **({"content": [{"type": "text", "text": text}]} if text else {})}],
+        }
+
+    source_id = "table-" + "9" * 24
+    source: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": source_id, "caption": "Labels"},
+        "content": [
+            {"type": "tableRow", "content": [cell("A"), cell("Alpha")]},
+            {"type": "tableRow", "content": [cell("B"), cell("Beta")]},
+        ],
+    }
+    result: dict[str, Any] = {
+        "type": "table",
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("Beta / 26", '=CONCAT(XLOOKUP("B",ITEMS,LABELS)," / ",RIGHT("2026",2))'),
+                    cell("29", "=DAY(EDATE(DATE(2024,1,31),1))"),
+                    cell("28", "=DAY(EOMONTH(DATE(2025,2,4),0))"),
+                    cell("12", "=DAYS(DATE(2026,10,13),DATE(2026,10,1))"),
+                    cell("2", "=WEEKDAY(DATE(2026,10,13))"),
+                    cell("2", '=LEN(CONCAT("A","😀"))'),
+                ],
+            }
+        ],
+    }
+    document: dict[str, Any] = {
+        "type": "doc",
+        "attrs": {
+            "tableRanges": [
+                {"name": "ITEMS", "tableId": source_id, "range": "A1:A2"},
+                {"name": "LABELS", "tableId": source_id, "range": "B1:B2"},
+            ]
+        },
+        "content": [source, result],
+    }
+    assert validate_office_document(document) == document
+    forged = deepcopy(document)
+    forged["content"][1]["content"][0]["content"][0]["attrs"]["formulaResult"] = "Alpha / 26"
+    forged["content"][1]["content"][0]["content"][0]["content"][0]["content"][0]["text"] = "Alpha / 26"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(forged)
+
+
 def test_native_document_validates_conditional_aggregates_and_number_formats() -> None:
     def cell(text: str, formula: str | None = None, number_format: str | None = None) -> dict[str, Any]:
         attrs: dict[str, Any] = {}

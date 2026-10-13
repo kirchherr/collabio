@@ -67,6 +67,51 @@ test("Office named ranges calculate across tables with exact lookup and determin
   expect(document.content[1].content[0].content[0].attrs.formulaResult).toBe("12");
 });
 
+test("Office text formulas preserve literal case delimiters and quoted references", () => {
+  let table = officeTableFromTSV("0\t0");
+  table = setOfficeTableFormula(table, { row: 0, column: 0,
+    formula: '=verketten("A1;Tag";" ";links("März";3))' });
+  expect(table.content[0].content[0].attrs).toMatchObject({
+    formula: '=CONCAT("A1;Tag"," ",LEFT("März",3))', formulaResult: "A1;Tag Mär",
+  });
+  const filled = fillOfficeTableFormulas(table, { top: 0, left: 0, bottom: 1, right: 2,
+    formula: '=VERKETTEN("A1";RECHTS("2026";2))' });
+  expect(filled.content[0].content.map((cell) => cell.attrs.formula)).toEqual([
+    '=CONCAT("A1",RIGHT("2026",2))', '=CONCAT("A1",RIGHT("2026",2))',
+  ]);
+  expect(filled.content[0].content.map(text)).toEqual(["A126", "A126"]);
+});
+
+test("Office text formulas resolve named ranges and exact text lookup across tables", () => {
+  const source = officeTableFromTSV("A\tAlpha\nB\tBeta");
+  source.attrs = { tableId: `table-${"7".repeat(24)}`, caption: "Labels" };
+  const result = officeTableFromTSV("0\t0"); result.attrs = { tableId: `table-${"8".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = {
+    formula: '=CONCAT(XLOOKUP("B",ITEMS,LABELS)," / ",RIGHT("2026",2))', formulaResult: "0",
+  };
+  result.content[0].content[1].attrs = { formula: '=LEN(CONCAT("A","😀"))', formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "ITEMS", tableId: source.attrs.tableId, range: "A1:A2" },
+    { name: "LABELS", tableId: source.attrs.tableId, range: "B1:B2" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map(text)).toEqual(["Beta / 26", "2"]);
+});
+
+test("Office calendar formulas clip month ends and use ISO weekdays deterministically", () => {
+  let table = officeTableFromTSV("0\t0\t0\t0");
+  for (const [column, formula] of [
+    [0, "=TAG(EDATUM(DATUM(2024;1;31);1))"],
+    [1, "=TAG(MONATSENDE(DATUM(2025;2;4);0))"],
+    [2, "=TAGE(DATUM(2026;10;13);DATUM(2026;10;1))"],
+    [3, "=WOCHENTAG(DATUM(2026;10;13))"],
+  ]) table = setOfficeTableFormula(table, { row: 0, column, formula });
+  expect(table.content[0].content.map(text)).toEqual(["29", "28", "12", "2"]);
+  expect(table.content[0].content.map((cell) => cell.attrs.formula)).toEqual([
+    "=DAY(EDATE(DATE(2024,1,31),1))", "=DAY(EOMONTH(DATE(2025,2,4),0))",
+    "=DAYS(DATE(2026,10,13),DATE(2026,10,1))", "=WEEKDAY(DATE(2026,10,13))",
+  ]);
+});
+
 test("Office conditional aggregates use exact numeric criteria across local and named ranges", () => {
   const source = officeTableFromTSV("1\t10\n2\t20\n1\t30");
   source.attrs = { tableId: `table-${"c".repeat(24)}`, caption: "Values" };

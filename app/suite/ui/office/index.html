@@ -458,7 +458,7 @@
     <dialog class="office-dialog compact" id="table-formula-dialog" aria-labelledby="table-formula-title">
       <form id="table-formula-form"><header><h2 id="table-formula-title">Tabellenformel</h2><button class="icon-button" id="table-formula-close" type="button" aria-label="Tabellenformel schließen">×</button></header>
         <div class="dialog-body"><p id="table-formula-summary"></p><label>Formel<input id="table-formula-source" type="text" maxlength="256" required autocomplete="off" placeholder="=SUM(B2:B10)" /></label>
-          <p class="paragraph-help">Lokale Bezüge unterstützen A1 bis T200 und $-Anker. Benannte Bereiche rechnen über nummerierte Tabellen hinweg. SUMIF/SUMMEWENN, COUNTIF/ZÄHLENWENN und AVERAGEIF/MITTELWERTWENN filtern nach einem exakten Zahlenwert. SUMIFS/SUMMEWENNS, COUNTIFS/ZÄHLENWENNS und AVERAGEIFS/MITTELWERTWENNS verbinden bis zu zehn gleich große Kriterienbereiche. Zusätzlich stehen XLOOKUP/XVERWEIS sowie DATE/DATUM, YEAR/JAHR, MONTH/MONAT und DAY/TAG bereit. Deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros, volatile Zeitwerte und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
+          <p class="paragraph-help">Lokale Bezüge unterstützen A1 bis T200 und $-Anker; benannte Bereiche rechnen dokumentweit. Bedingte Summen, Anzahlen und Mittelwerte verbinden bis zu zehn exakte Kriterienbereiche. XLOOKUP/XVERWEIS sucht Zahlen oder Text. CONCAT/VERKETTEN, LEFT/LINKS, RIGHT/RECHTS und LEN/LÄNGE verarbeiten begrenzten Klartext in doppelten Anführungszeichen. DATE/DATUM, EDATE/EDATUM, EOMONTH/MONATSENDE, DAYS/TAGE und WEEKDAY/WOCHENTAG rechnen mit festen UTC-Tagen; WOCHENTAG liefert Montag 1 bis Sonntag 7. Deutsche Namen und Semikolon werden normalisiert. Externe Arbeitsmappen, Makros, volatile Zeitwerte und Netzwerke sind ausgeschlossen.</p><p id="table-formula-status" role="status" aria-live="polite"></p></div>
         <footer><button class="quiet-button" id="table-formula-remove" type="button">Formeln entfernen</button><button class="button secondary" id="table-formula-cancel" type="button">Abbrechen</button><button class="button primary" id="table-formula-apply" type="submit">Formel übernehmen</button></footer>
       </form>
     </dialog>
@@ -525,6 +525,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=12"></script>
+    <script type="module" src="/office/editor.js?v=13"></script>
   </body>
 </html>

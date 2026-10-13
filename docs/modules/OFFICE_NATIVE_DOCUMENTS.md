@@ -1,9 +1,37 @@
 # Native Office Documents
 
-Status: Roadmap 252–823 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 823 / PLANS 684 multiple-criteria aggregation
-Module: `office_documents` / version 0.9.11
-Decisions: ADR-0079 through ADR-0200; current movement: `ARCHITECTURE_DECISIONS/ADR-0200-native-office-multiple-criteria-aggregation.md`
+Status: Roadmap 252–831 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 831 / PLANS 692 text and calendar formulas
+Module: `office_documents` / version 0.9.12
+Decisions: ADR-0079 through ADR-0201; current movement: `ARCHITECTURE_DECISIONS/ADR-0201-native-office-text-and-calendar-formulas.md`
+
+## Text and calendar formulas (Roadmap 824–831)
+
+Native Office supports bounded quoted text literals, text-valued cells and named ranges, exact text
+`XLOOKUP`/`XVERWEIS`, and `CONCAT`, `LEFT`, `RIGHT` and `LEN` with normalized German aliases. Literal spelling and
+punctuation remain unchanged during normalization. Text results are limited to 512 safe characters, while leading
+`#` remains reserved for deterministic formula errors.
+
+`EDATE`, `EOMONTH`, `DAYS` and ISO `WEEKDAY` plus their German aliases operate on bounded integer UTC day numbers.
+Month shifts clip to valid month ends and need no locale, timezone, current-time or network source. Formula reference
+rewriting skips quoted literals. Browser and server calculate independently inside the document-wide dependency graph,
+and the server rejects invalid syntax, unsafe text, missing references, calendar overflow and stale or forged results.
+
+Focused Office schema/API tests pass 88/88, all 22 formula-model cases pass, and the responsive saved-version workflow
+passes 2/2 in desktop and mobile in 19.1 seconds. Screenshot hashes are
+`sha256:a1795f648c4f98d16d00977d64c7e11a2212ca032e994d932935f653aa225390` and
+`sha256:ad209c5a0afda706178f6878db99c14605f875094c6ae0608ff9c8a4ebf6be6d`; visual review found no page overflow.
+Complete quality passes Ruff, finds 962 format-conformant files, passes Mypy over 639 source files and reaches 100
+percent Pytest with only the known Starlette/AnyIO warning. The quality image ID is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+Work-E2E and review API image IDs are
+`sha256:dcaaff420e8c040cab073f405beda7b6c787333272a325749e7b780c918a2341` and
+`sha256:6df0d4668353dbdc8a5023070e33102ad3b77e05f50d8a4c7fb552520ee9b3aa`. The review target is
+`http://192.168.0.108:42880/office?review=text-date-formulas-adr0201` with `office.css?v=13` and `editor.js?v=13`.
+
+No migration, external calculation engine, network source or new durable state is introduced. Approximate or wildcard
+lookup, volatile time functions, external workbook links, macros and automatic actions remain closed. Chart-axis and
+presentation controls are the next separate Office loop.
 
 ## Multiple-criteria aggregation (Roadmap 816–823)
 

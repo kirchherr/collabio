@@ -6,7 +6,7 @@ const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
 const namedRangePattern = /^[A-Z][A-Z0-9_]{0,31}$/u;
 const formulaFunctions = ["AVERAGEIFS", "AVERAGEIF", "COUNTIFS", "XLOOKUP", "COUNTIF", "PRODUCT", "AVERAGE", "MEDIAN",
   "SUMIFS", "SUMIF", "POWER", "ROUND", "COUNT", "SQRT", "SUM", "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS",
-  "DATE", "YEAR", "MONTH", "DAY"];
+  "EOMONTH", "WEEKDAY", "CONCAT", "EDATE", "DAYS", "RIGHT", "LEFT", "DATE", "YEAR", "MONTH", "DAY", "LEN"];
 const dayMilliseconds = 86400000;
 
 function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
@@ -17,11 +17,28 @@ function formatFormulaNumber(value) {
   return stable.toFixed(10).replace(/\.0+$/u, "").replace(/(\.[0-9]*?)0+$/u, "$1");
 }
 
+function formatFormulaValue(value) {
+  if (typeof value === "number") return formatFormulaNumber(value);
+  if (typeof value !== "string" || value.length > 512 || value.startsWith("#") ||
+      /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) throw formulaError("#LIMIT!");
+  return value;
+}
+
 function tokenize(source) {
   const tokens = []; let index = 1;
   while (index < source.length) {
     const rest = source.slice(index); const space = /^\s+/u.exec(rest);
     if (space) { index += space[0].length; continue; }
+    if (rest[0] === '"') {
+      let value = "", offset = 1, closed = false;
+      while (offset < rest.length) {
+        if (rest[offset] !== '"') { value += rest[offset]; offset += 1; continue; }
+        if (rest[offset + 1] === '"') { value += '"'; offset += 2; continue; }
+        offset += 1; closed = true; break;
+      }
+      if (!closed || value.length > 512 || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) throw formulaError("#WERT!");
+      tokens.push({ type: "string", value }); index += offset; continue;
+    }
     const number = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?/u.exec(rest);
     if (number) { tokens.push({ type: "number", value: Number(number[0]) }); index += number[0].length; continue; }
     if (rest.startsWith("#BEZUG!")) { tokens.push({ type: "error", value: "#BEZUG!" }); index += 7; continue; }
@@ -55,6 +72,12 @@ function parseFormula(source, context) {
     if (!Number.isFinite(value) || Math.abs(value) > 1e15) throw formulaError("#LIMIT!");
     return value;
   };
+  const numeric = (value) => {
+    if (value === "") return 0;
+    if (typeof value !== "number") throw formulaError("#WERT!");
+    return bounded(value);
+  };
+  const textual = (value) => typeof value === "number" ? formatFormulaNumber(value) : value;
   const rounded = (value, digits) => {
     if (!Number.isInteger(digits) || digits < -10 || digits > 10) throw formulaError("#WERT!");
     const factor = 10 ** Math.abs(digits), scaled = digits >= 0 ? value * factor : value / factor;
@@ -75,6 +98,23 @@ function parseFormula(source, context) {
     if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) throw formulaError("#WERT!");
     return part === "YEAR" ? date.getUTCFullYear() : part === "MONTH" ? date.getUTCMonth() + 1 : date.getUTCDate();
   };
+  const checkedDate = (serial) => {
+    if (!Number.isInteger(serial)) throw formulaError("#WERT!");
+    const date = new Date(serial * dayMilliseconds);
+    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) {
+      throw formulaError("#WERT!");
+    }
+    return date;
+  };
+  const shiftedDate = (serial, months, endOfMonth) => {
+    const original = checkedDate(serial);
+    if (!Number.isInteger(months) || Math.abs(months) > 120000) throw formulaError("#WERT!");
+    const total = original.getUTCFullYear() * 12 + original.getUTCMonth() + months;
+    const year = Math.floor(total / 12), month = total - year * 12;
+    if (year < 1900 || year > 9999) throw formulaError("#WERT!");
+    const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    return dateSerial(year, month + 1, endOfMonth ? last : Math.min(original.getUTCDate(), last));
+  };
   const rangeArgument = (active = true) => {
     if (peek().type === "ref" && tokens[position + 1]?.type === ":") {
       const from = take("ref").value; take(":"); const to = take("ref").value;
@@ -88,13 +128,14 @@ function parseFormula(source, context) {
   const primary = (active = true) => {
     if (peek().type === "error") { const code = take("error").value; if (active) throw formulaError(code); return 0; }
     if (peek().type === "number") { const value = take("number").value; return active ? value : 0; }
+    if (peek().type === "string") { const value = take("string").value; return active ? value : ""; }
     if (peek().type === "ref") { const reference = take("ref").value; return active ? context.value(reference) : 0; }
     if (peek().type === "named") { const name = take("named").value; return active ? context.namedValue(name) : 0; }
     if (peek().type === "(") { take("("); const value = expression(active); take(")"); return value; }
     if (peek().type === "name") {
       const name = take("name").value; take("(");
       if (name === "IF") {
-        const condition = expression(active); take(",");
+        const condition = numeric(expression(active)); take(",");
         const truthy = expression(active && condition !== 0); take(",");
         const falsy = expression(active && condition === 0); take(")");
         return active ? (condition !== 0 ? truthy : falsy) : 0;
@@ -120,8 +161,9 @@ function parseFormula(source, context) {
         const matches = tested.flatMap((value, index) => value === criterion ? [returned[index]] : []);
         if (name === "COUNTIF") return matches.length;
         if (!matches.length && name === "AVERAGEIF") throw formulaError("#DIV/0!");
-        return name === "SUMIF" ? matches.reduce((total, value) => total + value, 0) :
-          matches.reduce((total, value) => total + value, 0) / matches.length;
+        const numbers = matches.map(numeric);
+        return name === "SUMIF" ? numbers.reduce((total, value) => total + value, 0) :
+          numbers.reduce((total, value) => total + value, 0) / numbers.length;
       }
       if (["SUMIFS", "COUNTIFS", "AVERAGEIFS"].includes(name)) {
         let returned = null;
@@ -143,7 +185,7 @@ function parseFormula(source, context) {
           .filter((index) => criteria.every((entry) => entry.tested[index] === entry.criterion));
         if (name === "COUNTIFS") return matches.length;
         if (!matches.length && name === "AVERAGEIFS") throw formulaError("#DIV/0!");
-        const values = matches.map((index) => returned[index]);
+        const values = matches.map((index) => numeric(returned[index]));
         return name === "SUMIFS" ? values.reduce((total, value) => total + value, 0) :
           values.reduce((total, value) => total + value, 0) / values.length;
       }
@@ -160,41 +202,56 @@ function parseFormula(source, context) {
       take(")");
       if (!values.length || values.length > 4000) throw formulaError("#LIMIT!");
       if (!active) return 0;
-      if (name === "SUM") return values.reduce((total, value) => total + value, 0);
-      if (name === "AVERAGE") return values.reduce((total, value) => total + value, 0) / values.length;
-      if (name === "MIN") return Math.min(...values);
-      if (name === "MAX") return Math.max(...values);
-      if (name === "COUNT") return values.length;
-      if (name === "PRODUCT") return bounded(values.reduce((total, value) => total * value, 1));
-      if (name === "MEDIAN") { const sorted = [...values].sort((left, right) => left - right), middle = Math.floor(sorted.length / 2);
+      if (name === "CONCAT") return formatFormulaValue(values.map(textual).join(""));
+      if (["LEFT", "RIGHT"].includes(name) && [1, 2].includes(values.length)) {
+        const characters = [...textual(values[0])], count = values.length === 2 ? numeric(values[1]) : 1;
+        if (!Number.isInteger(count) || count < 0 || count > 512) throw formulaError("#WERT!");
+        return name === "LEFT" ? characters.slice(0, count).join("") : characters.slice(Math.max(0, characters.length - count)).join("");
+      }
+      if (name === "LEN" && values.length === 1) return [...textual(values[0])].length;
+      const numbers = values.map(numeric);
+      if (name === "SUM") return numbers.reduce((total, value) => total + value, 0);
+      if (name === "AVERAGE") return numbers.reduce((total, value) => total + value, 0) / numbers.length;
+      if (name === "MIN") return Math.min(...numbers);
+      if (name === "MAX") return Math.max(...numbers);
+      if (name === "COUNT") return numbers.length;
+      if (name === "PRODUCT") return bounded(numbers.reduce((total, value) => total * value, 1));
+      if (name === "MEDIAN") { const sorted = [...numbers].sort((left, right) => left - right), middle = Math.floor(sorted.length / 2);
         return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
-      if (name === "AND") return values.every((value) => value !== 0) ? 1 : 0;
-      if (name === "OR") return values.some((value) => value !== 0) ? 1 : 0;
-      if (name === "NOT" && values.length === 1) return values[0] === 0 ? 1 : 0;
-      if (name === "ABS" && values.length === 1) return Math.abs(values[0]);
-      if (name === "ROUND" && values.length === 2) return rounded(values[0], values[1]);
-      if (name === "POWER" && values.length === 2) { const value = values[0] ** values[1];
+      if (name === "AND") return numbers.every((value) => value !== 0) ? 1 : 0;
+      if (name === "OR") return numbers.some((value) => value !== 0) ? 1 : 0;
+      if (name === "NOT" && numbers.length === 1) return numbers[0] === 0 ? 1 : 0;
+      if (name === "ABS" && numbers.length === 1) return Math.abs(numbers[0]);
+      if (name === "ROUND" && numbers.length === 2) return rounded(numbers[0], numbers[1]);
+      if (name === "POWER" && numbers.length === 2) { const value = numbers[0] ** numbers[1];
         if (Number.isNaN(value)) throw formulaError("#WERT!"); return bounded(value); }
-      if (name === "SQRT" && values.length === 1 && values[0] >= 0) return Math.sqrt(values[0]);
-      if (name === "DATE" && values.length === 3) return dateSerial(values[0], values[1], values[2]);
-      if (["YEAR", "MONTH", "DAY"].includes(name) && values.length === 1) return datePart(values[0], name);
+      if (name === "SQRT" && numbers.length === 1 && numbers[0] >= 0) return Math.sqrt(numbers[0]);
+      if (name === "DATE" && numbers.length === 3) return dateSerial(numbers[0], numbers[1], numbers[2]);
+      if (["YEAR", "MONTH", "DAY"].includes(name) && numbers.length === 1) return datePart(numbers[0], name);
+      if (name === "EDATE" && numbers.length === 2) return shiftedDate(numbers[0], numbers[1], false);
+      if (name === "EOMONTH" && numbers.length === 2) return shiftedDate(numbers[0], numbers[1], true);
+      if (name === "DAYS" && numbers.length === 2) { checkedDate(numbers[0]); checkedDate(numbers[1]); return numbers[0] - numbers[1]; }
+      if (name === "WEEKDAY" && numbers.length === 1) return (checkedDate(numbers[0]).getUTCDay() + 6) % 7 + 1;
     }
     throw formulaError("#WERT!");
   };
-  const unary = (active = true) => peek().type === "+" ? (take("+"), unary(active)) :
-    peek().type === "-" ? (take("-"), -unary(active)) : primary(active);
+  const unary = (active = true) => peek().type === "+" ? (take("+"), numeric(unary(active))) :
+    peek().type === "-" ? (take("-"), -numeric(unary(active))) : primary(active);
   const term = (active = true) => { let value = unary(active); while (["*", "/"].includes(peek().type)) {
-    const operator = take(peek().type).type; const right = unary(active);
+    const operator = take(peek().type).type; const right = numeric(unary(active)); value = numeric(value);
     if (active && operator === "/" && right === 0) throw formulaError("#DIV/0!");
     value = active ? (operator === "*" ? value * right : value / right) : 0;
   } return value; };
   const additive = (active = true) => { let value = term(active); while (["+", "-"].includes(peek().type)) {
-    const operator = take(peek().type).type; const right = term(active); value = operator === "+" ? value + right : value - right;
+    const operator = take(peek().type).type; const right = numeric(term(active)); value = numeric(value);
+    value = operator === "+" ? value + right : value - right;
   } return value; };
   const expression = (active = true) => { const left = additive(active); if (peek().type !== "compare") return left;
     const operator = take("compare").value, right = additive(active); if (!active) return 0;
-    return ({ "=": left === right, "<>": left !== right, "<": left < right, "<=": left <= right,
-      ">": left > right, ">=": left >= right })[operator] ? 1 : 0; };
+    if (operator === "=") return left === right ? 1 : 0; if (operator === "<>") return left !== right ? 1 : 0;
+    const leftNumber = numeric(left), rightNumber = numeric(right);
+    return ({ "<": leftNumber < rightNumber, "<=": leftNumber <= rightNumber,
+      ">": leftNumber > rightNumber, ">=": leftNumber >= rightNumber })[operator] ? 1 : 0; };
   const value = expression(); if (peek().type !== "end") throw formulaError("#WERT!"); return value;
 }
 
@@ -254,18 +311,18 @@ function calculateOfficeFormulaTables(tables, definitions = []) {
   }
   const states = new Map(), memo = new Map(), errors = new Map(); let formulaCount = 0;
   const key = (table, row, column) => `${table.key}:${row}:${column}`;
-  const numericValue = (table, row, column) => {
+  const scalarValue = (table, row, column) => {
     const cell = table.cells[row][column];
     if (cell.attrs?.formula != null) return evaluate(table, row, column);
-    const text = officeTableCellText(cell); if (!text) return 0;
-    if (!numericText.test(text)) throw formulaError("#WERT!");
+    const text = officeTableCellText(cell); if (!text) return "";
+    if (!numericText.test(text)) return text;
     const number = Number(text.replace(",", ".")); if (!Number.isFinite(number)) throw formulaError("#WERT!"); return number;
   };
   const valuesFor = (definition) => {
     const values = [];
     for (let row = definition.first.row; row <= definition.last.row; row += 1) {
       for (let column = definition.first.column; column <= definition.last.column; column += 1) {
-        values.push(numericValue(definition.table, row, column));
+        values.push(scalarValue(definition.table, row, column));
       }
     }
     return values;
@@ -275,16 +332,16 @@ function calculateOfficeFormulaTables(tables, definitions = []) {
     if (errors.has(id)) throw formulaError(errors.get(id));
     if (states.get(id) === "visiting") throw formulaError("#ZYKLUS!"); states.set(id, "visiting");
     const source = table.cells[row][column].attrs?.formula;
-    if (source == null) return numericValue(table, row, column);
+    if (source == null) return scalarValue(table, row, column);
     const context = {
       value(reference) { const point = referenceCoordinates(reference, table.info.rows, table.info.columns);
-        return numericValue(table, point.row, point.column); },
+        return scalarValue(table, point.row, point.column); },
       range(from, to) {
         const first = referenceCoordinates(from, table.info.rows, table.info.columns);
         const last = referenceCoordinates(to, table.info.rows, table.info.columns), values = [];
         for (let rowIndex = Math.min(first.row, last.row); rowIndex <= Math.max(first.row, last.row); rowIndex += 1) {
           for (let columnIndex = Math.min(first.column, last.column); columnIndex <= Math.max(first.column, last.column); columnIndex += 1) {
-            values.push(numericValue(table, rowIndex, columnIndex));
+            values.push(scalarValue(table, rowIndex, columnIndex));
           }
         }
         return values;
@@ -305,10 +362,12 @@ function calculateOfficeFormulaTables(tables, definitions = []) {
       const cell = table.cells[row][column]; if (cell.attrs?.formula == null) continue;
       formulaCount += 1; if (formulaCount > 1000 || cell.type !== "tableCell") throw new TypeError("Invalid Office table formula");
       let formulaResult;
-      try { formulaResult = formatFormulaNumber(evaluate(table, row, column)); }
+      try { formulaResult = formatFormulaValue(evaluate(table, row, column)); }
       catch (error) { formulaResult = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!"; }
-      cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula: cell.attrs.formula, formulaResult });
-      cell.content = [{ type: "paragraph", content: [{ type: "text", text: formulaResult }] }];
+      const attrs = { ...cell.attrs, formula: cell.attrs.formula, formulaResult };
+      if (!numericText.test(formulaResult)) delete attrs.numberFormat;
+      cell.attrs = officeTableCellAttributes(attrs);
+      cell.content = [{ type: "paragraph", ...(formulaResult ? { content: [{ type: "text", text: formulaResult }] } : {}) }];
     }
   }
 }
@@ -374,9 +433,24 @@ export function officeTableFromTSV(text) {
   return recalculateOfficeTableFormulas(table);
 }
 
+function replaceFormulaReferences(source, replacer) {
+  let result = "", start = 0, index = 0;
+  while (index < source.length) {
+    if (source[index] !== '"') { index += 1; continue; }
+    result += source.slice(start, index).replace(formulaReferencePattern, replacer); const literalStart = index; index += 1;
+    while (index < source.length) {
+      if (source[index] !== '"') { index += 1; continue; }
+      if (source[index + 1] === '"') { index += 2; continue; }
+      index += 1; break;
+    }
+    result += source.slice(literalStart, index); start = index;
+  }
+  return result + source.slice(start).replace(formulaReferencePattern, replacer);
+}
+
 function shiftedFormula(source, rowOffset, columnOffset) {
   const normalized = officeTableFormulaSource(source);
-  return normalized.replace(formulaReferencePattern, (_match, columnAnchor, letter, rowAnchor, rowText) => {
+  return replaceFormulaReferences(normalized, (_match, columnAnchor, letter, rowAnchor, rowText) => {
     const column = letter.charCodeAt(0) - 65 + (columnAnchor ? 0 : columnOffset);
     const row = Number(rowText) - 1 + (rowAnchor ? 0 : rowOffset);
     if (column < 0 || column >= 20 || row < 0 || row >= 200) throw new TypeError("Shifted Office table formula is out of bounds");
@@ -518,7 +592,7 @@ export function remapOfficeTableFormulas(original, transformed, options) {
   for (let row = 0; row < after.rows; row += 1) for (let column = 0; column < after.columns; column += 1) {
     const cell = result.content[row].content[column]; if (cell.attrs?.formula == null) continue;
     const rowEntry = rows[row], columnEntry = columns[column];
-    const formula = officeTableFormulaSource(cell.attrs.formula).replace(formulaReferencePattern,
+    const formula = replaceFormulaReferences(officeTableFormulaSource(cell.attrs.formula),
       (_match, columnAnchor, letter, rowAnchor, rowText) => {
         const sourceRow = Number(rowText) - 1, sourceColumn = letter.charCodeAt(0) - 65;
         const canonicalRow = canonicalRows.get(sourceRow), canonicalColumn = canonicalColumns.get(sourceColumn);

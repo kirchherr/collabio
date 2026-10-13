@@ -1,5 +1,6 @@
 const tableIdentifier = /^table-[a-f0-9]{24}$/u;
 const forbiddenCaption = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
+const forbiddenFormulaText = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u;
 
 export const OFFICE_TABLE_CAPTION_MAX = 1000;
 export const OFFICE_NUMBERED_TABLE_LIMIT = 100;
@@ -16,11 +17,30 @@ export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"];
 const officeTableFormulaFunctions = ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "SUMIF", "COUNTIF", "AVERAGEIF",
   "SUMIFS", "COUNTIFS", "AVERAGEIFS", "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER", "SQRT", "PRODUCT",
-  "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
+  "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY", "EDATE", "EOMONTH", "DAYS", "WEEKDAY", "CONCAT",
+  "LEFT", "RIGHT", "LEN"];
 
-export function officeTableFormulaSource(value) {
-  if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
-  const source = value.trim().replaceAll(";", ",")
+function formulaSegments(value, outside) {
+  let result = "", start = 0, index = 0;
+  while (index < value.length) {
+    if (value[index] !== '"') { index += 1; continue; }
+    result += outside(value.slice(start, index)); const literalStart = index; index += 1;
+    let closed = false;
+    while (index < value.length) {
+      if (value[index] !== '"') { index += 1; continue; }
+      if (value[index + 1] === '"') { index += 2; continue; }
+      index += 1; closed = true; break;
+    }
+    if (!closed) throw new TypeError("Invalid Office table formula");
+    const literal = value.slice(literalStart + 1, index - 1).replaceAll('""', '"');
+    if (forbiddenFormulaText.test(literal)) throw new TypeError("Invalid Office table formula");
+    result += value.slice(literalStart, index); start = index;
+  }
+  return result + outside(value.slice(start));
+}
+
+function normalizeFormulaOutside(value) {
+  return value.replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
     .replace(/\bSUMMEWENNS\b/giu, "SUMIFS").replace(/\bZÄHLENWENNS\b/giu, "COUNTIFS")
     .replace(/\bMITTELWERTWENNS\b/giu, "AVERAGEIFS")
@@ -30,12 +50,23 @@ export function officeTableFormulaSource(value) {
     .replace(/\bNICHT\b/giu, "NOT").replace(/\bRUNDEN\b/giu, "ROUND")
     .replace(/\bPOTENZ\b/giu, "POWER").replace(/\bWURZEL\b/giu, "SQRT")
     .replace(/\bPRODUKT\b/giu, "PRODUCT").replace(/\bXVERWEIS\b/giu, "XLOOKUP")
+    .replace(/\bMONATSENDE\b/giu, "EOMONTH").replace(/\bEDATUM\b/giu, "EDATE")
+    .replace(/\bWOCHENTAG\b/giu, "WEEKDAY").replace(/\bTAGE\b/giu, "DAYS")
+    .replace(/\bVERKETTEN\b/giu, "CONCAT").replace(/\bLINKS\b/giu, "LEFT")
+    .replace(/\bRECHTS\b/giu, "RIGHT").replace(/\bLÄNGE\b/giu, "LEN")
     .replace(/\bDATUM\b/giu, "DATE").replace(/\bJAHR\b/giu, "YEAR")
     .replace(/\bMONAT\b/giu, "MONTH").replace(/\bTAG\b/giu, "DAY").toUpperCase();
-  const identifiers = source.replaceAll("#BEZUG!", "");
+}
+
+export function officeTableFormulaSource(value) {
+  if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
+  const source = formulaSegments(value.trim(), normalizeFormulaOutside);
+  const identifiers = formulaSegments(source, (part) => part.replaceAll("#BEZUG!", ""))
+    .replace(/"(?:[^"]|"")*"/gu, "");
   const unmatchedAnchors = identifiers.replace(/\$?[A-T]\$?[1-9][0-9]{0,2}/gu, "");
   if (!source.startsWith("=") || source.length < 2 || source.length > 256 ||
-      !/^=[A-Z0-9_$#\-+*/().,:! <>=]+$/u.test(source) || /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
+      formulaSegments(source, (part) => /^[A-Z0-9_$#\-+*/().,:! <>=]*$/u.test(part) ? part : "\u0000").includes("\u0000") ||
+      /[#!]/u.test(identifiers) || unmatchedAnchors.includes("$")) {
     throw new TypeError("Invalid Office table formula");
   }
   for (const match of identifiers.matchAll(/([A-Z][A-Z0-9_]{0,31})\s*\(/gu)) {
@@ -53,8 +84,9 @@ export function officeTableFormulaSource(value) {
 }
 
 export function officeTableFormulaResult(value) {
-  if (typeof value !== "string" || value.length < 1 || value.length > 64 ||
-      (!OFFICE_TABLE_FORMULA_ERRORS.includes(value) && !/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?$/u.test(value))) {
+  const numeric = typeof value === "string" && /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?$/u.test(value);
+  const text = typeof value === "string" && value.length <= 512 && !value.startsWith("#") && !forbiddenFormulaText.test(value);
+  if (typeof value !== "string" || (!OFFICE_TABLE_FORMULA_ERRORS.includes(value) && !numeric && !text)) {
     throw new TypeError("Invalid Office table formula result");
   }
   return value;
