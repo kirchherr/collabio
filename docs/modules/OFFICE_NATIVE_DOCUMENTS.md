@@ -1,9 +1,38 @@
 # Native Office Documents
 
-Status: Roadmap 252–815 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 815 / PLANS 676 conditional calculations and linked-chart editing
-Module: `office_documents` / version 0.9.10
-Decisions: ADR-0079 through ADR-0199; current movement: `ARCHITECTURE_DECISIONS/ADR-0199-native-office-conditional-aggregation-presentation-and-chart-editing.md`
+Status: Roadmap 252–823 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 823 / PLANS 684 multiple-criteria aggregation
+Module: `office_documents` / version 0.9.11
+Decisions: ADR-0079 through ADR-0200; current movement: `ARCHITECTURE_DECISIONS/ADR-0200-native-office-multiple-criteria-aggregation.md`
+
+## Multiple-criteria aggregation (Roadmap 816–823)
+
+Native Office supports canonical `SUMIFS`, `COUNTIFS` and `AVERAGEIFS` plus the normalized German aliases
+`SUMMEWENNS`, `ZÄHLENWENNS` and `MITTELWERTWENNS`. Sum and average take one result range; all three functions require
+one through ten criteria-range/exact-numeric-criterion pairs. Every range must have the same shape-flattened size and
+remains bounded to 4,000 values.
+
+Local A1 rectangles and document-wide named ranges share the existing dependency graph, memoization, cross-table
+cycle detection and structural remapping. Browser and server calculate independently. The server resolves every table
+and named definition and rejects invalid arity, missing or unequal ranges, stale results and forged immutable content
+before save.
+
+Focused Office schema/API tests pass 87/87, and all 19 formula-model cases pass. The responsive saved-version workflow
+passes 2/2 in desktop and mobile: German formulas calculate `50`, `2` and `25`, persist under canonical English names
+and reload unchanged. Screenshot hashes are
+`sha256:8a36b04a48ff042dd9257a648a3ce45e742d8c28875febeb8788cfdd2b84d226` and
+`sha256:778a604820c5b4880b8f300100b9ed03b3d6ed97e312a6d5c172693cbf89fb90`. The workflow has no page overflow.
+
+Complete quality passes Ruff, finds 982 format-conformant files, passes Mypy over 639 source files and reaches 100
+percent Pytest with only the known Starlette/AnyIO warning. Quality, Work-E2E and review API image IDs are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:6b09c8ac9543c657288fe60611b1280e1be3bd46b220b124f2ff24d15215d845` and
+`sha256:112dcc1d041649fa104ef9c237321dadae3b914410ac1ecc0ec77fdcb2484231`. The review target is
+`http://192.168.0.108:42880/office?review=multiple-criteria-adr0200` with `office.css?v=13` and `editor.js?v=12`.
+
+No migration, external calculation engine, network source or new durable state is introduced. Text, wildcard and
+comparison-string criteria stay closed. Richer deterministic date/text functions and chart-axis presentation remain
+the next separate Office loops.
 
 ## Versioned RAG document answers (Roadmap 784–791)
 

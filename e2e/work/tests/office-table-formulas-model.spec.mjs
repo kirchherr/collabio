@@ -83,6 +83,29 @@ test("Office conditional aggregates use exact numeric criteria across local and 
     .toBe("=SUMIF(KEYS,1,VALUES)+COUNTIF(KEYS,2)+AVERAGEIF(KEYS,1,VALUES)");
 });
 
+test("Office multiple-criteria aggregates align local and named ranges exactly", () => {
+  const source = officeTableFromTSV("1\t1\t10\n1\t2\t20\n2\t1\t30\n1\t1\t40");
+  source.attrs = { tableId: `table-${"e".repeat(24)}`, caption: "Criteria" };
+  const result = officeTableFromTSV("0\t0\t0"); result.attrs = { tableId: `table-${"f".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUMIFS(VALUES,REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  result.content[0].content[1].attrs = { formula: "=COUNTIFS(REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  result.content[0].content[2].attrs = { formula: "=AVERAGEIFS(VALUES,REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "REGIONS", tableId: source.attrs.tableId, range: "A1:A4" },
+    { name: "QUARTERS", tableId: source.attrs.tableId, range: "B1:B4" },
+    { name: "VALUES", tableId: source.attrs.tableId, range: "C1:C4" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map((cell) => cell.attrs.formulaResult)).toEqual(["50", "2", "25"]);
+  expect(officeTableFormulaSource("=SUMMEWENNS(VALUES;REGIONS;1;QUARTERS;1)+" +
+    "ZÄHLENWENNS(REGIONS;1;QUARTERS;1)+MITTELWERTWENNS(VALUES;REGIONS;1;QUARTERS;1)"))
+    .toBe("=SUMIFS(VALUES,REGIONS,1,QUARTERS,1)+COUNTIFS(REGIONS,1,QUARTERS,1)+" +
+      "AVERAGEIFS(VALUES,REGIONS,1,QUARTERS,1)");
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t1\n2\t2\n3\t0"),
+    { row: 2, column: 1, formula: "=SUMIFS(A1:A3,B1:B2,1)" }).content[2].content[1])).toBe("#WERT!");
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t1\n2\t2\n3\t0"),
+    { row: 2, column: 1, formula: "=AVERAGEIFS(A1:A2,A1:A2,9)" }).content[2].content[1])).toBe("#DIV/0!");
+});
+
 test("Office table presentation formats keep canonical numeric values separate", () => {
   expect(officeTableDisplayValue("1234.5", "currency-eur")).toBe("1.234,50 €");
   expect(officeTableDisplayValue("0.125", "percent-2")).toBe("12,50 %");

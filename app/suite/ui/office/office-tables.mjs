@@ -15,12 +15,15 @@ export const OFFICE_TABLE_ALIGNMENTS = ["center", "right"];
 export const OFFICE_TABLE_COLUMN_LAYOUTS = ["first-wide", "first-narrow"];
 export const OFFICE_TABLE_FORMULA_ERRORS = ["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"];
 const officeTableFormulaFunctions = ["SUM", "AVERAGE", "MIN", "MAX", "COUNT", "SUMIF", "COUNTIF", "AVERAGEIF",
-  "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER", "SQRT", "PRODUCT", "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
+  "SUMIFS", "COUNTIFS", "AVERAGEIFS", "IF", "AND", "OR", "NOT", "ROUND", "ABS", "POWER", "SQRT", "PRODUCT",
+  "MEDIAN", "XLOOKUP", "DATE", "YEAR", "MONTH", "DAY"];
 
 export function officeTableFormulaSource(value) {
   if (typeof value !== "string") throw new TypeError("Invalid Office table formula");
   const source = value.trim().replaceAll(";", ",")
     .replace(/\bSUMME\b/giu, "SUM").replace(/\bMITTELWERT\b/giu, "AVERAGE")
+    .replace(/\bSUMMEWENNS\b/giu, "SUMIFS").replace(/\bZÄHLENWENNS\b/giu, "COUNTIFS")
+    .replace(/\bMITTELWERTWENNS\b/giu, "AVERAGEIFS")
     .replace(/\bSUMMEWENN\b/giu, "SUMIF").replace(/\bZÄHLENWENN\b/giu, "COUNTIF")
     .replace(/\bMITTELWERTWENN\b/giu, "AVERAGEIF").replace(/\bANZAHL\b/giu, "COUNT").replace(/\bWENN\b/giu, "IF")
     .replace(/\bUND\b/giu, "AND").replace(/\bODER\b/giu, "OR")

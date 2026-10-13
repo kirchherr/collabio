@@ -4,8 +4,9 @@ const formulaErrors = new Set(["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIM
 const numericText = /^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u;
 const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
 const namedRangePattern = /^[A-Z][A-Z0-9_]{0,31}$/u;
-const formulaFunctions = ["AVERAGEIF", "XLOOKUP", "COUNTIF", "PRODUCT", "AVERAGE", "MEDIAN", "SUMIF", "POWER",
-  "ROUND", "COUNT", "SQRT", "SUM", "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS", "DATE", "YEAR", "MONTH", "DAY"];
+const formulaFunctions = ["AVERAGEIFS", "AVERAGEIF", "COUNTIFS", "XLOOKUP", "COUNTIF", "PRODUCT", "AVERAGE", "MEDIAN",
+  "SUMIFS", "SUMIF", "POWER", "ROUND", "COUNT", "SQRT", "SUM", "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS",
+  "DATE", "YEAR", "MONTH", "DAY"];
 const dayMilliseconds = 86400000;
 
 function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
@@ -121,6 +122,30 @@ function parseFormula(source, context) {
         if (!matches.length && name === "AVERAGEIF") throw formulaError("#DIV/0!");
         return name === "SUMIF" ? matches.reduce((total, value) => total + value, 0) :
           matches.reduce((total, value) => total + value, 0) / matches.length;
+      }
+      if (["SUMIFS", "COUNTIFS", "AVERAGEIFS"].includes(name)) {
+        let returned = null;
+        if (name !== "COUNTIFS") { returned = rangeArgument(active); take(","); }
+        const criteria = [];
+        while (true) {
+          const tested = rangeArgument(active); take(","); const criterion = expression(active);
+          criteria.push({ tested, criterion });
+          if (peek().type !== ",") break; take(",");
+        }
+        take(")");
+        if (!active) return 0;
+        const length = returned?.length ?? criteria[0]?.tested.length;
+        if (!criteria.length || criteria.length > 10 || !length || length > 4000 ||
+            (returned != null && returned.length !== length) || criteria.some((entry) => entry.tested.length !== length)) {
+          throw formulaError("#WERT!");
+        }
+        const matches = Array.from({ length }, (_, index) => index)
+          .filter((index) => criteria.every((entry) => entry.tested[index] === entry.criterion));
+        if (name === "COUNTIFS") return matches.length;
+        if (!matches.length && name === "AVERAGEIFS") throw formulaError("#DIV/0!");
+        const values = matches.map((index) => returned[index]);
+        return name === "SUMIFS" ? values.reduce((total, value) => total + value, 0) :
+          values.reduce((total, value) => total + value, 0) / values.length;
       }
       const values = [];
       if (peek().type !== ")") {

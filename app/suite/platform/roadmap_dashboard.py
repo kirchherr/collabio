@@ -1005,6 +1005,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-table-named-ranges-responsive.spec.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0199-native-office-conditional-aggregation-presentation-and-chart-editing.md",
                         "e2e/work/tests/office-conditional-chart-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0200-native-office-multiple-criteria-aggregation.md",
+                        "e2e/work/tests/office-multiple-criteria-responsive.spec.mjs",
                     ),
                     api_routes=(
                         "/v1/office/documents",

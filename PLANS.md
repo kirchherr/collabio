@@ -2058,15 +2058,39 @@ orientation and snapshots on the server. Reject free formats, stale/forged value
 676. [x] Prove the block with focused schema/API tests, 22 formula/chart model cases, a desktop/mobile saved-version
 workflow, visual review and the complete repository quality gate. Add no migration, network source or external engine.
 
+677. [x] Add exact numeric `SUMIFS`/`SUMMEWENNS`, `COUNTIFS`/`ZÄHLENWENNS` and
+`AVERAGEIFS`/`MITTELWERTWENNS` under ADR-0200 while preserving canonical English persistence.
+
+678. [x] Require one through ten criteria-range/value pairs, equal result and criteria dimensions and the existing
+4,000-value bound. Reject missing pairs, surplus arguments and mismatched ranges deterministically.
+
+679. [x] Resolve local and document-wide named ranges inside the existing dependency graph with shared memoization,
+cross-table references, cycle detection and explicit reference, value, division and resource-limit errors.
+
+680. [x] Preserve formula and named-range structural remapping for row/column insert, delete, move and duplication so
+every criteria pair continues to follow the same logical source cells or fails closed when invalidated.
+
+681. [x] Extend the accessible formula help and German normalization without adding free format strings, external
+workbook links, volatile values, macros, network sources or automatic actions.
+
+682. [x] Independently parse and recalculate every multiple-criteria result on the server before confirmed version
+save. Reject unknown functions, invalid dimensions and stale or forged results.
+
+683. [x] Prove German authoring, canonical persistence, immutable save/reload and responsive desktop/mobile layout in
+one browser workflow, with separately reviewed screenshots and no viewport overflow.
+
+684. [x] Close the block with focused schema/API tests, 19 formula-model cases and the complete repository quality
+gate. Add no migration, external engine, production admission or new durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 815 / PLANS 676. Exact numeric conditional aggregation, fixed canonical
-  number/date presentation and row- or column-oriented linked-chart editing now build on document-wide named ranges.
-  Continue Office with multiple-criteria aggregation, richer date/text formulas and chart-axis/presentation controls as
-  separate coherent loops before deferred CRM onboarding. Preserve all earlier AI, voice, interchange, collaboration,
+- Native Office is complete through Roadmap 823 / PLANS 684. Exact numeric multiple-criteria aggregation now builds on
+  conditional aggregation and document-wide named ranges. Continue Office with richer date/text formulas and then
+  chart-axis/presentation controls as separate coherent loops before deferred CRM onboarding. Preserve all earlier AI,
+  voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,
   public links, external guests, live collaboration and DOCX interchange remain closed until their separate gates pass.

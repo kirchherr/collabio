@@ -447,6 +447,62 @@ def test_native_document_validates_conditional_aggregates_and_number_formats() -
         validate_office_document(invalid_format)
 
 
+def test_native_document_validates_multiple_criteria_aggregates() -> None:
+    def cell(text: str, formula: str | None = None) -> dict[str, Any]:
+        return {
+            "type": "tableCell",
+            **({"attrs": {"formula": formula, "formulaResult": text}} if formula else {}),
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": text}]}],
+        }
+
+    source_id = "table-" + "e" * 24
+    source: dict[str, Any] = {
+        "type": "table",
+        "attrs": {"tableId": source_id, "caption": "Criteria"},
+        "content": [
+            {"type": "tableRow", "content": [cell("1"), cell("1"), cell("10")]},
+            {"type": "tableRow", "content": [cell("1"), cell("2"), cell("20")]},
+            {"type": "tableRow", "content": [cell("2"), cell("1"), cell("30")]},
+            {"type": "tableRow", "content": [cell("1"), cell("1"), cell("40")]},
+        ],
+    }
+    result: dict[str, Any] = {
+        "type": "table",
+        "content": [
+            {
+                "type": "tableRow",
+                "content": [
+                    cell("50", "=SUMIFS(VALUES,REGIONS,1,QUARTERS,1)"),
+                    cell("2", "=COUNTIFS(REGIONS,1,QUARTERS,1)"),
+                    cell("25", "=AVERAGEIFS(VALUES,REGIONS,1,QUARTERS,1)"),
+                ],
+            }
+        ],
+    }
+    document: dict[str, Any] = {
+        "type": "doc",
+        "attrs": {
+            "tableRanges": [
+                {"name": "REGIONS", "tableId": source_id, "range": "A1:A4"},
+                {"name": "QUARTERS", "tableId": source_id, "range": "B1:B4"},
+                {"name": "VALUES", "tableId": source_id, "range": "C1:C4"},
+                {"name": "SHORT", "tableId": source_id, "range": "B1:B2"},
+            ]
+        },
+        "content": [source, result],
+    }
+    assert validate_office_document(document) == document
+    forged = deepcopy(document)
+    forged["content"][1]["content"][0]["content"][0]["attrs"]["formulaResult"] = "51"
+    forged["content"][1]["content"][0]["content"][0]["content"][0]["content"][0]["text"] = "51"
+    with pytest.raises(OfficeDocumentInvalidContentError):
+        validate_office_document(forged)
+
+    invalid_lengths = deepcopy(document)
+    invalid_lengths["content"][1]["content"][0]["content"][0] = cell("#WERT!", "=SUMIFS(VALUES,REGIONS,1,SHORT,1)")
+    assert validate_office_document(invalid_lengths) == invalid_lengths
+
+
 def test_native_linked_chart_must_match_its_numbered_table_range_exactly() -> None:
     def cell(text: str, formula: str | None = None) -> dict[str, Any]:
         return {

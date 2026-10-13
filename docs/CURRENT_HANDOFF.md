@@ -1,6 +1,46 @@
 # Current Project Handoff
 
-Updated: 2026-10-12
+Updated: 2026-10-13
+
+Roadmap 816 through 823 / PLANS 677 through 684 are complete under ADR-0200. Native Office formulas now support exact
+numeric `SUMIFS`/`SUMMEWENNS`, `COUNTIFS`/`ZÄHLENWENNS` and `AVERAGEIFS`/`MITTELWERTWENNS`. Sum and average accept
+one local or named result range; all three functions accept one through ten local or named criteria-range/value pairs.
+Every participating range must contain the same number of values and remains under the existing 4,000-value bound.
+
+The functions run inside the document-wide dependency graph with shared memoization, cross-table references, cycle
+detection and the established explicit errors. German names and semicolons normalize to canonical English formulas.
+The browser recalculates the draft, and the server independently resolves every table and named range and recalculates
+every result before confirmed immutable version save. Invalid arity, missing or unequal ranges and stale or forged
+results fail closed.
+
+Focused Office schema/API tests pass 87/87 and all 19 formula-model cases pass. The saved-version desktop/mobile
+workflow passes 2/2 in 17.6 seconds. It calculates `50`, `2` and `25` from two exact criteria, persists the three German
+formulas under canonical names and reloads the immutable results. Visual review passed without page overflow;
+desktop/mobile screenshot hashes are `sha256:8a36b04a48ff042dd9257a648a3ce45e742d8c28875febeb8788cfdd2b84d226`
+and `sha256:778a604820c5b4880b8f300100b9ed03b3d6ed97e312a6d5c172693cbf89fb90`.
+
+The complete quality gate passes Ruff, finds 982 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:6b09c8ac9543c657288fe60611b1280e1be3bd46b220b124f2ff24d15215d845` and
+`sha256:112dcc1d041649fa104ef9c237321dadae3b914410ac1ecc0ec77fdcb2484231`. Review remains on the isolated runtime at
+`http://192.168.0.108:42880/office?review=multiple-criteria-adr0200` with asset keys `office.css?v=13` and
+`editor.js?v=12`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container and temporary browser-artifact directory are removed. No transient
+quality or browser runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and image decoder
+are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+Diagnostics were limited to test infrastructure and static quality: the first model command lacked the Office modules
+outside the image's test directory and passed unchanged once those modules were mounted read-only; the first browser
+attempt lacked write permission for its new artifact directory and passed unchanged after correcting that directory.
+Focused quality found one formatter change and two Python variable-name collisions. The first complete gate found only
+the previous `editor.js?v=11` shell expectation after the asset key was deliberately bumped to `v=12`; its exact
+assertion was updated, the focused case passed and the repeated complete gate is green. No assertion, bound or timeout
+was weakened.
+
+The next separate Office loop is richer deterministic date/text formulas, followed by chart-axis and presentation
+controls. CRM account onboarding remains deferred by the user's Office-first priority.
 
 Roadmap 808 through 815 / PLANS 669 through 676 are complete under ADR-0199. Native Office formulas now support exact
 numeric `SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` over bounded local or named

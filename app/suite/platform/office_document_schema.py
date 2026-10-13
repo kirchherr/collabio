@@ -202,6 +202,9 @@ _TABLE_FORMULA_NAMES = {
     "SUMIF",
     "COUNTIF",
     "AVERAGEIF",
+    "SUMIFS",
+    "COUNTIFS",
+    "AVERAGEIFS",
     "IF",
     "AND",
     "OR",
@@ -761,6 +764,43 @@ def _valid_document_table_formula_results(document: dict[str, Any], definitions:
                     if not matches and name == "AVERAGEIF":
                         raise _TableFormulaError("#DIV/0!")
                     return sum(matches) if name == "SUMIF" else sum(matches) / len(matches)
+                if name in {"SUMIFS", "COUNTIFS", "AVERAGEIFS"}:
+                    result_range: list[float] | None = None
+                    if name != "COUNTIFS":
+                        result_range = range_argument(active)
+                        take(",")
+                    criteria: list[tuple[list[float], float]] = []
+                    while True:
+                        tested = range_argument(active)
+                        take(",")
+                        criterion = expression(active)
+                        criteria.append((tested, criterion))
+                        if peek() != ",":
+                            break
+                        take(",")
+                    take(")")
+                    if not active:
+                        return 0.0
+                    length = len(result_range) if result_range is not None else len(criteria[0][0]) if criteria else 0
+                    if (
+                        not 1 <= len(criteria) <= 10
+                        or not 1 <= length <= 4000
+                        or (result_range is not None and len(result_range) != length)
+                        or any(len(tested) != length for tested, _ in criteria)
+                    ):
+                        raise _TableFormulaError("#WERT!")
+                    indexes = [
+                        index
+                        for index in range(length)
+                        if all(tested[index] == criterion for tested, criterion in criteria)
+                    ]
+                    if name == "COUNTIFS":
+                        return float(len(indexes))
+                    if not indexes and name == "AVERAGEIFS":
+                        raise _TableFormulaError("#DIV/0!")
+                    assert result_range is not None
+                    matched_values = [result_range[index] for index in indexes]
+                    return sum(matched_values) if name == "SUMIFS" else sum(matched_values) / len(matched_values)
                 values: list[float] = []
                 if peek() != ")":
                     while True:
