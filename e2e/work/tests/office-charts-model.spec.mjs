@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
-import { officeChartAttributes, officeChartBindingMatches, officeChartDataFromDocument, officeChartDescription,
+import { officeChartAttributes, officeChartAxisScale, officeChartBindingMatches, officeChartDataFromDocument, officeChartDescription,
   validateOfficeChartBindings } from "../office-charts.mjs";
 import { officeTableFromTSV, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
@@ -58,6 +58,24 @@ test("Office linked charts can interpret rows as series and retain data-label pr
   expect(officeChartAttributes({ ...attrs, ...data, source, dataLabels: true })).toMatchObject({
     source, dataLabels: true,
   });
+});
+
+test("Office chart axes use deterministic automatic and bounded manual scales", () => {
+  expect(officeChartAxisScale(attrs)).toMatchObject({ minimum: 0, maximum: 200, majorUnit: 50,
+    ticks: [0, 50, 100, 150, 200], gridlines: true, numberFormat: "general" });
+  const axes = { mode: "manual", categoryTitle: "Quartal", valueTitle: "Umsatz", minimum: 100, maximum: 200,
+    majorUnit: 20, gridlines: true, numberFormat: "currency-eur" };
+  const presented = officeChartAttributes({ ...attrs, legendPosition: "right", dataLabels: true, axes });
+  expect(presented).toMatchObject({ legendPosition: "right", dataLabels: true, axes });
+  expect(officeChartAxisScale(presented)).toMatchObject({ minimum: 100, maximum: 200, majorUnit: 20,
+    ticks: [100, 120, 140, 160, 180, 200] });
+  for (const invalid of [
+    { ...attrs, legendPosition: "floating" },
+    { ...attrs, axes: { ...axes, maximum: 160 } },
+    { ...attrs, axes: { ...axes, majorUnit: 30 } },
+    { ...attrs, kind: "pie", series: [{ name: "Share", color: "orange", values: [1, 2, 3, 4] }], axes },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+  expect(officeChartDescription(presented)).toContain("Achsen Quartal / Umsatz");
 });
 
 test("Office chart descriptions and comparisons expose exact data changes", () => {

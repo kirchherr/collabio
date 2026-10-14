@@ -1,6 +1,38 @@
 # Current Project Handoff
 
-Updated: 2026-10-13
+Updated: 2026-10-14
+
+Roadmap 832 through 839 / PLANS 693 through 700 are complete under ADR-0202. Native Office bar and line charts now
+support bounded category and value titles, deterministic automatic or manual value scales, optional major gridlines
+and general, integer, decimal, percent or euro presentation. Automatic scales include zero and use stable 1/2/5
+steps. Manual scales require finite ordered bounds, a positive major unit, at most twelve exact intervals and every
+plotted value inside range. Pie charts reject axes.
+
+Visible legends can be placed at the top, bottom, left or right. Side legends collapse responsively. The browser
+validates the full chart before applying it, and the server independently validates the same closed schema and range
+rules before immutable version save. Linked-table recalculation, chart editing, save and reload preserve axes, format,
+gridlines and legend placement. The accessible description and hidden data table remain available.
+
+Focused Office schema/API tests pass 88/88 and all five chart-model cases pass. The desktop/mobile saved-version
+workflow passes 2/2 in 20.1 seconds and proves a fixed 0–200 scale with 50-unit steps, category/value titles, euro
+labels, gridlines, data labels, legend movement and reload. Visual review passed without page overflow; desktop/mobile
+screenshot hashes are `sha256:16f803aa6ff2e452c9cc326b3e377490385c01b28fce28c73531ac73650020e8` and
+`sha256:76252a4281bff064cfa682a0a15344d7ed8ff64a6495a79b69ce58f7567dbe41`.
+
+The complete quality gate passes Ruff, finds 963 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`. The review target is
+`http://192.168.0.108:42880/office?review=chart-axis-adr0202` with asset keys `office.css?v=14` and `editor.js?v=14`.
+The final Work-E2E and review API images are
+`sha256:84e3fac836236e03e3c61f12dc52c992e0f8e7faf939c7c840edf870f2c4a73d` and
+`sha256:a983a6d2065180c8aa8f9f21d688dd2e046f819b9256c4558c2a4a973d4f3848`.
+
+No migration, external chart engine, network source, automatic action or new durable state was added. Secondary axes,
+logarithmic scales, free-form formats and external chart data remain closed. ADR-0201 is published through commit
+`b4f94283`; publication of this ADR-0202 block is pending the repository's content-specific approval.
+
+The next separate Office loop is richer native chart types and advanced presentation. CRM account onboarding remains
+deferred by the user's Office-first priority.
 
 Roadmap 824 through 831 / PLANS 685 through 692 are complete under ADR-0201. Native Office formulas now accept bounded
 double-quoted text literals, text-valued cells and named ranges, exact text `XLOOKUP`/`XVERWEIS`, and canonical
@@ -30,8 +62,8 @@ The complete quality gate passes Ruff, finds 962 format-conformant files, passes
 The review target is `http://192.168.0.108:42880/office?review=text-date-formulas-adr0201` with asset keys
 `office.css?v=13` and `editor.js?v=13`. The final Work-E2E and review API images are
 `sha256:dcaaff420e8c040cab073f405beda7b6c787333272a325749e7b780c918a2341` and
-`sha256:6df0d4668353dbdc8a5023070e33102ad3b77e05f50d8a4c7fb552520ee9b3aa`. GitHub publication remains pending under
-the content-specific approval rule.
+`sha256:6df0d4668353dbdc8a5023070e33102ad3b77e05f50d8a4c7fb552520ee9b3aa`. This ADR-0201 block is published through
+commit `b4f94283`.
 
 The only browser diagnostic was an initially stale Office bundle baked into the review API image. The unchanged
 responsive workflow passed after rebuilding and recreating that exact review API. Focused static quality also applied

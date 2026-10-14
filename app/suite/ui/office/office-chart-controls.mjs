@@ -7,7 +7,8 @@ import { officeTableGrid, officeTableInventory } from "./office-tables.mjs";
 export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
-    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "dataLabels", "categories", "series", "source"]
+    addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
+      "axes", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -77,9 +78,16 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   const read = (id = action?.attrs?.id || action?.id || (action.id = identifier())) => {
     const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
     const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
+    const mode = $("chart-axis-mode").value;
+    const axes = kind === "pie" ? null : { mode, categoryTitle: $("chart-category-axis-title").value,
+      valueTitle: $("chart-value-axis-title").value,
+      minimum: mode === "manual" ? Number($("chart-axis-minimum").value) : null,
+      maximum: mode === "manual" ? Number($("chart-axis-maximum").value) : null,
+      majorUnit: mode === "manual" ? Number($("chart-axis-major-unit").value) : null,
+      gridlines: $("chart-gridlines").checked, numberFormat: $("chart-number-format").value };
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
-      legend: $("chart-legend").checked, dataLabels: $("chart-data-labels").checked,
-      ...data, ...(binding ? { source: binding } : {}) });
+      legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
+      dataLabels: $("chart-data-labels").checked, ...data, ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
@@ -95,7 +103,10 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-source-fields").hidden = !linked; $("chart-source-table").disabled = !linked; $("chart-source-range").disabled = !linked;
     $("chart-source-orientation").disabled = !linked;
     $("chart-data").readOnly = linked; };
-  const preview = () => { sourceState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
+  const presentationState = () => { const axes = $("chart-kind").value !== "pie", manual = $("chart-axis-mode").value === "manual";
+    $("chart-axis-fields").disabled = !axes; $("chart-manual-axis-fields").hidden = !axes || !manual;
+    $("chart-legend-position").disabled = !$("chart-legend").checked; };
+  const preview = () => { sourceState(); presentationState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
       $("chart-preview").replaceChildren(officeChartElement(attrs));
       $("chart-status").textContent = "Vorschau und zugängliche Datentabelle sind aktuell."; $("chart-apply").disabled = false; }
     catch { $("chart-preview").replaceChildren(); $("chart-status").textContent = $("chart-linked").checked ?
@@ -114,7 +125,16 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-title").textContent = editing ? "Diagramm bearbeiten" : "Diagramm einfügen";
     $("chart-kind").value = attrs?.kind || "bar"; $("chart-name").value = attrs?.title || "Quartalsübersicht";
     $("chart-alt").value = attrs?.altText || "Vergleich der Werte nach Kategorie."; $("chart-legend").checked = attrs?.legend ?? true;
+    $("chart-legend-position").value = attrs?.legendPosition || "bottom";
     $("chart-data-labels").checked = attrs?.dataLabels ?? false;
+    $("chart-category-axis-title").value = attrs?.axes?.categoryTitle || "";
+    $("chart-value-axis-title").value = attrs?.axes?.valueTitle || "";
+    $("chart-number-format").value = attrs?.axes?.numberFormat || "general";
+    $("chart-axis-mode").value = attrs?.axes?.mode || "auto";
+    $("chart-axis-minimum").value = attrs?.axes?.minimum ?? "0";
+    $("chart-axis-maximum").value = attrs?.axes?.maximum ?? "200";
+    $("chart-axis-major-unit").value = attrs?.axes?.majorUnit ?? "50";
+    $("chart-gridlines").checked = attrs?.axes?.gridlines ?? true;
     $("chart-linked").checked = Boolean(attrs?.source); $("chart-linked").disabled = !tables.length && !attrs?.source;
     if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range;
       $("chart-source-orientation").value = attrs.source.orientation || "columns"; }

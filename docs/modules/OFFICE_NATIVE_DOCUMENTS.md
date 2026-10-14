@@ -1,9 +1,30 @@
 # Native Office Documents
 
-Status: Roadmap 252–831 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 831 / PLANS 692 text and calendar formulas
-Module: `office_documents` / version 0.9.12
-Decisions: ADR-0079 through ADR-0201; current movement: `ARCHITECTURE_DECISIONS/ADR-0201-native-office-text-and-calendar-formulas.md`
+Status: Roadmap 252–839 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 839 / PLANS 700 chart axes and presentation
+Module: `office_documents` / version 0.9.13
+Decisions: ADR-0079 through ADR-0202; current movement: `ARCHITECTURE_DECISIONS/ADR-0202-native-office-chart-axes-and-presentation.md`
+
+## Chart axes and presentation (Roadmap 832–839)
+
+Native Office bar and line charts support bounded category and value titles, deterministic automatic or fixed value
+scales, optional major gridlines and general, integer, decimal, percent or euro labels. Fixed scales require finite
+ordered bounds, a positive major unit, at most twelve exact intervals and every value inside the visible range. Pie
+charts reject axes. Legends can be placed at the top, bottom, left or right and side placement collapses responsively.
+
+The chart editor validates the prospective node before applying it. Linked-table recalculation, immutable save and
+reload preserve the complete presentation contract. The server independently rejects surplus fields, invalid formats,
+uneven scales, out-of-range data and forged pie axes. The accessible description and hidden data table remain present.
+
+Focused Office schema/API tests pass 88/88, all five chart-model cases pass, and the responsive saved-version workflow
+passes 2/2 on desktop and mobile in 20.1 seconds. Desktop/mobile screenshot hashes and final complete-quality evidence
+are recorded in `docs/CURRENT_HANDOFF.md`. Complete quality passes Ruff, finds 963 format-conformant files, passes
+Mypy over 639 sources and reaches 100 percent Pytest with only the known Starlette/AnyIO warning. The final quality
+image is `sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`. The review target is
+`http://192.168.0.108:42880/office?review=chart-axis-adr0202` with `office.css?v=14` and `editor.js?v=14`.
+
+No migration, external chart engine, network source or new durable state is introduced. Secondary axes, logarithmic
+scales, free-form formats, external chart data and automatic actions remain closed.
 
 ## Text and calendar formulas (Roadmap 824–831)
 
@@ -31,7 +52,7 @@ Work-E2E and review API image IDs are
 
 No migration, external calculation engine, network source or new durable state is introduced. Approximate or wildcard
 lookup, volatile time functions, external workbook links, macros and automatic actions remain closed. Chart-axis and
-presentation controls are the next separate Office loop.
+presentation controls are completed by Roadmap 832–839.
 
 ## Multiple-criteria aggregation (Roadmap 816–823)
 

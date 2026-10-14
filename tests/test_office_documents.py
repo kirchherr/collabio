@@ -714,6 +714,29 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
     decimal = deepcopy(document)
     decimal["content"][0]["attrs"]["series"][0]["values"][0] = 1.5
     assert validate_office_document(decimal) == decimal
+    axes = {
+        "mode": "manual",
+        "categoryTitle": "Quarter",
+        "valueTitle": "Revenue",
+        "minimum": 100,
+        "maximum": 200,
+        "majorUnit": 20,
+        "gridlines": True,
+        "numberFormat": "currency-eur",
+    }
+    presented = deepcopy(document)
+    presented["content"][0]["attrs"].update({"legendPosition": "right", "dataLabels": True, "axes": axes})
+    assert validate_office_document(presented) == presented
+    automatic = deepcopy(document)
+    automatic["content"][0]["attrs"]["axes"] = {
+        **axes,
+        "mode": "auto",
+        "minimum": None,
+        "maximum": None,
+        "majorUnit": None,
+        "numberFormat": "general",
+    }
+    assert validate_office_document(automatic) == automatic
     pie = {**attrs, "kind": "pie", "series": [{"name": "Share", "color": "orange", "values": [1, 2, 3, 4]}]}
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": pie}]})
     invalid = [
@@ -722,6 +745,7 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "title": ""},
         {**attrs, "altText": "bad\x00text"},
         {**attrs, "legend": 1},
+        {**attrs, "legendPosition": "floating"},
         {**attrs, "categories": []},
         {**attrs, "categories": ["Q1", "Q1"]},
         {**attrs, "series": attrs["series"] * 3},
@@ -731,6 +755,9 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [-1, 2, 3, 4]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [0, 0, 0, 0]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [-1, 2, 3, 4]}]},
+        {**attrs, "axes": {**axes, "maximum": 160}},
+        {**attrs, "axes": {**axes, "majorUnit": 30}},
+        {**pie, "axes": axes},
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:

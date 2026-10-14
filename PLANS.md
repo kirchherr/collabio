@@ -2106,14 +2106,38 @@ save. Reject invalid syntax, unsafe or oversized text, type errors, calendar ove
 692. [x] Prove the block with focused schema/API tests, 22 formula-model cases, a desktop/mobile saved-version
 workflow, visual review and the complete repository quality gate. Add no migration, external engine or network source.
 
+693. [x] Add one strict optional axis-presentation contract to native bar and line charts under ADR-0202, with bounded
+category and value titles, automatic or manual value scaling, major gridlines and a closed number-format set.
+
+694. [x] Derive deterministic zero-inclusive automatic scales with 1/2/5 major steps and at most thirteen ticks.
+Require finite ordered manual bounds, a positive major unit, at most twelve exact intervals and all data inside range.
+
+695. [x] Render category and value titles, formatted tick and data labels and optional major gridlines without changing
+canonical numeric chart values. Reject axes on pie charts.
+
+696. [x] Place visible legends at the top, bottom, left or right and collapse side legends responsively so chart and
+controls remain contained on desktop and mobile.
+
+697. [x] Preserve axes, formats and legend placement through chart editing, linked-table recalculation, confirmed
+immutable save and reload. Keep the accessible chart description and hidden source-data table authoritative.
+
+698. [x] Independently validate the complete closed chart-presentation schema on the server. Reject surplus fields,
+invalid titles, formats and placements, non-finite or uneven scales, out-of-range values and forged pie axes.
+
+699. [x] Prove fixed-scale EUR presentation, axis titles, gridlines, legend movement, data labels, save/reload and
+responsive containment in one desktop/mobile browser workflow with separately reviewed screenshots.
+
+700. [x] Close the block with focused schema/API and chart-model tests plus the complete repository quality gate. Add
+no migration, external chart engine, network source, automatic action or new durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 831 / PLANS 692. Bounded text values, exact text lookup and deterministic
-  calendar formulas now build on multiple-criteria aggregation and document-wide named ranges. Continue Office with
-  chart-axis and presentation controls as the next coherent loop before deferred CRM onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 839 / PLANS 700. Strict deterministic chart axes, fixed or automatic
+  scales, bounded number formats, gridlines and responsive legend placement now build on linked table calculations.
+  Continue Office with richer native chart types and advanced presentation as the next coherent loop before deferred CRM onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

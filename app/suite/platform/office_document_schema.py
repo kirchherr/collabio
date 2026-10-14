@@ -864,8 +864,58 @@ def _valid_document_table_formula_results(document: dict[str, Any], definitions:
 
 
 _CHART_COLORS = ("teal", "blue", "orange", "purple")
+_CHART_LEGEND_POSITIONS = {"bottom", "top", "left", "right"}
+_CHART_NUMBER_FORMATS = {"general", "integer", "decimal", "percent", "currency-eur"}
 _CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
+
+
+def _valid_chart_axes(value: Any, series: list[dict[str, Any]]) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "mode",
+        "categoryTitle",
+        "valueTitle",
+        "minimum",
+        "maximum",
+        "majorUnit",
+        "gridlines",
+        "numberFormat",
+    }:
+        return False
+    if (
+        value.get("mode") not in {"auto", "manual"}
+        or type(value.get("gridlines")) is not bool
+        or value.get("numberFormat") not in _CHART_NUMBER_FORMATS
+        or not (value.get("categoryTitle") == "" or _valid_literal(value.get("categoryTitle"), 1, 60))
+        or not (value.get("valueTitle") == "" or _valid_literal(value.get("valueTitle"), 1, 60))
+    ):
+        return False
+    minimum, maximum, major_unit = value.get("minimum"), value.get("maximum"), value.get("majorUnit")
+    if value["mode"] == "auto":
+        return minimum is None and maximum is None and major_unit is None
+    if not isinstance(minimum, (int, float)) or isinstance(minimum, bool):
+        return False
+    if not isinstance(maximum, (int, float)) or isinstance(maximum, bool):
+        return False
+    if not isinstance(major_unit, (int, float)) or isinstance(major_unit, bool):
+        return False
+    minimum_value, maximum_value, major_unit_value = float(minimum), float(maximum), float(major_unit)
+    if (
+        not all(
+            math.isfinite(number) and abs(number) <= 1_000_000_000
+            for number in (minimum_value, maximum_value, major_unit_value)
+        )
+        or minimum_value >= maximum_value
+        or major_unit_value <= 0
+        or major_unit_value > maximum_value - minimum_value
+    ):
+        return False
+    intervals = (maximum_value - minimum_value) / major_unit_value
+    return (
+        math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
+        and intervals <= 12
+        and all(minimum_value <= number <= maximum_value for entry in series for number in entry["values"])
+    )
 
 
 def _chart_source(value: Any) -> tuple[str, int, int, int, int, str] | None:
@@ -1309,6 +1359,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("source")
             if "dataLabels" in attrs:
                 expected_chart_attrs.add("dataLabels")
+            if "legendPosition" in attrs:
+                expected_chart_attrs.add("legendPosition")
+            if "axes" in attrs:
+                expected_chart_attrs.add("axes")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1320,6 +1374,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or attrs.get("kind") not in {"bar", "line", "pie"}
                 or type(attrs.get("legend")) is not bool
                 or ("dataLabels" in attrs and type(attrs.get("dataLabels")) is not bool)
+                or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
                 or not _valid_literal(attrs.get("title"), 1, 120)
                 or not _valid_literal(attrs.get("altText"), 1, 500)
                 or not isinstance(categories, list)
@@ -1357,6 +1412,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 colors.add(entry["color"])
             if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
                 reject()
+            if "axes" in attrs and (attrs.get("kind") == "pie" or not _valid_chart_axes(attrs["axes"], series)):
+                reject()
             chart_ids.add(identifier)
             if source is not None:
                 linked_charts.append(attrs)
@@ -1365,6 +1422,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 + len(attrs["altText"])
                 + sum(map(len, categories))
                 + sum(len(entry["name"]) for entry in series)
+                + (len(attrs["axes"]["categoryTitle"]) + len(attrs["axes"]["valueTitle"]) if "axes" in attrs else 0)
             )
             if characters > MAX_DOCUMENT_CHARACTERS:
                 reject()

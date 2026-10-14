@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=13" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=14" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -187,8 +187,13 @@
         <div class="dialog-body">
           <div class="chart-fields"><label>Diagrammtyp<select id="chart-kind"><option value="bar">Säulen</option><option value="line">Linien</option><option value="pie">Kreis</option></select></label><label>Titel<input id="chart-name" maxlength="120" required /></label></div>
           <label>Alternativtext<textarea id="chart-alt" maxlength="500" rows="3" required></textarea></label>
-          <label class="check-row"><input id="chart-legend" type="checkbox" checked /> Legende anzeigen</label>
+          <div class="chart-fields"><label class="check-row"><input id="chart-legend" type="checkbox" checked /> Legende anzeigen</label><label>Legendenposition<select id="chart-legend-position"><option value="bottom">Unten</option><option value="top">Oben</option><option value="left">Links</option><option value="right">Rechts</option></select></label></div>
           <label class="check-row"><input id="chart-data-labels" type="checkbox" /> Werte am Diagramm anzeigen</label>
+          <fieldset id="chart-axis-fields" class="chart-axis-fields"><legend>Achsen und Skala</legend>
+            <div class="chart-fields"><label>Kategorieachse<input id="chart-category-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Quartal" /></label><label>Wertachse<input id="chart-value-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Umsatz" /></label><label>Zahlenformat<select id="chart-number-format"><option value="general">Allgemein</option><option value="integer">Ganzzahl</option><option value="decimal">Zwei Dezimalstellen</option><option value="percent">Prozent</option><option value="currency-eur">Euro</option></select></label><label>Skalierung<select id="chart-axis-mode"><option value="auto">Automatisch</option><option value="manual">Manuell</option></select></label></div>
+            <div class="chart-fields" id="chart-manual-axis-fields" hidden><label>Minimum<input id="chart-axis-minimum" type="number" min="-1000000000" max="1000000000" step="any" value="0" /></label><label>Maximum<input id="chart-axis-maximum" type="number" min="-1000000000" max="1000000000" step="any" value="200" /></label><label>Hauptintervall<input id="chart-axis-major-unit" type="number" min="0.0000000001" max="1000000000" step="any" value="50" /></label></div>
+            <label class="check-row"><input id="chart-gridlines" type="checkbox" checked /> Horizontale Gitternetzlinien anzeigen</label><p class="paragraph-help">Die manuelle Skala muss alle Werte enthalten und erzeugt höchstens zwölf Intervalle.</p>
+          </fieldset>
           <label class="check-row"><input id="chart-linked" type="checkbox" /> Mit einer nummerierten Tabelle verknüpfen</label>
           <div class="chart-fields" id="chart-source-fields" hidden><label>Quelltabelle<select id="chart-source-table"></select></label><label>Datenreihen<select id="chart-source-orientation"><option value="columns">aus Spalten</option><option value="rows">aus Zeilen</option></select></label><label>Zellbereich<input id="chart-source-range" maxlength="12" value="A1:C5" autocomplete="off" placeholder="A1:C5" /></label></div>
           <label>Datentabelle<textarea id="chart-data" rows="7" spellcheck="false" aria-describedby="chart-data-help" required></textarea></label>
@@ -525,6 +530,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=13"></script>
+    <script type="module" src="/office/editor.js?v=14"></script>
   </body>
 </html>
