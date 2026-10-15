@@ -1,0 +1,192 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "engine_execution_allowed": {
+      "const": true,
+      "default": true,
+      "title": "Engine Execution Allowed",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "const": "libreoffice",
+      "default": "libreoffice",
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "execution_authorization_basis": {
+      "const": "explicit_synthetic_study_run_request",
+      "default": "explicit_synthetic_study_run_request",
+      "title": "Execution Authorization Basis",
+      "type": "string"
+    },
+    "expires_at_utc": {
+      "format": "date-time",
+      "title": "Expires At Utc",
+      "type": "string"
+    },
+    "external_side_effect_allowed": {
+      "const": false,
+      "default": false,
+      "title": "External Side Effect Allowed",
+      "type": "boolean"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "fixture_id": {
+      "title": "Fixture Id",
+      "type": "string"
+    },
+    "max_docx_bytes": {
+      "const": 16777216,
+      "default": 16777216,
+      "title": "Max Docx Bytes",
+      "type": "integer"
+    },
+    "max_page_count": {
+      "const": 32,
+      "default": 32,
+      "title": "Max Page Count",
+      "type": "integer"
+    },
+    "max_page_dimension_pixels": {
+      "const": 4096,
+      "default": 4096,
+      "title": "Max Page Dimension Pixels",
+      "type": "integer"
+    },
+    "network_mode": {
+      "const": "none",
+      "default": "none",
+      "title": "Network Mode",
+      "type": "string"
+    },
+    "persistent_product_write_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Product Write Allowed",
+      "type": "boolean"
+    },
+    "pipeline_steps": {
+      "default": [
+        "source_preflight",
+        "libreoffice_docx_roundtrip",
+        "output_preflight",
+        "output_structural_fingerprint",
+        "open_xml_sdk_validation_office2021",
+        "same_engine_source_pdf_render",
+        "same_engine_candidate_pdf_render",
+        "pdftoppm_raw_rgb_144_dpi",
+        "integer_visual_measurement",
+        "write_once_evidence_receipt",
+        "external_ed25519_signature_handoff"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Pipeline Steps",
+      "type": "array"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "private_key_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Allowed",
+      "type": "boolean"
+    },
+    "raster_dpi": {
+      "const": 144,
+      "default": 144,
+      "title": "Raster Dpi",
+      "type": "integer"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "requested_at_utc": {
+      "format": "date-time",
+      "title": "Requested At Utc",
+      "type": "string"
+    },
+    "runner_image_ref": {
+      "title": "Runner Image Ref",
+      "type": "string"
+    },
+    "runner_mode": {
+      "const": "isolated_headless_worker",
+      "default": "isolated_headless_worker",
+      "title": "Runner Mode",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_libreoffice_run_request.v1",
+      "default": "genoffice_docx_libreoffice_run_request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_content_sha256": {
+      "title": "Source Content Sha256",
+      "type": "string"
+    },
+    "source_filename": {
+      "title": "Source Filename",
+      "type": "string"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "tenant_credentials_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Credentials Allowed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "request_id",
+    "assignment_id",
+    "fixture_id",
+    "source_filename",
+    "source_content_sha256",
+    "study_plan_hash",
+    "fidelity_policy_hash",
+    "preflight_policy_hash",
+    "corpus_manifest_hash",
+    "runner_image_ref",
+    "requested_at_utc",
+    "expires_at_utc",
+    "request_hash"
+  ],
+  "title": "GenOfficeDocxLibreOfficeRunRequest",
+  "type": "object"
+}

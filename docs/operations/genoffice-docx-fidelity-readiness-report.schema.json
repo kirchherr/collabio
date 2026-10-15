@@ -1,0 +1,132 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "accepted_signed_result_count": {
+      "const": 0,
+      "default": 0,
+      "title": "Accepted Signed Result Count",
+      "type": "integer"
+    },
+    "baseline_report_hash": {
+      "title": "Baseline Report Hash",
+      "type": "string"
+    },
+    "blocking_reasons": {
+      "default": [
+        "two_person_runtime_authorization_absent",
+        "attested_executable_genoffice_harness_absent",
+        "microsoft_word_interactive_runner_evidence_absent",
+        "libreoffice_isolated_runner_evidence_absent",
+        "result_signer_policy_absent",
+        "signed_cross_engine_result_matrix_absent",
+        "open_xml_validation_evidence_absent",
+        "cdr_linked_visual_comparison_absent",
+        "visual_thresholds_uncalibrated",
+        "human_fidelity_review_absent"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocking Reasons",
+      "type": "array"
+    },
+    "cdr_linked_visual_comparison_verified": {
+      "const": false,
+      "default": false,
+      "title": "Cdr Linked Visual Comparison Verified",
+      "type": "boolean"
+    },
+    "compatibility_claim_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claim Allowed",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "exact_cross_engine_matrix_verified": {
+      "const": false,
+      "default": false,
+      "title": "Exact Cross Engine Matrix Verified",
+      "type": "boolean"
+    },
+    "expected_assignment_count": {
+      "const": 9,
+      "default": 9,
+      "title": "Expected Assignment Count",
+      "type": "integer"
+    },
+    "fidelity_policy_hash": {
+      "title": "Fidelity Policy Hash",
+      "type": "string"
+    },
+    "human_fidelity_review_verified": {
+      "const": false,
+      "default": false,
+      "title": "Human Fidelity Review Verified",
+      "type": "boolean"
+    },
+    "open_xml_validation_evidence_verified": {
+      "const": false,
+      "default": false,
+      "title": "Open Xml Validation Evidence Verified",
+      "type": "boolean"
+    },
+    "quick_edit_spike_complete": {
+      "const": false,
+      "default": false,
+      "title": "Quick Edit Spike Complete",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "result_signer_policy_present": {
+      "const": false,
+      "default": false,
+      "title": "Result Signer Policy Present",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_readiness_report.v1",
+      "default": "genoffice_docx_fidelity_readiness_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "structural_baselines_verified": {
+      "const": true,
+      "default": true,
+      "title": "Structural Baselines Verified",
+      "type": "boolean"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "visual_thresholds_calibrated": {
+      "const": false,
+      "default": false,
+      "title": "Visual Thresholds Calibrated",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "fidelity_policy_hash",
+    "study_plan_hash",
+    "baseline_report_hash",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxFidelityReadinessReport",
+  "type": "object"
+}

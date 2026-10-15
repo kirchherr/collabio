@@ -1,0 +1,101 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "automated_acceptance_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Automated Acceptance Allowed",
+      "type": "boolean"
+    },
+    "candidate_rgb_sha256": {
+      "title": "Candidate Rgb Sha256",
+      "type": "string"
+    },
+    "changed_pixel_ratio_ppm": {
+      "maximum": 1000000,
+      "minimum": 0,
+      "title": "Changed Pixel Ratio Ppm",
+      "type": "integer"
+    },
+    "changed_pixels": {
+      "minimum": 0,
+      "title": "Changed Pixels",
+      "type": "integer"
+    },
+    "exact_pixel_match": {
+      "title": "Exact Pixel Match",
+      "type": "boolean"
+    },
+    "height_pixels": {
+      "maximum": 4096,
+      "minimum": 1,
+      "title": "Height Pixels",
+      "type": "integer"
+    },
+    "maximum_channel_delta": {
+      "maximum": 255,
+      "minimum": 0,
+      "title": "Maximum Channel Delta",
+      "type": "integer"
+    },
+    "mean_absolute_channel_delta_ppm": {
+      "maximum": 1000000,
+      "minimum": 0,
+      "title": "Mean Absolute Channel Delta Ppm",
+      "type": "integer"
+    },
+    "page_number": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Page Number",
+      "type": "integer"
+    },
+    "raw_rgb_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Raw Rgb Content Included",
+      "type": "boolean"
+    },
+    "reference_rgb_sha256": {
+      "title": "Reference Rgb Sha256",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_rgb_page_comparison_report.v1",
+      "default": "genoffice_docx_rgb_page_comparison_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "total_pixels": {
+      "minimum": 1,
+      "title": "Total Pixels",
+      "type": "integer"
+    },
+    "width_pixels": {
+      "maximum": 4096,
+      "minimum": 1,
+      "title": "Width Pixels",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "page_number",
+    "width_pixels",
+    "height_pixels",
+    "reference_rgb_sha256",
+    "candidate_rgb_sha256",
+    "total_pixels",
+    "changed_pixels",
+    "changed_pixel_ratio_ppm",
+    "mean_absolute_channel_delta_ppm",
+    "maximum_channel_delta",
+    "exact_pixel_match",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxRgbPageComparisonReport",
+  "type": "object"
+}

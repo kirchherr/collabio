@@ -1,0 +1,2093 @@
+"""The deliberately small, inert native Office document format.
+
+This is a Collabio JSON format, not an OOXML import or an engine admission.
+"""
+
+from __future__ import annotations
+
+import math
+import re
+from calendar import monthrange
+from datetime import date, timedelta
+from typing import Any
+from urllib.parse import urlsplit
+
+from suite.ai_control_plane.audit import canonical_json
+from suite.platform.office_image_schema import validate_image_attributes
+
+OFFICE_DOCUMENT_SCHEMA_VERSION = "collabio_document.v1"
+OFFICE_DOCUMENT_MIME_TYPE = "application/vnd.collabio.document+json"
+MAX_DOCUMENT_BYTES = 400_000
+MAX_DOCUMENT_CHARACTERS = 100_000
+MAX_DOCUMENT_NODES = 10_000
+MAX_DOCUMENT_DEPTH = 32
+BLOCKS = {
+    "paragraph",
+    "heading",
+    "blockquote",
+    "codeBlock",
+    "bulletList",
+    "orderedList",
+    "horizontalRule",
+    "table",
+    "image",
+    "imageGroup",
+    "documentCard",
+    "chart",
+    "shape",
+    "shapeGroup",
+    "pageBreak",
+    "sectionBreak",
+    "tableOfContents",
+    "bibliography",
+    "equation",
+    "referenceIndex",
+}
+MARKS = {
+    "bold",
+    "italic",
+    "strike",
+    "code",
+    "underline",
+    "textStyle",
+    "link",
+    "crossReference",
+    "documentReference",
+}
+FONT_SIZES = {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48}
+TEXT_COLORS = {"black", "slate", "red", "orange", "green", "teal", "blue", "purple"}
+FONT_FAMILIES = {"sans", "serif", "mono"}
+HIGHLIGHT_COLORS = {"yellow", "lime", "cyan", "pink", "lavender", "gray"}
+VERTICAL_POSITIONS = {"superscript", "subscript"}
+LETTER_SPACING = {"tight", "wide"}
+TEXT_CASES = {"uppercase", "smallCaps"}
+PARAGRAPH_FORMAT_ATTRIBUTES = {
+    "textAlign",
+    "lineSpacing",
+    "spacingBefore",
+    "spacingAfter",
+    "indentLeft",
+    "indentRight",
+    "specialIndent",
+    "keepWithNext",
+    "keepLines",
+    "pageBreakBefore",
+}
+PARAGRAPH_VALUES: dict[str, set[Any]] = {
+    "textAlign": {"left", "center", "right", "justify"},
+    "lineSpacing": {"1", "1.15", "1.5", "2"},
+    "spacingBefore": {0, 6, 12, 18, 24},
+    "spacingAfter": {0, 6, 12, 18, 24},
+    "indentLeft": {0, 18, 36, 54, 72},
+    "indentRight": {0, 18, 36, 54, 72},
+    "specialIndent": {"none", "firstLine18", "firstLine36", "hanging18", "hanging36"},
+    "keepWithNext": {False, True},
+    "keepLines": {False, True},
+    "pageBreakBefore": {False, True},
+}
+STYLE_CHARACTER_VALUES: dict[str, set[Any]] = {
+    "fontFamily": FONT_FAMILIES,
+    "fontSize": FONT_SIZES,
+    "textColor": TEXT_COLORS,
+    "letterSpacing": LETTER_SPACING,
+    "textCase": TEXT_CASES,
+}
+
+
+class OfficeDocumentInvalidContentError(ValueError):
+    pass
+
+
+def _valid_link_href(value: Any) -> bool:
+    if not isinstance(value, str) or not value or len(value) > 2048 or value != value.strip():
+        return False
+    if any(
+        ord(character) < 33 or 127 <= ord(character) <= 159 or character in {"<", ">", '"', "'", "\\"}
+        for character in value
+    ):
+        return False
+    if value.startswith("mailto:"):
+        address = value[7:]
+        return (
+            len(address) <= 320
+            and ".." not in address
+            and re.fullmatch(
+                r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?",
+                address,
+            )
+            is not None
+        )
+    if not value.startswith("https://"):
+        return False
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return False
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and parsed.username is None
+        and parsed.password is None
+        and (port is None or 1 <= port <= 65535)
+    )
+
+
+def _valid_literal(value: Any, minimum: int, maximum: int) -> bool:
+    return (
+        isinstance(value, str)
+        and minimum <= len(value) <= maximum
+        and value == value.strip()
+        and not any(
+            ord(character) < 32
+            or 127 <= ord(character) <= 159
+            or 0xD800 <= ord(character) <= 0xDFFF
+            or character in "\u2028\u2029"
+            for character in value
+        )
+    )
+
+
+def _valid_table_grid(rows: Any) -> bool:
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 200:
+        return False
+    width: int | None = None
+    active: list[int] = []
+    for row_index, row in enumerate(rows):
+        if (
+            not isinstance(row, dict)
+            or row.get("type") != "tableRow"
+            or not isinstance(row.get("content"), list)
+            or not 1 <= len(row["content"]) <= 20
+        ):
+            return False
+        occupied = [remaining > 0 for remaining in active]
+        column = 0
+        for cell in row["content"]:
+            if not isinstance(cell, dict) or cell.get("type") not in {"tableCell", "tableHeader"}:
+                return False
+            attrs = cell.get("attrs", {})
+            colspan, rowspan = attrs.get("colspan", 1), attrs.get("rowspan", 1)
+            while column < len(occupied) and occupied[column]:
+                column += 1
+            limit = width if width is not None else 20
+            if (
+                column + colspan > limit
+                or row_index + rowspan > len(rows)
+                or any(occupied[index] for index in range(column, min(column + colspan, len(occupied))))
+            ):
+                return False
+            if len(occupied) < column + colspan:
+                occupied.extend([False] * (column + colspan - len(occupied)))
+                active.extend([0] * (column + colspan - len(active)))
+            for index in range(column, column + colspan):
+                occupied[index] = True
+                active[index] = rowspan
+            column += colspan
+        row_width = max((index + 1 for index, entry in enumerate(occupied) if entry), default=0)
+        if width is None:
+            width = row_width
+        if row_width != width or not all(occupied[:width]):
+            return False
+        active = [max(0, remaining - 1) for remaining in active[:width]]
+    return bool(width) and not any(active)
+
+
+_TABLE_FORMULA_ERRORS = {"#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"}
+_TABLE_FORMULA_NAMES = {
+    "SUM",
+    "AVERAGE",
+    "MIN",
+    "MAX",
+    "COUNT",
+    "SUMIF",
+    "COUNTIF",
+    "AVERAGEIF",
+    "SUMIFS",
+    "COUNTIFS",
+    "AVERAGEIFS",
+    "IF",
+    "AND",
+    "OR",
+    "NOT",
+    "ROUND",
+    "ABS",
+    "POWER",
+    "SQRT",
+    "PRODUCT",
+    "MEDIAN",
+    "XLOOKUP",
+    "DATE",
+    "YEAR",
+    "MONTH",
+    "DAY",
+    "EDATE",
+    "EOMONTH",
+    "DAYS",
+    "WEEKDAY",
+    "CONCAT",
+    "LEFT",
+    "RIGHT",
+    "LEN",
+}
+_TABLE_NUMBER = re.compile(r"[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?")
+_TABLE_RANGE_NAME = re.compile(r"[A-Z][A-Z0-9_]{0,31}")
+_TABLE_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
+
+
+class _TableFormulaError(ValueError):
+    pass
+
+
+def _table_cell_text(cell: dict[str, Any]) -> str:
+    parts: list[str] = []
+
+    def walk(node: dict[str, Any]) -> None:
+        if node.get("type") == "text":
+            parts.append(node["text"])
+            return
+        if node.get("type") == "hardBreak":
+            parts.append("\n")
+        for child in node.get("content", []):
+            walk(child)
+        if node.get("type") in {"paragraph", "heading", "listItem", "blockquote", "codeBlock"}:
+            parts.append(" ")
+
+    walk(cell)
+    return " ".join("".join(parts).split())
+
+
+def _valid_object_metadata_text(value: Any, limit: int) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= limit
+        and value == value.strip()
+        and not any(
+            ord(character) < 32
+            or 127 <= ord(character) <= 159
+            or 0xD800 <= ord(character) <= 0xDFFF
+            or character in "\u2028\u2029"
+            for character in value
+        )
+    )
+
+
+def _table_formula_tokens(source: str) -> list[tuple[str, Any]]:
+    tokens: list[tuple[str, Any]] = []
+    index = 1
+    while index < len(source):
+        if source[index].isspace():
+            index += 1
+            continue
+        if source[index] == '"':
+            value: list[str] = []
+            index += 1
+            closed = False
+            while index < len(source):
+                if source[index] != '"':
+                    value.append(source[index])
+                    index += 1
+                    continue
+                if index + 1 < len(source) and source[index + 1] == '"':
+                    value.append('"')
+                    index += 2
+                    continue
+                index += 1
+                closed = True
+                break
+            text = "".join(value)
+            if not closed or len(text) > 512 or not _valid_formula_text(text):
+                raise _TableFormulaError("#WERT!")
+            tokens.append(("string", text))
+            continue
+        number = re.match(r"(?:0|[1-9][0-9]*)(?:\.[0-9]+)?", source[index:])
+        if number:
+            tokens.append(("number", float(number.group())))
+            index += len(number.group())
+            continue
+        if source.startswith("#BEZUG!", index):
+            tokens.append(("error", "#BEZUG!"))
+            index += len("#BEZUG!")
+            continue
+        reference = re.match(r"\$?[A-T]\$?(?:[1-9][0-9]{0,2})", source[index:])
+        if reference:
+            tokens.append(("ref", reference.group()))
+            index += len(reference.group())
+            continue
+        comparison = re.match(r"(?:<=|>=|<>|=|<|>)", source[index:])
+        if comparison:
+            tokens.append(("compare", comparison.group()))
+            index += len(comparison.group())
+            continue
+        name = next(
+            (
+                candidate
+                for candidate in sorted(_TABLE_FORMULA_NAMES, key=len, reverse=True)
+                if source.startswith(candidate, index) and re.match(r"\s*\(", source[index + len(candidate) :])
+            ),
+            None,
+        )
+        if name:
+            tokens.append(("name", name))
+            index += len(name)
+            continue
+        named = _TABLE_RANGE_NAME.match(source[index:])
+        if named:
+            tokens.append(("named", named.group()))
+            index += len(named.group())
+            continue
+        if source[index] in "+-*/(),:":
+            tokens.append((source[index], source[index]))
+            index += 1
+            continue
+        raise _TableFormulaError("#WERT!")
+    tokens.append(("end", None))
+    return tokens
+
+
+def _valid_formula_text(value: str) -> bool:
+    return not any(
+        ord(character) < 32
+        or 127 <= ord(character) <= 159
+        or 0xD800 <= ord(character) <= 0xDFFF
+        or character in "\u2028\u2029"
+        for character in value
+    )
+
+
+def _valid_table_formula_source(source: Any) -> bool:
+    if (
+        not isinstance(source, str)
+        or not 2 <= len(source) <= 256
+        or source != source.strip()
+        or not source.startswith("=")
+    ):
+        return False
+    outside: list[str] = []
+    index = 0
+    while index < len(source):
+        if source[index] == '"':
+            index += 1
+            literal: list[str] = []
+            closed = False
+            while index < len(source):
+                if source[index] != '"':
+                    literal.append(source[index])
+                    index += 1
+                    continue
+                if index + 1 < len(source) and source[index + 1] == '"':
+                    literal.append('"')
+                    index += 2
+                    continue
+                index += 1
+                closed = True
+                break
+            if not closed or not _valid_formula_text("".join(literal)):
+                return False
+            outside.append(" ")
+            continue
+        outside.append(source[index])
+        index += 1
+    identifiers = "".join(outside).replace("#BEZUG!", "")
+    unmatched_anchors = re.sub(r"\$?[A-T]\$?[1-9][0-9]{0,2}", "", identifiers)
+    formula_calls = re.findall(r"([A-Z][A-Z0-9_]{0,31})\s*\(", identifiers)
+    return bool(
+        re.fullmatch(r"=[A-Z0-9_$#\-+*/().,:! <>=]+", identifiers)
+        and not re.search(r"[#!]", identifiers)
+        and "$" not in unmatched_anchors
+        and all(token in _TABLE_FORMULA_NAMES for token in formula_calls)
+    )
+
+
+def _table_formula_result(value: float | str) -> str:
+    if isinstance(value, str):
+        if len(value) > 512 or value.startswith("#") or not _valid_formula_text(value):
+            raise _TableFormulaError("#LIMIT!")
+        return value
+    if not math.isfinite(value) or abs(value) > 1e15:
+        raise _TableFormulaError("#LIMIT!")
+    stable = 0.0 if abs(value) < 5e-11 else math.floor(value * 1e10 + 0.5) / 1e10
+    return f"{stable:.10f}".rstrip("0").rstrip(".") or "0"
+
+
+def _valid_document_table_formula_results(document: dict[str, Any], definitions: list[dict[str, str]]) -> bool:
+    tables: list[tuple[str, dict[str, Any]]] = []
+
+    def collect(node: dict[str, Any]) -> None:
+        if node.get("type") == "table":
+            identifier = node.get("attrs", {}).get("tableId")
+            tables.append((identifier or f"local-{len(tables)}", node))
+        for child in node.get("content", []):
+            collect(child)
+
+    collect(document)
+    table_map = {key: table for key, table in tables}
+    table_shapes: dict[str, tuple[int, int]] = {}
+    for key, table in tables:
+        rows = table["content"]
+        columns = len(rows[0]["content"])
+        if any(
+            len(row["content"]) != columns
+            or any(
+                cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
+                for cell in row["content"]
+            )
+            for row in rows
+        ):
+            if any(cell.get("attrs", {}).get("formula") is not None for row in rows for cell in row["content"]):
+                return False
+            continue
+        table_shapes[key] = (len(rows), columns)
+
+    named: dict[str, tuple[str, int, int, int, int]] = {}
+    for definition in definitions:
+        table_key = definition["tableId"]
+        shape = table_shapes.get(table_key)
+        match = _TABLE_RANGE.fullmatch(definition["range"])
+        if shape is None or match is None:
+            return False
+        top, left = int(match.group(2)) - 1, ord(match.group(1)) - 65
+        bottom, right = int(match.group(4)) - 1, ord(match.group(3)) - 65
+        if top > bottom or left > right or bottom >= shape[0] or right >= shape[1]:
+            return False
+        named[definition["name"]] = (table_key, top, left, bottom, right)
+
+    states: dict[tuple[str, int, int], str] = {}
+    memo: dict[tuple[str, int, int], float | str] = {}
+    errors: dict[tuple[str, int, int], str] = {}
+
+    def point(table_key: str, reference: str) -> tuple[int, int]:
+        match = re.fullmatch(r"\$?([A-T])\$?([1-9][0-9]{0,2})", reference)
+        row = int(match.group(2)) - 1 if match else -1
+        column = ord(match.group(1)) - 65 if match else -1
+        rows, columns = table_shapes[table_key]
+        if row < 0 or row >= rows or column < 0 or column >= columns:
+            raise _TableFormulaError("#BEZUG!")
+        return row, column
+
+    def scalar(table_key: str, row: int, column: int) -> float | str:
+        cell = table_map[table_key]["content"][row]["content"][column]
+        if cell.get("attrs", {}).get("formula") is not None:
+            return evaluate(table_key, row, column)
+        text = _table_cell_text(cell)
+        if not text:
+            return ""
+        if _TABLE_NUMBER.fullmatch(text) is None:
+            return text
+        value = float(text.replace(",", "."))
+        if not math.isfinite(value):
+            raise _TableFormulaError("#WERT!")
+        return value
+
+    def named_values(name: str) -> list[float | str]:
+        definition = named.get(name)
+        if definition is None:
+            raise _TableFormulaError("#BEZUG!")
+        table_key, top, left, bottom, right = definition
+        return [scalar(table_key, row, column) for row in range(top, bottom + 1) for column in range(left, right + 1)]
+
+    def evaluate(table_key: str, row: int, column: int) -> float | str:
+        key = (table_key, row, column)
+        if key in memo:
+            return memo[key]
+        if key in errors:
+            raise _TableFormulaError(errors[key])
+        if states.get(key) == "visiting":
+            raise _TableFormulaError("#ZYKLUS!")
+        states[key] = "visiting"
+        source = table_map[table_key]["content"][row]["content"][column].get("attrs", {}).get("formula")
+        if source is None:
+            return scalar(table_key, row, column)
+        tokens = _table_formula_tokens(source)
+        position = 0
+
+        def peek() -> str:
+            return tokens[position][0]
+
+        def take(kind: str) -> Any:
+            nonlocal position
+            if peek() != kind:
+                raise _TableFormulaError("#WERT!")
+            value = tokens[position][1]
+            position += 1
+            return value
+
+        def bounded(value: float) -> float:
+            if not math.isfinite(value) or abs(value) > 1e15:
+                raise _TableFormulaError("#LIMIT!")
+            return value
+
+        def number(value: float | str) -> float:
+            if value == "":
+                return 0.0
+            if not isinstance(value, float):
+                raise _TableFormulaError("#WERT!")
+            return bounded(value)
+
+        def text(value: float | str) -> str:
+            return _table_formula_result(value) if isinstance(value, float) else value
+
+        def rounded(value: float, digits: float) -> float:
+            if not digits.is_integer() or not -10 <= digits <= 10:
+                raise _TableFormulaError("#WERT!")
+            places = int(digits)
+            factor = 10 ** abs(places)
+            scaled = value * factor if places >= 0 else value / factor
+            integer = math.copysign(math.floor(abs(scaled) + 0.5), scaled)
+            return bounded(integer / factor if places >= 0 else integer * factor)
+
+        def checked_date(serial: float) -> date:
+            if not serial.is_integer():
+                raise _TableFormulaError("#WERT!")
+            try:
+                resolved = date(1970, 1, 1) + timedelta(days=int(serial))
+            except (OverflowError, ValueError):
+                raise _TableFormulaError("#WERT!") from None
+            if not 1900 <= resolved.year <= 9999:
+                raise _TableFormulaError("#WERT!")
+            return resolved
+
+        def shifted_date(serial: float, months: float, end_of_month: bool) -> float:
+            original = checked_date(serial)
+            if not months.is_integer() or abs(months) > 120000:
+                raise _TableFormulaError("#WERT!")
+            total = original.year * 12 + original.month - 1 + int(months)
+            year, month_index = divmod(total, 12)
+            if not 1900 <= year <= 9999:
+                raise _TableFormulaError("#WERT!")
+            month = month_index + 1
+            day = monthrange(year, month)[1] if end_of_month else min(original.day, monthrange(year, month)[1])
+            return float((date(year, month, day) - date(1970, 1, 1)).days)
+
+        def range_argument(active: bool = True) -> list[float | str]:
+            if peek() == "ref" and tokens[position + 1][0] == ":":
+                first_reference = take("ref")
+                take(":")
+                last_reference = take("ref")
+                if not active:
+                    return [0.0]
+                first, last = point(table_key, first_reference), point(table_key, last_reference)
+                return [
+                    scalar(table_key, row_index, column_index)
+                    for row_index in range(min(first[0], last[0]), max(first[0], last[0]) + 1)
+                    for column_index in range(min(first[1], last[1]), max(first[1], last[1]) + 1)
+                ]
+            if peek() == "named":
+                name = take("named")
+                return named_values(name) if active else [0.0]
+            raise _TableFormulaError("#WERT!")
+
+        def primary(active: bool = True) -> float | str:
+            if peek() == "error":
+                code = take("error")
+                if active:
+                    raise _TableFormulaError(code)
+                return 0.0
+            if peek() == "number":
+                number_value = float(take("number"))
+                return number_value if active else 0.0
+            if peek() == "string":
+                string_value = str(take("string"))
+                return string_value if active else ""
+            if peek() == "ref":
+                reference = take("ref")
+                return scalar(table_key, *point(table_key, reference)) if active else 0.0
+            if peek() == "named":
+                name = take("named")
+                if not active:
+                    return 0.0
+                resolved_values = named_values(name)
+                if len(resolved_values) != 1:
+                    raise _TableFormulaError("#WERT!")
+                return resolved_values[0]
+            if peek() == "(":
+                take("(")
+                grouped_value = expression(active)
+                take(")")
+                return grouped_value
+            if peek() == "name":
+                name = take("name")
+                take("(")
+                if name == "IF":
+                    condition = number(expression(active))
+                    take(",")
+                    truthy = expression(active and condition != 0)
+                    take(",")
+                    falsy = expression(active and condition == 0)
+                    take(")")
+                    return (truthy if condition != 0 else falsy) if active else 0.0
+                if name == "XLOOKUP":
+                    search = expression(active)
+                    take(",")
+                    lookup = range_argument(active)
+                    take(",")
+                    returned = range_argument(active)
+                    take(")")
+                    if not active:
+                        return 0.0
+                    if len(lookup) != len(returned) or len(lookup) > 4000:
+                        raise _TableFormulaError("#WERT!")
+                    try:
+                        return returned[lookup.index(search)]
+                    except ValueError:
+                        raise _TableFormulaError("#BEZUG!") from None
+                if name in {"SUMIF", "COUNTIF", "AVERAGEIF"}:
+                    tested = range_argument(active)
+                    take(",")
+                    criterion = expression(active)
+                    returned = tested
+                    separate_result = False
+                    if peek() == ",":
+                        take(",")
+                        returned = range_argument(active)
+                        separate_result = True
+                    take(")")
+                    if not active:
+                        return 0.0
+                    if (name == "COUNTIF" and separate_result) or len(tested) != len(returned) or len(tested) > 4000:
+                        raise _TableFormulaError("#WERT!")
+                    matches = [returned[index] for index, value in enumerate(tested) if value == criterion]
+                    if name == "COUNTIF":
+                        return float(len(matches))
+                    if not matches and name == "AVERAGEIF":
+                        raise _TableFormulaError("#DIV/0!")
+                    matched_numbers = [number(value) for value in matches]
+                    return sum(matched_numbers) if name == "SUMIF" else sum(matched_numbers) / len(matched_numbers)
+                if name in {"SUMIFS", "COUNTIFS", "AVERAGEIFS"}:
+                    result_range: list[float | str] | None = None
+                    if name != "COUNTIFS":
+                        result_range = range_argument(active)
+                        take(",")
+                    criteria: list[tuple[list[float | str], float | str]] = []
+                    while True:
+                        tested = range_argument(active)
+                        take(",")
+                        criterion = expression(active)
+                        criteria.append((tested, criterion))
+                        if peek() != ",":
+                            break
+                        take(",")
+                    take(")")
+                    if not active:
+                        return 0.0
+                    length = len(result_range) if result_range is not None else len(criteria[0][0]) if criteria else 0
+                    if (
+                        not 1 <= len(criteria) <= 10
+                        or not 1 <= length <= 4000
+                        or (result_range is not None and len(result_range) != length)
+                        or any(len(tested) != length for tested, _ in criteria)
+                    ):
+                        raise _TableFormulaError("#WERT!")
+                    indexes = [
+                        index
+                        for index in range(length)
+                        if all(tested[index] == criterion for tested, criterion in criteria)
+                    ]
+                    if name == "COUNTIFS":
+                        return float(len(indexes))
+                    if not indexes and name == "AVERAGEIFS":
+                        raise _TableFormulaError("#DIV/0!")
+                    assert result_range is not None
+                    matched_values = [number(result_range[index]) for index in indexes]
+                    return sum(matched_values) if name == "SUMIFS" else sum(matched_values) / len(matched_values)
+                values: list[float | str] = []
+                if peek() != ")":
+                    while True:
+                        if (peek() == "ref" and tokens[position + 1][0] == ":") or (
+                            peek() == "named" and tokens[position + 1][0] in {",", ")"}
+                        ):
+                            values.extend(range_argument(active))
+                        else:
+                            values.append(expression(active))
+                        if peek() != ",":
+                            break
+                        take(",")
+                take(")")
+                if not values or len(values) > 4000:
+                    raise _TableFormulaError("#LIMIT!")
+                if not active:
+                    return 0.0
+                if name == "CONCAT":
+                    return _table_formula_result("".join(text(value) for value in values))
+                if name in {"LEFT", "RIGHT"} and len(values) in {1, 2}:
+                    characters = list(text(values[0]))
+                    count = number(values[1]) if len(values) == 2 else 1.0
+                    if not count.is_integer() or not 0 <= count <= 512:
+                        raise _TableFormulaError("#WERT!")
+                    amount = int(count)
+                    selected = characters[:amount] if name == "LEFT" else characters[max(0, len(characters) - amount) :]
+                    return "".join(selected)
+                if name == "LEN" and len(values) == 1:
+                    return float(len(text(values[0])))
+                numbers = [number(value) for value in values]
+                if name == "SUM":
+                    return sum(numbers)
+                if name == "AVERAGE":
+                    return sum(numbers) / len(numbers)
+                if name == "MIN":
+                    return min(numbers)
+                if name == "MAX":
+                    return max(numbers)
+                if name == "COUNT":
+                    return float(len(numbers))
+                if name == "PRODUCT":
+                    return bounded(math.prod(numbers))
+                if name == "MEDIAN":
+                    ordered = sorted(numbers)
+                    middle = len(ordered) // 2
+                    return ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+                if name == "AND":
+                    return 1.0 if all(value != 0 for value in numbers) else 0.0
+                if name == "OR":
+                    return 1.0 if any(value != 0 for value in numbers) else 0.0
+                if name == "NOT" and len(numbers) == 1:
+                    return 1.0 if numbers[0] == 0 else 0.0
+                if name == "ABS" and len(numbers) == 1:
+                    return abs(numbers[0])
+                if name == "ROUND" and len(numbers) == 2:
+                    return rounded(numbers[0], numbers[1])
+                if name == "POWER" and len(numbers) == 2:
+                    try:
+                        value = numbers[0] ** numbers[1]
+                    except OverflowError:
+                        raise _TableFormulaError("#LIMIT!") from None
+                    except (ValueError, ZeroDivisionError):
+                        raise _TableFormulaError("#WERT!") from None
+                    if not isinstance(value, (int, float)):
+                        raise _TableFormulaError("#WERT!")
+                    return bounded(float(value))
+                if name == "SQRT" and len(numbers) == 1 and numbers[0] >= 0:
+                    return math.sqrt(numbers[0])
+                if name == "DATE" and len(numbers) == 3 and all(value.is_integer() for value in numbers):
+                    try:
+                        resolved = date(int(numbers[0]), int(numbers[1]), int(numbers[2]))
+                    except ValueError:
+                        raise _TableFormulaError("#WERT!") from None
+                    if not 1900 <= resolved.year <= 9999:
+                        raise _TableFormulaError("#WERT!")
+                    return float((resolved - date(1970, 1, 1)).days)
+                if name in {"YEAR", "MONTH", "DAY"} and len(numbers) == 1:
+                    resolved = checked_date(numbers[0])
+                    return float({"YEAR": resolved.year, "MONTH": resolved.month, "DAY": resolved.day}[name])
+                if name == "EDATE" and len(numbers) == 2:
+                    return shifted_date(numbers[0], numbers[1], False)
+                if name == "EOMONTH" and len(numbers) == 2:
+                    return shifted_date(numbers[0], numbers[1], True)
+                if name == "DAYS" and len(numbers) == 2:
+                    checked_date(numbers[0])
+                    checked_date(numbers[1])
+                    return numbers[0] - numbers[1]
+                if name == "WEEKDAY" and len(numbers) == 1:
+                    return float(checked_date(numbers[0]).weekday() + 1)
+                raise _TableFormulaError("#WERT!")
+            raise _TableFormulaError("#WERT!")
+
+        def unary(active: bool = True) -> float | str:
+            if peek() == "+":
+                take("+")
+                return number(unary(active))
+            if peek() == "-":
+                take("-")
+                return -number(unary(active))
+            return primary(active)
+
+        def term(active: bool = True) -> float | str:
+            value = unary(active)
+            while peek() in {"*", "/"}:
+                operator = take(peek())
+                right = number(unary(active))
+                value = number(value)
+                if active and operator == "/" and right == 0:
+                    raise _TableFormulaError("#DIV/0!")
+                value = (value * right if operator == "*" else value / right) if active else 0.0
+            return value
+
+        def additive(active: bool = True) -> float | str:
+            value = term(active)
+            while peek() in {"+", "-"}:
+                operator = take(peek())
+                right = number(term(active))
+                value = number(value)
+                value = value + right if operator == "+" else value - right
+            return value
+
+        def expression(active: bool = True) -> float | str:
+            left = additive(active)
+            if peek() != "compare":
+                return left
+            operator = take("compare")
+            right = additive(active)
+            if not active:
+                return 0.0
+            if operator == "=":
+                return float(left == right)
+            if operator == "<>":
+                return float(left != right)
+            left_number, right_number = number(left), number(right)
+            return float(
+                {
+                    "<": left_number < right_number,
+                    "<=": left_number <= right_number,
+                    ">": left_number > right_number,
+                    ">=": left_number >= right_number,
+                }[operator]
+            )
+
+        try:
+            value = expression()
+            if peek() != "end":
+                raise _TableFormulaError("#WERT!")
+        except _TableFormulaError as error:
+            code = str(error) if str(error) in _TABLE_FORMULA_ERRORS else "#WERT!"
+            states[key] = "done"
+            errors[key] = code
+            raise _TableFormulaError(code) from None
+        states[key] = "done"
+        memo[key] = value
+        return value
+
+    for table_key, table in tables:
+        if table_key not in table_shapes:
+            continue
+        for row_index, row in enumerate(table["content"]):
+            for column_index, cell in enumerate(row["content"]):
+                attrs = cell.get("attrs", {})
+                if attrs.get("formula") is None:
+                    continue
+                try:
+                    result = _table_formula_result(evaluate(table_key, row_index, column_index))
+                except _TableFormulaError as error:
+                    result = str(error) if str(error) in _TABLE_FORMULA_ERRORS else "#WERT!"
+                if attrs.get("formulaResult") != result:
+                    return False
+    return True
+
+
+_CHART_COLORS = ("teal", "blue", "orange", "purple")
+_CHART_LEGEND_POSITIONS = {"bottom", "top", "left", "right"}
+_CHART_NUMBER_FORMATS = {"general", "integer", "decimal", "percent", "currency-eur"}
+_CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
+_CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
+
+
+def _valid_chart_axes(value: Any, series: list[dict[str, Any]]) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "mode",
+        "categoryTitle",
+        "valueTitle",
+        "minimum",
+        "maximum",
+        "majorUnit",
+        "gridlines",
+        "numberFormat",
+    }:
+        return False
+    if (
+        value.get("mode") not in {"auto", "manual"}
+        or type(value.get("gridlines")) is not bool
+        or value.get("numberFormat") not in _CHART_NUMBER_FORMATS
+        or not (value.get("categoryTitle") == "" or _valid_literal(value.get("categoryTitle"), 1, 60))
+        or not (value.get("valueTitle") == "" or _valid_literal(value.get("valueTitle"), 1, 60))
+    ):
+        return False
+    minimum, maximum, major_unit = value.get("minimum"), value.get("maximum"), value.get("majorUnit")
+    if value["mode"] == "auto":
+        return minimum is None and maximum is None and major_unit is None
+    if not isinstance(minimum, (int, float)) or isinstance(minimum, bool):
+        return False
+    if not isinstance(maximum, (int, float)) or isinstance(maximum, bool):
+        return False
+    if not isinstance(major_unit, (int, float)) or isinstance(major_unit, bool):
+        return False
+    minimum_value, maximum_value, major_unit_value = float(minimum), float(maximum), float(major_unit)
+    if (
+        not all(
+            math.isfinite(number) and abs(number) <= 1_000_000_000
+            for number in (minimum_value, maximum_value, major_unit_value)
+        )
+        or minimum_value >= maximum_value
+        or major_unit_value <= 0
+        or major_unit_value > maximum_value - minimum_value
+    ):
+        return False
+    intervals = (maximum_value - minimum_value) / major_unit_value
+    return (
+        math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
+        and intervals <= 12
+        and all(minimum_value <= number <= maximum_value for entry in series for number in entry["values"])
+    )
+
+
+def _chart_source(value: Any) -> tuple[str, int, int, int, int, str] | None:
+    if not isinstance(value, dict) or set(value) not in ({"tableId", "range"}, {"tableId", "range", "orientation"}):
+        return None
+    table_id, cell_range = value.get("tableId"), value.get("range")
+    if (
+        not isinstance(table_id, str)
+        or re.fullmatch(r"table-[a-f0-9]{24}", table_id) is None
+        or not isinstance(cell_range, str)
+    ):
+        return None
+    match = _CHART_RANGE.fullmatch(cell_range)
+    if match is None:
+        return None
+    left, top = ord(match.group(1)) - 65, int(match.group(2)) - 1
+    right, bottom = ord(match.group(3)) - 64, int(match.group(4))
+    orientation = value.get("orientation", "columns")
+    if orientation not in {"columns", "rows"} or right - left < 2 or bottom - top < 2:
+        return None
+    if orientation == "columns" and (right - left > 5 or bottom - top > 13):
+        return None
+    if orientation == "rows" and (right - left > 13 or bottom - top > 5):
+        return None
+    return table_id, top, left, bottom, right, orientation
+
+
+def _chart_data_from_table(
+    table: dict[str, Any], source: Any, kind: str
+) -> tuple[list[str], list[dict[str, Any]]] | None:
+    parsed = _chart_source(source)
+    rows = table.get("content")
+    if parsed is None or not isinstance(rows, list) or not _valid_table_grid(rows):
+        return None
+    _, top, left, bottom, right, orientation = parsed
+    cells = [row["content"] for row in rows]
+    if (
+        bottom > len(cells)
+        or right > len(cells[0])
+        or (kind == "pie" and (right - left != 2 if orientation == "columns" else bottom - top != 2))
+        or any(
+            cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
+            for row in cells
+            for cell in row
+        )
+    ):
+        return None
+    selected = [row[left:right] for row in cells[top:bottom]]
+
+    def label(cell: dict[str, Any]) -> str:
+        text = _table_cell_text(cell)
+        if not _valid_literal(text, 1, 60):
+            raise ValueError
+        return text
+
+    def number(cell: dict[str, Any]) -> int | float:
+        attrs = cell.get("attrs", {})
+        text = attrs.get("formulaResult") if attrs.get("formula") is not None else _table_cell_text(cell)
+        if not isinstance(text, str) or _CHART_NUMBER.fullmatch(text) is None:
+            raise ValueError
+        value = float(text.replace(",", "."))
+        if not math.isfinite(value) or not -1_000_000_000 <= value <= 1_000_000_000:
+            raise ValueError
+        return int(value) if value.is_integer() else value
+
+    try:
+        if orientation == "columns":
+            categories = [label(row[0]) for row in selected[1:]]
+            series = [
+                {
+                    "name": label(cell),
+                    "color": _CHART_COLORS[index],
+                    "values": [number(row[index + 1]) for row in selected[1:]],
+                }
+                for index, cell in enumerate(selected[0][1:])
+            ]
+        else:
+            categories = [label(cell) for cell in selected[0][1:]]
+            series = [
+                {
+                    "name": label(row[0]),
+                    "color": _CHART_COLORS[index],
+                    "values": [number(cell) for cell in row[1:]],
+                }
+                for index, row in enumerate(selected[1:])
+            ]
+    except (ValueError, IndexError):
+        return None
+    if len(set(categories)) != len(categories) or len({entry["name"] for entry in series}) != len(series):
+        return None
+    return categories, series
+
+
+def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
+    """Validate structure and resource limits before canonicalization or storage."""
+    nodes = 0
+    characters = 0
+    images = 0
+    page_breaks = 0
+    section_breaks = 0
+    bookmarks = 0
+    bookmark_ids: set[str] = set()
+    bookmark_labels: set[str] = set()
+    figure_ids: set[str] = set()
+    table_ids: set[str] = set()
+    table_nodes: dict[str, dict[str, Any]] = {}
+    numbered_tables = 0
+    table_formulas = 0
+    document_fields: set[str] = set()
+    citation_sources: set[str] = set()
+    note_ids: set[str] = set()
+    equations = 0
+    document_references = 0
+    equation_ids: set[str] = set()
+    generated_blocks: set[str] = set()
+    image_group_ids: set[str] = set()
+    shape_ids: set[str] = set()
+    shape_group_ids: set[str] = set()
+    chart_ids: set[str] = set()
+    linked_charts: list[dict[str, Any]] = []
+
+    def reject() -> None:
+        raise OfficeDocumentInvalidContentError("Native document content is invalid or exceeds its limits")
+
+    style_ids: set[str] = set()
+    style_names: set[str] = set()
+    root_attrs = document.get("attrs", {})
+    if not isinstance(root_attrs, dict) or set(root_attrs) - {
+        "styles",
+        "page",
+        "running",
+        "documentFields",
+        "citationSources",
+        "tableRanges",
+    }:
+        reject()
+    table_ranges_value = root_attrs.get("tableRanges", [])
+    if not isinstance(table_ranges_value, list) or len(table_ranges_value) > 100:
+        reject()
+    table_ranges: list[dict[str, str]] = []
+    table_range_names: set[str] = set()
+    for definition in table_ranges_value:
+        if (
+            not isinstance(definition, dict)
+            or set(definition) != {"name", "tableId", "range"}
+            or not isinstance(definition.get("name"), str)
+            or _TABLE_RANGE_NAME.fullmatch(definition["name"]) is None
+            or re.fullmatch(r"[A-T][1-9][0-9]{0,2}", definition["name"]) is not None
+            or definition["name"] in _TABLE_FORMULA_NAMES
+            or definition["name"] in table_range_names
+            or not isinstance(definition.get("tableId"), str)
+            or re.fullmatch(r"table-[a-f0-9]{24}", definition["tableId"]) is None
+            or not isinstance(definition.get("range"), str)
+            or _TABLE_RANGE.fullmatch(definition["range"]) is None
+        ):
+            reject()
+        table_range_names.add(definition["name"])
+        table_ranges.append(definition)
+    fields = root_attrs.get("documentFields", [])
+    if not isinstance(fields, list) or len(fields) > 50:
+        reject()
+    for field in fields:
+        if (
+            not isinstance(field, dict)
+            or set(field) != {"key", "label", "value"}
+            or not isinstance(field["key"], str)
+            or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", field["key"]) is None
+            or field["key"] in document_fields
+            or not isinstance(field["label"], str)
+            or not 1 <= len(field["label"]) <= 64
+            or field["label"] != field["label"].strip()
+            or not isinstance(field["value"], str)
+            or len(field["value"]) > 1000
+            or any(
+                ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                for c in field["label"] + field["value"]
+            )
+        ):
+            reject()
+        document_fields.add(field["key"])
+    sources = root_attrs.get("citationSources", [])
+    if not isinstance(sources, list) or len(sources) > 100:
+        reject()
+    for source in sources:
+        if (
+            not isinstance(source, dict)
+            or set(source) != {"id", "author", "title", "year", "locator"}
+            or not isinstance(source["id"], str)
+            or re.fullmatch(r"source-[a-f0-9]{24}", source["id"]) is None
+            or source["id"] in citation_sources
+            or any(not isinstance(source[key], str) for key in ("author", "title", "year", "locator"))
+            or not source["title"].strip()
+            or source["title"] != source["title"].strip()
+            or len(source["author"]) > 200
+            or len(source["title"]) > 500
+            or len(source["year"]) > 20
+            or len(source["locator"]) > 1000
+            or any(
+                ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                for key in ("author", "title", "year", "locator")
+                for c in source[key]
+            )
+        ):
+            reject()
+        citation_sources.add(source["id"])
+    if "page" in root_attrs:
+        page = root_attrs["page"]
+        if (
+            not isinstance(page, dict)
+            or set(page) not in ({"paper", "orientation", "margins"}, {"paper", "orientation", "margins", "columns"})
+            or page["paper"] not in ("a4", "letter")
+            or page["orientation"] not in ("portrait", "landscape")
+            or ("columns" in page and page["columns"] not in ("one", "two", "three"))
+            or not isinstance(page["margins"], dict)
+            or set(page["margins"]) != {"top", "right", "bottom", "left"}
+            or any(type(value) is not int or not 5 <= value <= 50 for value in page["margins"].values())
+        ):
+            reject()
+    if "running" in root_attrs:
+        running = root_attrs["running"]
+        first_page = running.get("firstPage") if isinstance(running, dict) else None
+        if (
+            not isinstance(running, dict)
+            or set(running) not in ({"header", "footer", "numbering"}, {"header", "footer", "numbering", "firstPage"})
+            or running["numbering"] not in ("none", "page", "pageOfPages")
+            or any(
+                not isinstance(text, str)
+                or len(text) > 64
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in text
+                )
+                for text in (running["header"], running["footer"])
+            )
+            or (
+                "firstPage" in running
+                and (
+                    not isinstance(first_page, dict)
+                    or set(first_page) != {"header", "footer", "showNumber"}
+                    or type(first_page["showNumber"]) is not bool
+                    or (first_page["showNumber"] and running["numbering"] == "none")
+                    or any(
+                        not isinstance(text, str)
+                        or len(text) > 64
+                        or any(
+                            ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                            for c in text
+                        )
+                        for text in (first_page["header"], first_page["footer"])
+                    )
+                )
+            )
+        ):
+            reject()
+        margins = root_attrs.get("page", {}).get("margins", {"top": 18, "bottom": 18})
+        if (running["header"] and margins["top"] < 16) or (
+            (running["footer"] or running["numbering"] != "none") and margins["bottom"] < 16
+        ):
+            reject()
+        if first_page and (
+            (first_page["header"] and margins["top"] < 16)
+            or ((first_page["footer"] or first_page["showNumber"]) and margins["bottom"] < 16)
+        ):
+            reject()
+    styles = root_attrs.get("styles", [])
+    if not isinstance(styles, list) or len(styles) > 20:
+        reject()
+    for style in styles:
+        if not isinstance(style, dict) or set(style) != {"id", "name", "paragraph", "character"}:
+            reject()
+        identifier, name = style["id"], style["name"]
+        if (
+            not isinstance(identifier, str)
+            or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", identifier) is None
+            or identifier in style_ids
+            or not isinstance(name, str)
+            or not 1 <= len(name) <= 60
+            or name != name.strip()
+            or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in name)
+            or name in style_names
+        ):
+            reject()
+        style_ids.add(identifier)
+        style_names.add(name)
+        for key, values in (
+            ("paragraph", PARAGRAPH_VALUES),
+            ("character", STYLE_CHARACTER_VALUES),
+        ):
+            attributes = style[key]
+            if not isinstance(attributes, dict) or set(attributes) - set(values):
+                reject()
+            for attribute, value in attributes.items():
+                expected_type = (
+                    bool
+                    if attribute in {"keepWithNext", "keepLines", "pageBreakBefore"}
+                    else int
+                    if attribute in {"fontSize", "spacingBefore", "spacingAfter", "indentLeft", "indentRight"}
+                    else str
+                )
+                if type(value) is not expected_type or value not in values[attribute]:
+                    reject()
+
+    def validate_section_profile(value: Any) -> None:
+        if not isinstance(value, dict) or set(value) != {"page", "running"}:
+            reject()
+        page = value["page"]
+        if (
+            not isinstance(page, dict)
+            or set(page) not in ({"paper", "orientation", "margins"}, {"paper", "orientation", "margins", "columns"})
+            or page["paper"] not in ("a4", "letter")
+            or page["orientation"] not in ("portrait", "landscape")
+            or ("columns" in page and page["columns"] not in ("one", "two", "three"))
+            or not isinstance(page["margins"], dict)
+            or set(page["margins"]) != {"top", "right", "bottom", "left"}
+            or any(type(item) is not int or not 5 <= item <= 50 for item in page["margins"].values())
+        ):
+            reject()
+        running = value["running"]
+        if (
+            not isinstance(running, dict)
+            or set(running) != {"header", "footer", "numbering"}
+            or running["numbering"] not in ("none", "page", "pageOfPages")
+            or any(
+                not isinstance(text, str)
+                or len(text) > 64
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in text
+                )
+                for text in (running["header"], running["footer"])
+            )
+            or (running["header"] and page["margins"]["top"] < 16)
+            or ((running["footer"] or running["numbering"] != "none") and page["margins"]["bottom"] < 16)
+        ):
+            reject()
+
+    content = document.get("content", [])
+    if isinstance(content, list):
+        for index, entry in enumerate(content):
+            if isinstance(entry, dict) and entry.get("type") == "sectionBreak":
+                before = content[index - 1] if index else None
+                after = content[index + 1] if index + 1 < len(content) else None
+                if (
+                    index == 0
+                    or index == len(content) - 1
+                    or not isinstance(before, dict)
+                    or not isinstance(after, dict)
+                    or before.get("type") in {"pageBreak", "sectionBreak"}
+                    or after.get("type") in {"pageBreak", "sectionBreak"}
+                ):
+                    reject()
+
+    def visit(node: Any, depth: int, parent_kind: str | None = None) -> None:
+        nonlocal nodes, characters, images, page_breaks, section_breaks, bookmarks, numbered_tables, equations
+        nonlocal table_formulas
+        nonlocal document_references
+        nodes += 1
+        if nodes > MAX_DOCUMENT_NODES or depth > MAX_DOCUMENT_DEPTH or not isinstance(node, dict):
+            reject()
+        if set(node) - {"type", "attrs", "content", "text", "marks"}:
+            reject()
+        kind = node.get("type")
+        if not isinstance(kind, str) or kind not in BLOCKS | {
+            "doc",
+            "text",
+            "hardBreak",
+            "listItem",
+            "tableRow",
+            "tableCell",
+            "tableHeader",
+            "bookmark",
+            "documentField",
+            "noteReference",
+            "citationReference",
+        }:
+            reject()
+        attrs = node.get("attrs", {})
+        if not isinstance(attrs, dict):
+            reject()
+        if kind in {"paragraph", "heading"}:
+            allowed = PARAGRAPH_FORMAT_ATTRIBUTES | {"styleId"} | ({"level"} if kind == "heading" else set())
+            if set(attrs) - allowed:
+                reject()
+            if "styleId" in attrs and (not isinstance(attrs["styleId"], str) or attrs["styleId"] not in style_ids):
+                reject()
+            if kind == "heading" and (type(attrs.get("level")) is not int or attrs["level"] not in {1, 2, 3}):
+                reject()
+            if "textAlign" in attrs and (
+                not isinstance(attrs["textAlign"], str)
+                or attrs["textAlign"] not in {"left", "center", "right", "justify"}
+            ):
+                reject()
+            if "lineSpacing" in attrs and (
+                not isinstance(attrs["lineSpacing"], str) or attrs["lineSpacing"] not in {"1", "1.15", "1.5", "2"}
+            ):
+                reject()
+            for key in ("spacingBefore", "spacingAfter"):
+                if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 6, 12, 18, 24}):
+                    reject()
+            for key in ("indentLeft", "indentRight"):
+                if key in attrs and (type(attrs[key]) is not int or attrs[key] not in {0, 18, 36, 54, 72}):
+                    reject()
+            if "specialIndent" in attrs and (
+                not isinstance(attrs["specialIndent"], str)
+                or attrs["specialIndent"] not in {"none", "firstLine18", "firstLine36", "hanging18", "hanging36"}
+            ):
+                reject()
+            for key in ("keepWithNext", "keepLines", "pageBreakBefore"):
+                if key in attrs and type(attrs[key]) is not bool:
+                    reject()
+        elif kind == "pageBreak":
+            page_breaks += 1
+            if depth != 1 or set(node) != {"type"} or page_breaks > 100:
+                reject()
+        elif kind == "sectionBreak":
+            section_breaks += 1
+            if depth != 1 or set(node) != {"type", "attrs"} or section_breaks > 12:
+                reject()
+            validate_section_profile(attrs)
+        elif kind == "documentCard":
+            document_references += 1
+            if (
+                depth != 1
+                or document_references > 100
+                or set(node) != {"type", "attrs"}
+                or set(attrs) != {"targetObjectId", "targetVersionId", "mode"}
+                or not isinstance(attrs["targetObjectId"], str)
+                or re.fullmatch(r"office-doc-[a-f0-9]{32}", attrs["targetObjectId"]) is None
+                or not isinstance(attrs["targetVersionId"], str)
+                or re.fullmatch(r"office-version-[a-f0-9]{32}", attrs["targetVersionId"]) is None
+                or attrs["mode"] not in {"snapshot", "linked"}
+            ):
+                reject()
+        elif kind == "chart":
+            identifier = attrs.get("id")
+            categories = attrs.get("categories")
+            series = attrs.get("series")
+            source = attrs.get("source")
+            expected_chart_attrs = {"id", "kind", "title", "altText", "legend", "categories", "series"}
+            if source is not None:
+                expected_chart_attrs.add("source")
+            if "dataLabels" in attrs:
+                expected_chart_attrs.add("dataLabels")
+            if "legendPosition" in attrs:
+                expected_chart_attrs.add("legendPosition")
+            if "axes" in attrs:
+                expected_chart_attrs.add("axes")
+            if (
+                depth != 1
+                or set(node) != {"type", "attrs"}
+                or set(attrs) != expected_chart_attrs
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"chart-[a-f0-9]{24}", identifier) is None
+                or identifier in chart_ids
+                or len(chart_ids) >= 20
+                or attrs.get("kind") not in {"bar", "line", "pie"}
+                or type(attrs.get("legend")) is not bool
+                or ("dataLabels" in attrs and type(attrs.get("dataLabels")) is not bool)
+                or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
+                or not _valid_literal(attrs.get("title"), 1, 120)
+                or not _valid_literal(attrs.get("altText"), 1, 500)
+                or not isinstance(categories, list)
+                or not 1 <= len(categories) <= 12
+                or any(not _valid_literal(category, 1, 60) for category in categories)
+                or len(set(categories)) != len(categories)
+                or not isinstance(series, list)
+                or not 1 <= len(series) <= 4
+                or (attrs.get("kind") == "pie" and len(series) != 1)
+                or (source is not None and _chart_source(source) is None)
+            ):
+                reject()
+            names: set[str] = set()
+            colors: set[str] = set()
+            for entry in series:
+                if (
+                    not isinstance(entry, dict)
+                    or set(entry) != {"name", "color", "values"}
+                    or not _valid_literal(entry.get("name"), 1, 60)
+                    or entry["name"] in names
+                    or entry.get("color") not in {"teal", "blue", "orange", "purple"}
+                    or entry["color"] in colors
+                    or not isinstance(entry.get("values"), list)
+                    or len(entry["values"]) != len(categories)
+                    or any(
+                        type(number) not in {int, float}
+                        or not math.isfinite(number)
+                        or not -1_000_000_000 <= number <= 1_000_000_000
+                        for number in entry["values"]
+                    )
+                    or (attrs.get("kind") != "line" and any(number < 0 for number in entry["values"]))
+                ):
+                    reject()
+                names.add(entry["name"])
+                colors.add(entry["color"])
+            if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
+                reject()
+            if "axes" in attrs and (attrs.get("kind") == "pie" or not _valid_chart_axes(attrs["axes"], series)):
+                reject()
+            chart_ids.add(identifier)
+            if source is not None:
+                linked_charts.append(attrs)
+            characters += (
+                len(attrs["title"])
+                + len(attrs["altText"])
+                + sum(map(len, categories))
+                + sum(len(entry["name"]) for entry in series)
+                + (len(attrs["axes"]["categoryTitle"]) + len(attrs["axes"]["valueTitle"]) if "axes" in attrs else 0)
+            )
+            if characters > MAX_DOCUMENT_CHARACTERS:
+                reject()
+        elif kind == "image":
+            images += 1
+            if images > 40:
+                reject()
+            try:
+                validate_image_attributes(attrs)
+            except ValueError:
+                reject()
+            figure_id = attrs.get("figureId")
+            if figure_id is not None:
+                if figure_id in figure_ids or figure_id in bookmark_ids or figure_id in table_ids:
+                    reject()
+                figure_ids.add(figure_id)
+        elif kind == "imageGroup":
+            identifier = attrs.get("id")
+            if (
+                depth != 1
+                or set(attrs) != {"id", "layout", "gap"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"image-group-[a-f0-9]{24}", identifier) is None
+                or identifier in image_group_ids
+                or attrs.get("layout") not in {"row", "stack", "grid-2", "grid-3", "grid-4"}
+                or type(attrs.get("gap")) is not int
+                or not 0 <= attrs["gap"] <= 48
+                or len(image_group_ids) >= 20
+            ):
+                reject()
+            image_group_ids.add(identifier)
+        elif kind == "shape":
+            identifier = attrs.get("id")
+            text = attrs.get("text")
+            colors = {
+                "transparent",
+                "white",
+                "slate",
+                "red",
+                "orange",
+                "yellow",
+                "green",
+                "teal",
+                "blue",
+                "purple",
+                "black",
+            }
+            required_shape_attrs = {
+                "id",
+                "kind",
+                "width",
+                "height",
+                "fill",
+                "stroke",
+                "strokeWidth",
+                "text",
+                "textAlign",
+            }
+            optional_shape_attrs = {
+                "altText",
+                "fontSize",
+                "hidden",
+                "locked",
+                "name",
+                "position",
+                "rotation",
+                "textColor",
+                "textStyle",
+                "wrap",
+            }
+            if (
+                (depth != 1 and parent_kind != "shapeGroup")
+                or set(attrs) - (required_shape_attrs | optional_shape_attrs)
+                or not required_shape_attrs.issubset(attrs)
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"shape-[a-f0-9]{24}", identifier) is None
+                or identifier in shape_ids
+                or len(shape_ids) >= 100
+                or attrs.get("kind") not in {"rectangle", "roundedRectangle", "ellipse"}
+                or type(attrs.get("width")) is not int
+                or not 80 <= attrs["width"] <= 1200
+                or type(attrs.get("height")) is not int
+                or not 40 <= attrs["height"] <= 800
+                or attrs.get("fill") not in colors
+                or attrs.get("stroke") not in colors
+                or type(attrs.get("strokeWidth")) is not int
+                or not 0 <= attrs["strokeWidth"] <= 8
+                or not isinstance(text, str)
+                or len(text) > 1000
+                or any(
+                    (ord(c) < 32 and c not in "\n\t")
+                    or 127 <= ord(c) <= 159
+                    or 0xD800 <= ord(c) <= 0xDFFF
+                    or c in "\u2028\u2029"
+                    for c in text
+                )
+                or attrs.get("textAlign") not in {"left", "center", "right"}
+                or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
+                or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
+                or ("hidden" in attrs and (attrs.get("hidden") is not True or depth != 1))
+                or ("locked" in attrs and (attrs.get("locked") is not True or depth != 1))
+                or (
+                    "fontSize" in attrs
+                    and (
+                        type(attrs.get("fontSize")) is not int
+                        or not 10 <= attrs["fontSize"] <= 72
+                        or attrs["fontSize"] == 16
+                    )
+                )
+                or ("textColor" in attrs and attrs.get("textColor") not in colors - {"transparent"})
+                or ("textStyle" in attrs and attrs.get("textStyle") not in {"bold", "italic", "boldItalic"})
+                or (
+                    "rotation" in attrs
+                    and (type(attrs.get("rotation")) is not int or not 1 <= attrs["rotation"] <= 359)
+                )
+            ):
+                reject()
+            position = attrs.get("position")
+            if position is not None and (
+                not isinstance(position, dict)
+                or set(position) != {"layer", "x", "y"}
+                or position.get("layer") not in {"front", "behind"}
+                or type(position.get("x")) is not int
+                or not 0 <= position["x"] <= 1000
+                or type(position.get("y")) is not int
+                or not -1200 <= position["y"] <= 1200
+            ):
+                reject()
+            wrap = attrs.get("wrap")
+            if wrap is not None and (
+                not isinstance(wrap, dict)
+                or set(wrap) != {"side", "gap"}
+                or wrap.get("side") not in {"left", "right"}
+                or type(wrap.get("gap")) is not int
+                or not 0 <= wrap["gap"] <= 48
+            ):
+                reject()
+            if position is not None and wrap is not None:
+                reject()
+            shape_ids.add(identifier)
+            characters += len(text)
+            if characters > MAX_DOCUMENT_CHARACTERS:
+                reject()
+        elif kind == "shapeGroup":
+            identifier = attrs.get("id")
+            connection = attrs.get("connection")
+            connections = attrs.get("connections")
+            position = attrs.get("position")
+            if (
+                depth != 1
+                or set(attrs)
+                - {
+                    "id",
+                    "layout",
+                    "gap",
+                    "alignment",
+                    "distributionExtent",
+                    "connection",
+                    "connections",
+                    "hidden",
+                    "locked",
+                    "position",
+                    "name",
+                    "altText",
+                }
+                or not {"id", "layout", "gap"}.issubset(attrs)
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"shape-group-[a-f0-9]{24}", identifier) is None
+                or identifier in shape_group_ids
+                or attrs.get("layout") not in {"row", "stack"}
+                or type(attrs.get("gap")) is not int
+                or not 0 <= attrs["gap"] <= 48
+                or ("alignment" in attrs and attrs.get("alignment") not in {"center", "end"})
+                or ("name" in attrs and not _valid_object_metadata_text(attrs.get("name"), 80))
+                or ("altText" in attrs and not _valid_object_metadata_text(attrs.get("altText"), 500))
+                or ("hidden" in attrs and attrs.get("hidden") is not True)
+                or ("locked" in attrs and attrs.get("locked") is not True)
+                or (
+                    "distributionExtent" in attrs
+                    and (
+                        type(attrs.get("distributionExtent")) is not int
+                        or not 160 <= attrs["distributionExtent"] <= 2400
+                    )
+                )
+                or len(shape_group_ids) >= 20
+                or (connection is not None and connections is not None)
+            ):
+                reject()
+            if connection is not None and (
+                not isinstance(connection, dict)
+                or set(connection) != {"kind", "color", "width"}
+                or connection.get("kind") not in {"line", "arrow", "doubleArrow"}
+                or connection.get("color") not in {"slate", "red", "green", "teal", "blue", "purple", "black"}
+                or type(connection.get("width")) is not int
+                or not 1 <= connection["width"] <= 8
+            ):
+                reject()
+            if connections is not None and (
+                not isinstance(connections, list)
+                or not 1 <= len(connections) <= 7
+                or any(
+                    item is not None
+                    and (
+                        not isinstance(item, dict)
+                        or set(item) != {"kind", "color", "width"}
+                        or item.get("kind") not in {"line", "arrow", "doubleArrow"}
+                        or item.get("color") not in {"slate", "red", "green", "teal", "blue", "purple", "black"}
+                        or type(item.get("width")) is not int
+                        or not 1 <= item["width"] <= 8
+                    )
+                    for item in connections
+                )
+            ):
+                reject()
+            if position is not None and (
+                not isinstance(position, dict)
+                or set(position) != {"layer", "x", "y"}
+                or position.get("layer") not in {"front", "behind"}
+                or type(position.get("x")) is not int
+                or not 0 <= position["x"] <= 1000
+                or type(position.get("y")) is not int
+                or not -1200 <= position["y"] <= 1200
+            ):
+                reject()
+            shape_group_ids.add(identifier)
+        elif kind == "bookmark":
+            bookmarks += 1
+            identifier, label = attrs.get("id"), attrs.get("label")
+            if (
+                set(attrs) != {"id", "label"}
+                or bookmarks > 100
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", identifier) is None
+                or identifier in bookmark_ids
+                or identifier in table_ids
+                or not isinstance(label, str)
+                or not 1 <= len(label) <= 64
+                or label != label.strip()
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                    for c in label
+                )
+                or label.lower() in bookmark_labels
+            ):
+                reject()
+            bookmark_ids.add(identifier)
+            bookmark_labels.add(label.lower())
+            if identifier in figure_ids or identifier in table_ids:
+                reject()
+        elif kind == "documentField":
+            if (
+                set(attrs) != {"key"}
+                or not isinstance(attrs.get("key"), str)
+                or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", attrs["key"]) is None
+            ):
+                reject()
+        elif kind == "noteReference":
+            identifier, note_kind, text = attrs.get("id"), attrs.get("kind"), attrs.get("text")
+            if (
+                set(attrs) != {"id", "kind", "text"}
+                or not isinstance(identifier, str)
+                or re.fullmatch(r"note-[a-f0-9]{24}", identifier) is None
+                or identifier in note_ids
+                or note_kind not in {"footnote", "endnote"}
+                or not isinstance(text, str)
+                or not text.strip()
+                or text != text.strip()
+                or len(text) > 2000
+                or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in text)
+            ):
+                reject()
+            note_ids.add(identifier)
+            if len(note_ids) > 200:
+                reject()
+        elif kind == "citationReference":
+            if (
+                set(attrs) != {"sourceId", "locator"}
+                or not isinstance(attrs.get("sourceId"), str)
+                or re.fullmatch(r"source-[a-f0-9]{24}", attrs["sourceId"]) is None
+            ):
+                reject()
+            locator = attrs.get("locator")
+            if (
+                not isinstance(locator, str)
+                or len(locator) > 100
+                or locator != locator.strip()
+                or any(ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF for c in locator)
+            ):
+                reject()
+        elif kind == "tableOfContents":
+            if (
+                depth != 1
+                or set(attrs) != {"maxLevel"}
+                or type(attrs.get("maxLevel")) is not int
+                or attrs["maxLevel"] not in {1, 2, 3}
+                or kind in generated_blocks
+            ):
+                reject()
+            generated_blocks.add(kind)
+        elif kind == "bibliography" or kind == "referenceIndex":
+            if depth != 1 or attrs or kind in generated_blocks:
+                reject()
+            generated_blocks.add(kind)
+        elif kind == "equation":
+            equations += 1
+            if (
+                depth != 1
+                or equations > 100
+                or set(attrs) != {"id", "source", "alt"}
+                or not isinstance(attrs.get("id"), str)
+                or re.fullmatch(r"equation-[a-f0-9]{24}", attrs["id"]) is None
+                or attrs["id"] in equation_ids
+                or not isinstance(attrs.get("source"), str)
+                or not 1 <= len(attrs["source"]) <= 1000
+                or not isinstance(attrs.get("alt"), str)
+                or not 1 <= len(attrs["alt"]) <= 500
+                or any(
+                    ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF
+                    for c in attrs["source"] + attrs["alt"]
+                )
+            ):
+                reject()
+            equation_ids.add(attrs["id"])
+        elif kind == "orderedList":
+            if (
+                set(attrs) - {"start"}
+                or type(attrs.get("start", 1)) is not int
+                or not 1 <= attrs.get("start", 1) <= 1_000_000
+            ):
+                reject()
+        elif kind == "codeBlock":
+            if set(attrs) - {"language"} or attrs.get("language") is not None:
+                reject()
+        elif kind == "table":
+            if attrs:
+                identifier, caption = attrs.get("tableId"), attrs.get("caption")
+                if set(attrs) - {"tableId", "caption", "style", "width", "align", "columns", "captionPosition"}:
+                    reject()
+                if (identifier is None) != (caption is None):
+                    reject()
+                if identifier is not None and (
+                    not isinstance(identifier, str)
+                    or re.fullmatch(r"table-[a-f0-9]{24}", identifier) is None
+                    or identifier in table_ids
+                    or identifier in bookmark_ids
+                    or identifier in figure_ids
+                    or not isinstance(caption, str)
+                    or not caption.strip()
+                    or len(caption) > 1000
+                    or any(
+                        ord(c) < 32 or 127 <= ord(c) <= 159 or 0xD800 <= ord(c) <= 0xDFFF or c in "\u2028\u2029"
+                        for c in caption
+                    )
+                ):
+                    reject()
+                if identifier is not None:
+                    numbered_tables += 1
+                    if numbered_tables > 100:
+                        reject()
+                    table_ids.add(identifier)
+                    table_nodes[identifier] = node
+                if attrs.get("style") not in {None, "minimal", "banded", "accent"}:
+                    reject()
+                if attrs.get("width") not in {None, "compact", "wide"}:
+                    reject()
+                if attrs.get("align") not in {None, "center", "right"}:
+                    reject()
+                if attrs.get("columns") not in {None, "first-wide", "first-narrow"}:
+                    reject()
+                if attrs.get("captionPosition") not in {None, "top"}:
+                    reject()
+        elif kind in {"tableCell", "tableHeader"}:
+            if set(attrs) - {
+                "colspan",
+                "rowspan",
+                "colwidth",
+                "background",
+                "verticalAlign",
+                "horizontalAlign",
+                "padding",
+                "border",
+                "numberFormat",
+                "formula",
+                "formulaResult",
+            }:
+                reject()
+            if any(
+                type(attrs.get(key, 1)) is not int or not 1 <= attrs.get(key, 1) <= (20 if key == "colspan" else 200)
+                for key in ("colspan", "rowspan")
+            ):
+                reject()
+            if attrs.get("colwidth") is not None:
+                reject()
+            if attrs.get("background") not in {None, "gray", "blue", "green", "yellow", "red"}:
+                reject()
+            if attrs.get("verticalAlign") not in {None, "middle", "bottom"}:
+                reject()
+            if attrs.get("horizontalAlign") not in {None, "center", "right"}:
+                reject()
+            if attrs.get("padding") not in {None, "compact", "spacious"}:
+                reject()
+            if attrs.get("border") not in {None, "none", "strong"}:
+                reject()
+            formula, formula_result = attrs.get("formula"), attrs.get("formulaResult")
+            number_format = attrs.get("numberFormat")
+            if number_format not in {
+                None,
+                "number-0",
+                "number-2",
+                "percent-0",
+                "percent-2",
+                "currency-eur",
+                "date-iso",
+                "date-de",
+            }:
+                reject()
+            if (formula is None) != (formula_result is None):
+                reject()
+            if formula is not None:
+                table_formulas += 1
+                content = node.get("content")
+                result_content = [] if formula_result == "" else [{"type": "text", "text": formula_result}]
+                if (
+                    kind != "tableCell"
+                    or table_formulas > 1000
+                    or attrs.get("colspan", 1) != 1
+                    or attrs.get("rowspan", 1) != 1
+                    or not _valid_table_formula_source(formula)
+                    or not isinstance(formula_result, str)
+                    or len(formula_result) > 512
+                    or (
+                        formula_result not in {"#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"}
+                        and re.fullmatch(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]{1,10})?", formula_result) is None
+                        and (formula_result.startswith("#") or not _valid_formula_text(formula_result))
+                    )
+                    or content != [{"type": "paragraph", "content": result_content}]
+                ):
+                    reject()
+            if number_format is not None:
+                raw_number = formula_result if formula is not None else _table_cell_text(node)
+                if not isinstance(raw_number, str) or _TABLE_NUMBER.fullmatch(raw_number) is None:
+                    reject()
+                numeric_number = float(raw_number.replace(",", "."))
+                if not math.isfinite(numeric_number) or abs(numeric_number) > 1e15:
+                    reject()
+                if number_format.startswith("date-"):
+                    if not numeric_number.is_integer():
+                        reject()
+                    try:
+                        formatted_date = date(1970, 1, 1) + timedelta(days=int(numeric_number))
+                    except (OverflowError, ValueError):
+                        reject()
+                    if not 1900 <= formatted_date.year <= 9999:
+                        reject()
+        elif kind == "doc":
+            root_attributes = {"styles", "page", "running", "documentFields", "citationSources", "tableRanges"}
+            if depth != 0 or set(attrs) - root_attributes:
+                reject()
+        elif attrs:
+            reject()
+        children = node.get("content", [])
+        if not isinstance(children, list):
+            reject()
+        marks = node.get("marks", [])
+        if not isinstance(marks, list) or len(marks) > len(MARKS):
+            reject()
+        seen: set[str] = set()
+        for mark in marks:
+            if not isinstance(mark, dict):
+                reject()
+            name = mark.get("type")
+            if not isinstance(name, str) or name not in MARKS or name in seen:
+                reject()
+            if name == "textStyle":
+                style = mark.get("attrs")
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(style, dict)
+                    or not style
+                    or set(style)
+                    - {
+                        "fontFamily",
+                        "fontSize",
+                        "textColor",
+                        "highlightColor",
+                        "verticalPosition",
+                        "letterSpacing",
+                        "textCase",
+                    }
+                ):
+                    reject()
+                if "fontSize" in style and (type(style["fontSize"]) is not int or style["fontSize"] not in FONT_SIZES):
+                    reject()
+                if "fontFamily" in style and (
+                    not isinstance(style["fontFamily"], str) or style["fontFamily"] not in FONT_FAMILIES
+                ):
+                    reject()
+                if "textColor" in style and (
+                    not isinstance(style["textColor"], str) or style["textColor"] not in TEXT_COLORS
+                ):
+                    reject()
+                if "highlightColor" in style and (
+                    not isinstance(style["highlightColor"], str) or style["highlightColor"] not in HIGHLIGHT_COLORS
+                ):
+                    reject()
+                if "verticalPosition" in style and (
+                    not isinstance(style["verticalPosition"], str)
+                    or style["verticalPosition"] not in VERTICAL_POSITIONS
+                ):
+                    reject()
+                if "letterSpacing" in style and (
+                    not isinstance(style["letterSpacing"], str) or style["letterSpacing"] not in LETTER_SPACING
+                ):
+                    reject()
+                if "textCase" in style and (
+                    not isinstance(style["textCase"], str) or style["textCase"] not in TEXT_CASES
+                ):
+                    reject()
+            elif name == "link":
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"href"}
+                ):
+                    reject()
+                if not _valid_link_href(mark["attrs"]["href"]):
+                    reject()
+            elif name == "crossReference":
+                if (
+                    set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"targetId"}
+                    or not isinstance(mark["attrs"]["targetId"], str)
+                    or re.fullmatch(r"[a-z][a-z0-9-]{0,47}", mark["attrs"]["targetId"]) is None
+                ):
+                    reject()
+            elif name == "documentReference":
+                document_references += 1
+                if (
+                    document_references > 100
+                    or set(mark) != {"type", "attrs"}
+                    or not isinstance(mark["attrs"], dict)
+                    or set(mark["attrs"]) != {"targetObjectId", "targetVersionId"}
+                    or not isinstance(mark["attrs"]["targetObjectId"], str)
+                    or re.fullmatch(r"office-doc-[a-f0-9]{32}", mark["attrs"]["targetObjectId"]) is None
+                    or not isinstance(mark["attrs"]["targetVersionId"], str)
+                    or re.fullmatch(r"office-version-[a-f0-9]{32}", mark["attrs"]["targetVersionId"]) is None
+                ):
+                    reject()
+            elif set(mark) != {"type"}:
+                reject()
+            seen.add(name)
+        if "code" in seen and len(seen) > 1:
+            reject()
+        if "documentReference" in seen and seen & {"link", "crossReference"}:
+            reject()
+        if "link" in seen and "crossReference" in seen:
+            reject()
+        if kind == "text":
+            value = node.get("text")
+            if not isinstance(value, str) or not value or children:
+                reject()
+            if any(
+                (ord(character) < 32 and character not in "\n\t") or 0xD800 <= ord(character) <= 0xDFFF
+                for character in value
+            ):
+                reject()
+            characters += len(value)
+            if characters > MAX_DOCUMENT_CHARACTERS:
+                reject()
+        elif "text" in node or marks:
+            reject()
+        child_types = [child.get("type") if isinstance(child, dict) else None for child in children]
+        if any(not isinstance(child, str) for child in child_types):
+            reject()
+        if kind in {"doc", "blockquote", "tableCell", "tableHeader"}:
+            if not children or any(child not in BLOCKS for child in child_types):
+                reject()
+        elif kind == "imageGroup":
+            if (
+                not 2 <= len(children) <= 8
+                or any(child != "image" for child in child_types)
+                or any(child.get("attrs", {}).get("wrap") is not None for child in children)
+                or any(child.get("attrs", {}).get("position") is not None for child in children)
+            ):
+                reject()
+        elif kind == "shapeGroup":
+            if (
+                not 2 <= len(children) <= 8
+                or any(child != "shape" for child in child_types)
+                or any(child.get("attrs", {}).get("wrap") is not None for child in children)
+                or any(child.get("attrs", {}).get("position") is not None for child in children)
+                or (
+                    node.get("attrs", {}).get("connections") is not None
+                    and len(node["attrs"]["connections"]) != len(children) - 1
+                )
+            ):
+                reject()
+        elif kind in {"paragraph", "heading"}:
+            if any(
+                child not in {"text", "hardBreak", "bookmark", "documentField", "noteReference", "citationReference"}
+                for child in child_types
+            ):
+                reject()
+        elif kind == "codeBlock":
+            if any(child != "text" or children[index].get("marks") for index, child in enumerate(child_types)):
+                reject()
+        elif kind in {"bulletList", "orderedList"}:
+            if not children or any(child != "listItem" for child in child_types):
+                reject()
+        elif kind == "listItem":
+            if not children or child_types[0] != "paragraph" or any(child not in BLOCKS for child in child_types):
+                reject()
+        elif kind == "table":
+            if not 1 <= len(children) <= 200 or any(child != "tableRow" for child in child_types):
+                reject()
+        elif kind == "tableRow":
+            if not 1 <= len(children) <= 20 or any(child not in {"tableCell", "tableHeader"} for child in child_types):
+                reject()
+        elif children:
+            reject()
+        for child in children:
+            visit(child, depth + 1, kind)
+        if kind == "table" and not _valid_table_grid(children):
+            reject()
+
+    if document.get("type") != "doc":
+        reject()
+    visit(document, 0)
+    if not _valid_document_table_formula_results(document, table_ranges):
+        reject()
+    for chart in linked_charts:
+        source = _chart_source(chart["source"])
+        table = table_nodes.get(source[0]) if source is not None else None
+        data = _chart_data_from_table(table, chart["source"], chart["kind"]) if table is not None else None
+        if data is None or chart["categories"] != data[0] or chart["series"] != data[1]:
+            reject()
+    if len(canonical_json(document).encode("utf-8")) > MAX_DOCUMENT_BYTES:
+        reject()
+    return document
+
+
+def office_document_reference_counts(document: dict[str, Any]) -> tuple[tuple[str, str, int], ...]:
+    """Return ordered outbound targets and occurrence counts from a bounded document."""
+    validate_office_document(document)
+    references: dict[tuple[str, str], int] = {}
+
+    def walk(node: dict[str, Any]) -> None:
+        if node.get("type") == "documentCard":
+            attrs = node["attrs"]
+            target = (attrs["targetObjectId"], attrs["targetVersionId"])
+            references[target] = references.get(target, 0) + 1
+        for mark in node.get("marks", []):
+            if mark.get("type") != "documentReference":
+                continue
+            attrs = mark["attrs"]
+            target = (attrs["targetObjectId"], attrs["targetVersionId"])
+            references[target] = references.get(target, 0) + 1
+        for child in node.get("content", []):
+            walk(child)
+
+    walk(document)
+    return tuple((object_id, version_id, count) for (object_id, version_id), count in references.items())
+
+
+def office_document_references(document: dict[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Return unique outbound targets from an already bounded native document."""
+    return tuple((object_id, version_id) for object_id, version_id, _ in office_document_reference_counts(document))

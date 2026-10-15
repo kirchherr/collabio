@@ -1,0 +1,201 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "artifact_bytes_verified": {
+      "const": true,
+      "default": true,
+      "title": "Artifact Bytes Verified",
+      "type": "boolean"
+    },
+    "artifact_count": {
+      "minimum": 1,
+      "title": "Artifact Count",
+      "type": "integer"
+    },
+    "artifact_inventory_exact": {
+      "const": true,
+      "default": true,
+      "title": "Artifact Inventory Exact",
+      "type": "boolean"
+    },
+    "artifact_total_bytes": {
+      "maximum": 536870912,
+      "minimum": 1,
+      "title": "Artifact Total Bytes",
+      "type": "integer"
+    },
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "candidate_cdr_bytes_verified": {
+      "const": true,
+      "default": true,
+      "title": "Candidate Cdr Bytes Verified",
+      "type": "boolean"
+    },
+    "candidate_cdr_manifest_hash": {
+      "title": "Candidate Cdr Manifest Hash",
+      "type": "string"
+    },
+    "compatibility_claim_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Compatibility Claim Allowed",
+      "type": "boolean"
+    },
+    "document_content_in_report": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Report",
+      "type": "boolean"
+    },
+    "execution_receipt_hash": {
+      "title": "Execution Receipt Hash",
+      "type": "string"
+    },
+    "font_baseline_report_hash": {
+      "title": "Font Baseline Report Hash",
+      "type": "string"
+    },
+    "font_baseline_verified": {
+      "const": true,
+      "default": true,
+      "title": "Font Baseline Verified",
+      "type": "boolean"
+    },
+    "human_fidelity_review_verified": {
+      "const": false,
+      "default": false,
+      "title": "Human Fidelity Review Verified",
+      "type": "boolean"
+    },
+    "open_xml_evidence_verified": {
+      "const": true,
+      "default": true,
+      "title": "Open Xml Evidence Verified",
+      "type": "boolean"
+    },
+    "open_xml_schema_conformant": {
+      "title": "Open Xml Schema Conformant",
+      "type": "boolean"
+    },
+    "open_xml_validation_report_hash": {
+      "title": "Open Xml Validation Report Hash",
+      "type": "string"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "output_preflight_recomputed": {
+      "const": true,
+      "default": true,
+      "title": "Output Preflight Recomputed",
+      "type": "boolean"
+    },
+    "output_preflight_report_hash": {
+      "title": "Output Preflight Report Hash",
+      "type": "string"
+    },
+    "output_structural_fingerprint_hash": {
+      "title": "Output Structural Fingerprint Hash",
+      "type": "string"
+    },
+    "quick_edit_spike_complete": {
+      "const": false,
+      "default": false,
+      "title": "Quick Edit Spike Complete",
+      "type": "boolean"
+    },
+    "reference_cdr_bytes_verified": {
+      "const": true,
+      "default": true,
+      "title": "Reference Cdr Bytes Verified",
+      "type": "boolean"
+    },
+    "reference_cdr_manifest_hash": {
+      "title": "Reference Cdr Manifest Hash",
+      "type": "string"
+    },
+    "referenced_evidence_content_verified": {
+      "const": true,
+      "default": true,
+      "title": "Referenced Evidence Content Verified",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_evidence_verification_report.v1",
+      "default": "genoffice_docx_fidelity_evidence_verification_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signed_result_envelope_hash": {
+      "title": "Signed Result Envelope Hash",
+      "type": "string"
+    },
+    "signed_result_verified": {
+      "const": true,
+      "default": true,
+      "title": "Signed Result Verified",
+      "type": "boolean"
+    },
+    "source_blind_revalidation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Source Blind Revalidation Verified",
+      "type": "boolean"
+    },
+    "structural_fingerprint_verified": {
+      "const": true,
+      "default": true,
+      "title": "Structural Fingerprint Verified",
+      "type": "boolean"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "thresholds_calibrated": {
+      "const": false,
+      "default": false,
+      "title": "Thresholds Calibrated",
+      "type": "boolean"
+    },
+    "visual_comparison_manifest_hash": {
+      "title": "Visual Comparison Manifest Hash",
+      "type": "string"
+    },
+    "visual_measurements_recomputed": {
+      "const": true,
+      "default": true,
+      "title": "Visual Measurements Recomputed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "signed_result_envelope_hash",
+    "execution_receipt_hash",
+    "output_docx_sha256",
+    "output_preflight_report_hash",
+    "output_structural_fingerprint_hash",
+    "open_xml_validation_report_hash",
+    "font_baseline_report_hash",
+    "reference_cdr_manifest_hash",
+    "candidate_cdr_manifest_hash",
+    "visual_comparison_manifest_hash",
+    "artifact_count",
+    "artifact_total_bytes",
+    "open_xml_schema_conformant",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxFidelityEvidenceVerificationReport",
+  "type": "object"
+}

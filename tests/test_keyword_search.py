@@ -126,6 +126,45 @@ def test_keyword_search_is_tenant_scoped_before_authorization() -> None:
     assert audit_event.source_object_ids == ["doc-1"]
 
 
+def test_keyword_search_applies_top_k_after_acl_authorization() -> None:
+    service, audit_logger = build_service(
+        records=[
+            indexed_chunk(
+                object_id="secret-1",
+                chunk_id="chunk-secret-1",
+                title="Restricted high score",
+                index_text="payroll payroll payroll payroll",
+                classification=DataClass.CONFIDENTIAL,
+            ),
+            indexed_chunk(
+                object_id="secret-2",
+                chunk_id="chunk-secret-2",
+                title="Restricted medium score",
+                index_text="payroll payroll payroll",
+                classification=DataClass.CONFIDENTIAL,
+            ),
+            indexed_chunk(
+                object_id="doc-1",
+                chunk_id="chunk-doc-1",
+                title="Visible low score",
+                index_text="payroll",
+            ),
+        ],
+        readable_object_ids={"doc-1"},
+    )
+
+    response = service.search(
+        query=KeywordSearchQuery(query="payroll", top_k=1),
+        user_context=user_context(),
+    )
+
+    audit_event = audit_logger.events[-1]
+    assert [candidate.object_id for candidate in response.candidates] == ["doc-1"]
+    assert audit_event.metadata["candidate_count"] == 3
+    assert audit_event.metadata["authorized_candidate_count"] == 1
+    assert audit_event.source_object_ids == ["doc-1"]
+
+
 def test_keyword_search_candidate_schema_carries_compliance_metadata() -> None:
     service, _audit_logger = build_service(
         records=[

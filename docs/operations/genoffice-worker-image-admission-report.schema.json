@@ -1,0 +1,225 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attestation_id": {
+      "title": "Attestation Id",
+      "type": "string"
+    },
+    "attestation_payload_hash": {
+      "title": "Attestation Payload Hash",
+      "type": "string"
+    },
+    "authoritative_image_sbom_verified": {
+      "const": true,
+      "default": true,
+      "title": "Authoritative Image Sbom Verified",
+      "type": "boolean"
+    },
+    "build_evidence_report_hash": {
+      "title": "Build Evidence Report Hash",
+      "type": "string"
+    },
+    "detached_build_attestation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Detached Build Attestation Verified",
+      "type": "boolean"
+    },
+    "development_build_context_report_hash": {
+      "title": "Development Build Context Report Hash",
+      "type": "string"
+    },
+    "development_build_context_tar_sha256": {
+      "title": "Development Build Context Tar Sha256",
+      "type": "string"
+    },
+    "development_spike_image_available": {
+      "const": true,
+      "default": true,
+      "title": "Development Spike Image Available",
+      "type": "boolean"
+    },
+    "high_and_critical_findings_absent": {
+      "const": true,
+      "default": true,
+      "title": "High And Critical Findings Absent",
+      "type": "boolean"
+    },
+    "hosted_service_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Hosted Service Allowed",
+      "type": "boolean"
+    },
+    "image_archive_sha256": {
+      "title": "Image Archive Sha256",
+      "type": "string"
+    },
+    "image_config_digest": {
+      "title": "Image Config Digest",
+      "type": "string"
+    },
+    "image_name": {
+      "const": "collabio/genoffice-docx-worker",
+      "default": "collabio/genoffice-docx-worker",
+      "title": "Image Name",
+      "type": "string"
+    },
+    "issued_at_utc": {
+      "format": "date-time",
+      "title": "Issued At Utc",
+      "type": "string"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "on_prem_distribution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "On Prem Distribution Allowed",
+      "type": "boolean"
+    },
+    "production_use_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Production Use Allowed",
+      "type": "boolean"
+    },
+    "raw_scanner_sbom_sha256": {
+      "title": "Raw Scanner Sbom Sha256",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "reproducible_worker_build_verified": {
+      "const": true,
+      "default": true,
+      "title": "Reproducible Worker Build Verified",
+      "type": "boolean"
+    },
+    "sbom_schema_validation_passed": {
+      "const": true,
+      "default": true,
+      "title": "Sbom Schema Validation Passed",
+      "type": "boolean"
+    },
+    "sbom_schema_validation_receipt_hash": {
+      "title": "Sbom Schema Validation Receipt Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_worker_image_admission_report.v1",
+      "default": "genoffice_worker_image_admission_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "severity_counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Severity Counts",
+      "type": "object"
+    },
+    "signature_response_hash": {
+      "title": "Signature Response Hash",
+      "type": "string"
+    },
+    "signer_id": {
+      "title": "Signer Id",
+      "type": "string"
+    },
+    "signer_policy_hash": {
+      "title": "Signer Policy Hash",
+      "type": "string"
+    },
+    "signing_request_hash": {
+      "title": "Signing Request Hash",
+      "type": "string"
+    },
+    "solo_founder_exception_report_hash": {
+      "title": "Solo Founder Exception Report Hash",
+      "type": "string"
+    },
+    "source_import_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Source Import Allowed",
+      "type": "boolean"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "trivy_db_metadata_hash": {
+      "title": "Trivy Db Metadata Hash",
+      "type": "string"
+    },
+    "two_person_runtime_authorization_verified": {
+      "const": false,
+      "default": false,
+      "title": "Two Person Runtime Authorization Verified",
+      "type": "boolean"
+    },
+    "valid_until_utc": {
+      "format": "date-time",
+      "title": "Valid Until Utc",
+      "type": "string"
+    },
+    "vulnerability_count": {
+      "title": "Vulnerability Count",
+      "type": "integer"
+    },
+    "vulnerability_report_hash": {
+      "title": "Vulnerability Report Hash",
+      "type": "string"
+    },
+    "vulnerability_review_complete": {
+      "const": true,
+      "default": true,
+      "title": "Vulnerability Review Complete",
+      "type": "boolean"
+    },
+    "worker_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Worker Execution Allowed",
+      "type": "boolean"
+    },
+    "worker_sbom_sha256": {
+      "title": "Worker Sbom Sha256",
+      "type": "string"
+    }
+  },
+  "required": [
+    "attestation_id",
+    "issued_at_utc",
+    "valid_until_utc",
+    "signer_id",
+    "key_id",
+    "signer_policy_hash",
+    "solo_founder_exception_report_hash",
+    "image_config_digest",
+    "image_archive_sha256",
+    "build_evidence_report_hash",
+    "development_build_context_report_hash",
+    "development_build_context_tar_sha256",
+    "worker_sbom_sha256",
+    "raw_scanner_sbom_sha256",
+    "sbom_schema_validation_receipt_hash",
+    "vulnerability_report_hash",
+    "trivy_db_metadata_hash",
+    "vulnerability_count",
+    "severity_counts",
+    "signing_request_hash",
+    "signature_response_hash",
+    "attestation_payload_hash",
+    "report_hash"
+  ],
+  "title": "GenOfficeWorkerImageAdmissionReport",
+  "type": "object"
+}

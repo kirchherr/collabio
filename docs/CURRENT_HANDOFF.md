@@ -1,0 +1,5338 @@
+# Current Project Handoff
+
+Updated: 2026-10-14
+
+Roadmap 832 through 839 / PLANS 693 through 700 are complete under ADR-0202. Native Office bar and line charts now
+support bounded category and value titles, deterministic automatic or manual value scales, optional major gridlines
+and general, integer, decimal, percent or euro presentation. Automatic scales include zero and use stable 1/2/5
+steps. Manual scales require finite ordered bounds, a positive major unit, at most twelve exact intervals and every
+plotted value inside range. Pie charts reject axes.
+
+Visible legends can be placed at the top, bottom, left or right. Side legends collapse responsively. The browser
+validates the full chart before applying it, and the server independently validates the same closed schema and range
+rules before immutable version save. Linked-table recalculation, chart editing, save and reload preserve axes, format,
+gridlines and legend placement. The accessible description and hidden data table remain available.
+
+Focused Office schema/API tests pass 88/88 and all five chart-model cases pass. The desktop/mobile saved-version
+workflow passes 2/2 in 20.1 seconds and proves a fixed 0–200 scale with 50-unit steps, category/value titles, euro
+labels, gridlines, data labels, legend movement and reload. Visual review passed without page overflow; desktop/mobile
+screenshot hashes are `sha256:16f803aa6ff2e452c9cc326b3e377490385c01b28fce28c73531ac73650020e8` and
+`sha256:76252a4281bff064cfa682a0a15344d7ed8ff64a6495a79b69ce58f7567dbe41`.
+
+The complete quality gate passes Ruff, finds 963 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`. The review target is
+`http://192.168.0.108:42880/office?review=chart-axis-adr0202` with asset keys `office.css?v=14` and `editor.js?v=14`.
+The final Work-E2E and review API images are
+`sha256:84e3fac836236e03e3c61f12dc52c992e0f8e7faf939c7c840edf870f2c4a73d` and
+`sha256:a983a6d2065180c8aa8f9f21d688dd2e046f819b9256c4558c2a4a973d4f3848`.
+
+No migration, external chart engine, network source, automatic action or new durable state was added. Secondary axes,
+logarithmic scales, free-form formats and external chart data remain closed. ADR-0201 is published through commit
+`b4f94283`; publication of this ADR-0202 block is pending the repository's content-specific approval.
+
+The next separate Office loop is richer native chart types and advanced presentation. CRM account onboarding remains
+deferred by the user's Office-first priority.
+
+Roadmap 824 through 831 / PLANS 685 through 692 are complete under ADR-0201. Native Office formulas now accept bounded
+double-quoted text literals, text-valued cells and named ranges, exact text `XLOOKUP`/`XVERWEIS`, and canonical
+`CONCAT`, `LEFT`, `RIGHT` and `LEN` with their German aliases. Literal case, punctuation and semicolons survive
+normalization; doubled quotes escape one quote. Text results are limited to 512 safe characters and `#` prefixes
+remain reserved for explicit formula errors.
+
+Deterministic `EDATE`/`EDATUM`, `EOMONTH`/`MONATSENDE`, `DAYS`/`TAGE` and `WEEKDAY`/`WOCHENTAG` operate on integer UTC
+day numbers. Month shifts clip to valid month ends, offsets and supported years are bounded, and weekday numbering is
+ISO Monday 1 through Sunday 7. The functions use no locale, timezone, current-time source or external service.
+
+The browser recalculates the local draft inside the existing document-wide dependency graph. The server independently
+parses, resolves and recalculates every stored result before immutable version save. Structural row and column
+reference rewriting skips quoted literals. Unsafe or oversized text, invalid scalar types, missing references,
+calendar overflow and stale or forged results fail closed.
+
+Focused Office schema/API tests pass 88/88 and all 22 formula-model cases pass. The desktop/mobile saved-version
+workflow passes 2/2 in 19.1 seconds, persists German-authored formulas under canonical names and reloads text lookup
+and calendar results. Visual review passed without page overflow; desktop/mobile screenshot hashes are
+`sha256:a1795f648c4f98d16d00977d64c7e11a2212ca032e994d932935f653aa225390` and
+`sha256:ad209c5a0afda706178f6878db99c14605f875094c6ae0608ff9c8a4ebf6be6d`.
+
+The complete quality gate passes Ruff, finds 962 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+The review target is `http://192.168.0.108:42880/office?review=text-date-formulas-adr0201` with asset keys
+`office.css?v=13` and `editor.js?v=13`. The final Work-E2E and review API images are
+`sha256:dcaaff420e8c040cab073f405beda7b6c787333272a325749e7b780c918a2341` and
+`sha256:6df0d4668353dbdc8a5023070e33102ad3b77e05f50d8a4c7fb552520ee9b3aa`. This ADR-0201 block is published through
+commit `b4f94283`.
+
+The only browser diagnostic was an initially stale Office bundle baked into the review API image. The unchanged
+responsive workflow passed after rebuilding and recreating that exact review API. Focused static quality also applied
+the formatter and removed two Python variable-name collisions. No assertion, resource bound or timeout was weakened.
+
+The exact isolated PostgreSQL test container, empty ADR-0201 browser-artifact directory and temporary transfer files
+are removed. No transient quality or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The next separate Office loop is chart-axis and presentation control. CRM account onboarding remains deferred by the
+user's Office-first priority.
+
+Roadmap 816 through 823 / PLANS 677 through 684 are complete under ADR-0200. Native Office formulas now support exact
+numeric `SUMIFS`/`SUMMEWENNS`, `COUNTIFS`/`ZÄHLENWENNS` and `AVERAGEIFS`/`MITTELWERTWENNS`. Sum and average accept
+one local or named result range; all three functions accept one through ten local or named criteria-range/value pairs.
+Every participating range must contain the same number of values and remains under the existing 4,000-value bound.
+
+The functions run inside the document-wide dependency graph with shared memoization, cross-table references, cycle
+detection and the established explicit errors. German names and semicolons normalize to canonical English formulas.
+The browser recalculates the draft, and the server independently resolves every table and named range and recalculates
+every result before confirmed immutable version save. Invalid arity, missing or unequal ranges and stale or forged
+results fail closed.
+
+Focused Office schema/API tests pass 87/87 and all 19 formula-model cases pass. The saved-version desktop/mobile
+workflow passes 2/2 in 17.6 seconds. It calculates `50`, `2` and `25` from two exact criteria, persists the three German
+formulas under canonical names and reloads the immutable results. Visual review passed without page overflow;
+desktop/mobile screenshot hashes are `sha256:8a36b04a48ff042dd9257a648a3ce45e742d8c28875febeb8788cfdd2b84d226`
+and `sha256:778a604820c5b4880b8f300100b9ed03b3d6ed97e312a6d5c172693cbf89fb90`.
+
+The complete quality gate passes Ruff, finds 982 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:6b09c8ac9543c657288fe60611b1280e1be3bd46b220b124f2ff24d15215d845` and
+`sha256:112dcc1d041649fa104ef9c237321dadae3b914410ac1ecc0ec77fdcb2484231`. Review remains on the isolated runtime at
+`http://192.168.0.108:42880/office?review=multiple-criteria-adr0200` with asset keys `office.css?v=13` and
+`editor.js?v=12`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container and temporary browser-artifact directory are removed. No transient
+quality or browser runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and image decoder
+are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+Diagnostics were limited to test infrastructure and static quality: the first model command lacked the Office modules
+outside the image's test directory and passed unchanged once those modules were mounted read-only; the first browser
+attempt lacked write permission for its new artifact directory and passed unchanged after correcting that directory.
+Focused quality found one formatter change and two Python variable-name collisions. The first complete gate found only
+the previous `editor.js?v=11` shell expectation after the asset key was deliberately bumped to `v=12`; its exact
+assertion was updated, the focused case passed and the repeated complete gate is green. No assertion, bound or timeout
+was weakened.
+
+The next separate Office loop is richer deterministic date/text formulas, followed by chart-axis and presentation
+controls. CRM account onboarding remains deferred by the user's Office-first priority.
+
+Roadmap 808 through 815 / PLANS 669 through 676 are complete under ADR-0199. Native Office formulas now support exact
+numeric `SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` over bounded local or named
+ranges. The functions run inside the existing document-wide dependency graph and retain deterministic cross-table
+cycles, explicit errors and the 4,000-value bound. Browser and server independently recalculate every saved result.
+
+Table cells now store one fixed presentation identifier for integer, two-decimal, percent, EUR or UTC-derived ISO/German
+date display. Canonical cell text and `formulaResult` stay numeric; a ProseMirror decoration derives localized visible
+text without feeding it back into calculations or linked charts. The server rejects unknown formats, nonnumeric values,
+nonintegral date serials and dates outside 1900 through 9999.
+
+Linked charts can now read an exact numbered-table range by columns or by rows, persist that orientation in the verified
+binding and optionally show visible value labels. Source table, range, orientation, type, title, alternative text and
+legend remain editable in the existing dialog. Browser and server re-derive snapshots and reject stale, forged,
+missing, merged or out-of-range sources before confirmed version save.
+
+Focused Office schema/API tests pass 86/86 and the final formula/chart model block passes 22/22. The saved-version
+desktop/mobile workflow passes 2/2 in 21.3 seconds. It calculates `SUMMEWENN`, preserves a canonical result behind EUR
+presentation, creates a row-oriented linked chart with value labels, edits its type/title, saves and reloads the exact
+immutable result. Visual review passed; desktop/mobile screenshot hashes are
+`sha256:edc216bbebf24094168a30df6f0ed837df024be3ede27605090ba96be8aecae2` and
+`sha256:583925c60e27b7a877e23fbb7e46a7d611fcb01694fa2868274b7476e569b4e5`.
+
+The complete quality gate passes Ruff, finds 977 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:7f82515c81925c0fe6f29ba89c37f2659415c257325721fb2197123c6a28389f` and
+`sha256:7d31db4a3a33ff0205501750ab137a9676776fdbeb6b273a09e4472203338b92`. Review remains on the isolated runtime at
+`http://192.168.0.108:42880/office?review=conditional-chart-adr0199` with asset keys `office.css?v=13` and
+`editor.js?v=11`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container, named transfer directory and task-owned interrupted broad Work-E2E runner
+are removed. No transient quality or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first responsive run showed that an imperative DOM attribute was removed by ProseMirror reconciliation; number/date
+presentation now uses a document decoration and the unchanged workflow passes. One incorrectly composed model command
+inherited the runner entrypoint and began the broad matrix; it was interrupted and its exact remaining container later
+removed. Full quality then found only two Ruff condition-order suggestions and four test-fixture typing errors; all were
+corrected before the green final gate.
+
+The next separate Office loop is multiple-criteria aggregation, richer date/text formulas and chart-axis/presentation
+controls. CRM account onboarding remains deferred by the user's Office-first priority.
+
+Roadmap 800 through 807 / PLANS 661 through 668 are complete under ADR-0198. Native Office now stores at most 100
+canonical document-wide named ranges. Each name binds one stable numbered-table ID to one exact bounded rectangle and
+can feed formulas in any other table. The browser evaluates all formulas as one document dependency graph with shared
+memoization, error propagation and cross-table cycle detection. Row and column insertion, deletion, movement and
+duplication remap definitions while their cells remain contiguous; removing a numbered target removes its definitions.
+
+Exact numeric `XLOOKUP`/`XVERWEIS` and deterministic `DATE`/`DATUM`, `YEAR`/`JAHR`, `MONTH`/`MONAT` and `DAY`/`TAG`
+are available with canonical German normalization. Volatile clock functions, approximate or text lookup, external
+workbooks, network sources, macros and automatic actions remain closed. The server independently resolves every name,
+table ID and range, recalculates the complete cross-table graph and rejects missing, merged, out-of-range, cyclic,
+stale or forged results before accepting a version. No migration or external spreadsheet engine was added.
+
+Focused Office schema/API tests pass 84/84 and the final formula model block passes 16/16. The saved-version named-range
+workflow passes 2/2 on desktop and mobile against the final review runtime. It numbers a source table, names one exact
+cell, calculates from a second table with a normalized date formula, saves and reloads the immutable result. Visual
+review passed; desktop/mobile screenshot hashes are
+`sha256:7105776952617e758e54aa1e649b9b6075d2015bbe476a23db1aa63f2c8f97b0` and
+`sha256:c585626c2cedbf412678feb6e9fbd5719094b001c2b52436feef685168426ed9`.
+
+The complete quality gate passes Ruff, finds 959 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`,
+`sha256:9b9634d4fb161345a2c3c5d58d2bb8c5ea4d3565da3dfa5535df79125486c0c9` and
+`sha256:786e1b61a8a818175e2f528a603203bd34228f4fd26fe8fd33d568bda8f0a701`. Review remains on the existing isolated
+runtime at `http://192.168.0.108:42880/office?review=named-ranges-adr0198` with asset keys `office.css?v=12` and
+`editor.js?v=10`. GitHub publication remains pending under the content-specific approval rule.
+
+The exact isolated PostgreSQL test container and named transfer directory are removed, and no transient quality or
+browser runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and image decoder are healthy,
+review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first formula-model run retained the former assumption that `U1` was always invalid; it is now a valid unresolved
+name and correctly produces `#BEZUG!`, so that expectation was updated without weakening external-workbook rejection.
+Focused quality then found one line-length issue, two formatting updates and one local-variable name collision; all
+were corrected before the green final gate. One malformed source-sync command held `git.lock`; only its exact process
+tree and three waiting commands started by this task were stopped before the verified patches were applied. No service,
+volume, persistent data or unrelated project was changed by that cleanup.
+
+The next separate Office loop is conditional aggregation, text/date presentation and richer linked-chart editing.
+CRM account onboarding remains deferred by the user's Office-first priority.
+
+Roadmap 792 through 799 / PLANS 653 through 660 are complete under ADR-0197. Native Office table formulas now add
+comparisons, lazy `IF`, logical operations, deterministic rounding, absolute value, power, square root, product and
+median while retaining canonical German aliases, relative/absolute/mixed references, transitive recalculation, cycle
+detection and bounded explicit errors. Browser and server independently recalculate every stored formula result.
+
+Bar, line and pie charts can now bind to one exact bounded range of a numbered table in the same document. Formula
+and decimal values update the linked chart snapshot in the same local editor transaction. Confirmed saves verify every
+binding twice: the browser rejects stale local snapshots and the server independently resolves the table ID and range,
+re-derives data and rejects missing sources, merged grids, stale or forged values, URLs and unknown fields. Manual
+charts remain supported and now accept bounded finite decimals.
+
+Focused Office schema/API tests pass 82/82 and the formula/chart model block passes 17/17. The complete linked-table
+workflow passes 2/2 on desktop and mobile: it imports a formula table, numbers it, creates a linked chart, edits a
+source value, observes formula plus chart recalculation, saves two immutable versions and reloads the exact result.
+Visual review passed on both profiles without document-page overflow. Desktop/mobile screenshot hashes are
+`sha256:01510222e1a5ff88827a3b10e5b16edac8d69d3f992accf686486d4a01456881` and
+`sha256:e07dc2aeb48c3947823558bd8c89585262ec89f9fd9b6417391893fe0801f8a5`; report hash is
+`sha256:879997b7f1b164cb2206b42c40630f6e99d21ca9b9ca00f26dcc8b2cfcae4e41`.
+
+The complete quality gate passes Ruff, finds 969 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. Final quality, Work-E2E and review API images are
+`sha256:e530e672c72c5189d900d08aafa0f34f2d22ecd5691a946b1877bb6655ae9d91`,
+`sha256:e48fceb8237bb881d500f20e4a626d88c45823f1331cbba1669e751c0a531992` and
+`sha256:e46e575cf2486dce9a607820fa61ee8eef5ef7eafdcabcbe05c00273daa38ffb`. Review remains on the
+existing isolated runtime at `http://192.168.0.108:42880/office?review=table-chart-adr0197` with asset keys
+`office.css?v=12` and `editor.js?v=9`. GitHub publication for this content remains pending under the
+content-specific approval rule. CRM onboarding remains deferred; the next separate Office loop is named ranges,
+cross-table references and lookup/date functions.
+
+The exact isolated PostgreSQL test container, the interrupted broad Work-E2E runner and the named transfer directory
+are removed. No transient test or browser runner remains. Regular and review APIs both return `ok`; review API,
+PostgreSQL and image decoder are healthy, review MinIO remains available and unrelated Compose projects are unchanged.
+
+The first server-focused run exposed an obsolete formula-function allowlist and the second isolated check exposed a
+Python `POWER` limit error being remapped too broadly; both product paths were corrected before the green 82-case
+run. One incorrectly composed Work-E2E invocation inherited the runner entrypoint, began the broad matrix and was
+stopped after an unrelated blocked-API DNS failure; the exact model block then passed. The first complete quality run
+found only six new test-fixture typing errors; explicit JSON fixture types fixed them before the final green gate.
+
+Roadmap 784 through 791 / PLANS 645 through 652 are complete under ADR-0196. Native Office now answers bounded
+document questions only when tenant AI and RAG policy admit the request and an approved tenant-allowed local RAG model
+admits every source classification. Retrieval reuses the bounded current-version source search and then immediately
+reauthorizes every candidate through the authoritative repository. Current version, content hash, ACL version, title,
+classification and server-derived anchor excerpt must all still match before inference.
+
+The fixed approved prompt treats every authorized source block as untrusted. The browser supplies no source body,
+prompt, model, citation, action or persistence intent. Without an authorized source the service returns an explicit
+unsupported answer and skips inference. Supported answers remain untrusted and show exact server-derived object and
+version citations that open through the normal reauthorized exact-version read path. Audit stores hashes, IDs and
+citation references without question, source, prompt or answer bodies. The operation is transient, noncacheable,
+non-indexed, write-free and action-free.
+
+Focused service/API tests pass 38/38, followed by focused Ruff, format, Mypy and the roadmap dashboard contract. The
+dedicated responsive RAG browser proof passes 2/2 in desktop and mobile, keeps both document version counts at one and
+has report hash `sha256:b8d9a853b0332361e2bf3735c33e1d6c9e2bc9a366ffe04f67fbb1f703b92fc1`;
+desktop/mobile screenshot hashes are `sha256:ad0899e4dcea108aa29df808cfea171dea69ec2551cf9e6cdca832b5c63dd32b`
+and `sha256:ab9bac1cfab04e2e54e3d07392596bc6d186cd86103d765956f625aa165d4e58`. Visual review passed:
+the layout fits both profiles, identifies the output as untrusted and shows the exact cited source version. The mock
+provider now returns a short synthetic answer instead of echoing governance prompt text.
+
+Complete quality passes Ruff, finds 964 format-conformant files, passes Mypy over 639 source files and runs Pytest to
+100 percent with only the known Starlette/AnyIO warning. Quality, Work-E2E and review API image IDs are
+`sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`,
+`sha256:cd59c3c667b5bc6bce2e8822f0c4784fd42098c6c61cd1ee562241002662704e` and
+`sha256:bbb6b9fd191f386e79e8cefcf26722b9edf92321ac96e0fde6621e1b11e0595e`.
+
+All four Phase-3 Office exit criteria are now closed. Complete quality and final review-runtime verification passed,
+and the content-specific GitHub publication updated the existing pull-request branch through `8e5b01b9`. UI acceptance
+is the remaining closeout step before resuming deferred CRM account onboarding.
+The review target is `http://192.168.0.108:42880/office?review=rag-adr0196` with asset keys `office.css?v=12` and
+`editor.js?v=8`. Exact isolated test dependencies, the interrupted broad browser runner and named transfer files are
+removed; no transient quality or Work-E2E runner remains. Review PostgreSQL, MinIO, decoder and API stay available.
+Regular and review APIs both return `ok`. Product commit `ed1276ea` and documentation closeout `8e5b01b9` are
+published on `kirchherr/kb-write-unit-of-work` in the existing pull request.
+
+Roadmap 776 through 783 / PLANS 637 through 644 are complete under ADR-0195. The former fifty-client sequential
+preflight loop has been replaced by a deterministic isolated load harness with fifty genuinely parallel worker
+sessions against one tenant-bound document state. Eight synchronized rounds produce 400 unique updates; all fifty
+editor snapshots converge to the same state-vector and update-set hashes.
+
+The harness performs 401 per-update ACL checks including one deduplicated repeated delivery and 150 session
+reauthorizations. A midpoint state vector replays exactly 200 remaining updates. Revoked ACL and foreign-tenant probes
+fail closed. Four 256-KiB envelopes fill the fixed one-MiB queue, and the next byte is rejected with code 1013. The
+committed metadata-only report contains no document body or raw browser session identifier and has evidence hash
+`sha256:d76cdb940d4a9da22ab7b7316e877eb7e15b2ae8ec30377138e75d8ff76fa698`.
+
+The CRDT preflight now exposes `verified_50_parallel_editors`; its former isolated-load blocker is removed.
+`websocket_load_verified=false` and `production_runtime_admitted=false`. The gateway retains its WebSocket-load
+blocker, while CRDT engine admission, durable update logging, restore replay, malicious-update fuzzing, upgrade
+credentials, fan-out and transport recovery remain closed. Product commit `62524419` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused Ruff, format and Mypy passed, followed by the affected load, Office service/API and roadmap contracts. The
+responsive desktop/mobile lifecycle workflow passed 2/2 in 12.0 seconds after the known review-API cold start had
+finished. Complete quality passed Ruff, found 954 format-conformant files, passed Mypy over 637 source files and ran
+Pytest to 100 percent with only the known Starlette/AnyIO warning. Quality, Work-E2E and review API image IDs are
+`sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`,
+`sha256:4938f8e51f68be54b24594e75c6857ec8a5d223551a3926db4cbc4765f0e3138` and
+`sha256:b8f5fbb3c94d469944908a0d68c443cf7725bede350b9cc69d1246b9051672a9`.
+
+The first browser attempt ran before the freshly recreated review API completed its normal cold start and therefore
+returned `ERR_CONNECTION_REFUSED` twice. No assertion changed; after health became green, the identical command
+passed 2/2. Regular and review APIs both return `ok`. Review is available at
+`http://192.168.0.108:42880/office?review=50-editor-adr0195` with asset key `editor.js?v=7`.
+The exact PostgreSQL test container and all named transfer/test scripts were removed; no transient quality or
+Work-E2E runner remains. Review PostgreSQL, MinIO, decoder and API were retained, and no unrelated project changed.
+
+Three Phase-3 exit criteria are now explicitly closed: AI results remain drafts until confirmed acceptance, approved
+versions are immutable, and the parser runs outside the API process without network. The remaining Office exit gap is
+RAG-backed document answers with authoritative per-source ACL validation and exact source versions. GitHub
+publication remains pending under the content-specific approval requirement.
+
+Roadmap 768 through 775 / PLANS 629 through 636 are complete under ADR-0194. Native Office now provides an explicit
+read-aloud adapter for an exact current saved text selection. Capability and preparation are read-gated and freshly
+revalidate tenant policy, authoritative document ACL and current-version identity. The browser sends only a bounded
+UTF-16 anchor, language, rate, activation state, false storage intent and adapter; the server derives the passage
+from the immutable authorized document. Authorized readers do not need document write permission.
+
+Local client TTS requires tenant voice policy. Browser speech synthesis additionally requires explicit external-
+provider admission. The Voice Privacy Guard and Office audit retain IDs, classification, adapter, language, rate,
+anchor, counts, policy and source hash without selected text or document bodies. Collabio generates, receives and
+stores no audio and persists no selection. The browser validates exact text, anchor and UTF-8 hash before speaking,
+offers language/speed plus an explicit stop action, and cancels on selection, document, editor, version or tenant
+context changes. The operation is read-only, transient and excluded from AI, records, search and RAG indexing.
+Product commit `af279cd0` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused Voice/API checks passed 10/10, then the final Voice, shell and roadmap contracts passed 12/12. The final
+desktop/mobile workflow passed 2/2 in 10.5 seconds and left the immutable version count unchanged. The combined
+dictation/read-aloud/suggestion regression produced 13 passes while its one fail-closed case could not resolve the
+previously removed internal blocked API; after that exact dependency was started, the remaining case passed 1/1.
+Final report hash is `sha256:e5bbce3777d556f9977bd6317eaa3b4d23119d85414a5e54020e3ecbf973c936`;
+desktop/mobile screenshot hashes are `sha256:68e58e497a110ac009a26dfab9cd3e7191c2e5bb08ab27198cf148bf4577b913`
+and `sha256:d600ee5ca3a45823f077e9ba137dc25beee0c60d5c1715f84ec6bea3e66a47f4`.
+
+Complete quality passed Ruff, found 951 format-conformant files, passed configured Mypy over 635 sources and ran
+Pytest to 100 percent with only the known Starlette/AnyIO warning. A stricter `mypy .` passed over 638 sources. The
+quality log hash is `sha256:b9b701d4c5b2c06b37051c5b2acccfd07b77dc35b9c01088984cdb9549823d46`;
+quality image ID remains `sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`.
+Final Work-E2E, review API and blocked API images are
+`sha256:afd5e6c17434197d1b0e715ba964ae15dedd569285e7a58b44dab7126741c5df`,
+`sha256:a6006dd9ab1a548f32b126ba648e38d137f48e05cc2ad7951d14c0f957f1ba78` and
+`sha256:1bbad2aa26e0f338d4d1cff813b71b7c25361768674cbe0e7c4f4206ded19618`.
+
+Visual review passed desktop and mobile with reachable language/rate/start-stop controls, visible provider/transient
+state and no horizontal overflow. Final asset keys are `office.css?v=11` and `editor.js?v=6`; review is available at
+`http://192.168.0.108:42880/office?review=read-aloud-adr0194`. Cleanup removed the exact isolated PostgreSQL test and
+blocked API containers plus named transfer/test files; no transient runner remains. Regular and review APIs return
+`ok`, the review API/PostgreSQL/decoder are healthy and review MinIO remains available. This slice adds no migration,
+server synthesis runtime, provider credential, audio upload/storage, selection persistence, document write, AI or
+production admission. The next open Office item is the 50-concurrent-editor proof target. GitHub publication remains
+pending under the content-specific approval requirement.
+
+Roadmap 760 through 767 / PLANS 621 through 628 are complete under ADR-0193. Native Office now exposes a governed
+push-to-talk dictation path for an exact current writable document version. Capability and transcript preparation
+freshly revalidate tenant module/write policy, authoritative object ACL and current-version identity. Local client STT
+requires voice policy; browser speech recognition additionally requires explicit external-provider admission.
+
+The browser starts recognition only while the visible button or keyboard control is held. Collabio uploads and stores
+no raw audio, rejects raw-audio-storage intent and receives only a bounded normalized transcript. The Voice Privacy
+Guard and Office audit retain IDs, adapter, language, insertion position, character count, policy and hashes without
+transcript or document bodies. The transcript is classified as personal `voice_transcript` data and remains transient.
+After complete response/hash validation it enters only the local draft; version count, search, RAG and records remain
+unchanged until the author uses the existing separately confirmed version save. Product commit `e44be5dc` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused Ruff/format, Mypy and seven service/API/dashboard/shell checks passed, including denied ACL, stale version,
+policy, raw-audio, strict-schema, insertion-bound and no-write cases. The final synthetic speech workflow passed 2/2
+on desktop and mobile in 11.1 seconds; the existing Office suggestion regression passed 10/10. Browser report hash is
+`sha256:0f4977a9f2132fb804434304436d667bbd7238508df051ab0618353093294cf1`; desktop and mobile screenshot hashes are
+`sha256:b4e4ec48beabbfab2580e16bb656f56c0fc1c92e2ef981d2ce811a1b98cd5750` and
+`sha256:975b7cafd7b59421707d30966896594c402351acc8a93a56a8fb930e93f3379d`. Final Work-E2E, review API and blocked API
+images are `sha256:c954e490d318861f77512c20a45aa322d17e65daaadd2d65c4004d68cdc1d90a`,
+`sha256:08b0b2cbcf992184f2ca3a8bfa042f3611f0728dd265db2facabae331e503d25` and
+`sha256:1bbad2aa26e0f338d4d1cff813b71b7c25361768674cbe0e7c4f4206ded19618`.
+
+The complete quality gate passed Ruff, found 948 format-conformant files, passed Mypy over its configured 633 sources
+and ran Pytest to 100 percent with only the known Starlette/AnyIO warning. A stricter standalone `mypy .` also passed
+over 636 sources. The first two complete attempts stopped before Pytest on missing return-type and enum-precise
+annotations in the new test helper; both test-only findings were corrected before the final green run. Final quality
+image ID is `sha256:287cb9a35e068a29bf0490b4cbaa19e433d6a5fbbbbb0c9479965464ba56eee1`.
+
+The first responsive run exposed that WebCrypto is unavailable on the HTTP/LAN review origin, so transcript hash
+validation now has a deterministic UTF-8 SHA-256 fallback. A subsequent combined suggestion test reached its existing
+30-second limit after the new flow; dictation was separated into its own focused responsive suite. Live UI review then
+found the provider/status text too compressed and widened the toolbar group before final asset keys `office.css?v=10`
+and `editor.js?v=5`. The final review is
+`http://192.168.0.108:42880/office?review=dictation-adr0193`. Cleanup removed the exact isolated PostgreSQL test,
+blocked API, Work-E2E migration/seed containers and three named transfer resources. No transient quality or browser
+runner remains. Regular and review APIs both return `ok`; review API, PostgreSQL and decoder are healthy while review
+MinIO remains available. Text-to-speech is now complete in Roadmap 768–775; the 50-concurrent-editor proof is the next
+Office roadmap loop. GitHub publication remains pending under the content-specific approval requirement.
+
+Roadmap 752 through 759 / PLANS 613 through 620 are complete under ADR-0192. Native Office can now search the
+exact current saved versions of other tenant-readable documents without AI, vectors or RAG. The request is bound to
+the exact current source document version and a bounded two-through-200-character query. The server revalidates the
+source ACL and current version, enumerates no more than 100 candidate documents, revalidates every candidate through
+the authoritative document service and derives all searchable text from immutable native content blocks.
+
+Results contain only current versions and carry exact object ID, version ID, title, protection classification,
+content hash, ACL version, server-derived UTF-16 anchor, bounded excerpt and deterministic score. They remain
+transient and do not change the document, create a version, persist a result, index content or construct RAG context.
+Audit stores the query hash, result identities and content hashes without query or document bodies. The browser
+validates the complete response contract before showing a responsive, dismissible source report with an exact
+version opener. Product commit `20f3cea0` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, tenant/ACL, current-version, audit, dashboard and asset-contract checks passed. The complete
+Office suggestion suite passed 10/10 in 2.1 minutes. After the live browser exposed an inspector overflow, the final
+desktop/mobile workflow passed 2/2 in 54.8 seconds with an explicit no-horizontal-overflow assertion. The final
+browser report hash is `sha256:18bbe8a91d5d52e655b1c88766eaf62357eb0f5edfc5261dd6dbe0ed5839b439`;
+desktop, tablet and mobile screenshot hashes are
+`sha256:2b553619f05f4281b26cd942f984134de5ca345696e3d900afb47fe817b4716a`,
+`sha256:53eaf4a6af143e3afbb38d75e10c28f7dcb5b553990f9886d04d2aa33c629e71` and
+`sha256:d26892995576b295302e784792a9d4d81ba5d61797eb15738363ab5e3c74e965`. The final Work-E2E API image ID is
+`sha256:852f97019d022411cdecf37eacd94c4f1867d164b9efe41f23eb7f0404ad6ff9`.
+
+The complete quality gate passed Ruff, found 945 format-conformant files, passed Mypy over 631 source files and ran
+Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The final CSS-v8 shell contract also
+passed in the rebuilt image. The final quality image ID is
+`sha256:9b876c754f1f796c01050fe6c42624e491fa9c7030633fe16995f7c9013ce316`.
+
+The review surface is `http://192.168.0.108:42880/office?review=source-search-adr0192`. The exact isolated PostgreSQL
+test container, blocked API and nine named transfer files were removed. No transient quality, test or Work-E2E runner
+remains. Regular and review APIs both return `ok`; review PostgreSQL, MinIO, decoder and API remain available. One
+incorrectly composed browser command began the broad matrix and was stopped after 30 passing cases; the exact
+suggestion and responsive suites then passed. This slice adds no migration, AI inference, embeddings, vector index,
+RAG context, automatic document write or production admission. Explicit push-to-talk dictation through the governed
+Voice Transcript Flow is the next Office roadmap loop. GitHub publication remains pending under the
+content-specific approval requirement.
+
+Roadmap 744 through 751 / PLANS 605 through 612 are complete under ADR-0191. Native Office can now inspect the
+exact current saved document version for bounded legal, financial, privacy, security, operational and commitment
+risks. The browser sends only the current version identity. The server revalidates the authoritative read ACL,
+enumerates native text blocks with exact ProseMirror UTF-16 anchors and keeps model-provided text and positions out
+of the trust boundary.
+
+One fixed approved prompt treats the indexed document blocks as untrusted data. Only tenant-admitted,
+drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted documents
+remain closed unless tenant, model and prompt registries all admit the confidential data class. The request accepts
+no free instruction, source body, model or provider.
+
+The model must return either `clear` or one through eight findings with fixed severity, category and existing block
+number. Invalid, duplicate, unknown, oversized or malformed output fails closed. Source excerpts, anchors and the
+highest severity are derived or revalidated by the server. The responsive report is labelled **AI-Risikopruefung ·
+ungeprueft**, can select and scroll to the exact saved passage and remains transient. It cannot edit a document,
+create a version or record, decide compliance, trigger an action or enter search/RAG indexes. Audit contains only
+bounded identifiers, counts and input/output hashes. Product commit `f8c94ee2` is local on
+`kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry, persistence, roadmap and browser-support checks passed. The complete Office
+suggestion suite passed 10/10 before the final boundary hardening; the final responsive desktop/mobile workflow
+passed 2/2 in 39.7 seconds and proved exact source selection plus unchanged version counts. The final browser report
+hash is `sha256:d7e819359bc70b35f49952db819ebdf939fcff94d8c1f149494c4df085875962`; desktop, tablet and mobile screenshot
+hashes are `sha256:3abbd350baa6c4f130c3cca3746fb44fba9945a9b294c74e297fe7215ac6d009`,
+`sha256:d0c8c3b6772668bdaf49e1ba18ab3c83138799f049caf1331a35e46a82f8451f` and
+`sha256:63560a7cda2a6bff7f677b3e56b1476fd31a74672acc94cc9549a06cedd58c66`. The existing-browser review exposed stale
+asset reuse, so the shell now pins `editor.js?v=2` and `office.css?v=5`; its same-origin CSP/cache contract tests both
+versions. Work-E2E, review API and blocked review API image IDs are
+`sha256:281e455b5f0ea0164c5cea72f897dc2e8dc899fa56ac9364bdd57e0f02957dfd`,
+`sha256:8795fcdf577294f466be760a4c3e09841a674fe19572268842f660039658c927` and
+`sha256:47d9f061947d71035a2a4f336e90c03a8ec85c6915471edad81ace427c9081ab`.
+
+The complete final quality gate passed Ruff, found 942 format-conformant files, passed Mypy over 629 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The final quality image ID is
+`sha256:83cd44457e7de2f6d517da2c864f686151095b3d40a85ffbf4284e695077d2b3`.
+
+The review surface is `http://192.168.0.108:42880/office?review=risk-marking-v2`. Cleanup removed only the exact
+isolated PostgreSQL test container, blocked API and eleven named transfer files; no transient runner remains. Regular
+and review APIs both return `ok`, the review API is healthy, and review PostgreSQL, MinIO, decoder and API remain
+available. This slice adds no migration, durable risk annotation, automatic edit/action, compliance
+certification, indexing, cloud provider or production admission. Versioned source search is the next Office AI
+Writing Assistant loop. GitHub publication remains pending under the content-specific approval requirement.
+
+Roadmap 736 through 743 / PLANS 597 through 604 are complete under ADR-0190. Native Office can now compare one exact
+current saved document with a different readable policy document. The browser sends only both object/version
+identities. The server revalidates both authoritative ACLs, requires both versions to remain current and extracts
+bounded native text from both immutable versions. Empty or over-16,000-character sources fail closed without silent
+truncation.
+
+One approved fixed prompt treats both delimited sources as untrusted data and forbids legal or regulatory approval.
+Only tenant-admitted, drafting-approved local models behind the Local LLM Gateway are eligible. The higher source
+classification governs inference; confidential and restricted sources remain closed unless tenant, model and the
+exact prompt all admit confidential data. Free instructions, browser-selected models/providers and cloud AI are not
+accepted.
+
+The model output must contain one fixed status plus bounded finding/recommendation lines with at least one finding.
+Invalid or oversized output fails closed. A valid result is visibly labelled **AI-Vergleich · ungeprüft**, remains
+transient and changes neither document nor version count. It cites the exact ACL-validated policy object, version,
+title and content hash and cannot certify compliance or trigger a follow-up action. Audit stores model, prompt, both
+source identities, status, counts and input/output hashes without document, prompt or output bodies. Product commit
+`3d8355d7` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused Ruff and format checks passed, Mypy passed over the affected sources and 30 focused service, API, policy,
+registry, persistence and roadmap tests passed. The responsive desktop/mobile workflow passed 2/2 in 37.6 seconds,
+and the complete Office suggestion suite passed 10/10 in 1.8 minutes. The final browser report hash is
+`sha256:5ee59f8af0d8640fa298f5f19e1c76595ae3009638cdc6af7724a3d706d7ecea`; desktop, tablet and mobile screenshot
+hashes are `sha256:aae91f454f9faa866f15b7eb06dd5e465406f04ce51499a53f277a507ec6042e`,
+`sha256:48a5d0904e8905f57308727233599a0b18819d1d8f664ee11e66a950892e1b59` and
+`sha256:5d5e25ed00968ea9655c981f462ad47c351b909e40e02e1bcb8c21fcc2026115`. Work-E2E, review API and blocked review API
+image IDs are `sha256:0af68a21e86ef399ca21b276ce6d6ffa557749996325966ecf17d8c0ffe57b4f`,
+`sha256:9831ce70946f803d2c673506e42e4b096f27cb77e39ba3ea3b6ceda70aea83bc` and
+`sha256:bf5459a3eb5a437fc3d4646299e484a3ea09eceda9e55c69e5f54e86f291490e`.
+
+The complete final quality gate passed Ruff, found 939 format-conformant files, passed Mypy over 627 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API and all four named temporary transfer files were removed.
+No transient quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is
+`healthy/0`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated
+projects were unchanged. The visible report was reviewed at
+`http://192.168.0.108:42880/office?review=policy-comparison`. Risk marking is the next Office roadmap loop.
+
+This slice adds no migration, durable AI draft, free-form outline instruction, caller-selected model/provider,
+automatic suggestion/save, whole-document restructuring, semantic heading insertion, indexing or production
+admission. The next Office step is a policy comparison on the same exact-version, local-model and explicit-
+confirmation boundary. GitHub publication remains pending under the content-specific approval requirement.
+
+Roadmap 720 through 727 / PLANS 581 through 588 are complete under ADR-0188. Native Office can now translate one
+marked text range into German, English, French, Spanish, Italian, Dutch, Polish, Portuguese or Ukrainian. The endpoint
+accepts only the exact current immutable version, one native selection anchor and a fixed target-language code. The
+server revalidates the authoritative document ACL and derives the selected source from the saved version; the browser
+cannot send source text, source-language claims, free instructions, model or provider.
+
+Every target maps to its own approved versioned prompt. The prompts preserve meaning, facts, names, numbers,
+commitments and formality, request translation only and treat the delimited source as untrusted data. Only tenant-
+admitted, drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted
+content stays closed until tenant, model and exact target prompt all admit the confidential class.
+
+The result is rejected when empty, unchanged, oversized or invalid Unicode. A valid translation is visibly labelled
+**AI-Entwurf · ungeprüft** with its target language, remains transient and changes neither document content nor
+version count. It enters the existing editable proposal composer. Explicit suggestion creation and a separate
+explicit acceptance are both still required before a new immutable version can exist. Audit stores model, prompt,
+exact source IDs and input/output hashes without source, prompt or output bodies. Product commit `941f1bae` is local
+on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
+passed 2/2 in 27.5 seconds, and the complete Office suggestion suite passed 10/10 in 1.6 minutes. The final browser
+report hash is `sha256:b5199b06325a9193f36e313e862d62565ff4a6c1d15c951889cfbc1abbbc787c`; desktop, tablet and mobile screenshot
+hashes are `sha256:99bc36bff3f00c3a6238e1bfaa9de37280ee84c05afa9ecfb93bb586bc6a8e91`,
+`sha256:0bf8ec33767d0b0a96198fff57e16a4c6611c6eaff17d63cbbb3cb25b5103592` and
+`sha256:97220f8a8a2237c7ff4d400f0d0bc9334c4976a99cd0e96ab3e7e11ae900d370`. Work-E2E and review API image IDs are
+`sha256:6b055668acba1b0f3becde1aaef1161ff444351a143be6fa32f4ba3cbfc3dec9` and
+`sha256:af907010595faa1e5012ea9824d06bc4b3f2cbfa629092a5be841a73b19c4ac8`.
+
+The complete final quality gate passed Ruff, found 933 format-conformant files, passed Mypy over 623 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API and both temporary transfer patches were removed. No
+transient runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=translation-941f1bae`.
+
+This slice adds no migration, durable AI draft, free target language, automatic source-language detection,
+translation memory, caller-selected model/provider, automatic suggestion/save, whole-document translation, indexing
+or production admission. The next Office step is generated outlines on the same exact-version, local-model and
+explicit-confirmation boundary. GitHub publication remains pending under the content-specific approval requirement.
+
+Roadmap 712 through 719 / PLANS 573 through 580 are complete under ADR-0187. Native Office can now rewrite one
+marked text range or apply one of five fixed tones: neutral, professional, friendly, formal or concise. The endpoint
+accepts the exact current immutable version, one native selection anchor and the fixed operation only. The server
+revalidates the authoritative document ACL and derives the selected text from the saved version; the browser cannot
+send source text, a free instruction, model, provider or target language.
+
+Every operation maps to an approved versioned prompt that preserves language, meaning, facts, names, numbers and
+commitments and treats the delimited source as untrusted data. The common inference policy now rejects unapproved
+prompts. JSON registries merge missing built-in prompts without replacing existing custom rows. Only tenant-admitted,
+drafting-approved local models behind the Local LLM Gateway are eligible. Confidential and restricted content stays
+closed until tenant, model and exact prompt all admit the confidential class.
+
+The result is validated, visibly labelled **AI-Entwurf · ungeprüft** with its operation or tone, remains transient and
+changes neither document content nor version count. It fills the existing editable proposal composer. A user must
+explicitly confirm suggestion creation and later explicitly accept that suggestion before a new immutable document
+version can exist. Audit stores model, prompt, exact source IDs and input/output hashes without prompt, source or
+output bodies. Product commit `4bb96536` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service, API, policy, registry and browser-support checks passed. The responsive desktop/mobile workflow
+passed 2/2 in 22.9 seconds, and the unchanged complete Office suggestion suite passed 10/10 in 1.5 minutes after its
+negative-path API dependency was started. The final browser report hash is
+`sha256:c9e89f820c3d98a604260d35f992bae61ce13a2b9a4448af64557dcd5962e69b`; desktop, tablet and mobile screenshot
+hashes are `sha256:dd71e9e562cb968fef9a33fdfb00ce587a04cf89142a2b1af37f72ff84c7dbf1`,
+`sha256:91b19bcbf9089807803e55dc579c9fce90b50f22fec573330fe64f5cbd4754c1` and
+`sha256:55740e6b4b0cf5ff1ec17c477b018a3ee95c614af7d93cc18485d4c8a7e14c88`. Work-E2E and review API image IDs are
+`sha256:f40b5c6b6b5d7ad30ded6adddcfc4e13b8a9baaad2c4e254aaaf195510545bea` and
+`sha256:2580ba54cbbcbc5ed496e16953b4a88f26f674858ff15e1178bf83766ae226d8`.
+
+The complete final quality gate passed Ruff, found 930 format-conformant files, passed Mypy over 621 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API and both temporary transfer patches were removed. No
+transient runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=rewrite-tone-4bb96536`.
+
+This slice adds no migration, durable AI draft, free-form prompting, caller-selected model/provider, automatic
+suggestion/save, whole-document inference, translation, indexing or production admission. The next Office step is
+translation on the same exact-version, local-model and explicit-confirmation boundary. GitHub publication remains
+pending under the content-specific approval requirement.
+
+Roadmap 704 through 711 / PLANS 565 through 572 are complete under ADR-0186. Native Office can summarize one marked
+text range from the exact current immutable document version. The server revalidates the authoritative document ACL,
+derives the selected text from the saved version and binds the inference to the exact object, version, anchor and
+selection hash; browser-supplied text is never the model source.
+
+The service chooses only a summarization-approved model from the tenant allowlist whose registry deployment is local
+and whose provider is admitted behind the Local LLM Gateway. The browser cannot select a provider. Public content is
+handled at least as internal, while confidential and restricted documents remain closed until tenant, model and
+prompt registries explicitly admit the confidential class. Prompt/output bodies stay out of normal logs and audit;
+the AI audit stores model, prompt template, source IDs and input/output hashes.
+
+The response is visibly labelled **AI-Entwurf · ungeprüft**, remains transient and changes neither the document nor
+its version count. It only fills the existing proposal composer. A user must explicitly confirm suggestion creation
+and later explicitly accept that suggestion before a new immutable document version can exist. Product commit
+`a0f95f43` is local on `kirchherr/kb-write-unit-of-work`.
+
+Focused service/API/capability checks passed. The final responsive desktop/mobile workflow passed 2/2 in 18.2
+seconds, and the complete Office suggestion browser suite passed 10/10 in 1.3 minutes. The final browser report hash
+is `sha256:84886000ce0f8c423cb961829a3b962b27f5ffbd0a030b12fbcb04f90d518aa2`; desktop, tablet and mobile screenshots
+were produced. Work-E2E and review API image IDs are
+`sha256:dfc48ef144d9375961f857281035b5a369cfad686822f34ea536d5de1651444c` and
+`sha256:555565f43d0d0c4d2d58ec77159835ee0e0275710a1796e1037fface9f694246`.
+
+The complete final quality gate passed Ruff, found 927 format-conformant files, passed Mypy over 619 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. The bound quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+The exact isolated PostgreSQL test container, blocked API, seed/migration containers and temporary transfer patches
+were removed. No transient runner remains; regular and review APIs both return `ok`, and review health is
+`healthy/0`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated
+projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=selection-summary-a0f95f43`.
+
+This slice adds no migration, durable AI draft, automatic suggestion, automatic save, cloud-provider selection,
+whole-document inference or production admission. The next Office step is rewriting and tone control on the same
+exact-version, local-model and explicit-confirmation boundary. GitHub publication remains pending under the
+content-specific approval requirement.
+
+Roadmap 696 through 703 / PLANS 557 through 564 are complete under ADR-0185. Native Office now has nine deterministic
+synthetic interchange fixtures: one allowed, one visibly marked and one blocked input for each of DOCX, ODT and PDF.
+Exact source hashes, byte lengths, policy outcomes, parser outcomes, text hashes, warning counts and a canonical
+manifest hash make drift reviewable.
+
+All fixtures run through the real active-content detector and development parser. VBA, ODF Basic script and PDF
+JavaScript are blocked before extraction; signature fixtures remain nonexecuting and visibly marked. The tenant-
+scoped endpoint returns only metadata and no fixture bytes. Import dispatch, export engine, round-trip fidelity and
+production admission remain false.
+
+Product commit `967a2cd3` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, formatting and Mypy passed with
+the corpus, parser, policy, service, API and dashboard contracts. The exact responsive desktop/mobile lifecycle
+workflow passed 2/2 in 12.2 seconds. Final Work-E2E and review API image IDs are
+`sha256:46bc2b9f2be1307d3e03b480a05573779e62336655e3681baf7b0f11015fcc2a` and
+`sha256:295bf16af4f45d4080365bb62c8da967126b852b9d67c94e319b9655cbc6cd5e`.
+
+The complete final quality gate passed Ruff, found 924 format-conformant files, passed Mypy over 617 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:7ccdfa4414deb07df435896e9f1d1f4603dcae611328d473c051d48b9146ce28`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and all inventoried remote and local corpus transfer files were removed. No transient quality, test
+or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`. Review
+PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were unchanged.
+The review surface is `http://192.168.0.108:42880/office?review=interchange-corpus-967a2cd3`.
+
+This slice adds no migration, fixture-byte response, import dispatch, export engine, round-trip claim or production
+release. The next Office step is separately admitted interchange-engine work against the corpus. GitHub publication
+remains pending under the content-specific approval requirement.
+
+Roadmap 688 through 695 / PLANS 549 through 556 are complete under ADR-0184. Native Office now exposes a
+tenant-scoped, metadata-only `office_import_compatibility_matrix.v1` with thirteen exact feature entries across DOCX,
+ODT and PDF. The endpoint accepts no content, SourceObject ID or version ID.
+
+The matrix distinguishes bounded text support, flattened text, blocked active content, visible review markers and
+unsupported features. Every entry keeps fidelity false. DOCX secondary parts, ODT structure and complex PDF features
+are not presented as preserved merely because some text can be extracted. ADR-0183 remains authoritative for
+blocking VBA/ActiveX/OLE/templates, ODF scripts and PDF actions before extraction and for visibly marking
+nonexecuting signature/link indicators.
+
+The endpoint is Office-read-gated, tenant-bound and `no-store`; audit is metadata only. Import dispatch, export,
+round-trip fidelity and production admission remain false. The responsive **Dokumentstatus** exposes that boundary.
+Product commit `9c2124dc` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, formatting and Mypy passed, and
+the exact responsive desktop/mobile lifecycle workflow passed 2/2 in 11.9 seconds. Final Work-E2E and review API
+image IDs are `sha256:f4760c5c0922b9c7ec69ba922358a4a815ba3a69f908670915d4858b1c7eea9f` and
+`sha256:9dff8398f2cff8eec2e4aafe4ee31de47ff66ed1f9dc2cb0a9f99f5b0b95ad46`.
+
+The complete final quality gate passed Ruff, found 921 format-conformant files, passed Mypy over 615 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:a7be0dc1b01dfe2896e64a5243da67f0f6968bae56a19fadb2c70eeaea5b3e23`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and five inventoried remote plus five local compatibility transfer files were removed. No transient
+quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and review health is `healthy/0`.
+Review PostgreSQL, MinIO, decoder and API remain available; main persistent services and unrelated projects were
+unchanged. The review surface is `http://192.168.0.108:42880/office?review=import-compatibility-9c2124dc`.
+
+This slice adds no migration, import/export content flow, parser dispatch, fidelity claim, productive engine
+admission or production release. The next Office step is the import/export test corpus. GitHub publication remains
+pending under the content-specific approval requirement.
+
+Roadmap 680 through 687 / PLANS 541 through 548 are complete under ADR-0183. Native Office now has one tenant-scoped,
+metadata-only `office_macro_policy.v1` and an enforced pre-extraction active-content barrier in the existing isolated
+rich-document worker. The policy endpoint accepts no content, SourceObject ID or version ID.
+
+Native macro-enabled DOCM MIME and nominal DOCX containers with VBA, ActiveX, OLE/package or attached-template
+indicators are blocked. ODF Basic/script parts, event listeners and script URIs, and PDF JavaScript, launch/open/
+additional actions or embedded files are also blocked. Unsafe, ambiguous, encrypted or unsupported ZIP structures
+fail closed. Blocked input is never text-extracted and no macro, script, action or embedded payload is executed.
+
+The worker does not silently remove active content. Nonexecuting signature and external-link indicators may pass only
+as `allow_marked`; extraction then carries one generic visible review warning without archive paths, relationship
+targets, source identifiers or content. Normal logs and metadata-only audit exclude those values. Parser dispatch,
+automatic sanitization and a persisted policy receipt remain false.
+
+The responsive **Dokumentstatus** explains the block/mark behavior and the closed execution boundary. Product commit
+`e33a7066` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the detector,
+parser, service, API and dashboard contracts. The final exact responsive desktop/mobile lifecycle workflow passed 2/2
+in 11.7 seconds. Final Work-E2E and review API image IDs are
+`sha256:f86970da23fbab5284d814ddc388c4fc2d9098fa86295851aecb9b13f8df85d6` and
+`sha256:8cf664cd537bd081c4e45d12533c0fa249fb6244c1b71590b1d8ae1335f5f880`.
+
+The complete final quality gate passed Ruff, found 918 format-conformant files, passed Mypy over 613 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:69bdc25afb7f16f2cbc6cd598c732443d2f286662b0dc76af78f6c294d2e2820`.
+
+The first focused invocation stopped before tests on Ruff's import order. The second reached Mypy and identified
+Python bytes' lack of `casefold`; changing the byte normalization to `lower` corrected the type and behavior. The
+unchanged final focused and complete gates then passed. These were implementation diagnostics, not product failures.
+
+The isolated PostgreSQL test container and all temporary remote and local Makro-Policy files were removed. No
+transient quality, test or Work-E2E runner remains; regular and review APIs both return `ok`, and the review API is
+healthy with failing streak zero. Review PostgreSQL, MinIO, decoder and API remain available; main persistent services
+and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=macro-policy-e33a7066`.
+
+This slice adds no migration, policy-endpoint content intake, macro execution, automatic sanitization, quarantine or
+operator workflow, policy-receipt persistence, productive parser dispatch or production release. The next Office
+step is the OOXML/ODF compatibility matrix. GitHub publication remains pending under the content-specific approval
+requirement.
+
+Roadmap 672 through 679 / PLANS 533 through 540 are complete under ADR-0182. Native Office now exposes the existing
+bounded PDF, ODT and DOCX development parser through a tenant-scoped, metadata-only
+`office_parser_worker_plan.v1` boundary. The endpoint accepts no content, SourceObject ID or source-version ID and
+keeps dispatch and production admission false.
+
+Any future source must first pass authoritative tenant/object ACL, exact version/manifest, classification, retention,
+legal-hold, ACL-version and malware/active-content prerequisites. The planned pipeline authorizes before read,
+materializes exact content-addressed bytes, parses once without network, validates bounded schema and hashes,
+reauthorizes before use and erases scratch. Parser output remains untrusted until that validation.
+
+The existing `rich-document-parser` Compose service now runs with `NetworkMode=none`, UID/GID 1000, read-only root,
+all capabilities dropped, `no-new-privileges`, a 64 MiB `noexec,nosuid,nodev` tmpfs, 256 MiB memory, 64 processes
+and one CPU. It receives no database, object-storage or provider credentials and has no direct storage or vector-write
+path. A real transient Docker probe confirmed every effective HostConfig value. The parser retains 25 MB input,
+20 MB expanded-archive and two-million-character output limits.
+
+Materializer, write-only result handoff, scheduler/wall-clock timeout, malicious-document corpus, sandbox-escape
+fuzzing, nonempty recovery and production worker-image admission remain explicit blockers. **Dokumentstatus** displays
+the closed parser boundary without uploading a file or starting a job. Audit is metadata only and excludes content,
+source IDs and versions.
+
+Product commit `2f2ab49c` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the
+affected parser, service, API, Compose and roadmap contracts. The actual one-shot worker started successfully and
+reported only its profile and isolation requirements. The responsive desktop/mobile lifecycle workflow passed 2/2 in
+12.0 seconds. Final Work-E2E and review API image IDs are
+`sha256:6fc1afad7bc8ad748438948868ec7828ffe6d737a56b62b1da2d58e181133e5f` and
+`sha256:7dba9971fcb9a339eb9f0a9212ebb826751b489bcc8eb3ac2a6b9dcc1eeb3423`.
+
+The complete final quality gate passed Ruff, found 935 format-conformant files, passed Mypy over 610 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:09636f6e0d8e7b2a092b80589fd75bb851b9d8edcd859f4b29171f07c7161a4f`.
+
+The first browser command repeated the image's fixed Playwright entrypoint and therefore began the broad 557-case
+matrix. It was stopped after 39 reported cases; its one unrelated CRM negative-path failure came from the deliberately
+absent blocked-API dependency. The corrected exact spec then passed 2/2 without a product or assertion change.
+
+The isolated PostgreSQL test container, that interrupted Work-E2E runner and all temporary remote parser files were
+removed. No transient quality, test, probe or Work-E2E runner remains; regular and review APIs both return `ok`, and
+the review API is healthy with failing streak zero. Review PostgreSQL, MinIO, decoder and API remain available; main
+persistent services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=parser-worker-2f2ab49c`.
+
+This slice adds no migration, content intake, parser dispatch, scheduler, result persistence, storage/vector write,
+external provider, productive worker-image admission or production release. The next Office step is the separately
+bounded macro policy. GitHub publication remains pending under the content-specific approval requirement.
+
+Roadmap 664 through 671 / PLANS 525 through 532 are complete under ADR-0181. Native Office now exposes a second strict,
+metadata-only preflight for the future WebSocket gateway. It requires exact Same-Origin between browser `Origin` and
+the actual request origin, the fixed `collabio-office-crdt.v1` subprotocol and the complete canonical transport
+capability set.
+
+The Office write gate, tenant/document write ACL, exact current immutable version and current browser edit lease are
+revalidated. Session and client IDs remain request-transient. Audit contains only version, protocol, bounded counts,
+closed states and blocker count; origin, raw IDs, credentials, content and future updates are excluded.
+
+The prepared envelope fixes binary-only uncompressed frames, 256 KiB per frame, 1 MiB queued bytes, close code 1013,
+a 25-second heartbeat, 60-second reauthorization and a five-minute maximum connection lifetime. Resume requires
+state-vector reconciliation and at-least-once delivery requires client deduplication. Per-update ACL checks remain
+mandatory.
+
+No upgrade credential is issued. Query credentials are forbidden, responses contain neither ticket nor socket URL,
+and the server accepts no connection. Upgrade routing, ticket persistence, actual handshake rejection integration,
+per-update authorization, disconnect recovery, multi-node fan-out, CRDT engine admission and WebSocket load evidence
+remain explicit blockers.
+
+Product commit `8b1808c7` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed with the
+affected service, API and capability tests. The responsive desktop/mobile lifecycle workflow passed 2/2 in 11.0
+seconds. Final Work-E2E and review API image IDs are
+`sha256:716003c94be47ffdd256a0653edd05c4675c853056515998dd8e17b4c18f66d7` and
+`sha256:20883aa6615f76ea26378a02d93bd7079ae3cb06296eb4633be2074cf705680b`.
+
+The complete final quality gate passed Ruff, found 911 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final quality image ID is
+`sha256:b0d22e5cdf6f52d3025f55e7d13098a971b4b48215edf96bc520cb8a13fdb829`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and four inventoried remote Gateway scripts were removed. No transient quality or Work-E2E runner remains;
+regular and review APIs both return `ok`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent
+services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=websocket-preflight-8b1808c7`.
+
+This slice adds no migration, upgrade route, credential store, WebSocket connection, CRDT engine, update ingestion,
+fan-out, recovery or load claim, external provider or production admission. GitHub publication remains pending under
+the content-specific approval requirement.
+
+Roadmap 656 through 663 / PLANS 517 through 524 are complete under ADR-0180. Native Office now exposes one strict,
+metadata-only `collabio-office-crdt-preflight.v1` compatibility boundary for binary updates and state vectors. It
+publishes a future 256 KiB update ceiling and fifty-editor target but accepts no update bytes, state vector, awareness
+payload or document content.
+
+Every preflight rechecks the Office write gate, tenant/document write ACL, exact current immutable version and active
+current-version edit lease held by the same browser session. Session and client instance IDs remain request-transient.
+The operation writes no document, version, lease or collaboration state, and audit retains only version, protocol,
+capability count, closed-state values and blocker count.
+
+Success means `prepared_runtime_closed` and `websocket_not_admitted`; runtime admission is false. CRDT engine,
+durable update log, restore replay, malicious-update fuzzing, fifty-editor load evidence and WebSocket gateway remain
+explicit blockers. The **Dokumentstatus** dialog now shows that boundary without opening a socket or changing the local
+draft.
+
+Product commit `aefa8161` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed, followed
+by the affected service, API and capability tests. The real responsive desktop/mobile lifecycle workflow passed 2/2
+in 11.0 seconds. Final Work-E2E and review API image IDs are
+`sha256:a772b7acfbf01c7e134643277573283a253db898c628fed1626c58a4b5ba20cf` and
+`sha256:a70157e8bcec451971602f751947a8ef871cbbfeb1382c39941232a2a649eb5e`.
+
+The complete final quality gate passed Ruff, found 910 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Its first invocation stopped before
+Mypy and Pytest on one formatter-only assertion layout; the exact formatter form was applied and the unchanged full
+gate passed. Final quality image ID is
+`sha256:f04f158df45f51fd1e757bcefce8954ae29903cfad98d23e3cb1d7c6b5b5273e`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container and four inventoried remote CRDT scripts were removed. No transient quality or Work-E2E runner remains;
+regular and review APIs both return `ok`. Review PostgreSQL, MinIO, decoder and API remain available; main persistent
+services and unrelated projects were unchanged. The review surface is
+`http://192.168.0.108:42880/office?review=crdt-preflight-aefa8161`.
+
+Fifty distinct client metadata values exercise stateless preflight and the declared target but are not a concurrent
+load test. This slice adds no migration, CRDT engine, update ingestion, durable log, presence, merge, WebSocket,
+restore claim, load claim, external provider or production admission. GitHub publication remains pending under the
+content-specific approval requirement.
+
+Roadmap 648 through 655 / PLANS 509 through 516 are complete under ADR-0179. The existing version-bound, append-only
+Office review stream now supports canonical `@[principal-id]` mentions and an explicit event attribution containing
+the human actor, operation and exact revision. Mention parsing is fail closed, preserves first occurrence, deduplicates
+repeats and caps one event at twenty distinct principals.
+
+Every new target must be an active principal in the current tenant and either own the exact document or hold a
+current, unexpired direct user ACL. Role/group grants are not expanded into recipients. A mention grants no access and
+sends no notification. Idempotent replay is resolved before current target revalidation; historical mentions remain
+inside immutable comments after later revocation and can only be read through the still-authorized parent thread,
+while new mentions of the revoked target fail atomically.
+
+The API derives mentions from the existing immutable body and returns `human_confirmed: true` attribution. Browser
+validation requires those derived values to match the event and renders them as text. Audit records only the mention
+count; target IDs and bodies remain excluded. The responsive composer explains the exact syntax and the closed access
+and notification boundaries.
+
+Product commit `756d5fd3` is local on `kirchherr/kb-write-unit-of-work`. Focused Ruff, format and Mypy passed, 44
+service/API tests passed, and all seven PostgreSQL review tests passed. The exact responsive desktop/mobile workflow
+passed 2/2 in 17.2 seconds; the complete Office review browser matrix passed 10/10 in 1.3 minutes.
+
+The complete final quality gate passed Ruff, found 909 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Its first invocation found one
+test-only protocol typing error; making the In-Memory adapter assertion explicit left product behavior unchanged and
+the complete rerun passed. Final Work-E2E, review API and quality image IDs are
+`sha256:7d4613d59296ff1bcb9b019d6987c727c73fe2f16e873c238388dda109407464`,
+`sha256:35d88b65e2730dcfce6eb1845dbfa4e8cff9183cc0442c7ef8dbd42158b03184` and
+`sha256:a79ca64d7bfdc07c694fa62fbb8629bd79c8009f3e127d921539f3f749e2fbd6`.
+
+The review API reached healthy after its normal extended cold-start interval and has failing streak zero. Both
+`http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The review surface is
+`http://192.168.0.108:42880/office?review=mentions-756d5fd3`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test and
+blocked-API containers, five inventoried remote transfer files and both local transfer archives were removed. No
+transient quality, test or Work-E2E runner remains. Review PostgreSQL, MinIO, image decoder and API remain available;
+main persistent services and unrelated projects were unchanged.
+
+The first complete browser invocation deliberately used `--no-deps`, so the existing negative-path case could not
+resolve its separate blocked-API test dependency; the other nine cases passed. Starting only that isolated dependency
+and rerunning the identical matrix produced the clean 10/10 result. No product assertion was changed.
+
+This slice adds no migration, notification outbox, email, push, access expansion, role/group recipient expansion,
+RAG/search indexing, CRDT, WebSocket, external provider or productive admission. GitHub publication remains pending
+under the content-specific approval requirement.
+
+Roadmap 641 through 647 / PLANS 502 through 508 are complete under ADR-0178. Native Office now exposes one
+authoritative read-only lifecycle contract: working data is request-transient, drafts remain browser-memory only,
+collaborative state is metadata-only edit-lease state, and the current saved version is the sole persistent document
+state. Business-record and WORM evidence-record transitions remain explicitly closed.
+
+The lifecycle read requires the fixed browser-session format and current tenant/document authorization. It returns
+collaborative status only with current write access and otherwise reports it unavailable. The existing repository then
+uses the hashed session binding and current-version lease. Responses and audit contain no foreign holder, raw session
+identifier or document body. Save still requires human confirmation and exact version compare-and-swap; future record
+promotion also requires human confirmation, AI is explicitly forbidden from committing it and no writable lifecycle
+route exists.
+
+The responsive **Dokumentstatus** dialog shows local unsaved-draft state, current collaboration status, exact immutable
+version ID and both closed record transitions without altering editor content. Product commit `86be7f11` is local on
+`kirchherr/kb-write-unit-of-work`. Ruff, format and focused Mypy passed; the complete Office document service/API
+files passed 62/62 tests. The real responsive browser workflow passed desktop and mobile, 2/2 in 10.1 seconds, and
+confirmed that the dialog preserves the unsaved draft.
+
+The complete final quality gate passed Ruff, found 908 format-conformant files, passed Mypy over 608 source files and
+ran Pytest to 100 percent with only the known Starlette/AnyIO deprecation warning. Final Work-E2E, review API and
+quality image IDs are `sha256:364a65119cdee183c24b1a9155272c46305c67d79a3975b457fee736a05e7fac`,
+`sha256:69c07ac90fa86b4fb444332d95969aa690031b6ee267ff3bc66be1befe8a74aa` and
+`sha256:eb97f782a0468a3c749bf395af83e0c8196fe2a417b730d6d9f458fc10edf47a`.
+
+The final review API recreate again used its normal extended cold-start interval, then reached healthy with failing
+streak zero. Both `http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The
+review surface is `http://192.168.0.108:42880/office?review=lifecycle-86be7f11`.
+
+All eight focused planning and implementation documentation contracts passed. The exact isolated PostgreSQL test
+container, the transient blocked-API test container and five inventoried remote transfer files were removed, together
+with all three local transfer archives. No transient quality, test or Work-E2E runner remains. Review PostgreSQL,
+MinIO, image decoder and API remain available; main persistent services and unrelated projects were unchanged.
+
+The first browser invocation used invalid project aliases and stopped before any test. The second passed a nested
+`npx playwright test` command to an image that already owns that entrypoint, unintentionally starting the broad
+matrix; it was interrupted by exact container/session identity after 39 unrelated tests. The corrected exact
+Lifecycle spec then passed. These diagnostics are retained and do not represent product failures.
+
+This slice adds no migration, persistent draft, collaborative content log, record promotion, retention change,
+object-lock transition, WORM object, AI action, external provider or productive admission. GitHub publication remains
+pending under the content-specific approval requirement.
+
+Roadmap 632 through 640 / PLANS 493 through 501 are complete under ADR-0177. Native Office now has one bounded,
+tenant/document advisory edit lease for the current immutable version. Migration 0090 stores a 90-second expiry,
+lease revision, version binding, release timestamp, takeover count and audit reference under forced tenant RLS,
+no-delete policy and column-limited app updates. The module manifest advances to 0.8.0 and the complete table,
+constraints, RLS policies and grants are covered by the Office restore contract.
+
+Browser session IDs are persisted only as SHA-256 bindings over tenant, document, principal and session. Every lease
+read or mutation retains the Office feature gate and authoritative document ACL check. Acquire and renew require the
+exact current immutable version and serialize under a tenant/document PostgreSQL advisory transaction lock. A save
+therefore invalidates a lease bound to its predecessor. Responses reveal neither a foreign principal nor a raw
+session identifier.
+
+The responsive editor shows lease state, reconciles and renews every 15 seconds, becomes read-only when another
+session holds the lease or authoritative status is unavailable, and requires explicit confirmation before takeover.
+The previous session retains its already-entered local draft but cannot save. Close and page unload attempt a
+best-effort release. Audit distinguishes read, request, actual takeover, actual release and ineffective release
+request without storing session IDs or content.
+
+Product commit `908ba5cc` is local on `kirchherr/kb-write-unit-of-work`. Focused service/API/migration tests passed,
+the PostgreSQL lease integration passed, and the Office restore contracts passed. The real two-browser Playwright
+workflow passed on desktop and mobile, 2/2 in 41.4 seconds, including blocked secondary editing, confirmed takeover,
+first-session read-only reconciliation within 30 seconds and retention of its unsaved text. After the final audit
+precision correction, the focused lease/API/PostgreSQL/migration set passed completely again.
+
+The complete quality run passed Ruff, found 906 format-conformant files and passed Mypy over 608 source files. Pytest
+ran to 100 percent and surfaced only two successive static migration-catalog expectation failures; after both were
+corrected, all 56 affected migration tests passed. Final review API and quality image IDs are
+`sha256:54ec8876a3a9473d8c4c85638313ccccfa78bee2243033d25c5557909318ff9d` and
+`sha256:978f80e9590df52a8def6621de6aaa9c3793379a78506b2ad4c19f8903973400`.
+
+The isolated review API initially exceeded its cold-start health interval. Process and health-history inspection
+showed normal Uvicorn startup, after which it reached healthy with failing streak zero. Both
+`http://192.168.0.108:42880/health` and the regular `http://127.0.0.1:8000/health` return `ok`. The review surface is
+`http://192.168.0.108:42880/office?review=edit-lease-908ba5cc`.
+
+The exact `collabio-postgres-test-1`, `collabio-work-e2e-seed-1` and `collabio-work-e2e-migrate-1` containers and all
+inventoried lease transfer files were removed. No transient quality, test or Work-E2E runner remains. Review
+PostgreSQL, MinIO, image decoder and API stay available; main persistent services and unrelated projects were not
+changed. All eight focused planning and implementation documentation contracts passed. GitHub publication remains
+pending under the content-specific approval requirement.
+
+These leases coordinate one author per saved version. They do not replace ACL or immutable-version CAS and do not
+provide CRDT, WebSocket broadcast, presence, merge, simultaneous coauthoring, durable local-draft storage or DOCX
+lock interoperability. Those remain later Phase 3 Office work.
+
+Roadmap 624 through 631 / PLANS 485 through 492 are complete under ADR-0176. Standalone root shapes and complete root
+shape groups now support optional canonical `hidden: true` and `locked: true` states. Omission remains visible and
+editable; grouped member shapes cannot carry either root state. Browser and authoritative server accept only literal
+true and reject false, numbers, strings, unknown attributes and member-level root states.
+
+The responsive object navigator describes and searches both states and applies show, hide, lock and unlock to one
+through twenty complete roots atomically. Hidden objects leave editor layout and semantic print/PDF while remaining in
+canonical document order and recoverable from the navigator. Locked roots remain selectable, but ordinary dialog,
+handle, pointer, touch, keyboard and multi-object mutations are disabled until unlock. The UI explicitly states that
+hiding is not confidentiality and locking is not authorization or a collaborative lease.
+
+Every state action revalidates the current authorized session, exact document and strict root ID/type/order tuple.
+Stale, duplicate, unsorted, missing or changed targets fail without mutation. A successful action is one validated
+document transaction and undo unit. Confirmed save, immutable predecessor reads, navigator recovery, semantic print,
+comparison and undo/redo consume the canonical states.
+
+Product commit `2f726a33` is local on `kirchherr/kb-write-unit-of-work`. Two focused Python schema contracts and the
+22/22 strict model tests passed. Targeted desktop and mobile workflows each passed, followed by the complete 46/46
+native-shape matrix in 5.3 minutes. The first broad browser invocation unintentionally used the default 36-test set;
+its existing blocked-API case failed because `--no-deps` intentionally omitted that service, while 33 unrelated cases
+passed. The new test first exposed overly broad descendant locators and then the established saved-version-only print
+gate; both tests were corrected to assert root state and save before print, without weakening product behavior.
+
+Complete repository quality passed with Ruff, 904 format-conformant files, Mypy over 607 source files and Pytest to
+100 percent; only the known Starlette/AnyIO warning remains. Final Work-E2E, review API and quality image IDs are
+`sha256:aaa5fb58b7a57ae613768784a5a00d2afa353bf52c907e6b8056a7bb7be42285`,
+`sha256:fd26c8747eb20212dfc7ee76258efc424de9534d532eb24de054944f703d563b` and
+`sha256:17c12b3b47658250f698a7909fbc21443f6165f981a420d60937e03adabaf6ff`.
+
+The review API twice exceeded its Compose health timeout during a cold start and reported unhealthy; immediate later
+inspection showed normal Uvicorn readiness, failing streak zero and `{"status":"ok"}`. No import error occurred. The
+change adds no migration, new endpoint, dependency, external request, provider, worker, recovery store, security label,
+access-control change, collaborative lock, cross-document or cross-tenant transfer, DOCX engine or production
+admission. GitHub publication remains pending under the explicit content-specific approval requirement for the
+internal handoff, roadmap, ADRs and dev001 operations record.
+
+All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified `/tmp/collabio-roadmap-624` transfer directory were removed. No
+transient quality or Work-E2E runner remains. Regular and review APIs both return `ok`; review PostgreSQL, MinIO,
+decoder and API remain healthy, and the inspected `tricert`, `trijob`, `tripax` and `webcut` projects were untouched.
+
+Roadmap 617 through 623 / PLANS 478 through 484 are complete under ADR-0175. Standalone shapes, grouped member shapes
+and complete root shape groups now support an optional object name of at most 80 characters and alternative text of
+at most 500 characters. Browser and authoritative server enforce identical nonempty, exactly trimmed plain-text
+rules and reject controls, surrogates, Unicode line/paragraph separators, booleans, unknown attributes and limit
+violations. Existing omission remains canonical.
+
+The responsive shape dialog edits shape and group metadata inside the established transaction and one-step history
+boundary. The object navigator uses names as primary labels and searches alternative text together with visible text,
+kind, document position and logical anchor. Editor accessibility labels, semantic print/PDF, comparison, confirmed
+save, immutable history, duplication, grouping operations and independent reuse preserve the metadata.
+
+Product commit `32dfe01c` is local on `kirchherr/kb-write-unit-of-work`. Two focused Python schema contracts passed,
+the strict model passed 21/21, targeted desktop/mobile workflows passed 4/4 in 1.6 minutes and the complete native
+shape matrix passed 43/43 in 5.0 minutes. The first targeted browser run reached the UI but both desktop saves returned
+422, exposing the missing authoritative server allowlist; the identical Python contract and hostile-input tests were
+then added and every rerun passed. A host-level Node check was unavailable because dev001 intentionally has no Node
+binary; the pinned Work-E2E image built and executed the JavaScript tests successfully.
+
+Live review at `http://192.168.0.108:42880/office?review=shape-accessibility` confirms the saved accessible label and
+the object navigator result **Freigabeschritt**, with position, kind, alternative text and visible text. The navigator
+search is left open for direct inspection; no live-review document mutation or save was made.
+
+Complete repository quality passed with Ruff, 904 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. Final Work-E2E, review API and quality image IDs are
+`sha256:ff2cb1f99ee1488572a20d0b223d0e4f189113232410b7e0d668db598b2c9420`,
+`sha256:616f61974cbb0035ec28ada7a219b98305d42e042ab496178e3c495c36232ca3` and
+`sha256:9c99cc4f3efb5ba48bc7bc90e32090caf5b3db01e656e78fba4cea94e93c6c99`.
+
+The exact `collabio-postgres-test-1` container, verified `/tmp/collabio-roadmap-617` transfer directory and local
+transfer archives were removed. No transient quality, test or Work-E2E runner remains. Regular and review APIs both
+return `ok`; review PostgreSQL, MinIO, decoder and API remain healthy and unrelated projects were untouched.
+
+The change adds no migration, new endpoint, dependency, external request, provider, worker, recovery store, HTML,
+URL, arbitrary attribute, cross-document or cross-tenant transfer, DOCX engine or production admission. GitHub
+publication remains pending under the explicit content-specific approval requirement for the internal handoff,
+roadmap, ADRs and dev001 operations record.
+
+Roadmap 610 through 616 / PLANS 471 through 477 are complete under ADR-0174. The responsive **Objektliste ...**
+enumerates every standalone root shape and complete root group in canonical document order, including objects behind
+text or otherwise visually obscured. Authors can search text, kind, member text, document position and anchor, filter
+by shape or group, select all matches, invert matches and clear candidates. The resulting selection is atomically
+bounded to twenty roots.
+
+Opening records the authorized session, exact document instance and complete root-ID/type/order tuple. Applying
+revalidates that snapshot and current write permission; stale, unknown, duplicate, unsorted or incomplete roots fail
+closed. Accepted roots are normalized to document order and replace only the existing transient selection. No Office
+JSON, transaction, immutable version or history entry is written, while cancel, close and Escape preserve the prior
+selection.
+
+Product commit `d29049d0` is local on `kirchherr/kb-write-unit-of-work`. After a compact mobile-toolbar correction,
+the targeted pointer-rotation regression passed 1/1, the focused strict-model plus desktop/mobile workflow passed 3/3
+in 51.0 seconds and the complete native-shape matrix passed 42/42 in 5.0 minutes. The initial 41/42 run is retained as
+diagnostic evidence: the added toolbar height made the existing mobile pointer gesture unreliable; compact direct
+controls restored the established interaction without weakening the test.
+
+Live review at `http://192.168.0.108:42880/office?review=object-navigator-d29049d0` found three complete root groups,
+selected them through two search result sets and applied all three in document order. The visible notice confirms that
+content stayed unchanged, all three complete groups remain visibly selected and the existing multi-object actions are
+available. The saved document remains unchanged because the selection is transient.
+
+Complete repository quality passed with Ruff, 903 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. Final Work-E2E, review API and quality image IDs are
+`sha256:e4b4b4a76f05c94193c530b1f3e974cb7a8e22987fb52fc36ab13a9b4992db23`,
+`sha256:9a530931c8cb2f871c36031939a7048c1a932ccc497eafd218a2c578edea5180` and
+`sha256:fe51ad55cb5098077dcf2065fb9c5b64b61c956342e6ef3a6b4f30b38211c158`.
+
+The exact `collabio-postgres-test-1` container, verified `/tmp/collabio-roadmap-610` transfer directory and local
+transfer archives were removed. No transient quality, test or Work-E2E runner remains. Regular and review APIs both
+return `ok`; review PostgreSQL, MinIO, decoder and API remain healthy and unrelated projects were untouched.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, content write, nested group, DOCX engine or
+production admission. GitHub publication remains pending under the explicit content-specific approval requirement
+for the internal handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 603 through 609 / PLANS 464 through 470 are complete under ADR-0173. Two through twenty selected standalone
+root shapes or complete root groups can now move as one stable block to an exact one-based document start position.
+The range is 1 through the number of unselected roots plus one, and at least one other root must remain. Selected roots
+retain their order, every unselected root retains its order and complete groups move without being rebuilt.
+
+The responsive **Position ...** dialog reports the selection and document counts, sets dynamic integer bounds,
+explains the stable-order contract and distinguishes valid, invalid and already-closed targets. It snapshots and
+revalidates the authorized session, exact document instance, write permission, selected IDs and root count. Stale,
+historical, read-only, fractional, boolean, duplicate, unsorted, unsupported or out-of-range state fails closed without
+a transaction. An effective move is one validated transaction and undo unit and retains the selected IDs.
+
+Product commit `b2b111f5` is local on `kirchherr/kb-write-unit-of-work`. The focused model plus desktop/mobile workflow
+passed 3/3 in 50.4 seconds, and the complete native-shape model and responsive matrix passed 41/41 in 5.0 minutes.
+Live review at `http://192.168.0.108:42880/office?review=shape-exact-order` visibly shows two selected complete groups
+after their atomic move to position 3, the success notice, disabled end-boundary actions and enabled Undo. The review
+draft is deliberately unsaved for direct inspection.
+
+Complete repository quality passed with Ruff, 902 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. The exact `collabio-postgres-test-1` container and verified `/tmp/collabio-roadmap-603` transfer
+directory were removed; no transient quality, test or Work-E2E runner remains. The isolated review API is healthy on
+port 42880, the regular API returns `ok` and unrelated projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, arbitrary z-index, drag ordering, physical
+page anchor, nested group, DOCX engine or production admission. GitHub publication remains pending under the existing
+explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 595 through 602 / PLANS 456 through 463 are complete under ADR-0172. Two through twenty complete freely
+positioned shape groups can now be dissolved together when every selected group has the same anchor kind. Each member
+receives an explicit established standalone position derived from its visible rendered center while retaining the
+group layer and exact canonical dimensions, rotation, text and appearance. Mixed anchor kinds, partial or nested
+groups, non-finite geometry and mappings outside the established bounds fail closed.
+
+The mapping accounts for responsive member shrink, selection expansion and inserted root nodes. At X/Y boundaries it
+accepts only the nearest representable anchor within four pixels. This rule closed a real live-review defect where a
+rotated member in a narrow desktop layout produced an X value just above 1000. The corrected UI now dissolves the two
+groups into four independently positioned shapes and exposes **Gruppen wiederherstellen** without saving the draft.
+
+Regroup memory binds the original wrappers and exact derived member positions to the current authorized editor
+session. Regroup revalidates IDs, order, contiguous ranges, every position, layer, limits, connections and collisions,
+then strips the derived member positions and restores the original group IDs, anchors, layout, gap, alignment,
+distribution and connections. Other permitted member edits remain intact. A moved, missing or duplicated member
+disables the action. No transient geometry enters browser storage, clipboard, another document or another tenant.
+
+Product commit `6ad92c25` is local on `kirchherr/kb-write-unit-of-work`. The final focused model plus narrow-desktop
+and mobile workflow passed 3/3 in 33.7 seconds; the complete native-shape model and responsive matrix passed 40/40 in
+4.9 minutes. Live review at `http://192.168.0.108:42880/office?review=positioned-ungroup` visibly shows four freely
+positioned standalone shapes, the success notice and active **Gruppen wiederherstellen** action. The review draft is
+deliberately unsaved for direct inspection.
+
+Complete repository quality passed with Ruff, 901 format-conformant files, Mypy over 607 source files and Pytest to
+100%; only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation
+contracts passed. The exact `collabio-postgres-test-1` container and verified transfer directory were removed; no
+transient quality, test or Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API
+returns `ok` and unrelated projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, nested group, arbitrary physical page anchor,
+DOCX engine or production admission. GitHub publication remains pending under the previously reported
+explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 588 through 594 / PLANS 449 through 455 are complete under ADR-0171. After collective ungrouping, Native
+Office now remembers the exact original normal-flow group wrappers for the current authorized document session and
+offers **Gruppen wiederherstellen** without a renewed selection. The action revalidates stable group/member IDs,
+current standalone roots, exact member order and contiguous ranges, normal-flow anchors, connections, limits and ID
+collisions before rebuilding all remembered groups atomically.
+
+Regrouping restores the original group IDs, layouts, gaps, alignment, distribution and connections while using the
+current member nodes, so permitted edits between ungroup and regroup remain intact. All replacements run from the
+document end toward the beginning in one validated transaction and undo unit. Undo/redo dynamically changes
+eligibility. Memory survives transient save-disabled state and a confirmed save in the same session; document/session
+changes, historical mode and lost write permission clear it. No memory enters Office JSON, browser storage, clipboard,
+an API request, another document or another tenant.
+
+The first focused run failed 3/4 and exposed two useful defects: the model expected a noncanonical null position, and
+the control cleared memory during the transient disabled state of a save. Canonical omission and actual
+session/write-state clearing corrected both. The final focused model plus desktop/mobile workflow passed 4/4 in 46.2
+seconds, and the complete native-shape model and responsive matrix passed 40/40 in 4.8 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-regroup` visibly shows two collectively dissolved groups and the active
+**Gruppen wiederherstellen** action; the draft remains deliberately unsaved for direct inspection.
+
+Product commit `ee7d6332` is local on `kirchherr/kb-write-unit-of-work`. Complete repository quality passed with Ruff,
+900 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning
+remains. All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store,
+browser/clipboard persistence, cross-document or cross-tenant transfer, positioned or nested group support, inferred
+anchor mapping, arbitrary connector, DOCX engine or production admission. GitHub publication remains pending under
+the previously reported explicit-approval requirement for the internal handoff, roadmap, ADRs and dev001 operations
+record.
+
+Roadmap 581 through 587 / PLANS 442 through 448 are complete under ADR-0170. Two through twenty selected complete
+root shape groups can now be dissolved together when every group is in normal flow. One group, mixed or partial
+selections, positioned or nested groups and invalid or stale entries fail closed; positioned groups remain excluded
+because one group anchor and layer cannot be mapped losslessly to several independent shapes.
+
+The action removes only each selected group wrapper and inserts its member shapes at that group's top-level position.
+Member order, stable IDs, text, appearance, dimensions, rotations and canonical shape attributes remain exact;
+unselected nodes retain their order and content. Group-only identity, layout, gap and connection data disappear. All
+replacements run from the document end toward the beginning in one validated transaction and undo unit. Success
+clears transient multi-selection and focuses the first resulting member as an ordinary node selection.
+
+The exact final focused model plus desktop/mobile workflow passed 3/3 in 42.8 seconds. The complete native-shape model
+and responsive matrix passed 39/39 in 4.7 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-multi-ungroup` visibly confirmed two selected complete flow groups,
+an enabled **Gruppen auflösen** action and disabled position-only commands. No content version was saved during review.
+
+Product commit `4e39c08d` is local on `kirchherr/kb-write-unit-of-work`. Complete repository quality passed with Ruff,
+899 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning
+remains. All eight focused planning and implementation documentation contracts passed. The exact
+`collabio-postgres-test-1` container and verified transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, inferred
+position/layer, member rewrite, nested group, arbitrary connector, DOCX engine or production admission. GitHub
+publication remains pending under the previously reported explicit-approval requirement for the internal handoff,
+roadmap, ADRs and dev001 operations record.
+
+Roadmap 574 through 580 / PLANS 435 through 441 are complete under ADR-0169. Two through twenty selected root
+standalone shapes or complete shape groups can now move to the document beginning, one top-level position earlier,
+one position later or to the document end. Positioned, wrapped and normal-flow roots are eligible because only the
+canonical top-level document order changes; front/behind-text layer remains a separate established operation.
+
+One-step movement carries each selected run across at most one adjacent unselected node. Beginning/end movement
+forms one selected block. Selected roots retain their relative order, unselected nodes retain theirs and complete
+groups remain indivisible with unchanged group/member identities and connections. Content, text, appearance,
+geometry, anchors, wrap, positions, layers, dimensions and rotations remain intact. Every effective action is one
+validated transaction and undo unit, keeps the stable IDs selected and disables boundary no-ops without history.
+
+The focused pure model plus desktop/mobile workflow passed 3/3 in 41.4 seconds. The complete native-shape model and
+responsive matrix passed 38/38 in 4.7 minutes. Live review at
+`http://192.168.0.108:42880/office?review=shape-multi-order-v2` visibly confirmed the explicitly labelled document-order
+group, two selected complete groups, boundary-disabled beginning/earlier actions and enabled later/end actions. No
+content version was saved during review.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+z-index, drag ordering, physical page anchor, nested group, DOCX engine or production admission. Complete repository
+quality passed with Ruff, 898 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known
+Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts passed. The
+exact `collabio-postgres-test-1` container and transfer directory were removed; no transient quality, test or
+Work-E2E runner remains. The isolated review API is healthy on port 42880, the regular API returns `ok` and unrelated
+projects were not changed. GitHub publication remains pending under the previously reported explicit-approval
+requirement for the internal handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 567 through 573 / PLANS 428 through 434 are complete under ADR-0168. One selected standalone root shape or a
+complete group whose members share the same normalized appearance can provide exactly seven established values:
+fill, stroke, stroke width, font size, text color, text style and alignment. Two through twenty selected standalone
+roots or complete groups can receive the sample in one validated transaction and undo unit. IDs, group identity and
+membership, order, connections, text, anchors, layers, positions, dimensions and rotations remain intact.
+
+The sample exists only in memory for the current authorized document session. Document/session changes and lost
+write permission clear it. It never enters the system clipboard, browser storage, Office JSON, an API request,
+telemetry, another document or another tenant. The responsive controls expose `Darstellung merken`, `Darstellung
+uebertragen` and explicit memory state; normalized default values return to canonical omission.
+
+Direct live review found and closed an additional normal-flow group defect in the established appearance preview:
+the preview had assumed every complete group carried a free position and attempted to read a missing layer. Flow
+groups now preview and restore appearance without adding position data or positioning CSS. The new exact regression
+passed desktop and mobile 2/2, and the final complete native-shape model plus responsive matrix passed 37/37 in 4.6
+minutes. Visible review verified a petrol source group, two red target groups, atomic transfer, exact Undo back to
+`[petrol, red, red]` and Redo to all petrol. No content version was saved.
+
+Product commit `5e3acbcb` is active in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-style-copy`. The change adds no migration, endpoint, dependency,
+external request, provider, worker, recovery store, clipboard/browser persistence, arbitrary appearance value,
+physical page geometry, nested group, DOCX engine or production admission.
+
+Final repository quality passed with Ruff, 897 format-conformant files, Mypy over 607 source files and Pytest to 100%;
+only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts
+passed. The exact `collabio-postgres-test-1` container and `/tmp/collabio-roadmap-567` transfer directory were removed;
+no transient quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 560 through 566 / PLANS 421 through 427 are complete under ADR-0167. Two through twenty selected root
+standalone shapes or complete shape groups can now receive one common bounded appearance in a single accessible
+inspector and one undo unit. Fill, stroke, stroke width, font size, text color, text style and alignment use only the
+established canonical values; null leaves a dimension unchanged, mixed values remain visible and defaults are
+canonically omitted. Positioned and normal-flow anchors, IDs, group membership, order and geometry remain intact.
+
+The responsive seven-field dialog previews every affected standalone shape and group member in editor-owned DOM.
+Invalid values restore the source and disable application. Close, Cancel, Escape, document/session changes,
+read-only state and stale selection restore every source attribute without history. Apply rebuilds and validates the
+complete selection before one transaction. Undo/redo, confirmed CAS save, immutable predecessor history, reload,
+semantic print and independent reuse preserve the result while selection, dialog and preview remain transient.
+
+Live review exposed and closed a real pointer-routing defect: ProseMirror could retarget a visible positioned-shape
+click before the click handler ran. Capture-phase `mousedown` now selects mouse targets exactly once before editor
+processing, while touch/pen use `pointerdown`; drag, resize and rotate handlers retain priority. Actual visible anchor
+clicks now advance from one to two selected objects. The focused responsive workflow passed desktop and mobile 2/2,
+the focused selection contract passed 2/2 and the final complete native-shape matrix passed 37/37 in 4.5 minutes.
+Product commit `15e1c9da` is active in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-appearance`; its seven common appearance values and DOM-only
+preview passed visual review without saving a new content version.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+color/CSS/font value, physical page geometry, nested group, DOCX engine or production admission. Final repository
+quality passed with Ruff, 896 format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known
+Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts passed. The
+exact `collabio-postgres-test-1` container and all exact local/remote transfer files were removed; no transient
+quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 553 through 559 / PLANS 414 through 420 are complete under ADR-0166. At least two selected positioned root
+shapes or complete groups can now combine exact relative X/Y movement, independent or aspect-locked scaling,
+whole-degree relative rotation and an optional common front/behind-text layer in one accessible inspector and one
+undo unit. The command accepts exactly seven typed bounded values and derives one shared effective movement/scale
+range from every selected root and group member.
+
+The dialog previews complete standalone objects and groups in editor-owned DOM, including group root position/layer
+and every affected member size/rotation. Invalid values disable application and restore the source. Close, Cancel,
+Escape, document/session changes, read-only state and stale selection restore every source value without history.
+Apply rebuilds and validates the full selection before one transaction. Undo/redo, confirmed CAS save, immutable
+predecessor history, reload, semantic print and independent reuse preserve the result while selection/dialog/preview
+remain transient.
+
+The responsive layout uses three clear two-field rows and one inline aspect-lock checkbox. Visual review found and
+corrected both the initial split checkbox label and the fixed `v=1` stylesheet cache key; `/office/assets/office.css?v=2`
+now loads the accepted layout in long-lived browser sessions. The focused final model plus desktop/mobile workflow
+passed 3/3, and the complete native-shape matrix passed 36/36 in 4.5 minutes. Local product commit `c88e04bf` is active
+in the isolated review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-transform-v2`; the review API is healthy on port 42880.
+
+The change adds no migration, endpoint, dependency, external request, provider, worker, recovery store, arbitrary
+transform/CSS value, physical page geometry, nested group, DOCX engine or production admission. The complete
+repository quality gate passed with Ruff, 895 format-conformant files, Mypy over 607 source files and Pytest to 100%;
+only the known Starlette/AnyIO warning remains. All eight focused planning and implementation documentation contracts
+passed separately. The exact temporary `collabio-postgres-test-1` container and all exact transfer files were removed; no
+transient quality, test or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 546 through 552 / PLANS 407 through 413 are complete under ADR-0165. Dragging the rotation handle of any
+selected positioned root shape or complete group applies one common relative integer angle to every standalone shape
+and every member of selected groups. Distinct starting angles remain distinct and normalize to canonical zero
+omission or 1 through 359; positions, layers, dimensions, group structure, typography and stable IDs remain intact.
+
+Pointer and touch movement around the active root center uses the shortest signed angle, with Shift snapping to 15
+degrees. Arrow keys rotate one degree, Shift-arrows 15 degrees, click 90 degrees and Home brings the source angle to
+zero through a common delta. The editor provides live DOM-only preview, effective signed status, common markers and
+whole-selection labels. Cancellation, Escape and changed/non-writable state restore all original angles without a
+transaction. One effective completion is one validated transaction and undo unit.
+
+The focused model and exact group/standalone desktop/mobile workflows passed 5/5. The complete native-shape model and
+responsive desktop/mobile matrix passed 35/35 in 4.4 minutes. Local product commit `431b1025` is active in the
+isolated dev001 review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-rotate-431b1025`; the review API is healthy on port 42880. Live
+inspection visibly confirmed the saved relative 15°/52° group rotations and the 45° standalone set without saving a
+new content version.
+
+Only established bounded member rotations enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, arbitrary transform string, physical page geometry,
+nested group, DOCX engine or production admission. The complete repository quality gate passed with Ruff, 894
+format-conformant files, Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning remains.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed, no transient quality, test or Work-E2E runner remains, and regular
+plus review APIs return `ok`.
+
+GitHub publication remains pending under the previously reported explicit-approval requirement for the internal
+handoff, roadmap, ADRs and dev001 operations record.
+
+Roadmap 539 through 545 / PLANS 400 through 406 are complete under ADR-0164. Resizing the handle of any selected
+positioned root shape or complete group scales the complete eligible selection with mouse, touch or keyboard.
+Independent X/Y factors use a fixed 1000 base; Shift applies one aspect-locked factor. One common legal scale range
+is intersected across all member widths and heights, keeping every shape within 80-1200 by 40-800.
+
+The existing shape handle and a positioned-group handle expose whole-selection labels, live DOM-only preview and
+effective percentages. Arrow keys change the source axis by one pixel and Shift plus an arrow by ten. Pointer cancel,
+Escape, document/session changes and non-writable or stale state restore the original dimensions without history.
+One effective completion rebuilds and validates the complete selection in exactly one transaction and undo unit;
+group structure, connections, gaps, layers, positions, rotations, typography and stable IDs remain intact.
+
+The pure model plus exact desktop/mobile workflow passed 5/5 in 1.0 minute. The complete native-shape model and
+responsive desktop/mobile matrix passed 34/34 in 4.4 minutes. Local product commit `b90b7af8` is active in the
+isolated dev001 review deployment at
+`http://192.168.0.108:42880/office?review=shape-multi-resize-local`; the review API is healthy on port 42880. Live
+inspection confirmed two selected positioned shapes, active collective controls and the accessible resize labels.
+
+Only resulting established dimensions enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, free CSS, physical page geometry, nested group, DOCX
+engine or production admission. The complete repository quality gate passed with Ruff, 893 format-conformant files,
+Mypy over 607 source files and Pytest to 100%; only the known Starlette/AnyIO warning remains. All eight focused
+planning and implementation documentation contracts passed. The exact temporary `collabio-postgres-test-1`
+container was removed, no transient quality or Work-E2E runner remains, and regular plus review APIs return `ok`.
+
+GitHub publication of local documentation commit `778ca9b3`, product commit `b90b7af8` and closure commits from
+`5d374a51` onward remains pending because automatic approval review rejected exporting the internal handoff, roadmap,
+ADRs and dev001 operations record to the existing remote without a new explicit user confirmation.
+
+Roadmap 532 through 538 / PLANS 393 through 399 are complete under ADR-0163. Dragging the position anchor of any one
+selected root shape or complete group moves the complete eligible selection with mouse or touch. Horizontal movement
+maps through the current editor width to the established integer X scale; vertical movement uses integer pixels.
+One shared dual-axis delta is clamped against every selected anchor, preserving relative geometry, stable IDs, layers
+and document order.
+
+The editor provides a live DOM-only preview, effective X/Y status, common dragging markers and accessible anchor
+labels for the whole selection. Pointer cancellation, Escape, session/document changes and non-writable or stale
+state restore the original positions without a transaction. A completed effective gesture creates exactly one
+validated transaction and undo unit; no movement creates no history.
+
+The pure model plus exact desktop/mobile workflow passed 3/3 in 38.1 seconds. It covers mouse and touch pointer types,
+accessible anchors, live preview, cancellation, isolated undo/redo, confirmed CAS save, immutable predecessor
+history, semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix
+passed 33/33 in 4.3 minutes. Product and focused-test commits through `add05b45` are published and synchronized to
+`dev001`; the isolated review API is healthy on port 42880 and the live review is available at
+`http://192.168.0.108:42880/office?review=shape-multi-drag-add05b45`.
+
+Only resulting existing bounded logical positions enter immutable Office JSON. The change adds no migration,
+endpoint, dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX
+engine or production admission. The complete repository quality gate passed after this block: Ruff passed, all 891
+files were formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known
+Starlette/AnyIO warning. The exact temporary PostgreSQL and stale Work-E2E runner containers were removed; no
+transient quality or Work-E2E runner remained, and regular plus review APIs both returned `ok`.
+
+Roadmap 525 through 531 / PLANS 386 through 392 are complete under ADR-0162. Native Office can assign one common
+front/behind-text layer to at least two selected positioned root shapes or complete groups while retaining both
+coordinates. Arrow keys move the complete selection by one logical unit and Shift plus an arrow by ten. Four
+accessible responsive direction buttons provide one-unit movement for pointer and touch.
+
+Every move derives one shared delta from the complete selected anchor range. If any member has reached the requested
+X or Y boundary, the complete selection stops, preserving relative distances, stable IDs, layers and document order.
+Layer changes and movement steps each form one validated transaction and undo unit. Mixed flow/wrapped selections,
+dialogs, text inputs and non-writable sessions fail closed.
+
+The exact model plus desktop/mobile workflow passed 3/3 in 36.9 seconds. It covers common layer, one-unit and ten-unit
+keyboard movement, boundary preservation, isolated undo/redo, confirmed CAS save, immutable predecessor history,
+semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix passed
+33/33 in 4.3 minutes. Product commit `1e261474` is published and synchronized to `dev001`; the isolated review API is
+healthy on port 42880 and the live review is available at
+`http://192.168.0.108:42880/office?review=shape-multi-nudge-1e261474`.
+
+Only existing bounded logical positions enter immutable Office JSON. The change adds no migration, endpoint,
+dependency, external request, provider, worker, recovery store, physical page geometry, nested group, DOCX engine or
+production admission.
+
+The complete repository quality gate passed on documentation commit `b7b3f0fa`: Ruff passed, all 891 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality or Work-E2E runner remains, and regular plus
+review APIs both return `ok`.
+
+Roadmap 518 through 524 / PLANS 379 through 385 are complete under ADR-0161. Native Office can align selected
+positioned root shapes and complete groups to their minimum, rounded midpoint or maximum horizontal or vertical
+logical anchor. Selections of at least three objects can be distributed equally on either axis while retaining both
+extreme anchors. Deterministic ordering uses the active coordinate, root document order and stable object ID.
+
+The accessible responsive toolbar enables the six alignment choices for at least two eligible roots and horizontal
+or vertical distribution for at least three. Normal-flow and wrapped objects remain ineligible and are never
+positioned implicitly. Each accepted action validates and replaces the complete selected set in one transaction and
+undo unit while preserving IDs, front/behind-text layers, the orthogonal coordinate and transient selection.
+
+The pure arrangement model plus exact desktop/mobile workflow passed 3/3 in 34.6 seconds. The workflow covers center
+alignment, equal vertical distribution, isolated undo/redo, confirmed CAS save, immutable predecessor history,
+semantic print, reload clearing and independent reuse. The complete native-shape model and responsive matrix passed
+33/33 in 4.3 minutes. Product and focused-test commits through `b89c06ce` are published and synchronized to `dev001`;
+the isolated review API is healthy on port 42880 and the review is available at
+`http://192.168.0.108:42880/office?review=shape-arrange-b89c06ce`.
+
+Only existing bounded logical positions enter immutable Office JSON. The implementation never measures rendered
+edges or physical pages and adds no migration, endpoint, dependency, external request, provider, worker, recovery
+store, nested group, arbitrary geometry, DOCX engine or production admission.
+
+The complete repository quality gate passed on documentation commit `3cfd98b1`: Ruff passed, all 890 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality or Work-E2E runner remains, and regular plus
+review APIs both return `ok`.
+
+Roadmap 511 through 517 / PLANS 372 through 378 are complete under ADR-0160. Native Office now supports transient
+multi-selection of up to 20 root-level standalone shapes and complete shape groups. Authors can use an explicit
+mouse/touch mode, Ctrl/Cmd-click and Shift range selection; stable object IDs preserve the selection across editor
+DOM updates, while document/session changes and reload clear it.
+
+Two or more selected roots can be duplicated or removed atomically in one undo unit. Copies receive fresh group and
+member IDs, and positioned roots retain the existing bounded 25/24 offset. Two through eight adjacent standalone
+normal-flow shapes can be grouped atomically; positioned or wrapped shapes, existing groups, intervening blocks and
+nesting remain rejected. Existing limits of 100 shapes, 20 groups and eight members are checked before dispatch.
+
+The focused model check passed and the exact responsive workflow passed 2/2 across desktop and mobile after the
+review API was rebuilt with the new Office bundle. The complete shape model and responsive desktop/mobile matrix
+passed 30/30 in 3.7 minutes. It covers explicit and modifier selection, visible markers, atomic
+duplicate/group/remove, isolated undo/redo, confirmed CAS save, immutable predecessor history, semantic print,
+reload clearing and independent reuse. The live review visibly confirmed two selected root groups, the active
+multi-selection mode and the correct collective actions. Product and focused-test commits through `ba6b7d21` are
+published and synchronized to `dev001`; the review API is healthy on port 42880. Only resulting existing shape/group
+JSON is persisted. No migration, endpoint, dependency, external request, provider, worker, ordinary tenant,
+indexing, AI, DOCX engine or production admission changed.
+
+The complete repository quality gate passed on documentation commit `29d5e381`: Ruff passed, all 889 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container was removed; no transient quality, test or Work-E2E runner remains, and regular
+plus review APIs both return `ok`.
+
+Roadmap 504 through 510 / PLANS 365 through 371 are complete under ADR-0159. Native Office shape groups now support
+bounded cross-axis alignment and equal distribution across an optional 160 through 2400 pixel extent. Canonical start
+alignment remains omitted; center/end map rows to top/middle/bottom and stacks to left/middle/right. The existing gap
+remains the minimum, and one deterministic effective gap is derived from exact arbitrary-angle member bounds.
+
+Browser and server independently reject unknown alignment values, explicit `start`, booleans, fractions,
+out-of-range extents and free CSS. Editor and semantic print/PDF share the same layout function; compact rows and
+uniform or per-edge connections retain bounded responsive geometry. Isolated undo/redo, confirmed CAS save,
+immutable predecessor history, reload, print, independent reuse and recovery preserve the exact optional attributes.
+
+Focused server validation passed 1/1, the browser model passed 9/9, and the focused responsive workflow passed 2/2.
+The complete shape model and responsive desktop/mobile matrix passed 27/27 in 3.1 minutes. Final focused print
+evidence passed 2/2 in 45.1 seconds; its SHA-256 values are desktop
+`00f609d6b769462595f87d67f6a89314dcafaf8f04cf0501d3878922258b841d` and mobile
+`42a556806c34e0cee64d55a20cbd5431d91561845dad906799e39af17a5cb22c`. Product and evidence commits through
+`a960331f` are published and synchronized to `dev001`; the isolated review API remains healthy on port 42880.
+
+The complete repository quality gate passed on documentation commit `ed049565`: Ruff passed, all 888 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+All eight focused planning and implementation documentation contracts passed. The exact temporary
+`collabio-postgres-test-1` container and local Roadmap-504 evidence copies were removed; regular and review APIs both
+returned `ok`, with no transient quality, test or Work-E2E runner remaining.
+
+Roadmap 497 through 503 / PLANS 358 through 364 are complete under ADR-0158. Native Office shape groups now support
+one exact connection value per ordered member gap while preserving the byte-compatible uniform connection form.
+The representations are mutually exclusive; an explicit list must contain exactly `memberCount - 1` bounded values
+or null entries. Browser and server independently reject bad lengths, unknown keys, boolean widths, arbitrary paths,
+SVG, CSS, URLs and ambiguous uniform/per-edge combinations.
+
+The responsive group dialog offers **Alle Verbindungen** and numbered gaps such as **1 → 2**. Moving from uniform to
+individual editing preserves every untouched gap. Member insertion and duplication add one disconnected gap, removal
+drops exactly one adjacent gap, reordering retains styling at the ordered gap and group duplication preserves the
+exact list with fresh identities. Editor and semantic print/PDF resolve uniform and individual forms into one exact
+edge sequence using trusted static CSS.
+
+Focused browser/server checks passed. The complete shape model and responsive desktop/mobile matrix passed 26/26 in
+3.1 minutes. Final focused evidence passed 2/2 in 43.6 seconds. Full-page screenshot SHA-256 values are desktop
+`9b708e873e037af14634bc1dfd2b8da140ca28621912a745c7c21b2c64719209` and mobile
+`a6f9720f58978c2d3ff0c1a07ef732e429eb168c5278c8126b75c6c54866641b`; focused group values are desktop
+`26ca3a3c0d5f01f313bfa485f8d75013062c79a1784de2b7f8f2a1e99e00bc2f` and mobile
+`02afa49949d28c82567a7dafd78c761eb7d2e60011987a5b692704a44b91d679`. Desktop evidence visibly shows distinct red
+and blue edges; responsive mobile review confirmed bounded layout without horizontal overflow, and exact DOM
+assertions verified both mobile edge values. Product and evidence commits through `664f10a4` are published and synced
+to `dev001`; the isolated review API remains healthy on port 42880.
+
+The complete repository quality gate passed on documentation commit `6f1ce824`: Ruff passed, all 887 files were
+formatted, Mypy passed over 607 source files and Pytest completed to 100% with only the known Starlette/AnyIO warning.
+The eight focused planning and implementation documentation contracts passed on `c21143cd`. The exact temporary
+`collabio-postgres-test-1` container and local Roadmap-497 evidence copies were removed; both regular and review APIs
+returned `ok`, with no transient quality, test or Work-E2E runner remaining.
+
+Roadmap 490 through 496 / PLANS 351 through 357 are complete under ADR-0157. Root-level native Office shape groups
+now accept one optional bounded logical position with a front/behind-text layer, normalized integer X from 0 through
+1000 and integer Y from -1200 through 1200 pixels. Normal flow remains the canonical omission. Browser and server
+reject booleans, fractions, unknown keys, CSS/z-index expressions, URLs and positions or wrapping on individual group
+members; nested groups remain invalid.
+
+The responsive group dialog exposes the exact layer and coordinates. A focusable direct anchor moves the complete
+group live by pointer/touch, one-pixel arrows, ten-pixel Shift steps and Home reset. The preview is kept outside the
+editor's content-mutation path and the completed gesture commits exactly one isolated undo step. Editor, comparison
+and semantic print/PDF share exact group bounds derived from row/stack layout, gap and each member's arbitrary-angle
+bounds. Positioned copies receive fresh group/member IDs and a bounded visible 25/24 offset. Ungrouping requires
+normal flow first; removing one member from a positioned two-member group promotes the survivor atomically at the
+group anchor.
+
+Focused server and browser-model checks passed. The complete existing shape desktop/mobile matrix passed 25/25 in
+3.1 minutes, and the final positioned-group evidence rerun passed 2/2. It covers dialog, keyboard, real pointer drag,
+isolated undo/redo, bounded copies, confirmed save, print, safe ungrouping and survivor promotion. The final live-group
+desktop/mobile screenshot SHA-256 values are
+`b4f69f81aebb402497a2000ea610312d6e6635d8bb5ff1e3fd3bdfda9f69ec16` and
+`add7e49ad3414bcc7b29f8d186f56df833e1e9418a8bccbec795913ad44952dc`; both passed visual review without horizontal
+overflow or unreachable controls.
+
+Product behavior is published through commit `93972fa5`; final evidence source is `a69cbddb` on
+`kirchherr/kb-write-unit-of-work`. The isolated review API is healthy at
+`http://192.168.0.108:42880/office?review=shape-group-position-a69cbddb`. No migration, endpoint, dependency, external
+request, provider, worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
+Full quality on documented source `b2be0523` passed Ruff, formatting for 886 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The eight focused planning and implementation
+documentation contracts also passed. The exact `postgres-test` container was removed, no transient quality, test or
+Work-E2E runner remains, and regular plus review APIs both return `ok`.
+
+Roadmap 483 through 489 / PLANS 344 through 350 are complete under ADR-0156. Native Office shapes now store any
+whole-degree rotation from 1 through 359; zero remains the canonical absence and every existing quarter-turn value
+stays valid. Browser and server reject booleans, fractions, negative and out-of-range values, matrices, CSS, URLs and
+unknown keys.
+
+The responsive dialog accepts exact degrees. The direct focusable handle follows pointer/touch movement around the
+shape center, uses one-degree arrow steps, 15-degree Shift steps, Home reset and a 90-degree click. Normal-flow,
+wrapped and grouped shapes reserve the exact axis-aligned bounds; positioned shapes retain their logical anchor.
+Editor and semantic print/PDF consume the same validated geometry. Confirmed save, history, undo/redo and independent
+shape/group copies preserve the exact angle in the existing immutable JSON.
+
+Focused server schema coverage passed 36/36. The model plus complete existing shape desktop/mobile matrix passed
+22/22, including exact 37/359-degree values, invalid 360-degree rejection, keyboard and pointer movement, undo/redo,
+confirmed save, history, groups, copies and print. Desktop and mobile screenshots passed visual review without clipping
+or horizontal overflow; their SHA-256 values are
+`0f61dab4ca6a856bb7cd5251bb0ec52f1698acad7fb116023cc2375f92b97d3e` and
+`082f045d6547b3da8039662c670932b3d5e8f9fd50ef2772344d98331e4832a8`.
+
+Product commit `509806e9` is published on `kirchherr/kb-write-unit-of-work`. The isolated review API was rebuilt from
+that source and is healthy at `http://192.168.0.108:42880/office?review=shape-arbitrary-rotation-509806e9`; the regular
+API and persistent stores were unchanged. The first browser attempt began before the recreated API accepted
+connections: all six pure model checks passed and the browser cases failed only with connection refusal. After
+confirmed health, the unchanged 22-case matrix passed. No migration, endpoint, dependency, external request, provider,
+worker, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission changed.
+
+Full quality on documented source `8235a011` passed Ruff, formatting for 871 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The first quality attempt stopped before Mypy and
+Pytest because one new validator expression required the repository formatter's single-line form; commit `8235a011`
+contains that format-only correction. The focused server contract then passed 36/36 again. The exact temporary
+`postgres-test` container was removed, no transient test or browser runner remains, and regular plus review APIs both
+return `ok`.
+
+Roadmap 482 / PLANS 343 closes the per-section first-page feasibility gate without opening unsupported metadata. A
+real four-page Chromium PDF used two two-page named sections. Page one rendered `ALPHA-FIRST`, page two
+`ALPHA-GENERAL`, and both pages of the later section rendered `BETA-GENERAL`; `BETA-FIRST` never appeared. Chromium's
+named `@page …:first` selector therefore addresses only the first page of the complete document, not the first page
+of each named section. Section profiles continue to reject `running.firstPage` until a separately proven segmented
+PDF render-and-merge architecture exists. The probe passed 1/1, produced a four-page PDF with SHA-256
+`2434608636bb8c6cbcee01d238801c08806adb935a31c25b33f5cc6609fac73b`, made no product or tenant write, and left the
+existing document-wide first-page behavior unchanged.
+
+Roadmap 475 through 481 / PLANS 336 through 342 are complete under ADR-0155. Native Office document and complete
+section page profiles now support exactly one, two or three text columns. Absence remains the canonical one-column
+default, so existing version bytes remain unchanged. Browser and server reject every other number, token, dimension,
+CSS value, URL and unexpected shape.
+
+The responsive page and section dialogs expose the bounded choices with proportionate guides. A document without
+section markers shows its two-/three-column flow in the desktop editor; compact editing stays one column for usable
+text entry. Section markers retain their complete profile in the continuous editor, while print/PDF segments render
+the exact active count. Manual page breaks preserve the section count, and static CSS protects tables, figures, code,
+quotations, cards and object groups from uncontrolled splits. Confirmed CAS save, immutable history, comparison,
+reload, independent reuse and recovery retain exact two-/three-column document and section profiles.
+
+Focused schema/API/recovery coverage passed 112 cases. The initial 27-case page/section matrix passed after rebuilding
+the baked editor bundle. The final adjacent page, section, running-text and print matrix passed 62/62 on desktop and
+mobile in 5.9 minutes. During the broad check, an existing save path exposed a real UX issue: a confirmed version kept
+showing "Version wird gespeichert" while the independent document-list refresh was pending. Commit `c8d6004d`
+decouples that refresh; the exact failing case and the final 62-case matrix now pass.
+
+Final screenshots for page settings, section dialogs and section editing passed visual review without clipping,
+horizontal overflow or unreachable controls. Browser report SHA-256 is
+`727c613c91d5bc899870dfe57d2eb99ae035db7e25776adae138dc7ae748c7f7`. Page-setting screenshots are
+`7fac2e3f05ea5a7ab8d108c9d20a6685f092f0d35e37ab92a332a56190aaca35` and
+`2d8d1fddbf6120bb78a1adec76fc78f99f625916791ad3144a6b272c97ef01db`; section-dialog screenshots are
+`b815839fa34fcc2ba1cb9f4efaf660110105f45666c488a71e6e77689bd50a79` and
+`63b9fca99ab11819bf2409eadbd1ccd4377907bd13e9e3123da6d1dd73846d5a`; section-editor screenshots are
+`e5b16cb1e2fd1a8dbcb30de67b0aaa13caf9a7bca6b5ab6937f7486a81d1c5fc` and
+`5dcca58218346394c1b89ca7c3767a4f08d621dd96497daebff9be1910c32d09`. Representative document and section PDF
+hashes are `ecd1cd86b8316c7820de8a0aea9fc42c0fa8e16bed785ead47ae762361bf8c66` and
+`a517ea039707c209d5379461f32eaa9dc60e7186bd10f070143f3ecaa4b2737f`.
+
+Full quality on documented source `e2234a3d` passed Ruff, formatting for 869 files, Mypy over 607 source files and
+complete Pytest to 100% with only the known Starlette/AnyIO warning. The isolated review is healthy at
+`http://192.168.0.108:42880/office?review=text-columns-c8d6004d`; regular API health is also `ok`. Exact temporary
+PostgreSQL, blocked API, failed seed/migration and test-result resources were removed. No migration, endpoint,
+dependency, external request, provider, worker, ordinary tenant, DOCX engine or runtime admission changed.
+
+Roadmap 467 through 474 / PLANS 328 through 335 are complete under ADR-0154. A real four-page Chromium PDF
+probe first closed the unsafe section-number-restart path: resetting the built-in page counter in the named page
+rule produced `1, 2, 4, 4`; resetting it on the section element retained `1, 2, 3, 4`. The schema therefore still
+rejects restart metadata. A later restart feature requires a separately proven segmented PDF render and merge path.
+
+Native Office paragraph and heading formatting now supports bounded left and right indents of 0, 18, 36, 54 or
+72 pt plus no special indent, first-line 18/36 pt and hanging 18/36 pt. Static trusted CSS renders the same exact
+values in the editor, document-owned style preview and semantic print/PDF. Browser and server reject fractional,
+negative and arbitrary lengths, percentages, CSS, URLs and unknown values.
+
+The responsive paragraph dialog retains Standard, mixed values, explicit zero, reset and isolated undo. Direct
+values override a named style; Standard returns to the style or text-type default. Text-type conversion, paragraph
+splitting, lists, quotations, selected table cells, format transfer, search/replacement, comparison, suggestions,
+confirmed CAS save, immutable history, reload and independent reuse preserve the exact values. Recovery versions
+two and three now bind exact first-line and hanging profiles without a migration or new store.
+
+Focused Ruff/format plus schema, API, recovery and style tests passed 217 cases. Pure browser models passed 6/6.
+The complete paragraph/style/responsive browser matrix covered 30 scenarios: 27 passed in the broad run, while two
+rights cases initially lacked their intentionally separate blocked API and the enlarged mobile dialog needed the
+existing scroll-reachability pattern. After starting only that test service and correcting the reachability test,
+all three affected scenarios passed in a 4/4 rerun including one desktop duplicate. Desktop, tablet, mobile,
+style and print artifacts passed visual review. Full quality on product source `c7529e2a` passed Ruff, formatting for
+867 files, Mypy over 607 source files and complete Pytest to 100% with only the known Starlette/AnyIO warning. The
+isolated review remains healthy at
+`http://192.168.0.108:42880/office?review=paragraph-indent-c7529e2a`; exact temporary services and local evidence
+copies were removed, and the regular API also returns `ok`.
+
+Roadmap 460 through 466 / PLANS 321 through 327 are complete under ADR-0153. Native Office direct character
+formatting and document-owned named styles now support the bounded presentation tokens `uppercase` and `smallCaps`.
+Absence remains the canonical default. Browser and server reject lowercase, title case, locale or script controls,
+arbitrary CSS, URLs and unknown values. The stored literal text is never rewritten.
+
+The responsive character dialog supports Standard, mixed state, selection, pending caret input, canonical reset and
+isolated undo/redo. Direct values override named-style inheritance; each static CSS mapping neutralizes the other
+case property. Search/replacement, comparison, suggestions, confirmed CAS save, immutable history, reload,
+independent reuse and semantic print/PDF retain the original text and exact token. Recovery versions two and three
+bind uppercase and small-caps profiles without a migration or new store.
+
+The focused schema/API/PostgreSQL/recovery/style suite passed. Pure browser models passed 8/8. The complete
+character, named-style and responsive matrix covered 25 cases: 24 unaffected cases passed in the broad run, and the
+one newly added source-text assertion passed 1/1 after correcting its expected ProseMirror text-node split. Full
+quality on product source `fd128ddd` passed Ruff, formatting for 866 files, Mypy over 607 source files and complete
+Pytest to 100% with only the known Starlette/AnyIO deprecation warning. Product source is published on
+`kirchherr/kb-write-unit-of-work`; the isolated review API is healthy at
+`http://192.168.0.108:42880/office?review=text-case-fd128ddd`.
+
+Roadmap 453 through 459 / PLANS 314 through 320 are complete under ADR-0152. Native Office direct character
+formatting now supports exact superscript/subscript baseline tokens and tight/wide character spacing. Absence remains
+the canonical default. Browser and server reject numeric offsets, dimensions, percentages, arbitrary CSS, URLs and
+unknown values; trusted static CSS renders the fixed values in editor and print.
+
+Baseline position remains direct-text-only because block-level paragraph styles cannot raise or lower their inline
+contents. Document-owned styles reject it. Tight/wide spacing is available directly and through document-owned
+styles, with direct marks retaining precedence. Selection, mixed state, pending caret input, canonical reset,
+isolated undo/redo, lists, tables, format transfer, text-type conversion, search/replacement, comparison, suggestions,
+confirmed CAS save, immutable history, reload, reuse and semantic PDF retain the exact values. Recovery versions two
+and three now bind superscript/wide and subscript/tight profiles without a migration or new store.
+
+The focused schema/API/PostgreSQL/recovery/style matrix passed 168/168. The pure model check passed 8/8 and the
+complete character plus adjacent responsive style matrix passed 18/18; after narrowing baseline effects to direct
+text, the exact affected Python suite passed 53/53 and browser suite passed 6/6. Desktop, tablet, mobile, style and
+print screenshots passed visual review. Product source through `8b4b5ee3` is published on
+`kirchherr/kb-write-unit-of-work`; review is healthy at
+`http://192.168.0.108:42880/office?review=typography-8b4b5ee3`. Full quality on documented source `f29c29da`
+passed Ruff, formatting for 866 files, Mypy over 607 source files and complete Pytest to 100% with only the known
+Starlette/AnyIO deprecation warning. The exact temporary test services and seven reviewed local evidence files were
+removed; regular and review APIs remain healthy.
+
+Roadmap 446 through 452 / PLANS 307 through 313 are complete under ADR-0151. Native Office direct character
+formatting now supports six bounded text highlights: yellow, lime, cyan, pink, lavender and gray. The document stores
+only those canonical tokens; absence remains the default. Browser and server reject arbitrary colors, CSS, alpha,
+gradients, URLs, files and unknown values. Trusted static CSS supplies fixed opaque colors for editor and print.
+
+Highlights work for selections and pending caret input with mixed-state handling, canonical reset and isolated
+undo/redo. They survive format transfer, text-type conversion, lists, tables, search/replacement, comparison,
+suggestions, confirmed CAS save, immutable history, reload, independent reuse and semantic PDF output. Paragraph
+styles reject highlight values, preventing a character highlight from becoming full-width paragraph shading. The
+existing character recovery fixture now binds exact yellow and cyan versions without a migration or new store.
+
+The focused schema, API, PostgreSQL, recovery and style-boundary matrix passed after correcting one server allowlist
+that initially failed closed before writes. The complete character and adjacent named-style browser matrices passed
+32/32; the final dialog-only responsive rerun passed 2/2. Desktop/mobile screenshot SHA-256 values are
+`a8a9cc7160b34a4a8c54a6458827cbdbb51cef368d5ef2583a8d58620c607465` and
+`f4e4a667c1c9e475821385224c436ab639b4460d3da91c631a37f8b3a09be898`; the print-preview value is
+`b93bfd42673b0604bae1964b4fa4b08f7993bd79ccbc76440731b08d7a15e1f3`. All passed visual review. Product and roadmap
+source through `fefe9ef0` is published on `kirchherr/kb-write-unit-of-work`; review is healthy at
+`http://192.168.0.108:42880/office?review=text-highlights-fefe9ef0`. Full quality on documented source `3d62d971`
+passed Ruff, formatting for 865 files, Mypy over 607 source files and complete Pytest to 100% with only the known
+Starlette/AnyIO deprecation warning. The exact temporary services and reviewed local evidence files were removed;
+regular and review APIs remain healthy.
+
+Roadmap 439 through 445 / PLANS 300 through 306 are complete under ADR-0150. Native Office character formatting
+and document-owned named styles now expose three bounded font-family choices: Sans Serif, Serif and Monospace. The
+saved document carries only the canonical tokens `sans`, `serif` and `mono`; an absent value keeps the inherited
+default. The editor and print renderer map those tokens to fixed local font stacks. Arbitrary family names, CSS,
+URLs, font files and downloads are rejected, so documents cannot introduce external font requests or active style
+content.
+
+Direct formatting, mixed selections, caret state, reset, undo/redo, confirmed CAS save, immutable history, reload and
+print retain the family. Named styles carry the same bounded value, inheritance remains visible, and a direct family
+continues to override its named style. The recovery fixture binds exact serif and monospace versions without adding a
+migration or restore store.
+
+The focused server, API, PostgreSQL and recovery matrix passed 136/136. Character and named-style model plus
+responsive desktop/mobile browser suites passed 32/32. Desktop/mobile character screenshot SHA-256 values are
+`5eabb374acab256f9a966ab44dc054ad348aa1ef303d3c9b411cb2782306b2c0` and
+`b1eb3c344849753ad790adece7bb2319cb2e1f5b004c74dfeb3765045896407a`; final named-style values are
+`1a768df02f23337415d50a78fa9875ca7b030b259187ebb8d21f248f38826fbe` and
+`6e0f720043b40db6c73353199fa687987d04a2cd85e15a804b75bf68b61d695e`. All four passed visual review. Product source
+through `254c7f86`, inheritance proof through `2d2dd92f` and roadmap/recovery documentation through `13715646` are
+published on `kirchherr/kb-write-unit-of-work`. The review API is healthy at
+`http://192.168.0.108:42880/office?review=font-families-254c7f86`. Full quality on documented source `d7be9af8`
+passed Ruff, formatting for 864 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` and blocked API services plus the six local
+review screenshots were removed. No transient runner remains, and regular plus review APIs return `ok`.
+
+Roadmap 432 through 438 / PLANS 293 through 299 are complete under ADR-0149. Native Office now recognizes complete
+HTTPS addresses, explicit `mailto:` targets and simple email addresses when an editor completes a token or pastes
+plain text. It preserves the literal text, removes sentence punctuation and unmatched closing brackets from the
+target, retains balanced URL brackets and delegates every candidate to the existing strict link validator. HTTP,
+credentials, active or local schemes, prepared mail messages, malformed domains, controls and overlong values remain
+inert.
+
+Typing waits for a delimiter. Multi-link paste is one isolated undo step separate from preceding typing. Code,
+existing links, cross-references and document references are excluded, and loading a document performs no scan or
+mutation. Recognition never fetches, resolves or automatically opens a target. The canonical link mark preserves the
+existing confirmed CAS save, immutable history, comparison, reuse and print/PDF behavior.
+
+The exact pure-model and responsive desktop/mobile browser matrix passed 10/10 on `97d33afa`, including punctuation,
+balanced delimiters, unsafe inert text, isolated undo/redo, confirmed save, immutable predecessor, reload, semantic
+PDF output and zero target requests. Desktop/mobile screenshot SHA-256 values are
+`d1bc2e8e242e9e8558d6202a236ad519065efe5773d5adf93b9f7c7df47f6ed8` and
+`ce0315d2aa3b5938cdb2566b52ef28dc39a098f061c96d5167009ea867274b6c`; both passed visual review. The isolated review
+API is healthy at `http://192.168.0.108:42880/office?review=auto-links-97d33afa`. Full Python quality on documented
+source `a31e2211` passed Ruff, formatting for 863 files, Mypy over 607 source files and the complete Pytest matrix with
+only the known Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container and reviewed local
+screenshot copies were removed; no transient runner remains, and regular plus review APIs return `ok`.
+
+Roadmap 425 through 431 / PLANS 286 through 292 are complete under ADR-0148. Paragraphs and headings now support the
+strict optional pagination rules keep with next, keep lines together and page break before. The responsive
+multi-paragraph dialog retains default, explicit on/off and mixed states; document-owned named styles expose the same
+fixed controls while direct values keep precedence.
+
+The server accepts only real booleans, and the editor plus inert print renderer emit only fixed `data-office-*`
+attributes mapped by trusted static CSS. Undo/redo, text-type conversion, format transfer, confirmed save, immutable
+predecessors, reload and print retain the values. The recovery fixture now binds an exact version containing all three
+rules without a migration or new restore store.
+
+Full Python quality on recovery-complete documented source `45daf3e5` passed Ruff, formatting for 862 files, Mypy over
+607 source files and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact
+model plus responsive desktop/mobile browser and real-PDF flow passed 3/3 on `5697dd48`. The adjacent paragraph,
+style and format-transfer regression covered all 41 desktop/mobile scenarios; after scoping legacy mixed-value and
+print selectors to document content, the complete nine-case paragraph suite passed 9/9 on `a90b9312`. Screenshot SHA-256 values are
+`cb905210bf160c593e6baf713e855071309c81e2d001b42ed7e995c304204a92` and
+`131e0ac25010e785548ba1a446a2bda2648a079dca7160339c419f848fb5c535`; both passed visual review. The isolated review
+API is healthy at `http://192.168.0.108:42880/office?review=paragraph-pagination-5697dd48`. Exact temporary quality,
+blocked-API, migration and seed containers were removed; no transient runner remains. Regular and review APIs return
+`ok`, while the isolated review database, object store, decoder and API remain available.
+
+Roadmap 417 through 424 / PLANS 278 through 285 are complete under ADR-0147. Native Office sharing now addresses
+active same-tenant users, roles and groups explicitly by subject type. A current directly granted user administrator
+can grant, change or revoke `read` and `write`, permanently or with the existing bounded expiration. Role claims and
+active group membership authorize document use, while share management still requires the direct user `admin` grant
+and the user owner entry remains immutable.
+
+Migration 0089 replaces the user-specific mutation functions with subject-aware security-definer functions and adds
+the target type to append-only decisions. PostgreSQL revalidates tenant, direct actor authority, active target,
+permission, expiration, owner boundary, expected ACL version and unique mutation before replacing the complete active
+ACL snapshot. The responsive dialog labels people, roles and groups separately and keys targets by type plus ID.
+
+Focused Ruff, formatting, Mypy, service, API, migration and PostgreSQL tests pass on `dev001`, including authoritative
+role reads, group writes, membership behavior and the direct-admin boundary. Migration 0089 is applied to the isolated
+review database, and the rebuilt review API is healthy. The exact desktop/mobile Playwright flow passed 4/4; the role/
+group screenshot SHA-256 values are `e3d9674628c0537c5ec66c2feb35281b2169e5c681cf6d72d2ab578bc35d8bf5` and
+`0480f38ed968cfb628cc79f46623e72da1f8a5581583a19ba02ac9d822d8ebff`. Product commits through `07ec2804` are
+published on `kirchherr/kb-write-unit-of-work`; review remains available at
+`http://192.168.0.108:42880/office?review=subject-sharing-07ec2804`. Full quality on documented source `392dae60`
+passed Ruff, formatting for 861 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container and diagnostic SQL files were
+removed, no transient runner remains, and regular plus review APIs return `ok`.
+
+Roadmap 410 through 416 / PLANS 271 through 277 are complete under ADR-0146. Direct Office document `read` and
+`write` grants may now be permanent or expire at an exact UTC instant. The API accepts only timezone-aware future
+values no more than 366 days away; the responsive dialog offers permanent, one day, seven days and 30 days and shows
+the saved end time. Owner and direct administrative grants remain permanent.
+
+Migration 0088 stores `expires_at_utc` on authoritative object ACL entries and append-only Office share decisions.
+Every share mutation still replaces the complete active ACL snapshot and now carries the exact term of every copied
+grant. Both the central PostgreSQL principal directory and native Office repository compare the term with database time
+on every request, so an expired entry grants no readable object ID and cannot authorize current or historical content
+even when no cleanup worker runs.
+
+Focused service, API, PostgreSQL, principal-directory, migration and restore tests passed with Ruff and formatting.
+Migration 0088 is applied to the isolated review database. The exact desktop/mobile Playwright flow passed 2/2;
+screenshot SHA-256 values are `5ec3c0ba15db556bc8bef1654a6a5e50f8e6ab1df1bda75a9b9bf6a313187a51` and
+`990805710e2971c2c74775b18de1d6845a0339f641083060681e7fed41424474`. Product implementation is published in
+`e9c8760e` on `kirchherr/kb-write-unit-of-work`; the review API is healthy at
+`http://192.168.0.108:42880/office?review=share-expiration-e9c8760e`. Full quality on documented source `b557c019`
+passed Ruff, formatting for 860 files, Mypy over 607 source files and the complete Pytest matrix with only the known
+Starlette/AnyIO deprecation warning. The exact temporary `postgres-test` container was removed, no transient runner
+remains, and regular plus review APIs return `ok`. No ordinary tenant, public link, external guest, scheduler, AI
+provider, DOCX engine or production admission changed.
+
+Roadmap 402 through 409 / PLANS 263 through 270 are complete under ADR-0145. Native Office now provides a responsive
+direct-user sharing dialog. A current directly granted document administrator can inspect active same-tenant members,
+grant or change `read` and `write`, and revoke access. The owner grant is immutable. Role and group grants continue to
+authorize document use, but cannot mutate direct-user shares; disabled, unknown and cross-tenant principals fail closed.
+
+Migration 0087 adds append-only share-decision receipts and two security-definer mutation functions. The database
+revalidates the tenant, document, direct actor grant, target, owner boundary, expected ACL version and mutation
+reference. Every successful change replaces the active ACL set with a complete next snapshot at one monotonically
+increasing version. The application role has no direct mutation grant. Current ACLs authorize current and historical
+reads; immutable document versions retain the ACL snapshot number that applied when saved for audit and restore
+traceability.
+
+Grant, change and revoke require explicit human confirmation and emit content-free audit metadata. The browser validates
+responses fail closed, reports stale concurrent changes and supports desktop and mobile layouts. The dedicated
+desktop/mobile Playwright flow passed 2/2; screenshot SHA-256 values are
+`813998c9655cd8da6d5ab8d6f775c7f848fc4c8b22e35055d21955447cdd1afd` and
+`581e406100f8be70a3780da5ded77221dd3681bc9c1afd97993408955ceca15c`.
+
+Product implementation is published through `252d9a50` on `kirchherr/kb-write-unit-of-work`. The isolated review
+database has migration 0087 and the rebuilt review API is healthy at
+`http://192.168.0.108:42880/office?review=document-sharing-252d9a50`. Focused service, API, PostgreSQL, migration and
+restore coverage passed after correcting a test-field assertion; Ruff and formatting passed for the changed policy
+files. Full quality on documented source `d4aff2ac` passed Ruff, formatting for 863 files, Mypy over 607 source files
+and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The final review image was
+rebuilt from that source; regular and review APIs return `ok`. The stale Playwright runner and exact temporary
+`postgres-test` container were removed, and no transient runner remains. No ordinary tenant, external guest, public
+link, role/group administration, AI provider, DOCX engine or production admission changed.
+
+Roadmap 395 through 401 / PLANS 256 through 262 are complete under ADR-0144. Native Office documents now carry the
+versioned information classification Öffentlich (`public`), Intern (`internal`), Vertraulich (`confidential`) or
+Streng vertraulich (`restricted`). It is deliberately separate from canonical runtime `data_classification`, so ACL,
+retention, legal hold, KMS and SourceObject controls remain unchanged and authoritative.
+
+Migration 0086 stores the value on the Office document head and every immutable version and binds both through the
+head trigger. Create/save command hashes, API views, history and content-free audit metadata include it. Authorized
+writers may retain or raise protection; public creation/publication and every downgrade require `tenant-admin`.
+The responsive editor supports selection during creation and editing, historical values, reuse, restore, comparison
+and a visible saved-version label in print/PDF.
+
+Focused classification/service/migration checks passed 93/93, all Office Python tests passed, Office-specific
+PostgreSQL restore checks passed, and the final complete quality run passed Ruff, formatting for 856 files, Mypy over
+606 source files and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The dedicated
+desktop/mobile browser flow passed 2/2; screenshot SHA-256 values are
+`3d529df210b6a7fdef6d9c7abc31052e9808d67fb1047d41a3462a576e5a0502` and
+`9944b6612481d9939bfec0037ca6d53f40a0b4369fb96dc37d5946829cd2b057`.
+
+Product and browser evidence are published through `ba3aec51` on `kirchherr/kb-write-unit-of-work`. Migration 0086 is
+applied to the isolated review database and the rebuilt review API is healthy at
+`http://192.168.0.108:42880/office?review=document-classification-ba3aec51`. The repeated non-idempotent seed attempt
+stopped on an already existing synthetic principal without overwriting data; the API was then rebuilt and recreated
+without dependencies. Documentation contracts passed 12/12; exact temporary PostgreSQL, interrupted Playwright and
+completed migration containers were removed, and regular plus review APIs return `ok`. No ordinary tenant, pilot,
+indexing, AI provider, DOCX engine or production admission changed.
+
+Roadmap 389 through 394 / PLANS 250 through 255 are complete under ADR-0143. Authors can select an ordinary data-cell
+row, column or rectangle in a simple native table, open the existing formula dialog once and fill the complete range.
+The entered formula belongs to the top-left cell; every target receives an independently shifted copy that preserves
+relative, fixed-column, fixed-row and fully fixed references under ADR-0142. A translated reference outside A1:T200,
+a header cell, merged grid, invalid range or formula-count overflow rejects the whole operation.
+
+The same dialog removes every selected formula together while retaining the last visible results as ordinary cell
+content. Fill and removal each replace the table in one validated transaction, restore the rectangular selection and
+produce exactly one undo step. Remaining formulas recalculate against the complete result. Current authorization,
+stale-session, reader, historical-version, document-size, server-result validation and confirmed-save boundaries remain
+unchanged.
+
+Focused server validation passed 35/35, focused model plus desktop/mobile verification passed 22/22, and the broad
+table, caption, span, layout, cell-presentation, sort, reorder, duplication, formula and comparison matrix passed 76/76.
+Desktop and mobile screenshot SHA-256 values are `cf9e77640798f94212d2cdcd53db0209e0e0b10902090cea24c22f4714c29b0b`
+and `33e0a2ceed29270248c08a47316cf397c8b3de1f6945f1909010d9e3db379b2e`; both passed visual review. The first broad
+attempt passed 75/76; its sole failure was `ERR_NAME_NOT_RESOLVED` for the intentionally omitted Blocked API. The exact
+unchanged reader/history case passed 1/1 after that isolated service started, followed by the clean 76/76 run.
+
+Product implementation is published in `7f7f118f` and ADR/roadmap documentation in `d2c49dd0`, on
+`kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery contracts are reused, so there
+is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime,
+DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-fill-7f7f118f`.
+
+Full quality on documented source `d2c49dd0` passed Ruff, formatting for 855 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
+Roadmap 383 through 388 / PLANS 244 through 249 are complete under ADR-0142. Local table formulas now preserve all four
+canonical reference forms: relative `A1`, fixed-column `$A1`, fixed-row `A$1` and fully fixed `$A$1`. Repeated or
+detached anchors fail closed. Browser and server independently tokenize, evaluate and verify the identical canonical
+formula and result inside the unchanged A1:T200, 1,000-formula and simple-table limits.
+
+Word/Excel range paste and row or column duplication shift only unanchored axes. Structural insertion, deletion,
+movement and stable sorting still follow logical source-cell identity while preserving each `$` marker; deleted
+dependencies continue to become canonical `#BEZUG!`. The existing formula dialog describes the anchor forms. Every
+formula or structural edit remains one validated undo step and retains current reader, history, session and size guards.
+
+Focused server validation passed 35/35, focused model plus desktop/mobile verification passed 18/18, and the broad
+table, caption, span, layout, cell-presentation, sort, reorder, duplication, formula and comparison matrix passed 72/72.
+Desktop and mobile screenshot SHA-256 values are `8a295cc06826d8f0f5d854c76e46f820af8875692861dd91ed3b06bc2c281872`
+and `acfff20da160e7d63c9f8c2644017c0488e99471672402ba50a59996b14212b0`; both passed visual review.
+
+Product implementation is published in `a0e163f6`, with corrected range assertions in `8e2c7ee6`, ADR/roadmap
+documentation in `920d65ed` and project-format conformance in `c94190ca`, on `kirchherr/kb-write-unit-of-work`.
+Existing immutable Office version JSON and recovery contracts are reused, so there is no relational migration or new
+restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime, DOCX engine or production admission
+was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-anchors-a0e163f6`.
+
+Full quality on documented source `c94190ca` passed Ruff, formatting for 854 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
+Roadmap 377 through 382 / PLANS 238 through 243 are complete under ADR-0141. Local table formulas now follow the
+logical source cells through supported row and column insertion, deletion, direct movement and stable sorting. A
+deleted dependency is stored as the exact inert `#BEZUG!` token; browser and server parse and recalculate it
+independently, while malformed error tokens remain invalid.
+
+Row and column duplication now creates independent deep-cloned structures. Copied formulas receive relative-copy
+coordinates, while the original formula retains its original logical targets. The first browser run exposed the prior
+shared-node alias because adjusting the copy also changed the original; the corrected model now explicitly proves the
+original, copy and following cells stay independent. Every accepted structural change remains one validated undo step
+and preserves existing reader, history, session, grid, formula-count and document-size boundaries.
+
+Focused model plus desktop/mobile verification passed 16/16. The broad table, caption, span, layout, cell-presentation,
+sort, reorder, duplication, formula and comparison matrix passed 67/67. Desktop and mobile screenshot SHA-256 values
+are `db18a438b91af83d2174c41109e0ee4c6d76f5278d80ee696b4039787cddc568` and
+`9b4e1b754da5956797fb18b97e618067778449ef21d94645fd4154fbe56cbc59`; both passed visual review.
+
+Product implementation is published in `48256905`, with duplicate-node isolation in `4e8e39e6` and ADR/roadmap
+documentation in `5fc704e7`, on `kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery
+contracts are reused, so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing,
+cloud AI, workbook runtime, DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-formula-structure-4e8e39e6`.
+
+Full quality on documented source `5fc704e7` passed Ruff, formatting for 853 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed 6/6.
+Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner
+remains. Regular and review APIs both return `ok`.
+
+Roadmap 371 through 376 / PLANS 232 through 237 are complete under ADR-0140. Authors can paste a sanitized Word or
+Excel range directly into an existing simple native table. One selected cell is the range origin and grows the table
+within 200 x 20; an explicit rectangular selection requires matching dimensions or repeats one clipboard cell. Header
+cell semantics remain owned by the target. Merged grids, ambiguous dimensions, shifted references outside A1:T200,
+stale sessions, readers, historical views and document-limit overflow leave the draft unchanged.
+
+The translator preserves fixed cell presentation plus bold, italic, underline, strike and code marks. Links become
+plain text, while active, styled, framed, embedded, form, media and nested-table content stays excluded. Local formulas
+move by the target row/column offset, recalculate against the complete result and remain subject to the independent
+server validation from ADR-0139. One accepted paste replaces the target table in one undo step, selects the resulting
+range and survives redo, confirmed save and reload.
+
+The focused model plus desktop/mobile workflow passed 9/9. The broad table, caption, span, layout, cell-presentation,
+sort, reorder, duplication, formula and comparison matrix passed 63/63. Desktop and mobile screenshot SHA-256 values
+are `5dd34938cbe69595642407735f9d81dea0c28deedf2eb2884d7e7bc26922b7a2` and
+`ef123173dd0432ceab2da81f0fdf18766e3a3a5e6a9f030e0617d9d624c581e8`; both passed visual review.
+
+Product implementation is published in `bebf004b`, with ADR, roadmap and final evidence through `266a50e9`, on
+`kirchherr/kb-write-unit-of-work`. Existing immutable Office version JSON and recovery contracts are reused, so there
+is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime,
+DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-range-paste-bebf004b`.
+
+Full quality on documented source `266a50e9` passed Ruff, formatting for 852 files, Mypy over 605 source files and the
+complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Exact temporary `postgres-test` and
+`work-e2e-blocked-api` containers were removed; no transient quality or E2E runner remains. Regular and review APIs
+both return `ok`.
+
+Roadmap 363 through 370 / PLANS 224 through 231 are complete under ADR-0139. Authors can paste one Word/Excel HTML
+table or bounded quoted TSV into a native Collabio document. The translator preserves semantic headers, bounded spans,
+plain text paragraphs and fixed cell presentation while removing scripts, remote media, embedded objects, forms,
+nested tables and every unsupported attribute. Unknown Excel formula dialects retain only their displayed value.
+
+Ordinary unit-span cells in simple tables now support local A1:T200 formulas with arithmetic, ranges and SUM,
+AVERAGE, MIN, MAX or COUNT. German function names and semicolons normalize to the canonical grammar. The editor
+updates dependent cells through minimal history-neutral formula-cell changes, preserving clean source-edit undo/redo.
+The server independently parses and recalculates every submitted formula, rejects stale or forged results and enforces
+the 256-character, 1,000-formula, 200-row and 20-column limits. External workbooks, sheets, URLs, macros, networks,
+arbitrary functions and merged formula grids fail closed.
+
+Focused schema validation and the model plus desktop/mobile workflow passed. The broad table, caption, span, layout,
+cell-presentation, sort, reorder, duplication and comparison matrix passed 59/59. Desktop and mobile print screenshot
+SHA-256 values are `3e420da2294b1caf0470a4d84dfd98f4347f382cec99d4d5a1351710ca58e8de` and
+`b644dd5a6d7d462cbd3f6f373edf3763231b1f029070ff56de8a60dba0e38ded`; both passed visual review.
+
+Product implementation is published through `d9e22846` on `kirchherr/kb-write-unit-of-work`. The implementation uses
+existing immutable Office version JSON and recovery contracts, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, workbook runtime, DOCX engine or production admission was
+activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-clipboard-formula-28baad6d`.
+
+Full quality on documented source `d9e22846` passed Ruff, formatting for 851 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Exact temporary `postgres-test`
+and `work-e2e-blocked-api` containers were removed; no transient quality or E2E runner remains. Regular and review
+APIs both return `ok`.
+
+Roadmap 357 through 362 / PLANS 218 through 223 are complete under ADR-0138. Authors can duplicate a contiguous
+selection of data rows directly below its source or data columns directly to its right from the existing table menus.
+The first all-header row and first all-header column remain protected. Merged or non-rectangular grids, protected
+overlaps, the existing 200-row or 20-column limit, unsupported options, stale selections, readers and historical
+views fail closed.
+
+Each accepted action copies complete row or cell nodes with semantic type, content, marks and bounded presentation,
+selects the inserted rectangular block and creates exactly one validated undo step. Confirmed save, immutable
+predecessor, reload, comparison and print consume the canonical result without a new stored field, clipboard layer
+or spreadsheet runtime.
+
+The focused model plus desktop/mobile workflow passed 7/7. The broad table, caption, span, layout, cell-presentation,
+sort, reorder and comparison matrix passed 54/54. Desktop and mobile screenshot SHA-256 values are
+`7e16a8f24068d31ec405ddf63ece40a53388eef425b3037290a4a3aa639b6644` and
+`08c70ff9fcaacb295e4308ef40b266aac477367a1fe5c0e63fdc257a7dda2823`; the saved 5 x 5 live table and its direct
+row/column actions passed visual review.
+
+Product implementation is published in `1c3ef9e5` on `kirchherr/kb-write-unit-of-work`. Duplication reuses existing
+immutable Office version JSON and recovery contracts, so there is no relational migration or new restore target. No
+ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated.
+The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-duplicate-1c3ef9e5`.
+
+Full quality on documented commit `b6ef05f0` passed Ruff, formatting for 850 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Documentation contracts passed
+6/6. Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality or E2E
+runner remains. Regular and review APIs both return `ok`.
+
+Roadmap 351 through 356 / PLANS 212 through 217 are complete under ADR-0137. Authors can move a contiguous selection
+of rows one position up or down and columns one position left or right from the existing table menus. The first
+all-header row and first all-header column remain fixed; boundary actions are disabled. Merged or non-rectangular
+grids, protected overlaps, unsupported options, stale selections, readers and historical views fail closed.
+
+Each accepted action moves complete row or cell nodes with semantic type, content, marks and bounded presentation,
+restores the same rectangular selection at its new position and creates exactly one validated undo step. Confirmed
+save, immutable predecessor, reload, comparison and print consume the canonical result without a new stored field,
+drag-and-drop layer or spreadsheet runtime.
+
+The focused model plus desktop/mobile workflow passed 5/5. The broad table, caption, span, layout, cell-presentation,
+sort and comparison matrix passed 49/49. Desktop and mobile screenshot SHA-256 values are
+`825d4e1b4cbe549f149a31a455f5a710eee3c11b537c30fab05957573ce6f2fe` and
+`8cc5e101d6046d0f9f8b51c593358afdb709870ee07745c8cd0ac9d623a23bc1`; the compact live editor and its direct
+row/column actions passed visual review without horizontal clipping.
+
+Product implementation is published in `bcfaae94`, with strengthened browser assertions through `1d17414e`, on
+`kirchherr/kb-write-unit-of-work`. Reordering reuses existing immutable Office version JSON and recovery contracts,
+so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI,
+spreadsheet runtime, DOCX engine or production admission was activated. The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-reorder-bcfaae94`.
+
+Full quality on documented commit `74079fb1` passed Ruff, formatting for 849 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contracts
+passed 6/6. Exact temporary `postgres-test`, `work-e2e-blocked-api`, failed seed and completed migration containers
+were removed; no transient quality or E2E runner remains. Regular and review APIs both return `ok`.
+
+Roadmap 345 through 350 / PLANS 206 through 211 are complete under ADR-0136. Simple rectangular native tables with at
+least two data rows now support deterministic stable sorting by normalized text, strict decimal number or strict ISO
+date. The first all-header row remains fixed, empty values remain last in either direction and equal values retain their
+previous order. Complete row nodes move together, preserving semantic cell types, content, marks and presentation;
+merged or non-rectangular grids fail closed.
+
+The accessible **Sortieren …** dialog selects column, type and ascending or descending direction. One successful sort
+is one validated undo transaction. Invalid values, unsupported options, cancellation, stale selections, readers and
+historical views leave the document unchanged. Confirmed save, immutable predecessor, reload, comparison and print
+consume the resulting canonical row order without a new stored field or formula runtime.
+
+The focused model plus desktop/mobile workflow passed 7/7. The broad table, caption, span, layout, cell-presentation
+and comparison matrix passed 44/44. Desktop and mobile screenshot SHA-256 values are
+`397cd579f45222ad2835bb9f5616c519e159a44ae5f530a615b4ed249d78b10a` and
+`fcc3579eac0de31d9c5db1aaf72618116f4b12a710f39d9318742f9bae11333c`; the live desktop editor and dialog passed
+visual review without clipping or horizontal overflow.
+
+Product implementation is published through `49b6d434` on `kirchherr/kb-write-unit-of-work`. Sorting reuses existing
+immutable Office version JSON and recovery contracts, so there is no relational migration or new restore target. No
+ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated.
+The refreshed review UI is available at
+`http://192.168.0.108:42880/office?review=table-sort-49b6d434`.
+
+Full quality on documented commit `3aa8d95f` passed Ruff, formatting for 848 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contracts
+passed 6/6. Exact temporary `postgres-test` and `work-e2e-blocked-api` containers were removed; no transient quality
+or E2E runner remains. Regular and review APIs both return `ok`.
+
+Roadmap 339 through 344 / PLANS 200 through 205 are complete under ADR-0135. Native table cells now support optional
+center/right horizontal alignment, compact/spacious padding and no/strong border treatment in addition to the
+existing fills and vertical alignment. Omitted values remain the canonical left alignment, normal padding and table
+style border. Browser and server independently reject arbitrary CSS, URLs, dimensions, colors, per-edge models and
+unsupported values.
+
+The accessible **Zellen formatieren …** dialog applies all five dimensions to the current cell, row, column or
+rectangular selection. Mixed values remain untouched until explicitly changed; apply and the complete standard reset
+are each one validated undo step. Merge, split and header conversion preserve the presentation. Editor, comparison,
+immutable history and print consume the same canonical attributes, while explicit paragraph alignment stays
+independent.
+
+The focused Python suite passed 34/34 and the focused model plus desktop/mobile workflow passed 7/7. The adjacent
+table, caption and comparison selection passed 38/39; its only failure exposed that the isolated Blocked API still
+attempted to activate a KB write runtime. The fail-closed test server now skips that activation when synthetic traffic
+is disabled, and the complete affected reader/historical case passed 1/1. Desktop/mobile screenshot SHA-256 values
+are `2d0c7f7a99abedc9b7037aeb195b189eb69ce911c7cbb86fa04cdfdd1b025c08` and
+`68ea3553fc1ef69a40fe78077bdb28aedf8864c3f2f8234ce87b7f65fbf16a89`; both passed visual review.
+
+Product implementation is published through `f651580a`, with the fail-closed E2E helper correction in `3ce13284`,
+on `kirchherr/kb-write-unit-of-work`. The values use existing immutable Office version JSON and recovery contracts,
+so there is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI,
+spreadsheet runtime, DOCX engine or production admission was activated. The review UI is available at
+`http://192.168.0.108:42880/office?review=cell-presentation-f651580a`.
+
+Full quality on documented commit `6a82bcd2` passed Ruff, formatting for 847 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
+
+Roadmap 333 through 338 / PLANS 194 through 199 are complete under ADR-0134. Native tables now support four fixed
+presentation styles, bounded full/wide/compact widths, left/center/right alignment, equal or fixed first-column
+distributions and captions above or below the table. Omitted attributes remain the canonical grid, full-width,
+left-aligned, equal-column and bottom-caption defaults. Browser and server independently reject arbitrary CSS, URLs,
+unknown attributes and unsupported values.
+
+The accessible **Tabellenlayout …** dialog edits the complete table layout in one validated undo step and provides
+one canonical reset. Caption add, edit and removal preserve the remaining layout. Editor, comparison, immutable
+history and print consume the same canonical model; constrained tables safely expand to the available width on
+compact screens while preserving style, caption placement and column emphasis.
+
+The focused model plus desktop/mobile layout workflow passed 9/9. The adjacent table, caption and comparison
+selection passed 38/39; its only failure was a mobile page-canvas height regression caused by the additional toolbar
+control. After tightening the compact toolbar, the complete affected responsive case passed 1/1. Desktop/mobile
+screenshot SHA-256 values are `263c3ac2933510e9755274e3db31354a4027be26e3c50e95751affdf4e8e08f6` and
+`dfe6f57713458c7f15ca7847a771617baa9b518dce8ada1342f76328822d742d`; both passed visual review.
+
+Product implementation is published through `a4a2f45c` on `kirchherr/kb-write-unit-of-work`. Layout values use the
+existing immutable Office version JSON and recovery contracts, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was
+activated. The review UI is available at
+`http://192.168.0.108:42880/office?review=table-layout-a4a2f45c`.
+
+Full quality on documented commit `60349c31` passed Ruff, formatting for 846 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
+
+Roadmap 329 through 332 / PLANS 190 through 193 are complete under ADR-0133. Native table cells and headers now
+support optional fixed gray, blue, green, yellow or red fills plus middle or bottom vertical alignment; absent values
+retain the previous no-fill and top-aligned canonical representation. Browser and server independently reject
+arbitrary colors, CSS, URLs, unknown attributes and unsupported alignment values.
+
+The focusable **Zellen formatieren …** dialog operates on the current cell, row, column or rectangular selection.
+Mixed values remain untouched until explicitly replaced, and one apply operation is one validated undo step. Merge,
+split and header conversion retain exact attributes. Editor, comparison and print consume the same canonical model.
+All table mutation controls now start disabled in the static shell and are enabled only after current session,
+selection and write checks, closing the reader/historical initial-state gap.
+
+The focused model plus desktop/mobile workflow passed 4/4. The adjacent table, caption and comparison selection passed
+35/36; its only initial failure first exposed the absent isolated Blocked API and then the fail-closed shell gap. After
+the controlled helper start and correction, the complete affected reader/historical case passed 1/1. Desktop/mobile
+print screenshot SHA-256 values are `f98fc5892ce1424b5696c254a64cca9daa32d8e7c09b22354ec147bd3035effa` and
+`38ec0c183a72f8ccdb58d9e17f332aa73741b19c766faee97a8b966084c49226`; both passed visual review.
+
+Implementation is published through `ff1ebc64` on `kirchherr/kb-write-unit-of-work`. The values use existing immutable
+Office version JSON and recovery contracts, so there is no relational migration or new restore target. No ordinary
+tenant, pilot, indexing, cloud AI, spreadsheet runtime, DOCX engine or production admission was activated. The review
+UI remains available with the accepted product code at
+`http://192.168.0.108:42880/office?review=table-cell-style-5239bb33`.
+
+Full quality on documentation commit `1ce5ad65` passed Ruff, formatting for 845 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The exact temporary
+`postgres-test` and `work-e2e-blocked-api` containers were removed; regular and review APIs both return `ok`.
+
+Roadmap 325 through 328 / PLANS 186 through 189 are complete under ADR-0132. The existing authorized native image
+upload now accepts PNG, JPEG, safe SVG and bounded EPS while retaining one storage contract: a metadata-free,
+document-owned canonical RGBA PNG. SVG alpha is preserved. EPS paints onto a transparent canvas; painted EPS regions
+remain opaque because EPS has no partial-alpha model. Original vector bytes are transient and never enter a saved
+Office version.
+
+The credential-free decoder remains non-root, read-only and network-none. CairoSVG and Ghostscript are pinned in its
+image, and each request runs in a fresh child with address-space, CPU, timeout and file-size limits. SVG document
+types, entities, XML stylesheets, active/embedded elements, event attributes, external links and CSS imports/URLs are
+rejected before rendering. EPS must declare EPSF and a finite numeric bounding box; generic PostScript is rejected,
+and only one page is rendered with Ghostscript `SAFER`.
+
+The focused desktop/mobile vector workflow passed 2/2. It sampled the returned PNG pixels and proved SVG alpha 128,
+transparent SVG/EPS canvas and opaque EPS paint, then covered SVG insertion, EPS replacement, confirmed save and
+reload. The complete image file passed 20/20 across desktop and mobile, retaining PNG/JPEG normalization, tenant/ACL
+checks, independent ownership, placement, replacement, undo/redo and PDF behavior. Screenshot SHA-256 values are
+`3277c7882e596d8976a91f4cbcf6be2f49a2b72c85d08caf000fc557b15c720b` and
+`a87208f6321b828f013f7cbd8d181bf33f7b8cbf730455357aba7dfcb725eb30`; both passed visual review.
+
+Implementation is published through `a1cc0a6e` on `kirchherr/kb-write-unit-of-work`. The review UI and both isolated
+image decoders are refreshed on `dev001`; the UI remains available on port 42880. No relational migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Full quality on `10d8f462` passed Ruff, formatting for 855 files, Mypy over 605 sources and complete Pytest with only
+the known Starlette/AnyIO deprecation warning. The temporary quality PostgreSQL container was removed; regular and
+review APIs and both image decoders are healthy. Review the accepted UI at
+`http://192.168.0.108:42880/office?review=vector-alpha-a1cc0a6e`.
+
+Roadmap 321 through 324 / PLANS 182 through 185 are complete under ADR-0131. Native Office tables now retain bounded
+column and row spans, expose focusable merge and split actions, and support an independent semantic header-column
+toggle. Browser and server independently validate a rectangular logical grid without gaps, overlaps, truncated spans
+or expansion beyond twenty columns and two hundred rows. Editor-only attributes are removed before canonical
+validation and never enter saved content.
+
+Each accepted merge, split or header change is one isolated undo step. Confirmed CAS save, immutable predecessor,
+reload and comparison retain exact span geometry. Print emits native `colspan` and `rowspan`, column headers use
+`scope="col"`, and first-column body headers use `scope="row"`.
+
+The focused model plus desktop/mobile workflow passed 4/4. The adjacent table, caption and comparison selection passed
+22/22. Desktop/mobile screenshot SHA-256 values are
+`be1c6b8ec3d524116be8d94159b24259bc2dedd5b73b39696bb8d200db8b8b7a` and
+`0ff5220e8d3b583333feabce6754f3a495ade38ac89f2b291244f351f7581031`; both passed visual review without horizontal
+overflow. The isolated review UI remains on port 42880 and will be refreshed to the final documentation commit.
+
+Implementation is published through `13db7f3d` on `kirchherr/kb-write-unit-of-work`. The structure uses the existing
+immutable Office version JSON and general recovery contract, so there is no relational migration or new restore
+target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Full quality on `4af86a03` passed Ruff, formatting for 843 files, Mypy over 605 source files and the complete Pytest
+matrix with only the known Starlette/AnyIO deprecation warning. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=table-spans-13db7f3d`.
+
+Roadmap 317 through 320 / PLANS 178 through 181 are complete under ADR-0130. Native Office now supports inert top-level
+bar, line and pie charts backed only by bounded literal data. Each chart stores a fresh stable ID, title, alternative
+text, legend flag, up to twelve unique categories and up to four unique integer series with fixed colors. Bar and pie
+values are nonnegative; line charts may contain negative values. Formulas, URLs, remote sources, arbitrary SVG, HTML,
+CSS and executable payloads have no admitted field.
+
+The responsive dialog previews tab-separated data and supports insert, edit, fresh-ID duplicate, one-position move
+and removal as isolated undo steps. Editor and print generate inert DOM and internal line SVG from the validated model;
+an exact hidden data table exposes every value to assistive technology. Confirmed save, immutable predecessor, reload,
+comparison and print use the same canonical representation.
+
+The focused model plus desktop/mobile workflow passed 4/4. The combined chart, comparison and print selection covered
+28 cases; its two initially absent Blocked API cases passed in the complete 6/6 print rerun after the exact helper image
+was rebuilt. Desktop/mobile screenshot SHA-256 values are
+`34b4676405b7a7c2ea4b38620aa9da7fabc32022ab7093a745576ce29f804926` and
+`c5c7640a0abe82278a5d99b5dc32d4d979cb6fe089c1c831c3fa2a6334d1c75b`; both passed visual review. The isolated review
+UI is available at `http://192.168.0.108:42880/office?review=native-chart-f28caea4`.
+
+Implementation commit `f28caea4` is published on `kirchherr/kb-write-unit-of-work`. Charts use the existing immutable
+Office version JSON and general Office recovery contract, so there is no relational migration or new restore target.
+No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Full quality on `a47f3d70` passed Ruff, formatting for 842 files, Mypy over 605 source files and the complete Pytest
+matrix with only the known Starlette/AnyIO deprecation warning. Final documentation contract checks passed. The exact
+temporary `postgres-test`, `work-e2e-blocked-api`, failed seed and completed migration containers are removed, no
+transient runner remains, and regular and review APIs both return `ok`.
+
+Roadmap 314 through 316 / PLANS 175 through 177 are complete under ADR-0129. Native Office now supports an inert
+top-level document card bound to one exact target object and saved target version. The card stores only those IDs and
+`snapshot` or `linked`; it stores no resolved title, target body, URL, HTML or executable payload. Snapshot cards stay
+fixed. Linked cards also stay fixed until an author explicitly chooses **Auf aktuelle Version aktualisieren**, which
+creates an ordinary visible and undoable draft change.
+
+Every display uses the existing authoritative outbound-reference resolver and current target ACL. Revoked, missing
+or foreign targets expose neither title nor content. Document cards share the existing 100-reference limit and
+backlink counts with inline references. Focusable controls insert, edit, open an exact clean target, move one position,
+duplicate the exact inert binding and remove it. Confirmed save, immutable history, reload, comparison and print use
+the same exact representation. OLE, ActiveX, macros, iframes and remote content remain rejected.
+
+The final focused model plus desktop/mobile workflow passed 4/4. The broader reference, backlink, comparison and
+print selection passed all 34 distinct cases after its required isolated Blocked API was started; the two environment
+failures from the first 32/34 attempt passed in the complete 6/6 print rerun. The focused Python reference suite passed
+5/5, including mixed inline/card resolution, fresh target ACL revocation and card-inclusive backlink counts.
+Desktop/mobile screenshot SHA-256 values are
+`2ce099d47faa945c299f1174025fd458b233d3177b530094ba3caba3af106ea1` and
+`d1d25e071ef28f73012f6848f7eda578c76b3d5ab403354de21d21d91cb965ef`; both passed visual review. The isolated review
+UI is available at `http://192.168.0.108:42880/office?review=document-object-90de2278`.
+
+Implementation commits through `42f836cc` are published on `kirchherr/kb-write-unit-of-work`. The saved block uses
+the existing immutable Office version JSON and authoritative Roadmap-287/288 resolution/recovery path; there is no
+relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production
+admission was activated.
+
+Full quality on documentation commit `e861f6c6` passed Ruff, formatting for 841 files, Mypy over 605 source files and
+the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. The final eight documentation and
+roadmap contract checks passed. The exact temporary `postgres-test` and `work-e2e-blocked-api` services are stopped,
+no transient runner remains, and regular and review APIs both return `ok`.
+
+Roadmap 311 through 313 / PLANS 172 through 174 are complete under ADR-0128. Native image groups now support bounded
+responsive two-, three- and four-column grids in addition to row and stack. A focusable **Bild bearbeiten** action on
+every image makes nested selection deterministic. Authors can independently duplicate the selected group member or
+extract it immediately before or after the group; each successful operation is one isolated undo step. Larger groups
+retain their identity, layout and gap, while extracting from a two-member group produces two ordered standalone
+images. Extraction never creates or deletes an asset.
+
+The combined grid/member workflow passed 2/2 on desktop and mobile. It covers exact grid geometry, responsive
+containment, rejected-copy no-op, fresh independently owned asset/version identity, matching source pixel hash and
+dimensions, undo/redo, extraction, confirmed save, immutable predecessor, reload, readable copied bytes and print.
+The complete native image/figure matrix passed 63/64 in 10.5 minutes; its sole existing mobile print-request timeout
+passed the isolated rerun 1/1 in 12 seconds. Desktop/mobile screenshot SHA-256 values are
+`890231a5ee459dbf30688da0afcfeb5dbfcd4e3658693ea94562df91d07d393c` and
+`d2899a7d1bbe62908f4c028ec5da8f4300c826bb454caa73679f0cc52d2b9156`; both passed visual review without horizontal
+overflow. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-layout-138625ab`.
+
+Implementation commits `f1f8481a`, `f0e23d66` and `138625ab` are published on
+`kirchherr/kb-write-unit-of-work`. The bounded layout values use the existing immutable Office version JSON; member
+copy reuses the Roadmap-308 recovery-proven asset transaction and extraction only restructures existing bindings.
+There is no relational migration or new restore target. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine
+or production admission was activated.
+
+Final quality on implementation commit `138625ab` passed Ruff, formatting for 839 files, Mypy over 605 source files
+and the complete Pytest matrix with only the known Starlette/AnyIO deprecation warning. Quality image manifest list
+is `sha256:d73c798464a02189294dcaa788a3e60b828722fe7c2658efd7f0ce2edb064e2e`. The temporary `postgres-test` service is
+stopped, no transient Work-E2E runner remains, and the regular and review APIs both return `ok`.
+
+Roadmap 310 / PLANS 171 is complete under ADR-0127. A selected member of a native image group now exposes explicit
+**Bild eine Position früher** and **Bild eine Position später** actions. Each action swaps exactly one adjacent member,
+keeps selection on the moved image and creates one isolated undo step. Boundary actions are disabled. Separate
+**Bildgruppe eine Position früher/später** labels make whole-group document movement unambiguous and enforce their
+own top-level boundaries. Group identity, layout, gap and every member's asset/version, crop, transformation,
+accessibility, caption, figure and display attributes remain exact.
+
+The complete native image/figure matrix passed 61/61 in 9.7 minutes on implementation commit `861ff477`; the final
+clarified controls passed the complete image-group matrix 8/8 on `95d00e55`. Exact save, immutable predecessor,
+undo/redo, reload and print order passed on desktop and mobile. Final desktop/mobile screenshot SHA-256 values are
+`c6dd6ba02ff4b93aad73c3d398bf44a6485ee97c4cdf5e14441e3e11be71fb11` and
+`3c50bc32631269052da14dcd17fb8a2368888bf25ac1c446074d254070263e60`; both passed visual review without horizontal
+overflow. The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-member-order-95d00e55`.
+
+Final quality is green on `23db24a1`: Ruff passed, all 839 files are formatted, Mypy passed across 605 source files
+and the complete Pytest matrix passed with only the known Starlette/AnyIO deprecation warning. The previously expired
+exact Cryptography OpenVEX decision was renewed after explicit human confirmation. Version 2 keeps the unchanged
+`CVE-2026-69247` / `cryptography@49.0.0` scope and unreachable-PKCS#7 justification, is reviewable on 2026-11-06 and
+expires on 2026-12-06. Its focused decision/currentness/reachability test passed before the full matrix.
+
+The saved representation and backend contracts are unchanged, so no migration or new recovery drill is required;
+the exact ordered image-group recovery contract and the fresh Roadmap-309 PostgreSQL/S3 proof remain retained. No
+ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Roadmap 309 / PLANS 170 is complete under ADR-0126. A selected native image now exposes **Neue Bilddatei** in its
+edit dialog. The existing tenant/write-authorized PNG/JPEG upload and isolated decoder create a fresh immutable,
+document-owned asset/version without changing the draft. Explicit apply replaces exactly the selected node in one
+undo step. Alternative text, decorative state, caption, stable figure target, alignment, wrapping or anchored
+position, group membership and quarter-turn transformation remain intact. A locked frame follows the new pixel
+ratio within existing bounds; an unlocked frame keeps its exact dimensions. Source-pixel crop coordinates reset.
+Cancel, upload failure and stale context leave the draft unchanged, and earlier saved versions retain their old pixels.
+
+Implementation commits `c6db664c`, `25597752`, `147c0334` and `fce0e3dc` are published on
+`kirchherr/kb-write-unit-of-work`. The focused model contract passed 13/13, the replacement workflow passed 2/2 on
+desktop/mobile and the complete native image/figure matrix passed 59/59 in 9.0 minutes. It covers cancel, explicit
+apply, preserved metadata/layout, aspect-ratio recomputation, crop reset, undo/redo, confirmed save, immutable
+predecessor pixels, readable replacement bytes and reload. Desktop/mobile screenshot SHA-256 values are
+`72b07711e73698f2b48b3b403ec0db6e4612265b8b233a17746f23cc4671de43` and
+`fc233a3fcc08c3b32b7c58cb4e10dbcea3f5695c88cffa9faad7969f9a34bbad`; both passed visual review.
+Full quality passed Ruff, formatting for 836 files, Mypy over 605 source files and complete Pytest with only the
+known Starlette/AnyIO warning.
+
+Fresh recovery used dump `sha256:c74e0bfbd733cff95bcf52706a1fe6296487dedb87e6d66a19888cf08302e68d`
+and isolated database `collabio_work_e2e_309_restore`. It verified 1,642 documents, 3,431 exact Office versions,
+823 multi-version documents, 4,561 SourceObjects, 954 image assets and 1,637 saved image references. Four stored
+replacement pairs proved fresh asset/version/content identities, exact source and display dimensions, stable figure
+and presentation attributes and absent crop. Recovery report file SHA-256 is
+`42fd59edc927a77558508ba02b1bf92650d76953e20b7e773309acc15914a1db`; embedded report hash is
+`sha256:15e17ba6b194e5d82a393874450477259945f7fe62098af55b1ae5e8ef637f23`.
+
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-replacement-25597752`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Roadmap 308 / PLANS 169 is complete under ADR-0125. A selected ungrouped native image now exposes **Bild
+duplizieren**. The server rechecks tenant/write authorization and the immutable source, then creates a fresh
+document-owned asset/version in one transaction. The editor accepts only a complete response with fresh identities
+and unchanged pixel hash/dimensions, resolves the source selection again and inserts the copy directly after it in
+one undo step. Numbered copies receive fresh figure IDs. Wrapped presentation remains exact; freely positioned
+copies preserve their layer and move by a bounded 40/24-unit offset, reversing near the edge. Errors, stale
+selections and the existing 40-image or 200-retained-asset limits leave the draft unchanged.
+
+Implementation commits `e53cdd58` and `e80d2237` are published on `kirchherr/kb-write-unit-of-work`. The focused
+desktop/mobile workflow passed and the complete native image/figure matrix passed 55/55. It covers an interrupted
+request without draft mutation, fresh asset/version/figure identities, exact pixel binding, bounded free-position
+offset, undo/redo, confirmed save and readable copied bytes, plus every prior upload, decoder, ACL, crop, wrapping,
+transform, grouping, numbering and PDF case. Desktop/mobile screenshot SHA-256 values are
+`cd04e9123ba2fd5e9f606a8e8c3518a95796155a563478e188535b9a6194ff4f` and
+`fb68571b39edf1ef43ff902823d39fb33bd17de079000cb4b1428b2d710cc6bc`; both passed visual review. Full quality
+passed Ruff, formatting for 786 files, Mypy over 605 source files and complete Pytest with only the known
+Starlette/AnyIO warning.
+
+Fresh recovery used dump `sha256:922f922123e5d661967f0a6a2c747990490a94dbc590b5b6a5fe4d371c3ede9d`
+and isolated database `collabio_work_e2e_308_restore`. It verified 1,580 documents, 3,285 exact Office versions,
+781 multi-version documents, 4,304 SourceObjects, 858 image assets and 1,479 saved image references. Five stored
+single-image duplicates proved distinct asset/version/figure identities, identical pixel hashes and the bounded
+front-layer edge offset. Recovery report file SHA-256 is
+`828bc372389236acad54ecab1399a573790bcc19cff7bff7eab8e2d6c5223940`; embedded report hash is
+`sha256:d03bdd5c26c7a271111a21615a430451cca2a56da14b8df5d420196f9e2e1008`.
+
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-duplicate-e80d2237`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Roadmap 307 / PLANS 168 is complete under ADR-0124. A selected native image group now exposes
+**Bildgruppe duplizieren**. The server rechecks current tenant/write authorization and every immutable source member,
+then creates fresh document-owned asset/version identities in one transaction. Only a complete validated response
+inserts a fresh group directly after the source as one isolated undo step. Numbered members receive fresh figure IDs;
+order, normalized pixels, content hashes, layout, gap, dimensions, crop, transform, alignment, alternative text,
+caption and decorative state remain exact. Existing limits of 20 groups, 40 document images, eight members and 200
+retained assets fail before mutation. Errors and stale groups leave the draft unchanged.
+
+Implementation commits `b9fe379d` and `564b8ba4` are published on `kirchherr/kb-write-unit-of-work`. The focused
+desktop/mobile group workflow passed 6/6 and the complete native image/figure matrix passed 53/53. It covers server
+failure without draft mutation, fresh identities, undo/redo, confirmed save, readable copied bytes and two-group
+print output, plus all previous upload, decoder, ACL, crop, free-position, wrap, transform, numbering and copy cases.
+Desktop/mobile screenshot SHA-256 values are `4553154dd0c633a4f55e4838d5fa61438993a35f0c4b75421b9fc9583c2d126b`
+and `e21f3621c90197d72b32ee2d2f8facb716d8899a58e0c3a6b370f75b6ed524a7`; both passed visual review. Full
+quality passed Ruff, formatting for 786 files, Mypy over 605 source files and complete Pytest with only the known
+Starlette/AnyIO warning.
+
+Fresh recovery used dump `sha256:a7211b9d67e662455a11e6099190b6a956ba34c59ad5bf33603099bc96fab3c7`
+and isolated database `collabio_work_e2e_307_restore`. It verified 1,525 documents, 3,155 exact Office versions,
+744 multi-version documents, 4,088 SourceObjects, 772 image assets and 1,327 saved image references. Four stored group
+duplicates proved distinct group/asset/version identities with identical ordered pixel hashes. Recovery report file
+SHA-256 is `abef3857695465e61b1ab07b07a33e1e136a4bed4fe4cc87f2128ba04c22c870`; embedded report hash is
+`sha256:0546d998dfaaa47caa9221a653bf96929c4cb2f9d6a3cd610b2aefb35802c0d4`.
+
+The isolated review UI is available at
+`http://192.168.0.108:42880/office?review=image-group-duplicate-ea1786bb`; regular and review APIs remain isolated. No
+database migration, ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated.
+
+Roadmap 306 / PLANS 167 is complete under ADR-0123. A selected native image group now exposes a focusable
+**Bildgruppe entfernen** action. Activation resolves the validated stable group ID against the current editor
+document and removes exactly that complete group as one isolated undo step. Undo restores exact group identity,
+member order, layout, gap and every member's asset/version, crop, transform, alternative-text, caption and figure
+attributes; redo removes it again. Other document nodes and retained source assets remain unchanged. Missing, stale
+and read-only targets fail closed with no draft mutation.
+
+Implementation commits `f574e453` and `b3bb5472` are published on `kirchherr/kb-write-unit-of-work`. The complete
+native image model plus desktop/mobile workflows passed 47/47, covering upload/decoder defenses, owned copies, crop,
+transform, free position, wrapping, numbering, groups, exact removal, undo/redo, confirmed save, immutable predecessor
+content and print. The first removal run passed the product behavior through save and print but its final screenshot
+setup incorrectly expected pre-save undo history after a confirmed save; the corrected proof captures the review
+state before removal and passed fully. Desktop/mobile screenshot SHA-256 values are
+`0985233c97649cdff6078faa7085ca3b4f131f9a74629ddd632ff372eb802dd5` and
+`0b68a1dec4a33bf33c4ccc8d993ed6a8e47a1716e7356657b5ba733fca3398e6`; both passed visual review. Full quality passed
+Ruff, formatting for 784 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=image-group-remove-80425397` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no asset deletion, database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because image-group removal changes no durable schema and exact predecessor versions retain
+all source bindings.
+
+Roadmap 305 / PLANS 166 is complete under ADR-0122. An ungrouped selected native shape now exposes focusable actions
+to move it exactly one top-level document position earlier or later. Each activation swaps the complete shape with
+one adjacent node in one isolated undo step; unavailable boundary directions are disabled. The stable shape ID and
+all validated presentation attributes remain unchanged. Group members retain their dedicated ordering controls, and
+missing, stale, grouped or read-only targets fail closed with no draft mutation.
+
+Implementation commit `ac9543d5` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 20/20, covering both directions, boundary controls, stable identity and presentation,
+undo/redo, confirmed save, immutable predecessor content and print. Desktop/mobile screenshot SHA-256 values are
+`94f8077d318d328cc4d5654f0321a51dc22670a230464f2191a50fc51e37ac69` and
+`7838f2316689ae5ef4df1d6236b15f08117fbbba8ddf8cf7f07cfe04859a01f9`; both passed visual review. Full quality passed
+Ruff, formatting for 783 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-order-b88f39bc` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing,
+cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery
+because shape ordering changes no durable schema and exact predecessor versions remain available.
+
+Roadmap 304 / PLANS 165 is complete under ADR-0121. An existing native shape group now exposes focusable actions to
+move it exactly one top-level document position earlier or later. Activation resolves the validated stable group ID
+against the current editor document and swaps the complete group with one adjacent node in one isolated undo step.
+Boundary actions are disabled. Group and member identities, member order, layout, gap, optional connection and every
+member attribute remain unchanged; missing, stale and read-only targets fail closed with no draft mutation.
+
+Implementation commit `256c3766` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 18/18, covering both directions, boundary controls, exact identities and
+presentation, undo/redo, confirmed save, immutable predecessor content and print. Desktop/mobile screenshot SHA-256
+values are `d52171e049189fb43c711d262e62ac9ae1c6b083e7fdb20a2ae5309955c84cba` and
+`016a0e5f5dca1ad38962f12f647b44643fdcc21b4630ecbd7ae6e94de18cb700`; both passed visual review. Full quality passed
+Ruff, formatting for 782 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-order-3fe3eeb7` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because group ordering changes no durable schema and exact predecessor versions remain available.
+
+Roadmap 303 / PLANS 164 is complete under ADR-0120. An existing native shape group now exposes a focusable **Gruppe
+entfernen** action. Activation resolves the validated stable group ID against the current editor document and removes
+exactly that complete group as one isolated undo step. Undo restores its exact group/member identities, member order,
+layout, gap, optional connection and member attributes; redo removes it again. Missing, stale and read-only targets
+fail closed with no draft mutation.
+
+Roadmap 302 / PLANS 163 is complete under ADR-0119. Existing native shape groups can now be duplicated as a unit. The
+copy receives a fresh random group ID and fresh random IDs for every member while preserving exact order, layout, gap,
+optional connection and every member attribute. It is inserted immediately after the source in one isolated undo
+step. The action is disabled before exceeding 20 groups or 100 total shapes.
+
+Implementation commit `48043d6c` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 14/14, covering fresh group/member identities, exact presentation, member order,
+connections, undo/redo, confirmed save and static print. Desktop/mobile screenshot SHA-256 values are
+`a5de1cca817b688ba0f70ee39ce7af67c36b896c98a4481b401c4cb4b741245b` and
+`5746e1c303626f28a9cf3831524f555820d25755819693aafe4755b931c166ba`; both passed visual review. Full quality passed
+Ruff, formatting for 828 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=group-duplicate-7b3f927f` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because group duplication reuses the existing validated representation and changes no durable schema.
+
+Roadmap 301 / PLANS 162 is complete under ADR-0118. Selected native shapes can now be duplicated directly. Every copy
+receives a fresh random opaque ID and preserves all validated content and presentation. Group copies are inserted
+immediately after their source. Positioned copies remain on the same layer and receive a bounded visible offset that
+reverses near the right and lower limits. Global 100-shape and eight-member group limits disable the action before
+mutation, and duplication is one isolated undo step.
+
+Implementation commits `1526642f` and `c9101d6b` are published on `kirchherr/kb-write-unit-of-work`. The final model
+plus desktop/mobile workflows passed 12/12, covering grouped and positioned copies, fresh identities, edge-safe
+offsets, undo/redo, exact save, history, print and independently owned document copies. The first run passed 11/12
+and exposed a mobile test-selection ambiguity on a rotated member; the final unchanged feature uses the existing
+focusable group control and passed fully. Single-shape desktop/mobile screenshot SHA-256 values are
+`eaaab0b09e1ae5b6086097f1c0e6d8c0a64e0008ecedf923e53fe65747453bf7` and
+`be3f333e8e5ce043d7f064a09cef58754d88f12575df5e49fe3e051d7b5cd234`; group desktop/mobile values are
+`fa4e5c7544a9e0618d4a40944cb8c29437b2763392e464a18763795d083cb574` and
+`a2004c0a93c257f516e4ae1f4c79dba54b5509b43cd02e35f79efd66d17eafaa`. The group pair passed visual review. Full
+quality passed Ruff, formatting for 827 files, Mypy over 605 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-duplicate-716da95e` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because duplication uses the existing validated shape representation and changes no durable schema.
+
+Roadmap 300 / PLANS 161 is complete under ADR-0117. Native shape text now supports an optional integer 10–72 pixel
+size, one fixed non-transparent color token and bold, italic or bold-italic style. The canonical 16-pixel size,
+automatic contrast color and normal style remain absent from saved attributes. Browser and server validators reject
+fonts, URLs, CSS, markup, arbitrary style strings, booleans and values outside the exact bounds.
+
+Implementation commits `43584b54` through `47ae3a0c` are published on `kirchherr/kb-write-unit-of-work`. Focused
+server schema checks passed 2/2. The final model plus desktop/mobile workflows passed 10/10, covering invalid values,
+dialog preview, accessibility metadata, undo/redo, exact saved history, grouped members, print and independently owned
+copies. Single-shape desktop/mobile screenshot SHA-256 values are
+`615b73e6c461d2d902683a243a4f34ee7ec2269f1397faacc3dc2b36a59799c8` and
+`a20f0ce57cda8c3beb4d9bde2530daf7edbc645cbc3c2ffb3034c9a7f9045aab`; group desktop/mobile values are
+`225a22e964ef8794a547ea15c2c8f3365257728d2a31e3d582a3975023c47132` and
+`1fb35afccb34b3eccb74f5b66ab41ea97a7cff8456fb91d4fbcb11be8c3decb4`. All four passed visual review. Full quality
+passed Ruff, formatting for 826 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO
+warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-typography-2c0e4ab8` with
+synthetic Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot,
+indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated
+recovery because the optional attributes change no table or object-store schema and legacy shapes remain valid.
+
+Roadmap 299 / PLANS 160 is complete under ADR-0116. Authors can move the selected member of a native shape group one
+exact position earlier or later. The UI disables impossible boundary actions, keeps selection on the moved member and
+records each move as one isolated undo step. The operation reuses the group's validated exact member order; layout,
+gap, connection and every member attribute remain unchanged and no new durable schema is introduced.
+
+Implementation commit `ff6ca228` is published on `kirchherr/kb-write-unit-of-work`. The final model plus
+desktop/mobile workflows passed 10/10, including boundary controls, forward move, undo, redo, restored canonical
+order, exact save, print and independently owned copies. Desktop/mobile screenshot SHA-256 values are
+`e79a21756cb9e17cfa97a430a1820924d10c9cb5dd044c8f30a5de5668e21873` and
+`9dc3beaa32c775e2682dc612ba0e4072e5e7bf048cd828adb8e0ce9badea67ce`; both passed visual review. Full quality passed
+Ruff, formatting for 825 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=member-order-fe25535a` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+member ordering changes only the already persisted exact group sequence.
+
+Roadmap 298 / PLANS 159 is complete under ADR-0115. Native shape groups can now connect each consecutive ordered member
+with one uniform line, direction arrow or double arrow. The optional exact value contains only a fixed kind, fixed color
+token and integer 1–8 pixel width. Row groups connect horizontally; stack groups and compact row fallback connect
+vertically. Arbitrary endpoints, paths, per-edge styles, URLs, CSS and SVG fail closed.
+
+Implementation commits `5f9c202e` through `dfc6067d` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 32/32. The final model plus desktop/mobile workflows passed 10/10, covering invalid kinds/colors/widths,
+dialog controls, responsive orientation, undo/redo, exact saved history, print, dissolution and independently owned
+copies. Desktop/mobile screenshot SHA-256 values are
+`1d4cba3a126ad64092226d4f2ea4e8ad7abd04922b6dcad2f44a0daaec9cbdfe` and
+`5e59dce2e80d7ab21ec5bacb02fced6ca81d20b82fbe9691b45536f406adad83`; both passed visual review. Full quality passed
+Ruff, formatting for 824 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-connect-5b70f370` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+the optional JSON value changes no table or object-store schema.
+
+Roadmap 297 / PLANS 158 is complete under ADR-0114. Native Office now groups two through eight adjacent flow shapes
+into an exact ordered row or stack with an integer 0–48 pixel gap. Authors can create and extend groups, edit layout
+and gap, edit or remove members, undo/redo and dissolve the group. Compact views collapse rows to one column. Grouped
+members retain kind, literal text, colors, geometry, stroke, alignment and quarter-turn rotation; wrapping and free
+positioning fail closed.
+
+Implementation commits `b773dad5` through `5874b04f` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 32/32. The final model plus desktop/mobile workflows passed 9/9, covering bounded attributes, group/create,
+layout, gap, ordered members, undo/redo, exact history, print, dissolution and independently owned copies. Earlier UI
+runs first exposed a static hidden-state issue and then a stale review bundle; both were corrected before the final
+green run. Desktop/mobile screenshot SHA-256 values are
+`3c8626a9e006facbcca8b9c029aec2a5dc779228d04b2ae9773c95ee1b636c09` and
+`6270d6990cc014ee5fae9bb1e0647e1b12a4c86b4c5ff58ff56e80e419ef2d1e`; both passed visual review. Full quality passed
+Ruff, formatting for 824 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-group-a3ca4e3e` with synthetic
+Work-E2E data. Regular and review APIs remain isolated; no database migration, ordinary tenant, pilot, indexing, cloud
+AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest fresh isolated recovery because
+the new optional JSON structure changes no table or object-store schema.
+
+Roadmap 296 / PLANS 157 is complete under ADR-0113. Native shapes can now wrap following paragraph text on the left
+or right with an exact integer gap from 0 through 48 pixels. Wrapping and free positioning are mutually exclusive in
+the dialog, browser validator and server validator. Wrapped shapes use at most 45 percent of available text width and
+a bounded visual height; narrow containers fall back to a full-width block. Rotation and direct resizing remain
+available.
+
+Implementation commits `78ee0019` and `baaca11d` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 31/31. Model plus desktop/mobile workflows passed 6/6, covering wrap bounds, left/right, position conflict,
+rotation, resize, undo/redo, exact historical reads, print and independently owned copies. The first browser run's two
+failures were test-state setup issues; the corrected complete rerun passed. Desktop/mobile screenshot SHA-256 values
+are `24337422919a62b241ceff290af8f3b9ff9cee2c10341346f80c2384459fc1c8` and
+`ef671aeee778ed3ed474e3a62f1a109ed853ca30288ca1fc780a742c37813519`; both passed visual review. Full quality passed
+Ruff, formatting for 822 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-wrap-67a37927` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because the optional JSON wrap value changes no table or object-store schema.
+
+Roadmap 295 / PLANS 156 is complete under ADR-0112. Native shapes now support an optional exact quarter-turn of 90,
+180 or 270 degrees; zero degrees remains the canonical absence. Authors can choose the angle in the dialog or advance
+the selected shape through a separate focusable **90° drehen** control. Each direct rotation is an isolated undo step.
+The complete inert shape, including literal text, rotates; normal-flow sideways shapes reserve responsive transposed
+bounds while positioned shapes retain their logical anchor and dimensions.
+
+Implementation commit `6668c7a9` is published on `kirchherr/kb-write-unit-of-work`. Shape schema tests passed 31/31;
+the model plus desktop/mobile workflow passed 5/5, covering invalid angles, dialog rotation, direct rotation,
+undo/redo, resizing, front/behind/flow, immutable versions, print and independently owned copies. Desktop/mobile
+screenshot SHA-256 values are `74ebdf1ac246a32554e308839a1ef05bb6105b43efacc519a8a9ba1515e96539` and
+`3cb403661a8fab68c51959485c5d0687124a5c1d51b9baa14efac8d8713e74ac`; both passed visual review. Full quality passed
+Ruff, formatting for 821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-rotate-b1daf0ff` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because the optional JSON angle changes no table or object-store schema.
+
+Roadmap 294 / PLANS 155 is complete under ADR-0111. A selected native shape now exposes a visible focusable resize
+control in normal flow and on front or behind layers. Pointer/touch movement previews bounded width and height and
+commits one isolated undo step on release; cancellation restores the prior display. Arrow keys change one dimension
+by one pixel and Shift plus an arrow by ten pixels. Existing 80–1,200 pixel width and 40–800 pixel height limits remain
+the single browser/server contract, with no new saved attribute.
+
+Implementation commit `c956c182` is published on `kirchherr/kb-write-unit-of-work`. Shape schema tests passed 31/31;
+the model plus desktop/mobile workflow passed 5/5, including keyboard resize, pointer resize, undo/redo, front/behind/
+flow, immutable versions, print and independently owned copies. Desktop/mobile screenshot SHA-256 values are
+`3a3dfa59c4a0c8032d16ac958c170c1a621c8634cff890494abf6e072ae89e1b` and
+`7081e50d709abc885cd1c6df2aa6d8bc8d61e8906059c882e321c6013511a02d`; both passed visual review. Full quality passed
+Ruff, formatting for 820 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning
+remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-resize-46f32b6e` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery because direct resizing reuses existing canonical dimensions and changes no durable schema.
+
+Roadmap 293 / PLANS 154 is complete under ADR-0110. Native Office shapes can now use an optional bounded logical
+anchor in front of or behind nearby text. Horizontal position is normalized from 0 through 1,000 and vertical offset
+is limited to -1,200 through 1,200 pixels. A separate visible anchor remains operable above content even for a shape
+behind text, supports pointer/touch dragging and one- or ten-step arrow movement, and commits isolated undo steps.
+Returning to normal flow removes the optional anchor from canonical content.
+
+Implementation commits `62156f30` and `95fce0a8` are published on `kirchherr/kb-write-unit-of-work`. Shape schema
+tests passed 31/31. Model plus desktop/mobile workflows passed 5/5, covering front/behind/flow, bounded validation,
+keyboard movement, undo/redo, immutable versions, exact historical reads, comparison, print and independently owned
+copies. Desktop/mobile screenshot SHA-256 values are `281d48db4bf1a9f7bd9c10c348402eba8fa054b8b0f9446e07c943b15f22c2dc`
+and `a19c572829aa14fe332f47257ada4f51182ae5b37d6cafbae6a124e38d7294fd`. Full quality passed Ruff, formatting for
+819 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-layer-523e6be9` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`; `postgres-test` is stopped. No database migration, ordinary
+tenant, pilot, indexing, cloud AI, DOCX engine or production admission was activated. Roadmap 291 remains the latest
+fresh isolated recovery; this optional JSON attribute adds no table or object-store schema and does not claim a new
+disaster-recovery run.
+
+Roadmap 292 / PLANS 153 is complete under ADR-0109. Native Office now supports bounded top-level rectangles, rounded
+rectangles and ellipses with fixed color tokens, integer size/stroke limits, literal text and left/center/right text
+alignment. The responsive insert/edit dialog includes an inert preview; selection and double-click reopen it. Insert,
+edit and remove are separate undo steps. Comparison, immutable versions, independent copies and print preserve the
+exact canonical attributes. SVG, arbitrary paths, CSS, URLs, scripts, OLE, connectors and nested/freeform shapes fail
+closed or remain outside this decision.
+
+Implementation commits `6366fd6d` through `e4ab3590` are published on `kirchherr/kb-write-unit-of-work`. Focused
+schema checks passed 31/31. Shape model plus desktop/mobile workflows passed 4/4, covering insert, live preview, edit,
+isolated undo/redo, save, historical exact-version read, print, responsive width and an independently owned copy.
+Desktop/mobile screenshot SHA-256 values are `7d9003a4ce47328dd95f68be8dad70b7aa375663a04e6342d3ebe24a60f7a750`
+and `6154b78027a9783a5f95ee64b815dde45f8027446c519957b6aca866d981a6f3`. Full quality passed Ruff, formatting for
+821 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains.
+
+The isolated review UI is available at `http://192.168.0.108:42880/office?review=shape-3237c776` with synthetic
+Work-E2E data. Regular and review APIs return health `ok`. No database migration, ordinary tenant, pilot, indexing,
+cloud AI, DOCX engine or production admission was activated. Roadmap 291's fresh recovery remains the latest isolated
+restore; Roadmap 292 adds no table or object-store schema and does not claim a new disaster-recovery run.
+
+Roadmap 291 / PLANS 152 is complete under ADR-0108. Native Office now groups two through eight existing images into a
+bounded inert block with exact member order, row/stack layout and a 0–48 pixel gap. Users can create and extend groups,
+edit layout and gap, move the unit, remove members, undo/redo and dissolve it. Wide row groups use equal columns;
+compact layouts collapse safely into a vertical sequence. Comparison, immutable history, independently owned copies,
+print and recovery preserve the exact group without changing source pixels. Grouped members cannot carry text wrapping
+or free positioning, and nested/active/freeform containers fail closed.
+
+Implementation commits through `82ee406f` are published on `kirchherr/kb-write-unit-of-work`. Focused group checks pass
+on desktop and mobile. The complete image matrix passed 45/45 in 6.4 minutes; report SHA-256 is
+`646924aa9aa852d34b97382a4bc0ec8757504b644e159b826a9be60225efc755`. Desktop and mobile group screenshots passed
+visual review with SHA-256 `de9f84a4a00f0a321907ce5139264aa02b30fd908d28a9a3e4ed61fc83af9ee8` and
+`51e16981aaa7273be0dbae0d2a2a0874f480e5183c2f349eb1826c6850276320`. Full quality passed Ruff, formatting for
+817 files, Mypy over 605 sources and complete Pytest; quality-log SHA-256 is
+`93a4f315b33e66972c163545acd88ec0de225e16ec228d3aa327e60fe451f2f7`.
+
+Fresh recovery into `collabio_work_e2e_291_restore` verified 912 documents, 1,887 exact Office versions, 412
+multi-version documents, 2,482 source objects and 533 image assets/871 saved references. It explicitly proves 24
+grouped versions and a consecutive row/gap-12, stack/gap-24 and dissolved reset of the same three ordered image
+versions, with exact receipts, current authoritative ACLs and foreign-tenant denial. Dump SHA-256 is
+`a9085990da51cc5f22dff35478c8159c54f5423f7691731a16b6bceb8b58ddb1`; recovery report file SHA-256 is
+`2dd244a631157858aea5203e5fadf9b24a14d08ede8e38aa590d8b71f7eedc63`; embedded report hash is
+`sha256:61e9494183a0b0fe46b3ba2701eb7a40c2a6a6b987c727fb4115f7528d7a78dc`; PostgreSQL restore hash is
+`sha256:c05343659a1658460f75392242992d51a6c20216faba5387232d74c1d1e8d76d`; exact-version/S3 report hash is
+`sha256:7fd6e6026c1a7d923b87b6ec82bd7324b7281b37da7fad30312eb2dc20f53798`.
+
+The isolated review UI remains available at `http://192.168.0.108:42880/office?review=image-group-82ee406f` with
+synthetic Work-E2E data. No ordinary tenant, pilot, indexing, cloud AI, DOCX engine or production API was activated.
+Freeform overlapping canvases, nested groups, shapes/connectors, wrap contours and absolute physical-page anchors
+remain separate work.
+
+Roadmap 290 / PLANS 151 is complete under ADR-0107. Native Office images now support bounded quarter-turn rotation
+and independent horizontal/vertical mirroring without modifying normalized source pixels or crop geometry. The durable
+optional value contains only `rotation` in `0/90/180/270` and exact booleans; arbitrary angles, matrices, CSS, unknown
+keys and explicit identity defaults fail closed. A responsive frame exchanges the reserved bounds for 90/270 degrees,
+so editor flow, compact views and print keep correct geometry. Caption and alternative text remain untransformed.
+
+Implementation commits `7cc7221f` through `88d49bd7` are published on `kirchherr/kb-write-unit-of-work`. Focused image
+and recovery tests passed 84/84. Transform model plus desktop/mobile interaction passed 12/12. The complete image
+matrix passed 42/42 in 5.5 minutes, covering upload, normalization, ACL denial, exact assets, crop, wrap, foreground/
+background placement, responsive controls, independent copy and actual PDF output. Full quality passed Ruff, formatting
+for 814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains. One
+earlier matrix run passed 41/42 after all functional assertions; its mobile Chromium PDF callback exceeded the generic
+eight-second poll. Commit `88d49bd7` applies the established bounded 20-second callback wait, then the affected mobile
+file passed 7/7 and the fresh complete matrix passed 42/42.
+
+Fresh recovery into `collabio_work_e2e_290_restore` verified 799 documents, 1,629 exact Office versions, 339
+multi-version documents, 2,033 source objects and 350 image assets/552 saved references. It explicitly proves 14
+transformed references including consecutive 90-degree/horizontal-mirror, 270-degree/both-mirrors and identity-reset
+versions of the same owned rendition, with unchanged crop/wrap/position, exact receipts, current authoritative ACLs
+and foreign-tenant denial. Dump SHA-256 is
+`444195a31b6c21a64e54fb0b77bc34e1a3c07e34167ec211fd22309750be4043`; recovery report file SHA-256 is
+`6b58802a706138062586fe11268bf6fc5581bba6c0222533babff6f14a3a2ff9`; embedded report hash is
+`sha256:f37904bf7fc854543e5492cfb10d5d7b699ab96607787319c1b28b411b8e6630`; PostgreSQL restore hash is
+`sha256:0798406886d53d1d8c127553006b51221457e9c4b8e181e26ee198e7edac810b`; exact-version/S3 report hash is
+`sha256:5c2fb5610a115d8be1417077218f41fc6ddcc7062b0ca958047e584f497c83cc`.
+
+The isolated review UI remains available at
+`http://192.168.0.108:42880/office?review=image-transform-7cc7221f` with synthetic Work-E2E data. No ordinary tenant,
+pilot, indexing, cloud AI, DOCX engine or production API was activated. Arbitrary-angle rotation, wrap contours,
+absolute physical-page anchors and continuous editor pagination remain separate work.
+
+Roadmap 289 / PLANS 150 is complete under ADR-0106. Native Office images can remain in flow or use a bounded logical
+anchor in front of or behind text. The durable value contains only layer, normalized horizontal position and bounded
+vertical offset; wrapping and free placement are mutually exclusive. Users can drag the always-accessible anchor,
+nudge it with arrow keys, use larger Shift steps or enter exact numbers. Every completed move is one undo transaction.
+Comparison, immutable history, independent copies, printing and recovery preserve exact coordinates, while resetting
+to flow omits the optional property and preserves legacy canonical bytes. The layer rule keeps the image surface behind
+text while its control remains clickable; ordinary wrapped images retain their existing click behavior.
+
+## Roadmap 289 source and validation evidence
+
+Product commits `2df3b272`, `6deffbf5`, `40cbb650` and `3c022fff`, followed by acceptance and compact-dialog commits
+through `f6a794a5`, are published on `kirchherr/kb-write-unit-of-work`. Focused backend schema/recovery tests passed 69/69.
+The image model plus free-position desktop/mobile suite passed 13/13, and the complete crop, wrap, placement, upload,
+ACL, decoder, copy and PDF image matrix passed 39/39 in 5.1 minutes. Full Python quality passed Ruff, formatting for
+814 files, Mypy over 605 source files and complete Pytest; only the known Starlette/AnyIO warning remains. The final
+compact-dialog desktop/mobile position and image-control recheck passed 18/18, and visible review confirmed that layer,
+X and Y remain grouped directly below alignment on the narrow viewport.
+
+Fresh recovery into `collabio_work_e2e_289_restore` verified 662 documents, 1,353 exact Office versions, 264
+multi-version documents, 1,613 source objects and 206 image assets/340 saved references. It explicitly proves one
+owned rendition's consecutive front/behind/flow-reset lineage, unchanged source/crop, absent wrapping, exact receipts,
+current authoritative ACLs and foreign-tenant denial. Dump SHA-256 is
+`34057a6a510b312b9fb20c6d58ec38e59e8ae9f559724e231d59202f645c1e67`; recovery report file SHA-256 is
+`04bf45d8603dd91ac492170e8fd5dc9e1cbbc02144d0f01759d281326551b480`; embedded report hash is
+`sha256:1fe9a0978d3131d8260fa73cc25c679f07291a1069de692d251ae9692e88b725`; PostgreSQL restore hash is
+`sha256:797ea4b5d4226c7991064141b1e5d1c35a63904c8fc42b0d90e98a4eacd9a523`; exact-version/S3 report hash is
+`sha256:08be0ea1e63b68836624966076fdf4f794ad61c9170117994b93dcd7a3b42d79`.
+
+The isolated review UI remains available at `http://192.168.0.108:42880/office?review=free-position-40cbb650` with
+synthetic Work-E2E data. Layer controls now appear directly below size/alignment in the dialog. No ordinary tenant,
+pilot, indexing, cloud AI, DOCX engine or production API was activated. Absolute physical-page anchors, wrap contours,
+rotation, grouping and continuous editor pagination remain separate work.
+
+Post-acceptance Office UI review identified that the explicit page-break marker still read as a separator inside one
+continuous sheet. Commit `dc6722dc` now renders each explicit break as a full-width canvas gap with both paper edges
+and a **Seitenwechsel · neue Seite** label across desktop and compact layouts. This improves sheet recognition without
+claiming automatic print pagination. The focused page-break workflow, persistence, copy, undo, responsive and A4/Letter
+PDF suite passed 10/10 on dev001. The isolated review UI exposes the correction with a synthetic unsaved draft only;
+the regular API and tenant data were unchanged.
+
+Roadmap 288 / PLANS 149 is complete under ADR-0105. Native Office now exposes bounded, paginated **Rueckverweise**
+for an exact saved target version. Every request reauthorizes the target, scans at most 50 currently readable source
+documents, reloads each current immutable source version and returns only exact incoming references. Results contain
+the source object/version identity, current title and reference count, but no source content. Signed cursors bind
+tenant, actor, roles, exact target and page size. Revoked or deleted sources disappear immediately without a
+persistent backlink index or metadata oracle. Opening a result uses the ordinary freshly authorized exact-version
+read path; print remains inert and excludes backlink actions.
+
+## Roadmap 288 source and validation evidence
+
+Implementation commits `28481e37` through `a5ce9184` are published on `kirchherr/kb-write-unit-of-work`. Full Python
+quality passed Ruff, formatting for 813 files, Mypy over 605 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains. The final full browser/model matrix passed 409/409 in 35.0 minutes. Its report
+SHA-256 is `997f0f4516c1eee2afec521334765d26dee499a3765f3885975966c74ddd5cda`. Focused desktop/mobile backlink
+model and responsive checks passed 3/3. An earlier full run passed 408/409; its sole failure was the established
+asynchronous print callback exceeding eight seconds. The callback now uses the existing explicit 20-second byte
+wait, passed 3/3 separately, and the fresh complete 409/409 run includes that correction.
+
+Fresh recovery into `collabio_work_e2e_288_restore` verified 929 documents, 1,801 exact Office versions, 387
+multi-version documents, 2,052 source objects, 122 image assets/182 saved references, 21 review threads/37 events and
+23 suggestions/14 decisions. It explicitly proves exact backlink/version matching, current source ACL enforcement,
+foreign-tenant denial and content exclusion across every signed page. Dump SHA-256 is
+`681df817fe09fe8db1ed6b909756c49b2557a30d56caf62bd07b52582efb3522`; recovery report file SHA-256 is
+`c37c43901abf60794a785d15da46404db5318caedc2c1c712fa27e9ba4fce15e`; embedded report hash is
+`sha256:3526c1f18cdd24f8e8604772ca6015a421bcb28a3f027f4ce406e5c452368724`; PostgreSQL restore hash is
+`sha256:5d884c89873cb4b8d0897f58aef38ae21bf54bfa519b3cdcd0df59448aeea7ff`; exact-version/S3 report hash is
+`sha256:7cf2e66a3cfa0d8bfb976ac60ec4f5d763ef751e54929c84ea64e6ce4ab397b0`.
+
+Main backup `collabio-20260930T131301Z.dump` passed verification and isolated restore; SHA-256 is
+`c8c2a9b26bab12e763b8d6adbdecd17bd9f703dda564ab33e48e9c2fff47b540`, restore-drill hash is
+`sha256:f317b5c91a2194b993cf19e724fea0b6c4d24f9037ffd21bea887637f7491075`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:db7c78c8393032f74fc3b96090c8d6c4fb7ee34fddcca4d761a72ca08946f648`. The business gate passed 3/3 without
+business writes or activation; hash is `sha256:ddc1c4f82f8f42d395f6d137529530a2b7e3554846674d780af0c7c72379a22b`.
+Pilot preflight found ready candidate `tenant-demo` but remained closed with `pilot_start_allowed=false`, no state
+change and hash `sha256:7c34cea7627a5a9a2cb1ead873daae6173572d75ae8d0db40d9ac84fc1bd1259`.
+
+API-only rollout with pilot 0 created container
+`b3ff3fd6ebf9dd3d770a4f34792b4d5e3a68a614caffe35a0005ea4a6f860a26` on image
+`sha256:96da87fa102c8286c53a4db66d41aa5720d53e00424196e0385fa85324eb9f2f`. Live checks passed health, roadmap
+metadata, OpenAPI, Office control and bundle route, strict CSP, `no-store`, synthetic unconfigured-tenant 403 and
+pilot 0. Live/cleanup evidence SHA-256 is `38a32d48b4ff58c8853c45ffca28454078fd8c2a63a285bc65fa4a9c2f4de81a`.
+All exact Work-E2E containers were removed and `postgres-test`, `postgres-restore` and `minio-restore` stopped. Final
+Collabio status is running(4), with healthy API and loopback ports 8000/5433/29000/29001 unchanged. Protected local
+`erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Persistent backlink
+indexing, transitive graphs, content-wide discovery and DOCX relationships remain deliberately separate.
+
+Published closeout commit `8a3bfb19693e4bd94f1e6850b951d1257919937c` was fast-forwarded to dev001. The
+dependency-free roadmap dashboard, exact backlink and recovery contract suite passed 8/8 on that SHA, with only the
+known Starlette/AnyIO warning. The disposable runner was removed automatically; API health and the running(4) service
+boundary remained unchanged.
+
+Roadmap 287 / PLANS 148 is complete under ADR-0104. Native Office now stores bounded outbound document-reference
+marks containing only an exact target object ID and immutable target version ID. The resolver re-reads the exact
+source version and freshly validates target tenant, current authoritative ACL and exact historical version on load,
+deliberate open and print. Missing, deleted and denied targets collapse to the same inert title-free state. Print
+contains no cross-document action. Undo, confirmed CAS save, history, comparison, copies and recovery preserve exact
+marks. Global backlinks, reference discovery, URL previews and DOCX relationships remain separate.
+
+## Roadmap 287 source and validation evidence
+
+Implementation commits `f2208d0` through `b6800ee3` are published on `kirchherr/kb-write-unit-of-work`. Full Python
+quality passed Ruff, formatting for 809 files, Mypy over 604 source files and complete Pytest; only the known
+Starlette/AnyIO warning remains. Focused backend/API tests passed 22/22, browser model/UI checks 3/3 and the coupled
+reference/print suite 9/9. The final fresh full browser/model matrix passed 405/406 in 30.4 minutes; its log SHA-256 is
+`2fb886cb701785b3ce2f79d97f4296c04ba2c85f57e398e1f6b383bb386111c8`. Its sole failure was the pre-existing mobile
+figure PDF callback exceeding the generic eight-second polling window after all functional assertions passed. The
+callback now uses the established explicit 20-second PDF-byte wait and the exact case passed three consecutive runs
+in 41.5 seconds; focused log SHA-256 is
+`4f5fc804737a35ef250527dcc0cc80f767ddd74e47b77d35a2373cb3b93d4c6d`. This is combined acceptance evidence rather
+than a claimed single 406/406 report. The new reference case passed in the full matrix and restores its deliberately
+revoked fixture ACL in `finally`; recovery exposed and caused correction of the earlier missing cleanup.
+
+Fresh recovery into `collabio_work_e2e_287_restore` verified 515 documents, 1,041 exact Office versions, 168
+multi-version documents and 1,152 source objects. Its two documents/four versions prove exact historical target
+resolution against the current target ACL. Dump SHA-256 is
+`ff5cee4240a73fe22c354f1546f2583d5dd7b90f1fe626edc39e1ac0c0a47bb9`; recovery report file SHA-256 is
+`563ee48f5a6990be55d7511ba8aea99d03c36716d28dc3d59bf0942469895f58`; embedded report hash is
+`sha256:0d74aca0c0981c9b3c21c783597354191e9637e0618231298df889fbd530fde6`; PostgreSQL restore hash is
+`sha256:1f4f3d70b1e2ddc385758be32dc2eec6eb9de3a1ddac1ecb0d0daae110645ef5`; exact version/S3 report hash is
+`sha256:4614959b69694c534753a751016be64db70feac3b2677dd22cc76f7b23efa6ac`.
+
+Main backup `collabio-20260930T094054Z.dump` passed verification and isolated restore; SHA-256 is
+`c569964ecb1e0397590f3390e15edffff4b3be151697d3c08cfd64be8fadeb62`, restore-drill hash is
+`sha256:2d7cc206c47a23d985c0c52216e3254bf34873291fc63c99cb8fdd59df394c8b`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:cb76e74e15a03dee68bfa04bf72da5f6d2ca091a76ef95c3b4ab25a22c4bf1c8`. The business gate passed 3/3 without
+business writes or activation; hash is `sha256:7d80cab80a9d9be3b4b008f8d8ab5d617ad2e59677fea89674524b0ce491d521`.
+Pilot preflight found the ready candidate `tenant-demo` but stayed deliberately closed with `pilot_start_allowed=false`
+and no state change; hash is `sha256:992ce17a38fbfa956f356d403205562f1b2cf809c5cfe809ce530fdc57c862be`.
+
+API-only rollout with pilot 0 created container `3af10813ebb1` on image
+`sha256:b1852edd6445b7567b0e6e9ba92c1f26ef29bc43e350bcd446a9dbe83c80f0ba`. Live verification passed health, Office
+reference controls/dialog, two bundled resolver-route calls, OpenAPI, strict CSP, `no-store`, fail-closed synthetic
+tenant access and pilot 0; evidence SHA-256 is
+`1d97251b2a09d4a3c0c2d4ff7c4d187e27f2f58be59219e6079a5fdbf61805b0`. Exact Work-E2E services were removed and
+postgres-test, postgres-restore and minio-restore stopped. Final Collabio status is running(4), with healthy API and
+loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` and `review.md` remain unread, untracked
+and unpublished. No subagents were used. Next Office work should design bounded global backlinks with source-side
+current ACL checks and no inaccessible-source metadata oracle before adding any persistent backlink index.
+
+Published evidence commit `9d1afb18` was fast-forwarded to the clean dev001 source. The dependency-free module-
+contract, exact document-reference, Office-document and semantic-recovery suite passed 45/45 on that published SHA.
+API health remained ok and Collabio remained running(4).
+
+Roadmap 280–286 / PLANS 141–147 are complete and published under ADR-0103. Native Office now provides one bounded
+semantic structure workflow for document-owned free fields, a heading-derived table of contents, independently
+numbered footnotes and endnotes, a local citation catalog with generated bibliography, inert literal formulas with
+accessible descriptions, and a derived local reference navigator. Removing catalog entries leaves explicit safe
+broken references. Values, stable identities and catalogs remain exact through undo, confirmed CAS save, immutable
+history, comparison, independent copies and semantic print. Generated numbering and lists follow current document
+order and are not persisted as stale output. Running text resolves only explicit `{{field:key}}` tokens against the
+same saved version. No source fetch, formula evaluation, script, macro, external engine, cross-document lookup or
+global backlink was opened.
+
+## Roadmap 280–286 source and validation evidence
+
+Implementation commits `ddaecb4` through `8c77833` are published on `kirchherr/kb-write-unit-of-work` and synchronized
+to dev001. Full quality passed Ruff, formatting for 807 files, Mypy over 602 sources and complete Pytest; only the
+known Starlette/AnyIO warning remains. The complete desktop/mobile browser and model matrix passed 403/403 in 30.9
+minutes. Its immutable archived report SHA-256 is
+`e07b3ad7cc88364f78b628e11bd8535dacdfcbce7a684efd2c4b34543a1a9977`. The final focused semantic workflow passed
+after the PDF callback was awaited explicitly; report SHA-256 is
+`e88435f84fe6e045f587f0d17bfde5b69d18ec00f6925cd6bdee828b5043d072`.
+
+Root reviewed the desktop structure dialog. Screenshot SHA-256 is
+`5db0bb2b83e169f52238b89c053eb2563d9b5cd7f495a27eb4d0ab17afcb07f4`. The actual print artifact is a tagged
+one-page A4 PDF with the generated bibliography and reference navigator, table of contents, formula, footnote and
+endnote. It has no JavaScript or form; PDF SHA-256 is
+`bac235bd08aab13a01d1aa7e95dfeaa27d68cf1f1e29d916ce74f6c811dfa73f`.
+
+Fresh recovery into `collabio_work_e2e_286_restore` verified 586 documents, 1,161 exact Office versions, 204
+multi-version documents, 1,299 source objects, 60 image assets/89 saved references, 11 review threads/20 events and 12
+suggestions/eight decisions. All ten legacy/additive/broken/reset semantic versions, every earlier Office fixture,
+authoritative ACLs and foreign-tenant denial passed. Dump SHA-256 is
+`3fac5ac9479baf2f1b5ee5f0ea64917544daa491dae05933fcd38a9b8fff2a19`; recovery report file SHA-256 is
+`26392ff2d3097c71d87c7ae835a8c470a9b36bd6260d8983ad1ab788203ad478`; embedded report hash is
+`sha256:ea7b720c37a029b13814eda7ad367b371bc9d2c22a665ea37d7cd29130fafcfa`; PostgreSQL restore hash is
+`sha256:424873d0b2e33093b769aa40e03f6081c14b8830fb1521f0c79c96e0c832e6e0`.
+
+Main backup `collabio-20260929T170813Z.dump` passed verification and isolated restore; SHA-256 is
+`6378e1d0a4db9b81839c560cf67feb2c8989603b5a4f364165dd2d0d18a9a75b`. The restore drill passed with report hash
+`sha256:5e0d46f2af2ff7f128e3cf59950211a51bf98c66e0eecb5835aae6af05247028`. Foundation seed 0 verified 85 migrations,
+95 tables, three objects and two tenants; gate hash is
+`sha256:3f4253a804ad9bb3bc2d1af7d174c1f5b4ab9bb07ed4b6c13b6ab8ba05a5b56a`. The business gate passed 3/3 without
+business writes or tenant activation; gate hash is
+`sha256:e05a49d621414193e881dcaf56285571bfe86df358be66c103bd88f3a1b74ba8`. Pilot preflight stayed deliberately
+blocked with zero candidates and no state change; evidence hash is
+`sha256:1888b20333502d24c919bdd7eb5497ff9ef0008fbf55009f14394467307844ca`.
+
+API-only rollout with pilot 0 created container `2570bdb02175` on image
+`sha256:dac0f47b71e31b1dc4c2cc59e3f41eda4374fed11a2d061ded584b36e4f2a8bb`. Live verification passed health, the
+Office structure control and semantic bundle markers, strict CSP/no-store and pilot 0. Exact Work-E2E services were
+removed and postgres-test, postgres-restore and minio-restore were stopped. Final Collabio status is running(4), with
+loopback ports 8000/5433/29000/29001 unchanged. Protected local `erp_modul.md` and `review.md` remain unread, untracked
+and unpublished. No subagents were used. Next Office work should add bounded document-local outbound cross-document
+reference records with a fresh authoritative target ACL/version check; global backlinks remain a later separate step.
+
+Published evidence closeout commit `33ecae6` was fast-forwarded to the clean dev001 source. The focused semantic,
+recovery, module-contract and roadmap suite passed 31/31; only the known Starlette/AnyIO warning remains. The live
+roadmap exposes `office-semantics.mjs` and the current guarded Office capability; response SHA-256 is
+`6d86ab9de6b649abbd429d56084f009353de03ef61f3d062fffe2168835c7d30`. Health stayed ok and Collabio stayed
+running(4).
+
+Roadmap 279 / PLANS 140 is complete and published under ADR-0102. Native Office tables can carry a bounded literal
+caption and stable document-local destination ID. Visible `Tabelle N` labels follow the current order of captioned
+tables while figures retain their independent sequence. Caption add/edit/remove, undo, immutable history, comparison,
+independent copies, print and explicit cross-references preserve exact identity. Removed captions leave inert broken
+references. Free document fields, cross-document references, backlinks and DOCX remain separate.
+
+## Roadmap 279 source and validation evidence
+
+Implementation commits `e757b7e` through `d2fe43f6b4dfe39b8057b5339ecc497361f1ea67` are published on
+`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 803 files,
+Mypy over 599 sources and complete Pytest; only the known Starlette/AnyIO warning remains. The complete desktop/mobile
+browser and model matrix passed 398/398 in 29.8 minutes. Report SHA-256:
+`59520ae80d52ddedf84c7fed0692af9309b3e59f236a992d779f4151e3d3ff7a`.
+
+Desktop/mobile print previews and the independently rendered actual PDF passed visual review. Both actual PDFs are
+tagged one-page A4 documents with exact `Tabelle 1: Overview revised` and `Tabelle 2: Details` labels, a local
+cross-reference, no JavaScript and no form. QPDF found no syntax or stream errors. Desktop/mobile screenshot hashes
+are `86d1a9c46bf237ea5359b1f90072507b68390468262e876f4df6a3f2dff76da2` and
+`c9b4dd7cc8cbf20f618a0ed370d6ff533acc6bad353508da84940b63ac66fd1f`; PDF hashes are
+`a765e49ebb853996e30392f0f9bf292f93eec6fda75b256f047258d3b63d330c` and
+`f111846c20476c3bb26ee8b9adf33334f0942986d223895bbf3ffb1033fc7731`.
+
+Fresh recovery into `collabio_work_e2e_279_restore` verified 506 documents, 1,013 exact Office versions, 160
+multi-version documents, 1,118 source objects, 50 image assets/77 saved references, 10 review threads/18 events and 11
+suggestions/seven decisions. Exact legacy/add/reorder/broken/reset table-caption versions, canonical legacy hash,
+every earlier fixture, ACLs and foreign-tenant denial passed. Dump SHA-256:
+`a9c581b7f57142eb21fd8c42fb8e00ca6f03945b95fea9a2f0de760fb9fc8898`; recovery file SHA-256:
+`38d124812404904b96489279c193b9886140a295c5c8e5bf12ec235832bfc2ef`; embedded report hash:
+`sha256:d29870f5669811e24c4a048b7a9e4314e12cf45e116230117a713f51111ac3a4`; PostgreSQL restore hash:
+`sha256:f53ee6449bbecc6321ca298f45c6cc89b630376ba5c9f77e1fae5f976b85f1df`.
+
+Main backup `collabio-20260929T150312Z.dump` passed verification and isolated restore; backup SHA-256 is
+`400a53e5707d388a636ba8fa9797f86c96c4335df68091be22db0f324be6c67b`. Foundation gate
+`sha256:25a1a4cd10cf6b29de629db801b1afcaf9869761fda45ee6311e882f0a9bd39a` verified 85 migrations/95 tables and
+three objects/two tenants. Business gate passed 3/3 with hash
+`sha256:a6a4ba6b4993c255d43fa93ca0c8219f7da2e6ebe57b19a751d1877af7a9145a`, no business write and no tenant
+activation. Final API-only rollout with pilot 0 created container `a37447d60742` on image
+`sha256:777cf06419618be7e6e9e506b86f58f07a67be066c395855f760b45a9a8af69b`. Health, Work link, served table
+controls/bundle, CSP/no-store and pilot 0 passed. Exact Work-E2E services were removed and auxiliary test/restore
+services stopped; final Collabio status is running(4), with loopback ports 8000/5433/29000/29001 unchanged.
+
+Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used. Next:
+Roadmap 280 / PLANS 141, bounded native free document fields. Ordinary pilot, indexing, cloud AI, DOCX and engine
+admission remain closed.
+
+Published closeout commit `2028186` was fast-forwarded to the clean dev001 source. Ruff, formatting and all 24 focused
+dashboard, documentation, table-schema and recovery tests passed. The live roadmap exposes the new evidence and
+guardrails; response SHA-256 is `359c01e7fbfad54c3e804b3ec66a5275d23fbfb47be162ed23c37e4ec5eee212`.
+
+Roadmap 277 / PLANS 138 is complete and published under ADR-0100. Native Office now supports bounded named
+document-local bookmarks and explicit selected-text cross-references to stable bookmark IDs. Insert, rename, remove
+and deliberate jump are responsive and isolated in undo/redo. Removing a destination leaves a visible inert broken
+reference. Save, immutable history, comparison, copies, search, reviews and suggestions preserve exact structure and
+positions. Printing creates a local destination and link only for a resolved target; it never creates an external
+action. Automatic captions, page fields, cross-document references, backlinks, URL previews and DOCX remain separate.
+
+## Roadmap 277 source and validation evidence
+
+Implementation commits `6c4c6e0`, `6543564`, `ef4c6d0`, `31431c4` and `7e61f72` are published on
+`kirchherr/kb-write-unit-of-work` and synchronized to dev001. Full quality passed Ruff, formatting for 796 files,
+Mypy over 594 sources and complete Pytest; only the known Starlette/AnyIO warning remains. One complete final
+browser/model run passed 389/389 cases in 29.1 minutes with zero skipped, retries or flakes. Result JSON SHA-256:
+`1a41d7db667b48d770428f116463b4c6cf263c1903feaa39002a65b923824a53`. The focused final bookmark run passed
+5/5 cases in 19.1 seconds.
+
+Root reviewed the desktop/mobile bookmark dialogs and both one-page A4 PDFs. Dialog screenshot SHA-256 values are
+`0ff68c128209e6580055f939dd424405087627f7b5764f614c208a00acd9a7ee` and
+`1d3efa32378a242b09ffd042390c430e69d035032a047190b11769ecd050aec2`. PDF SHA-256 values are
+`40cfc9f0ea1467474b12058a7b0c4d13f3280df1dff995a8cc2bb6f1a49c7450` and
+`93ae567a1ddac20bf3b431cba904845261b37708c1b5eb41c03b03a7b6116f4e`. Independent inspection confirmed one A4
+page, tagging, no JavaScript or forms, exactly one local `/Dest` link annotation and no external `/A` action in each
+PDF. QA metadata SHA-256: `91a956951fa4ae14298c2f3970eb3c83160d589173871afa6f5f496349be7566`.
+
+Fresh recovery into `collabio_work_e2e_277_restore` verified 500 documents, 991 exact Office versions, 154
+multi-version documents, 1,090 source objects, 44 image assets/62 saved references, 10 review threads/18 events and
+11 suggestions/seven decisions. The five legacy/add/stable-ID-rename/broken/reset bookmark versions, canonical legacy
+hash, exact ACLs, foreign-tenant denial and all earlier fixtures passed. Dump SHA-256:
+`93e87ca2422b179d7b0e11058760babfff50495d11598c0dfc4068c483e2ec7b`; recovery report file SHA-256:
+`13e309027007111cc25cead36678a30959db2e9300634dbe27c0a4d413fa9ec0`; embedded report hash:
+`sha256:c7a5624cf3d2e93f8e31e5329b09ae931bb9ae12d62ca4b84243a720f9b494a6`. PostgreSQL restore report hash is
+`sha256:6a1610f7cc08abb2544cd33d8fdabff8e3b2ea6e7043ee578d7635876f121daa`; exact S3 restore report hash is
+`sha256:fa5860ad775f8487c901acef6c3806b6ddc41757b69e7d7a04d7e4cf0ce46882`.
+
+Main backup `collabio-20260929T072600Z.dump` verified with SHA-256
+`a95a2b18b2bc98752fc46b74df421c4a5972410f6cc239b8f7fec38c0bf05086`; only ordinary `collabio_restore` was
+refreshed. Foundation seed 0 verified 85 migrations, 95 tables and three restored objects/two tenants; gate hash
+`sha256:7a9d65c12787744c0207e9b9578ba1fa94dfed3a1e4f11fa8172242873d2c865`, file SHA-256
+`f9abab1323ceb0c15a4b94c3d6abf8d16df1396ef4ba19c1d68ce7bd52b5eecf`. Business release passed 3/3 without
+blockers, writes or activation; gate hash `sha256:8ab5174e2baced6612e8c44b42470e2119efe5a7791c6e6a0865d199b485f84a`,
+file SHA-256 `df89f7fb5c530779ff00c17b1591d5502144fbbf598873ac38bcdaf2b7476d07`.
+
+API-only rollout with pilot 0 created container `ea7d6fb5eb93` on image
+`sha256:4f8f6537fe8c008006174dcde4dfafa68b5739087cbb7cfbe0ba9aed205877e4`. Live verification passed health,
+Office shell, bookmark/cross-reference controls and runtime, CSP/no-store and ordinary Office 404; metadata SHA-256
+`61398ee72b5ac3cb638912f9157929e01644907d0ab60adf158e1c518b832b31`. Exact Work-E2E services were removed and
+test/restore services stopped. Cleanup metadata SHA-256:
+`41fb25c51047bbb19d270afc6c8d6afb599a80a76583569ed9dd91558cdb2efa`. Final Collabio status is running(4), health
+is ok and loopback ports 8000/5433/29000/29001 are unchanged. The regular decoder, main stores, Webcut and provider
+nodes are unchanged. Ordinary Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed.
+Protected local `erp_modul.md` and `review.md` remain unread, untracked and unpublished. No subagents were used.
+Published closeout commit `75acbb853a34f806918e088c49b29619948e1692` was fast-forwarded to the same clean dev001
+source. The exact dependency-free bookmark/schema, recovery, module-contract and roadmap-dashboard scope passed
+29/29; only the known Starlette/AnyIO warning remains. Health stayed ok and Collabio stayed running(4).
+
+Roadmap 276 / PLANS 137 is complete and published under ADR-0099. Native Office now supports explicit safe links on
+exact selected text. Only bounded absolute HTTPS and simple `mailto:` targets are accepted. Add, edit, remove and
+deliberate open are responsive and isolated in undo/redo. Save, immutable history, comparison, copies, search,
+reviews and suggestions preserve exact mark boundaries. Loading, selecting and printing never navigate or fetch a
+target. URL previews, autolinking, bookmarks, cross-references, arbitrary fields and DOCX remain separate.
+
+## Roadmap 276 source and validation evidence
+
+Implementation commit `12e8fca5da24c8764060b050c858a972119406ca` is published on
+`kirchherr/kb-write-unit-of-work` and is the exact clean dev001 source. Full quality passed Ruff, formatting for 792
+files, Mypy over 591 sources and complete Pytest; only the known Starlette/AnyIO warning remains. One complete final
+browser/model run passed 384/384 cases in 28.4 minutes with zero skipped, retries or flakes. Result JSON SHA-256:
+`fd7547007de82e13234ab2b7fcb852069c65ad47bd172e9edcee99604652479e`. A final coupled responsive regression passed
+14/14 search, links, print and image-wrap cases. Root reviewed the final desktop/mobile link dialogs; screenshot hashes
+are `ca575f45c93009b2874499310767dd8c831e7aaa4b6e38e80d597a743f56599e` and
+`a5c165faf2d74c841bd5fac4c3a177c7e18d083159f984377f186bfe92074c54`.
+
+Desktop/mobile one-page PDFs preserve the exact HTTPS URI as a semantic link annotation and contain no application
+chrome. PDF SHA-256 values are `38d468fa65f68f22c079992ff6c699f944699573ed55077299fa56793a15b633` and
+`9ba3a4ea5195216bd3b60ed95e4487a78edb49f15a5cde9c28a6787705892160`; independent network-none/read-only QA
+report SHA-256 is `abd54d4f447342c69e047b0a664ede8974611c143bb7f1289c20da4d32a4960f`.
+
+Fresh recovery into `collabio_work_e2e_276_restore` verified 497 documents, 980 exact Office versions, 150
+multi-version documents and 1,080 source objects. The four legacy/add/edit/remove link fixture versions, canonical
+legacy hash, image bytes/receipts, all earlier format fixtures, 11 review threads/19 events and 11 suggestions/seven
+decisions passed with current ACLs and foreign-tenant denial. Dump SHA-256:
+`0ff53f943250c5764ccf2639cf69862a10af6603e0ec248815fb6912e0cd95ff`; recovery report file SHA-256:
+`c80a32aca3c5e06fa2ab704309f470eb910ade59744aa236cb644c8b6220869b`; embedded report hash:
+`sha256:f1211fd5926fe131fd977c0a18c3f8f090cc3bb23b58a9fcda655be26d052715`.
+
+Main backup `collabio-20260928T155845Z.dump` verified with SHA-256
+`ab052c0a6ea601f8e2df8fbff82d11e862f06a4a7f3bd1b06fb2e963eee89d2e`; only ordinary `collabio_restore` was
+refreshed. Foundation seed was explicitly 0 and verified 85 migrations, 95 tables and three restored objects/two
+tenants; gate hash `sha256:16d0611fc45bb6f57ba2b860a985ddb0653da8c391ca9889453fd4600ec33d07`.
+Business release passed 3/3 slices without blockers, writes or tenant activation; gate hash
+`sha256:4ad28a3f55fe22b573b12c14f0029628ee7643e02f63de519072b825be4c60a3`.
+
+API-only `--no-deps` rollout with pilot 0 created container `f2b9b3e0930f` on image
+`sha256:75a86a62a6bfb5e58fd220793c79f65210b54cc27ec4117b1d1c120c471fee10`. Live verification hash
+`cae473264bcfc5ebd90af7929f2f7279233b932f51bd8b81d76596114b2a90b5` confirms health, link controls/runtime
+markers, mobile toolbar bound, 15 Office operation definitions, CSP/no-store and ordinary Office 404. A first custom
+checker attempt assumed unminified function names and failed before cleanup; the corrected content-marker check passed.
+Exact Work-E2E services were removed and test/restore services stopped. Cleanup log SHA-256:
+`63d81b7119e4744a542195296e5e608d992e6c468548469b74ef2c0c08abe1cf`. Final Collabio status is running(4), with
+loopback ports 8000/5433/29000/29001 unchanged. Decoder, main stores, Webcut and provider nodes are unchanged. Ordinary
+Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed. Protected local `erp_modul.md`
+and `review.md` remain unread, untracked and unpublished. No subagents were used.
+
+Roadmap 275 / PLANS 136 is complete and published under ADR-0098. Native Office now supports up to twelve
+root-level section breaks. Each marker starts a printed page and owns the exact complete paper, orientation,
+margin, header, footer and numbering profile of the following section. Insert, edit and remove are responsive,
+previewed and isolated in undo/redo; only confirmed CAS Save persists them. History, comparison, copies,
+reviews and suggestions retain exact section structure and positions. Page numbers remain global; root
+`firstPage` remains document-first only. Per-section first-page variants, number restarts, arbitrary fields,
+floating objects, continuous editor pagination and DOCX remain separate.
+
+## Roadmap 275 source and validation evidence
+
+Implementation commit `04d45cdd98e9ce852635c0be2e30c9d04c7e55cc` is published on
+`kirchherr/kb-write-unit-of-work` and is the exact clean dev001 source. Strict schema validation rejects leading,
+trailing, nested, adjacent, page-break-adjacent or thirteenth markers and rejects partial/extra profile fields.
+Printing uses twelve fixed trusted named-page slots; only validated enums, bounded dimensions, escaped literals and
+fixed counters enter CSSOM. Temporary rules and text are cleared after print and context invalidation.
+
+Final quality passed Ruff, formatting for 788 files, Mypy over 588 sources and the complete Pytest suite; only the
+known Starlette/AnyIO warning remains. One complete final browser/model run passed 379/379 cases in 29.8 minutes,
+with zero skipped, retries or flakes. Result JSON SHA-256:
+`dfe4cfff655e29f1e9c713602c80ff7e0bc57c3bef0d18e4deda271919a6cc82`. Focused final section model and
+responsive checks passed 7/7 and 4/4. Root reviewed the desktop/mobile dialogs and all rendered PDF pages; no
+horizontal overflow, clipping or unreachable action remained.
+
+Two real two-page PDFs prove an A4 portrait first page followed by a Letter landscape section. Page two contains
+the exact section header `Appendix revised`, footer `Internal`, global `Seite 2 von 2`, and following body blocks.
+Desktop PDF SHA-256: `c2afd43e91e1a65f903f57479c4b3aa51301f59985f7e7fd590a6a189102ebf8`;
+mobile PDF SHA-256: `276806493ff214f6553010b36260b95666d912f7afd83d6f338427d4163f8f76`.
+Independent rendering used image `sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`
+with no network, read-only root and dropped capabilities.
+
+Fresh recovery into `collabio_work_e2e_275_restore` passed with 266 documents, 530 versions, 22 multi-version
+documents, 572 source objects, 16 image assets/25 references, seven review threads/13 events and eight suggestions/
+five decisions. All four legacy/one-section/two-section/reset fixture versions match exact JSON, canonical hashes and
+lineage. Recovery file SHA-256: `6452362c3ccf3467dc50dbfd7547a90d5c82b0eba8a945dd2479b530456bf4d4`;
+embedded report hash: `sha256:5d8cc042890bc675f7f21c238524cb030100bcb5d18674b427a5dd8eb9bc4194`;
+dump SHA-256: `96b7d3616256442a262b87f1e8ca131cc94014820f909de3f128e4f53653600d`.
+The initial failed-closed recovery report remains retained separately; it exposed missing nonempty image references
+in the fresh seed, which the targeted real-API fixture population corrected before acceptance.
+
+Main backup `collabio-20260928T122200Z.dump` verified with SHA-256
+`3d79b869d0a68700070920aa0b4cdf25a9116c2f5a26a6d2d84755f932e174c3`; only ordinary `collabio_restore`
+was refreshed. Foundation seed was explicitly 0. Foundation verified 85 migrations, 95 tables and three restored
+objects/two tenants; gate hash `sha256:83f474048d68c3cd613fc75a326b03323e49e544f48bb6ecf757903b11c21b70`,
+report file SHA-256 `5381cbd885459cb527b6b0cd1703545d720a9a457456638d7410c35935d61b3b`.
+Business release is ready with no blockers, business writes or tenant activation; gate hash
+`sha256:f1b2b9a5b4682d66862782af93c2cdfdcc28e601219bacdb0a2301bdfd7e1076`, report file SHA-256
+`544ebc78343aee7940b115d55b281229418167020d0c57c9235c4fa1893adbe7`.
+
+API-only `--no-deps` rollout with pilot explicitly 0 created container `7914716e43fc` on image
+`sha256:d14ebc51dbd41f2e248551d02fde0bd2d77a4125156d2e33ab6e55b98cab605a`. Live checks verify
+health `ok`, the section controls/module, strict CSP/no-store and ordinary Office's non-cacheable 404. Exact Work-E2E
+services were removed; test and restore services stopped. Final Collabio status is running(4), with loopback ports
+8000/5433/29000/29001 unchanged. Decoder `30766f16f16a`, main stores, Webcut running(7) and provider nodes are
+unchanged. Ordinary Office, pilot, KB writes, indexing, cloud AI and DOCX/engine admission remain closed. All work ran
+on dev001 with explicit project `collabio`, fresh inventories and required locks. Protected local `erp_modul.md` and
+`review.md` remain unread, untracked and unpublished. No subagents were used.
+
+Final dependency-free closeout verification passed 31/31 module, roadmap-dashboard, section-schema and recovery
+contract tests with only the known warning. An earlier overbroad `--no-deps` selection produced three setup errors
+because it included PostgreSQL integration fixtures after `postgres-test` had intentionally been stopped; it produced
+no assertion failure, started no dependency and was replaced by the exact dependency-free scope.
+
+Roadmap 274 / PLANS 135 is development-complete on dev001 under ADR-0097. Native Office now
+supports an optional exact first-page header/footer profile and explicit first-page number
+visibility, with separate previews, complete reset, isolated undo and trusted static print rules.
+All 2936 Python cases and one complete 372-case browser/model run passed. Four real three-page PDFs,
+fresh nonempty six-version recovery, both release gates and API-only rollout passed. Final health at
+10:26:12 UTC is ok; Collabio runs(4). Only the known Starlette/AnyIO warning remains. Ordinary tenant,
+pilot, indexing, cloud AI and DOCX/engine admission remain closed. Continue Office before CRM; the
+next coherent design slice is general sections and section breaks, kept separate from arbitrary
+fields, continuous editor pagination and DOCX interchange.
+
+## Roadmap 274 source and validation evidence
+
+The optional `attrs.running.firstPage` object contains exactly literal `header`/`footer` strings and
+boolean `showNumber`. Absence inherits the general running profile and preserves ADR-0096 canonical
+bytes. Presence can intentionally clear inherited text. A visible first-page number requires general
+page numbering; hiding it does not renumber later pages. All strings remain bounded to 64 Unicode
+code points with controls/surrogates/line separators rejected. No HTML, URL, field or arbitrary CSS
+is admitted. The page dialog shows first and following pages separately, disables unavailable inputs,
+keeps reset intents independent and persists only through confirmed CAS Save. History, comparison,
+independent copies and recovery retain exact nested metadata.
+
+Printing uses a static trusted `@page office-document:first` rule plus the existing named-page rule.
+Only code-point-escaped literals and fixed counters enter CSSOM; all four margin boxes clear after
+success, cancellation, failure or context invalidation. Missing margin rules refuse visible output.
+The independent PDF checker runs in exact local image
+`sha256:fe38fcd309b57d634106623d255166d3b544a51513bf73132627b71afb30776e`
+with no network, read-only root and dropped capabilities.
+
+Final quality passed Ruff, 784-file formatting, Mypy over 585 sources and all 2936 Python cases.
+The complete final browser/model run passed 372/372 in 26.1 minutes with zero skipped, retries or
+flakes; report SHA-256: `ad6588e3be6b9d4898b72a7835f0e3cffc84b49983a26f7b4ed332c7d8d81721`.
+This is one full run on the final behavior source. Focused schema/API/recovery tests passed 61/61;
+final first-page UI and PDF rechecks passed 2/2 on both desktop/mobile matrices.
+
+Independent PDF QA verified four PDFs and twelve pages: desktop/mobile, hidden and visible
+`Seite 1 von 3`, exclusive first-page literals and unchanged `Seite 2 von 3` / `Seite 3 von 3`.
+QA JSON SHA-256: `443304a66409a445a60287b6d574e870df2404699edcd107e2e94f14753819c6`.
+Root reviewed the final desktop/mobile dialogs; a discovered oversized checkbox was corrected and
+guarded by a 24-pixel geometry assertion before the full run.
+
+Fresh recovery completed at 10:18:38 UTC into `collabio_work_e2e_274_restore`: 487 documents,
+954 Office versions, 141 multiversion documents, 1053 source objects, 44 image assets and 62 saved
+image references. All six designated legacy/general/first-hidden/first-visible/first-empty/reset
+versions match exact JSON, canonical hashes and lineage. Prior page/break/style/image/crop/wrap,
+10 review threads/18 events, 11 suggestions/7 decisions, receipts, authoritative read-only access
+and foreign-tenant denial passed. Recovery file SHA-256:
+`4f660e636185b1a5a16aac284ecc88db0c49660103ab1e17b042d0c19d609b80`; embedded report hash:
+`sha256:4cdfaeae767dff2b382c06fbd90ed103de541f6db2d24f18699385fcb4ad0921`;
+dump SHA-256: `ff4207c6776ec34e9ac49b1d321f84499d09794efbd3258f5180fc09c12843cf`.
+All ten numbered synthetic restore targets plus the ordinary synthetic target remain retained.
+
+Main backup `collabio-20260928T102013Z.dump` verified with SHA-256
+`5a25438fcc9097628b3a48a9bde266e8445ca1f0b33b97b9ceeea7e8c60b0c82`; only ordinary
+`collabio_restore` was refreshed. Foundation seed was explicitly 0. Foundation verified 85
+migrations, 95 tables and three restored objects/two tenants; report file SHA-256:
+`1f2088c64416e72a8264425e71a0f347c98ac4254d9f640b374655205621be08`.
+Business release was ready without blockers, business writes or tenant activation; report file
+SHA-256: `08820b4b7aadbd0b533cb02afe25998e2ea63673dc93ed43cc0eb56f782ff336`.
+
+API-only `--no-deps` rollout with pilot explicitly 0 created container `22c1eb82e546` on image
+`sha256:690fdb288fff71b84c98da43e87ed25407cb96b11d2f48c493c3fdb3afea96ed`.
+Live checks verify the first-page HTML, CSS and JS controls, no-store/CSP, health ok and ordinary
+Office still non-cacheable 404. The regular decoder and main stores were unchanged. Exact Work-E2E
+services were removed; test and both restore services stopped. Final Collabio status is running(4),
+with loopback 8000/5433/29000/29001 unchanged; Webcut remains running(7) and provider nodes unchanged.
+All builds/tests/lifecycle work used dev001, explicit project `collabio`, fresh inventories and the
+required locks. No subagents were used. Protected local `erp_modul.md` and `review.md` remain unread,
+untracked and excluded. Implementation commit `48ae9c9e3cf10a43ae24eb34d78122213175954e` is published
+on `kirchherr/kb-write-unit-of-work`; dev001 advanced to the exact published tree only after the
+working files and retained manifest matched. Eleven closing documentation/module/roadmap checks
+passed in a disposable `--no-deps` container with only the known Starlette/AnyIO warning. This
+evidence-only closeout follows without changing runtime behavior or admission boundaries.
+
+## Previous Roadmap 273 publication and source state
+
+Implementation commit `9892e411f64d3ae464e970a0aded0c6d2a26c58e` was published after
+the operator explicitly approved GitHub transfer. Local and dev001 HEADs match that commit on
+`kirchherr/kb-write-unit-of-work`; dev001 was synchronized only after the published tree matched
+the retained implementation and documentation checksums. Protected local ERP/user files
+erp_modul.md and review.md remain untracked, untouched and unpublished. This evidence-only
+closeout update follows the implementation commit. No subagents were used. Test/build/lifecycle
+work ran only on dev001 with explicit project collabio.
+
+The full-run sixteen-file snapshot has manifest SHA-256:
+79f3c7a1b5b6c90a0cba18e1c331ef15971ab72cd92757e853fabec064006362.
+Final tested implementation manifest SHA-256:
+172fac65d44156bfaa6f6719c755f63554cc57bf80e097a5178498d640510327.
+Only office-page-controls.mjs and its strengthened browser test differ between these snapshots.
+Closing documentation and ADR status updates follow that tested snapshot separately; no runtime
+source changes follow acceptance. Both manifests and reports are retained under ignored
+ e2e/work/artifacts/roadmap-273. Runtime acceptance is not attributed to a nonexistent new commit.
+
+## Roadmap 273 validation evidence
+
+ADR-0096 specifies optional root attrs.running with exactly header/footer strings (64 Unicode
+code points each) and numbering none/page/pageOfPages. Control characters and arbitrary fields,
+HTML or CSS are rejected. Occupied top/bottom regions require at least 16 mm of saved margin.
+Absence preserves canonical legacy bytes; explicit empty metadata survives no-op reads and reset
+removes only running metadata. Geometry and running text apply in one guarded undo transaction;
+reset intent in either group survives edits in the other. Only confirmed CAS Save persists changes.
+History, comparison and independent copies retain exact values. Print reauthorizes the saved
+version and escapes literals into trusted static margin rules; temporary content clears on output,
+failure, close and context invalidation. Unsupported margin-box engines refuse this output.
+
+Final quality passed all 2924 Python cases, Ruff, 784-file formatting and Mypy/584 sources;
+only the known Starlette/AnyIO deprecation warning. Final quality log SHA-256:
+845a6457cc99260341f0da779e82e84e24687f5c24a5d9dce2f02bc41d2280ce.
+Passing browser/model evidence covers all 367 distinct cases (303 browser + 64 model), preserving
+all 345 previous case identities. This is a full run plus final affected recheck, not a single
+full browser run on the final source:
+- Full 367/367: 16:08:46-16:33:48 UTC, 1502.383140s, zero skipped/unexpected/flaky/retries.
+  Report SHA-256: 3c475aee0f8aab6d4168489732d975b4ed5bafaa01987117aa360c60058cfd1a.
+- Additional review found cross-group input cancelling the other group's reset intent. The new
+  regression assertions failed on both desktop and mobile against the unchanged application;
+  report SHA-256: d609c9fddc8ab9bb4d42edea9327eaf0bf858b0373d30c6a7438fa509b715960.
+  Both failure screenshots/traces remain retained; no failure is presented as acceptance.
+- The final isolated handler fix passed all 42 page/running-text cases at 16:35:30-16:38:30 UTC,
+  179.692274s, zero skipped/unexpected/flaky/retries. Report SHA-256:
+  23ab2a99cf8c8a62cc89cfa8d8a971c8be86c158b2caeb163d5f9bbb2c922a49.
+- Aggregate acceptance SHA-256: 5f975d39e5db00409af8f73e8dd9a2b23c881a25b87a2396cf4268d958ad74cc.
+Earlier focused 60/22/42-case reports and source snapshots remain retained. The first quality
+attempt found two import-order issues, corrected before either complete Python acceptance.
+
+Final external PDF QA at 16:41:34 UTC verifies twelve PDFs/36 pages: A4/Letter, both orientations,
+desktop/mobile, explicit and automatic page boundaries, repeated special-character/long literals,
+consecutive page and total counters, margin containment, no body overlap, tagged tables and a
+second reset print in the same browser with no stale text. Root reviewed all 36 rendered pages
+and both responsive dialogs. All final page pixels match those reviewed images exactly.
+QA JSON SHA-256: c883e6d40e2acc23494c38c70b4914d00608108e01dd3312112162055f427e53.
+Reviewed-pixel manifest SHA-256: 4221f8f0d2914631c5e9c29296d32cd165694aa8856ab24eb3a401a7a963abb6.
+No independent-agent or non-Chromium proof is claimed. Continuous editor pagination, sections,
+first-page differences, arbitrary fields and DOCX interchange remain separate work.
+
+Fresh nonempty recovery completed at 16:46:19 UTC into collabio_work_e2e_273_restore:
+523 documents, 1012 Office versions, 159 multiversion documents, 1119 sources, 52 image assets,
+70 saved image references (36 cropped, 44 wrapped). The four designated legacy/header-footer with
+totals/page-only/reset versions match exact JSON, canonical hashes and lineage. Prior page settings,
+breaks, wrap/crop reset and formatting proofs, 10 review threads/18 events, 11 suggestions/7 decisions,
+source bytes/receipts, authoritative read-only access and foreign-tenant denial passed.
+All ten synthetic targets and their dumps/receipts remain retained, confirmed by final inventory.
+- Recovery JSON SHA-256: 586bfedaa1d663d1417e1e9876e83bb7c2018eb02addeee2433e70dfee0b191c.
+- Embedded report SHA-256: b1e00ed3f610fa2c79a79ccac629e4ea967d278c9a984d955cdf09adc8da101c.
+- Dump SHA-256: e93aed0f8920949ba7cddfbca625791ba0460a50acf843ad283126c7f8b93d50.
+- Running-text fixture SHA-256: 1d5f69483bc7e2d05c86f1e31652ac9d27e388a14b0011b012b2e6e0f28577b4.
+
+Main backup collabio-20260924T164656Z.dump was verified before refreshing only the ordinary isolated
+restore target. Foundation seed was explicitly 0; 85 migrations/95 tables and three source objects
+in two tenants passed. Both release gates passed without blockers or business writes:
+- Main backup SHA-256: 3f34e97b48d494e807a047de360339bb9c5f01f134df4d56aff721cf6e597cc8.
+- Ordinary restore SHA-256: ca35989244fc71f0ea24f65083bcc35b9dd7e80268458f493cd9691d0b42d640.
+- Foundation, 16:47:09 UTC: a8ad16d47c6601abc296259574c970399c2368311f8371e528825b1246531ae5.
+- Business, 16:47:58 UTC: 33d2aed6dbef23bd189c56beb66782365835767a4a64ca15271ff89b68ae4643.
+Synthetic running-text markers were absent from normal and both isolated API logs at 16:47:09 UTC.
+
+API-only --no-deps rollout with pilot explicitly 0 reached health ok at 16:48:46 UTC.
+API f3b9274f118e runs image sha256:8fe382e74844115d92da1e0c70da90c90fd82e8219942510aa57d4aa738c6e51.
+Regular decoder30766f16f16a and image/isolation are unchanged: network none, user10001:10001,
+read-only root, ALL capabilities dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only
+its existing socket volume. Live checks verify 15 Office operation definitions, served controls,
+assets/licenses, Work link, no-store and CSP; they do not execute those business operations.
+Office remains unprovisioned/non-cacheable404, features closed, KB write false and pilot0.
+Live JSON SHA-256: b9d139f3fd7d3e9c99e4495657afcb207e313332d93aa2a2c2071c943ca749c8.
+Exact eight E2E services removed; test and both restore services stopped. Final 16:49:57 UTC
+health ok, Collabio running(4), loopback8000/5433/29000/29001 unchanged. Main PostgreSQL87a6b37942c8,
+MinIO98ce365f455b, Webcut running(7), provider nodes/26443 unchanged; Tricert absent.
+Cleanup log SHA-256: b939f0ec650488df7e71179ff27baa680cb6fe5b45968cc61082f73c95097483.
+All lifecycle operations used fresh inventories and build.lock before docker.lock where both
+were needed. No source sync ran during tests/recovery. No main migration, ordinary content write or
+tenant/pilot/indexing/cloud/DOCX activation occurred. GitHub publication followed explicit approval
+only after all acceptance, rollout and documentation checks had passed.
+
+## Previous Roadmap 272 closeout
+Roadmap 272 / PLANS 133 is complete on dev001: document-owned A4/Letter, portrait/landscape and
+bounded margins with preview/reset/isolated undo, immutable history/copies and saved print geometry.
+Full quality and one complete 345-case browser/model run passed. Eight actual PDFs/16 pages,
+fresh nonempty recovery and both release gates passed before API-only rollout. Final health at
+16:29:54 UTC is ok, Collabio running(4). Next: Roadmap 273 / PLANS 134 headers/footers and page numbers.
+Continue Office before CRM. Ordinary tenant/pilot/indexing/cloud/engine admission remains closed.
+
+Roadmap 272 closeout 6fad853 was published and synchronized. All eleven documentation/module/roadmap
+checks passed in 59.25s, with only the known Starlette/AnyIO warning; health remained ok at
+2026-09-23 16:33:53 UTC. Log sha256:8de7507f8e39557ffa658b12aac4dec3e59bf0d7a1ff1b7885c95b37f20e0ffd,
+matched locally with acceptance, PDF, recovery, release and live/cleanup evidence. The --no-deps check
+started no auxiliary service; Collabio remains running(4), API315d76369cae and decoder30766f16f16a.
+Main stores, Webcut and provider resources remain unchanged. This final evidence-only record changes
+no implementation, runtime or ordinary admission boundary.
+
+## Roadmap 272 validation evidence
+
+Final implementation/test source: 800a3a5a7403993de236a3207f9900ce0fe3094d, under ADR-0095.
+Optional root attrs.page contains complete paper/orientation/four integer margins (5-50 mm).
+Absence retains unchanged canonical legacy bytes and A4 portrait/18 mm defaults. Reset removes the
+optional metadata. Styles, breaks, image flow, tables, exact saved versions and independent copies
+retain their contracts. Only confirmed CAS Save persists changes. Print reauthorizes saved content
+and images; temporary paper/orientation overrides never alter the document. The editor stays continuous;
+exact on-screen pagination, sections, headers/footers and DOCX interchange remain separate.
+
+Full quality: all 2875 Python cases, Ruff, 776-file formatting and Mypy/581 sources passed;
+only the known Starlette/AnyIO deprecation warning. Quality log sha256:
+0ef48f6744a69a5cdf7f2e0c75cc7882545a405fc16d566d0892cc7df92645c3.
+One complete run passed all 345 distinct cases (285 browser + 60 model) in 1414.565233s,
+2026-09-23 15:58:18.688-16:21:53 UTC, with zero skipped/unexpected/flaky/retries.
+Every prior 325 case identity is retained. Full report sha256:
+2137fea9b12a0c18f4ad0a028c2610650d0443d51b26bdbca9faa5f2d994b9bd.
+Acceptance metadata sha256:0ba7b99487f54bb171f9b68f697f28a8ed985b5c8d00704559e7961d32fd9f14.
+
+Earlier runs are retained honestly:
+- First full run on 4424707 passed 343/345. An existing routed image-read PDF test stalled;
+  test-only 5071632 observes actual authorized content/image responses. A real mobile toolbar
+  regression reduced the search canvas; b3985b4 moves Page beside Image. Both corrected workflows
+  passed 4/4 without weakening assertions. First report sha256:
+  365c90210acee9f0812734076c191991473c28c107491765d6a11484ed3934f9.
+- Second full run on b3985b4 passed 345/345, but independent PDF QA exposed legacy CSS selectors
+  overriding the correct new CSSOM margins with 18 mm. Its green browser result was insufficient
+  for acceptance. 800a3a5 removes obsolete rules/selectors and every actual PDF probe now asserts
+  the computed office-document page name. Second report sha256:
+  d3334d73bfeac1f99e8568669b0059bb837e5fc7f5e2847cd80634bd3b85b8b5.
+- All 20 focused page-settings cases then passed in 93.173697s before the final full run.
+  Focused report sha256:2742e6a79ad7b909ceed9a69fc185765de61a369a216633a307e28d336d3aeea.
+
+Final PDF QA at 16:22:22 UTC verifies all eight A4/Letter portrait/landscape desktop/mobile
+PDFs, two pages each: exact dimensions, four CSSOM margins, asymmetric text containment,
+40 mm left offset, explicit page boundaries, blue image pixels and Figure/Alt/Table/TH/TD tags.
+Sparse fixtures prove bottom-margin containment, not a measured last-line offset. Caption text
+extraction accepts ordinary line wrapping while enforcing unique markers and exact page placement.
+Root reviewed all 16 rendered pages and desktop/mobile dialogs. Every final raster page hash
+matches the reviewed pixels exactly. No independent-agent or non-Chromium proof is claimed.
+Final QA JSON sha256:e3f5d79968e55e023ecb8712087c6bb81bd1de829403b10b3b0b7ca634d8931d.
+Reviewed pixel manifest sha256:58c70559c2010ca67cbb28e78e651785e5654e8f9c8e062bd89ea1090f588ec4.
+
+Fresh nonempty recovery completed at 16:26:31 UTC into collabio_work_e2e_272_restore:
+458 documents, 902 Office versions, 124 multiversion documents, 1001 sources, 44 image assets
+and 62 saved image references (36 cropped, 36 wrapped). The designated four-version
+legacy/custom Letter landscape/second A4 profile/reset fixture matches exact JSON, canonical
+hashes and lineage. Previous breaks/wrap-reset/crop-reset/paragraph/character/style proofs,
+10 review threads/18 events, 11 suggestions/7 decisions, bytes/receipts, read-only access and
+foreign-tenant denial passed. All nine synthetic targets and their dumps/receipts remain retained.
+- Recovery JSON: sha256:80512cfc53ddcf92fc221df22366c2f60d3276e2c9a82694ba6484de36876a4e.
+- Embedded report: sha256:7fe3e73ee453489cacc364893ea49e69ceda35d4685aa6e99f705375fd6a19ca.
+- Checked dump: sha256:5df20a490e8202262caa8cf9bff16fb46a04dfa44c75601ae02f0437bc18ccbd.
+- Page-settings fixture: sha256:869b33da3e1f300ca2ae6eec7e0c2d2c700cf1df295766e3f5d1145319bf76e0.
+
+Main backup collabio-20260923T162702Z.dump was checked before refreshing only the ordinary
+isolated restore target. Foundation seed was explicitly 0; 85 migrations/95 tables and three
+source objects/two tenants passed. Both release gates passed without blockers or business writes.
+- Main backup: sha256:e0ecc608a0f37716fd993c0e3a29ae94ea033613b04aa3b9bd32151a9e5a1b12.
+- Ordinary restore: sha256:749394338c77026b61725e09919e6b9edcb337d95c6990cc42fbebdbcc5dbf1a.
+- Foundation, 16:27:14 UTC: sha256:683e256a3f1b3098daa850654032c602d197f4890f913af745a8856d55d9994a.
+- Business, 16:28:03 UTC: sha256:07c7b4ed8be1ff039b11c4bae4abc1f614e8466ee1ad75a1f993cd9930c33c6e.
+Synthetic page-settings content was absent from normal and both E2E API logs at 16:27:45 UTC.
+
+API-only --no-deps rollout with pilot explicitly 0 reached health ok at 16:28:44 UTC.
+API 315d76369cae runs image sha256:51136c5be6bb2ee8d86e4905d1b0aa4980636b68120844059218841bacf193a5.
+Regular decoder 30766f16f16a/image unchanged: network none, user10001:10001, readonly root,
+ALL capabilities dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only its socket volume.
+Live checks verified 15 Office OpenAPI operation definitions, prior/new page controls, served
+assets/licenses, Work link, no-store and CSP. Ordinary Office remains unprovisioned/non-cacheable404,
+features closed, KB write false and pilot0. Definition checks do not execute business operations.
+Live JSON sha256:7c0ebf0ce6233831dc47f73d943e9053762070e397887020c9a4fd10809edac1.
+Exact eight E2E services including their decoder were removed; test and both restore services stopped.
+Final 16:29:54 UTC health ok, Collabio running(4), loopback8000/5433/29000/29001 unchanged.
+Main PostgreSQL87a6b37942c8, MinIO98ce365f455b, Webcut running(7), provider nodes/26443 unchanged;
+Tricert absent. Cleanup log sha256:8ad210900cddf9597fee27dc849d6b0d0f6a5f79fd590d75f4f9646de932c80b.
+All operations used dev001/collabio, fresh inventories and build.lock before docker.lock; source sync
+used git.lock and never ran during acceptance/recovery. No main migration, normal content write or
+ordinary tenant/pilot/indexing/cloud/DOCX activation occurred. Root matched all downloaded hashes.
+Raw reports, eight PDF hashes/files, rendered pages and logs remain under ignored
+ e2e/work/artifacts/roadmap-272 and the operation logs. Production continuity admission stays separate.
+
+## Previous Roadmap 271 closeout
+
+Roadmap 271 / PLANS 132 is complete: explicit native page breaks with safe insertion/removal, undo, immutable
+history/copies and actual PDF boundaries. Full quality passed; all 325 distinct browser/model cases are covered by
+a 324/325 full run plus the corrected 12/12 subset, not one all-green full run. Four PDFs/14 pages, fresh nonempty
+recovery and both release gates passed before API-only rollout. Final health at 11:20:24 UTC is ok, Collabio running(4).
+Office remains ahead of CRM; next is Roadmap 272 / PLANS 133 document-owned page settings. Ordinary tenant/pilot/
+indexing/engine admission remains closed.
+
+Roadmap 271 closeout 1e19eda was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 60.08s, with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 11:23:37 UTC. Log sha256:
+b3c40ea2e86e4df2bc297df18c90d596fad89149a78b9df068e59186c10bf114. Root matched final acceptance, full/targeted
+reports, quality, all four PDFs, recovery, release and live/cleanup evidence locally. The --no-deps disposable check
+started no auxiliary service; Collabio remains running(4), API fd3fae191cf9 and decoder30766f16f16a. Main stores,
+Webcut and provider resources remain unchanged. This final evidence-only record changes no runtime or admission.
+
+## Roadmap 271 validation evidence
+
+ADR-0094 implements explicit native page breaks: visible root-only markers, menu/Mod+Enter insertion,
+keyboard/menu removal and isolated undo. Splitting preserves paragraph/heading attributes and inline marks;
+selected images/tables/rules remain intact. Nested contexts, text ranges and more than 100 markers are rejected.
+Legacy canonical bytes remain unchanged. History, comparison, owned copies, reviews and suggestions retain
+exact positions. Print clears preceding image floats; repeated and trailing markers add no empty pages,
+while leading markers separate the printed title from body content. Continuous pagination remains separate.
+
+Final implementation/test source: 31aa72a2682f9d115143cae92eb41bed78e1839e. Product sources have not changed
+since 87de370. Full Python quality passed on b6809f3: Ruff, 769-file formatting, Mypy 578 sources and full Pytest,
+with only the known Starlette/AnyIO warning. Quality log sha256:
+47ad5bf3f5519e1206c15025bb1c32c5ff1d51302d79b205517228dad6f37967.
+
+Passing evidence covers all 325 distinct cases (269 browser + 56 model), not one all-green full run:
+
+- First full attempt on 87de370 passed 324/325; a crop-dialog helper did not wait for authenticated image
+  readiness and unconditionally toggled its details. All four affected crop cases passed after the test-only fix.
+  Retained report sha256:068c36d24ed152de7dc8f60f22c2176ce6d4d1c4c3d0649af875d059a550eef6.
+- Second full attempt on b6809f3 passed 324/325 in 1340.967017s, including all prior 313 cases. The desktop
+  Letter PDF case timed out before printing; its final image request was pending in the trace and absent from
+  server logs. The test now observes actual document/image responses without request routing, retaining the
+  geometry/content assertions. Report sha256:039f78ee0bb3a8add557a0a7b329aa3f752a85dd04fe51ce13af8b951c027d18.
+- Final complete page-break subset on 31aa72a passed 12/12 in 79.960380s, zero skipped/unexpected/flaky.
+  Report sha256:f30d36912d6ed2abe729282da6b6bcfad169d1baadffcf34ce68385b62ee45d3.
+  Exact case identities and unchanged runtime sources were cross-checked; combined metadata sha256:
+  2ecff5d4fc23088bebe8cc02ecd7e9ca36c92bb57458913596d3bdaea45458fc. Both original failed traces are retained.
+
+Root reviewed final desktop/mobile editor screenshots and all 14 pages from four fresh actual PDFs:
+each A4 file has three pages; each Letter file has a title page plus three content pages. Exact text boundaries,
+wrapped image/caption containment, table/heading placement, margins and Figure/Alt tags passed. The one-cell
+table fixture has no PDF Table tag; it proves placement, not table tagging. The initial ad-hoc QA assumption
+was corrected and this limitation is explicit in the report; existing rich-table structure tests remain intact.
+No independent-agent or non-Chromium proof is claimed. PDF-QA JSON sha256:
+5eb7e2d04686a02a7dd95f371c69df9d01747fee2a983acf4505d020cf0d04a9.
+
+| Actual PDF | SHA-256 |
+| --- | --- |
+| A4 desktop | 142d9c8ba826d000d5900ba039267b0aa4350628ea73fee8eae3793af21146ec |
+| A4 mobile | 7051b6b705e2697953b25034ade64f207d7cc6875cf7c857e71f75adac76a507 |
+| Letter desktop | bc64866f54c6ad5ddb8ee7ba3f7cdf29946a8731679bc30176e916de9d1b59f6 |
+| Letter mobile | c9e11cd41c553209e1b1311a87d9eb21ef35f916b3ebcc94cf85d1431cf25055 |
+
+Fresh nonempty recovery completed at 2026-09-23 11:15:27 UTC into the separate
+`collabio_work_e2e_271_restore`: 451 documents, 896 Office versions, 119 multiversion documents, 991 sources,
+40 image assets and 58 saved image references (36 cropped, 32 wrapped). Exact legacy/insert/remove page-break
+versions, canonical legacy hash, wrap/reset and crop/reset, paragraph/character/style, 10 review threads/18 events,
+11 suggestions/7 decisions, source bytes/receipts, read-only access and foreign-tenant denial passed.
+All eight synthetic restore targets and their dumps/receipts remain retained.
+
+- Recovery JSON: sha256:46851e4c76352ef7a135f72e084f66307bd1994bcaa1eab54d70c71b37fcebf8.
+- Embedded recovery hash: sha256:b0eccfa29f7cc10d0229c298cf39a3b710f1267902a9fc1d3a44018a7fde8e0c.
+- Checked dump: sha256:7a723f89fcab251cbe03cadac60cbc69561b321f59f13505f1fb7b4298c62c31.
+- Exact three-version page-break evidence: sha256:1e66193f9ea6b91b77e7f75442386a35ea33055b7335b5c357d404ac0097e69e.
+
+All builds/tests/restore operations used dev001, explicit `collabio`, fresh project/container/port inventories and
+build.lock before docker.lock. No source sync ran during acceptance/recovery. Synthetic page-break content was
+absent from normal and both E2E API logs at 11:12:14 UTC.
+
+Fresh main backup `collabio-20260923T111656Z.dump` was verified before refreshing only the ordinary isolated restore
+target. Main schema remains 85 migrations/95 tables; foundation verified three restored sources/two tenants with
+seed explicitly 0. Both release gates passed without blockers or business writes:
+
+- Main backup: sha256:22eb9d8b213ab00dc987dd9d3351b20e14027761c5264b6aea56bef0cdb777ee.
+- Ordinary isolated restore: sha256:bbe05c1b1508d7cd11c09bea1861dfe2cd115f5fff53075a2c416ec493e24ddd.
+- Foundation gate, 11:17:09 UTC: sha256:797de1c213712823ae4a2b76db0604d503c40dd71efe6536ba46f870f42b8916.
+- Business gate, 11:17:58 UTC: sha256:f4dceefe67d9d6692dd079633003daf8e7b9f15641dab8b12683495b8382a3e0.
+
+API-only `--no-deps` rollout with pilot explicitly 0 reached health ok at 11:19:14 UTC. API `fd3fae191cf9` runs
+image `sha256:ee33ffeb954adb775b76f5eb71f5a43794648250b094c8de3dedebabc345d52f`. Regular decoder
+`30766f16f16a` and its image remain unchanged: network none, user 10001:10001, read-only root, ALL capabilities
+dropped, no-new-privileges, 384 MiB, 16 PIDs, one CPU and only the shared socket volume. Live checks at 11:20:12
+verified 15 OpenAPI operation definitions, served prior/new controls, assets/licenses, Work link, no-store and CSP.
+Office remains unprovisioned with non-cacheable 404/features closed; KB write is false and pilot is 0. Definition
+checks do not execute the 15 business operations. Live JSON sha256:
+ad969af5bb3c03a9c0356f32a8920e76d68faeb12dd4c90ab16add3109ecd957.
+
+Exact eight E2E services including their decoder were removed; test and both restore services were stopped.
+Final health at 11:20:24 UTC is ok, Collabio running(4), loopback 8000/5433/29000/29001 unchanged. Main PostgreSQL
+`87a6b37942c8`, MinIO `98ce365f455b`, Webcut running(7), provider nodes/26443 remain unchanged; Tricert is absent.
+Cleanup log sha256:4b3000810261e343b8f7a6945e69ffa63487ef56ea4c6432519622f97d522fd4. No main migration,
+ordinary content write or tenant/pilot/indexing/cloud/DOCX activation occurred. All raw evidence is retained under
+ignored `e2e/work/artifacts/roadmap-271` and the dev001 operation logs; production continuity admission is separate.
+
+## Prior completed development slices
+
+Roadmap 270 / PLANS 131 completes native image text wrapping under ADR-0093: left/right placement, bounded text gap,
+stable ordered anchors, narrow-column/nested block fallback and guarded preview/reset/undo. Full quality and one
+complete 313-case browser/model run passed on 1d8a58f. Actual PDF/visual checks, fresh nonempty left/right/reset
+recovery and both release gates passed before API-only rollout. Final health at 09:30:13 UTC is ok; Collabio runs
+four regular services. Its then-next Roadmap 271 / PLANS 132 explicit native page breaks is recorded above.
+Ordinary tenant/pilot/indexing/engine admission stays closed. Detailed evidence is recorded below.
+
+Roadmap 270 closeout 97b777e was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.10s with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 09:33:57 UTC. Log sha256:
+dc69e15ec3051377f05ebc452388fc0504b986f74169b29be3610622e2a533ea. Root matched it locally alongside the full report,
+quality, PDF, recovery, release, live and cleanup evidence. The --no-deps disposable check started no auxiliary service;
+Collabio remains running(4), API e031e3e9b941 and decoder 30766f16f16a. Main stores, Webcut and provider resources remain
+unchanged. This final evidence-only record changes no implementation, runtime or admission boundary.
+
+Roadmap 269 / PLANS 130 completes non-destructive native image cropping under ADR-0092: pointer/numeric/keyboard
+preview, reset and isolated undo, preserving source pixels, immutable history, comparison, owned copies and print.
+Full quality passed on 54fe1ff. Passing evidence covers all 303 distinct browser/model cases: the full attempt passed
+302/303, then all 57 cases affected by the test-only reuse-helper correction passed on 3da08b8. This is not a single
+all-green full run. Actual PDF/visual checks, fresh nonempty crop/reset recovery and both release gates passed before
+API-only rollout. Its final health at 08:29:39 UTC was ok, Collabio running(4). Its then-proposed
+Roadmap 270 / PLANS 131 image text wrapping is completed above. Ordinary tenant/pilot/indexing/engine admission stays closed.
+
+Roadmap 269 closeout 85a93a6 was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.17s with only the known Starlette/AnyIO warning; health remained ok at 2026-09-23 08:33:20 UTC. Log sha256:
+cef31c0199805c9d65ca29ce881885618cd1269b393528fb67d04bc6d7045d44. The --no-deps disposable check started no
+auxiliary service; Collabio remains running(4), API a67cdfa88bdb and decoder30766f16f16a. Root matched acceptance,
+full/affected reports, quality, PDF, recovery, live/cleanup and release evidence locally. Normal stores, Webcut and
+provider nodes remain unchanged. This final evidence-only record changes no implementation, runtime or admission.
+
+Roadmap 268 / PLANS 129 completes document-owned PNG/JPEG images under ADR-0091: upload, insert, resize/align,
+alt/caption, move/remove/undo, confirmed save, history, independent copy and print. All 297 browser/model cases passed
+on 96a299f. Full quality passed on 5d3eb35, whose only difference is Python test formatting and added ACL/replay
+assertions; runtime and browser sources are identical. Actual PDF/visual checks, fresh nonempty document-plus-image
+recovery and both release gates passed before decoder/API rollout. Its then-proposed Roadmap 269 / PLANS 130
+non-destructive crop is completed above. Ordinary tenant/pilot/indexing/engine admission stays closed.
+
+Roadmap 268 closeout94f56c3 was published and synchronized. All eleven documentation/module/roadmap checks passed
+in59.72s with only the known Starlette/AnyIO warning; health remained ok at2026-09-23 07:32:20 UTC. Logsha256:
+10995f0a81d453f2b86dfe21d7e552f25a44260912d6edc254a909512a1bb1c1. The --no-deps disposable check started no
+auxiliary service; Collabio remains running(4), API d83a791253d4 and decoder30766f16f16a. Root matched final report,
+PDF, recovery, live/cleanup and release evidence locally. Main PostgreSQL87a6b37942c8, MinIO98ce365f455b, Webcut and
+provider nodes remain unchanged. This final evidence-only record changes no implementation, runtime or admission.
+
+Roadmap 267 / PLANS 128 completes document-owned named format styles under ADR-0090. Full quality and a single
+complete 280-case browser/model run passed on 1e09a10 after correcting a comparison-reference regression. Actual PDF,
+responsive visual review, fresh nonempty PostgreSQL/S3 recovery, release gates, API-only rollout and live checks passed.
+Its then-proposed native image follow-up is completed by Roadmap 268 above; further object types remain proposed.
+Office remains ahead of CRM; ordinary tenant/pilot/indexing/engine admission remains closed.
+
+Roadmap 266 / PLANS 127 completes native list levels and numbering under ADR-0089. All twelve focused cases,
+full quality and a single complete 264-case browser/model run passed on fb8dbd3. Root reviewed desktop/tablet/mobile
+list controls and mobile comments. API-only rollout and closed-gate evidence are recorded below. Office remains ahead of CRM.
+
+Roadmap 265 / PLANS 126 completes in-document character/paragraph format transfer under ADR-0088.
+All 40 initial focused formatting/keyboard cases passed on 068152f. The first full run exposed a mobile review-layout
+regression, now corrected without weakening assertions. All 43 responsive/transfer cases and a single complete
+252-case browser/model run passed on ac70c29, together with full quality. Root reviewed the final three transfer
+viewports and mobile comments. API-only rollout, live checks and exact cleanup passed. Office remains ahead of CRM.
+
+Roadmap 264 / PLANS 125 completes confirmed whole-document keyboard replacement across rich tables.
+The original Chromium failure was reproduced; cancelable beforeinput now prevents native table DOM mutation,
+and a structural full selection is replaced through one validated transaction. All 26 focused keyboard/table/history
+checks passed on 460d632. Full quality and all 241 browser/model cases passed in a single run on d7270a7.
+Root reviewed the desktop/mobile confirmation. API-only rollout and closed-gate checks are recorded below.
+Office remains ahead of CRM; subsequent completed slices are recorded above.
+
+Roadmap 263 / PLANS 124 completes native character font sizes and named colors under ADR-0087.
+Selection/caret, mixed/reset/undo, strict marks, comparison/replacement/reuse/print and fresh nonempty recovery passed.
+Full Python quality passed; passing evidence covers all 231 distinct browser/model cases, combining 230 full-run
+successes with the corrected complete eight-case history suite. Both raw setup-failure reports remain retained;
+this is not a single 231-pass run. Recovery verified 460 documents, 935 versions and 1,045 sources. Release gates,
+API-only rollout, live verification and cleanup passed. Office remains ahead of CRM. Its then-open whole-document
+keyboard replacement follow-up is completed by Roadmap 264 above; the old fixture isolation alone did not fix it.
+
+Roadmap 262 / PLANS 123 completes native paragraph alignment and line/before/after spacing, with strict optional
+attributes and unchanged legacy canonical bytes. Save, undo, comparison, reuse and print preserve formatting.
+Full quality and all 215 browser/model checks passed on `8b61d8d`; nonempty recovery verified 330 documents,
+666 Office versions and 721 sources. Actual PDF output and responsive layouts passed independent visual review.
+Both release gates, API-only rollout, live verification and exact cleanup passed. Office development continues before CRM.
+Decision: `ARCHITECTURE_DECISIONS/ADR-0086-native-office-paragraph-formatting.md`.
+
+Roadmap 261 / PLANS 122 completes saved-version history beyond 200 entries with bounded pages along the immutable
+predecessor chain. Current parent ACLs remain mandatory for every page; selection, comparisons and local drafts survive
+loading and refresh. Full quality and all 200 browser/model checks passed on `46a83b4`. Independent code and visual
+review, API-only rollout, live checks and exact cleanup passed. Office development continues before CRM expansion.
+
+Roadmap 260 / PLANS 121 completes native Office discovery with server-side literal title search and cursor-based
+loading beyond the initial 200 entries. Fresh ACL checks precede page limits; filtered list membership never clears
+an open document or draft. Full quality and all 190 browser/model checks passed on `5bcb7d2`. Desktop/tablet/mobile
+review, API-only rollout and final health/gate checks passed. Office development continues before CRM expansion.
+
+Roadmap 259 / PLANS 120 completes saved-version reuse as an independent new document draft. Source read and create
+permission are freshly checked after discard consent; the existing confirmed Create supplies the new identity and
+creator ACL. Full quality and all 180 browser/model checks passed on `e7fec24`. Desktop/tablet/mobile visual review,
+API-only rollout and final health/gate checks passed. No backend/schema/persistence/dependency change was introduced;
+Roadmap 257 recovery evidence is retained, not rerun. Office development continues before CRM expansion.
+
+Roadmap 258 / PLANS 119 completes saved-version print preview and browser print/PDF output. Office development
+continues before CRM expansion. Full quality and all 170 browser/model checks passed on `cf2244c`; the final
+cleanup-only test guard on `d8300aa` passed its affected browser case. Actual PDF text, dimensions, pagination,
+semantic structure and visual output passed independent checks. There is no schema, persistence, dependency or API
+change. Roadmap 257 recovery evidence is retained, not rerun. Final host verification is recorded below.
+
+Publication state: on 2026-09-21 the operator explicitly approved publishing the prepared Roadmap 256 documentation,
+including its operational metadata, to the public `kirchherr/collabio` repository and instructed work to continue.
+Documentation commit `1545bb2` was pushed and synchronized. All 11 module/KB/roadmap contract checks passed in
+58.85 seconds; health remained ok at 2026-09-21 06:34:16 UTC. The --no-deps test started no auxiliary service.
+That Roadmap 256 publication is complete. Roadmap 257 then continued the authorized Office development below;
+implementation `9c17a31` passed full validation, nonempty recovery and API rollout on dev001.
+Roadmap 257 closeout `c4176de` was published and synchronized. All 11 documentation/module/roadmap contract tests
+passed in 59.02 seconds; health remained ok at 2026-09-21 07:24:18 UTC. The --no-deps check started no auxiliary
+service. Final independent evidence review confirmed all counts/hashes and clarified two historical module-document
+references; those wording corrections change no implementation or tested contract behavior.
+Roadmap 258 closeout `61d7fce` was published and synchronized. All eleven module/KB/roadmap contract checks passed
+in 59.62 seconds, with only the known Starlette/AnyIO warning. Health remained ok at 2026-09-21 11:36:53 UTC;
+Collabio still running(3), with no auxiliary service started by the --no-deps disposable test. Independent final review
+matched all report/PDF/screenshot hashes and runtime evidence. This final evidence-only record changes no runtime or gate.
+Roadmap 259 closeout `dd65d5a` was published and synchronized. All eleven documentation/module/roadmap contract checks
+passed in 58.98 seconds, with only the known Starlette/AnyIO warning. Health remained ok at 2026-09-21 12:25:37 UTC;
+the --no-deps disposable test started no auxiliary service. Independent review matched all report/log/screenshot hashes.
+Final wording clarifies cancellation during reads, OpenAPI-definition verification and the absence of a main-database
+migration or new recovery drill; isolated test databases did run their required migrations. These evidence-only changes
+alter no runtime, tested behavior or gate.
+Roadmap 260 closeout `b7b2cba` was published and synchronized. All eleven documentation/module/roadmap contract checks
+passed in 59.43 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-21 13:07:23 UTC.
+The --no-deps disposable check started no auxiliary service, and Collabio remained running(3). Independent review matched
+all twelve checked report/log/screenshot hashes, counts and log-redaction evidence. Final wording updates the module's
+continuation pointer, distinguishes matrix duration from full quality, and clarifies the additive existing-API contract.
+These evidence-only corrections change no implementation, tested behavior or gate.
+Roadmap 261 closeout `2f0c011` was published and synchronized. All eleven documentation/module/roadmap contract checks
+passed in 59.42 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-21 14:30:32 UTC.
+The --no-deps disposable check started no auxiliary service, and Collabio remained running(3). This final evidence-only
+record changes no runtime, tested behavior or authorization boundary. Independent final evidence review matched counts,
+durations, nine local report/log/screenshot hashes and both access-log redaction checks without finding a documentation
+blocker. The initially failed report was also retrieved from its retained dev001 copy and its hash reconfirmed by root.
+Roadmap 262 closeout `e567d76` and wording correction `3f38ffc` were published and synchronized. All eleven
+documentation/module/roadmap contract checks passed in 59.12 seconds with only the known Starlette/AnyIO warning;
+health remained ok at 2026-09-21 15:22:40 UTC. The --no-deps disposable check started no auxiliary service and Collabio
+remained running(3). Log hash: `sha256:d8d92e59d6331672bb55664e0cc854d4a16b0fdb205284738dacc7e3e9c5ec2c`.
+Independent review matched report/log/PDF/screenshot hashes and release evidence. Final wording distinguishes the normal
+creator ACL from manual fixture grants and saved formatting versions from historical-only versions. This evidence-only
+record changes no implementation, tested behavior or authorization boundary.
+
+Roadmap 263 closeout `978f879` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.17 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 07:22:30 UTC.
+The --no-deps disposable check started no auxiliary service; only api, postgres and minio remain running in Collabio.
+Log hash: `sha256:0ae2a9878594eb015da4a60e5cb4b6d1841e7c3b81b90ddd05165aafd15e16bf`.
+Root verified report identity, recovery canonical hash and retained artifact hashes. The separate acceptance summary
+(`sha256:9d5800e0313752f3c2c19a17c03140d8c78f2b43a609778f1d299f695111ec50`) explicitly records 230 full-run passes
+plus the corrected eight-case history suite; no single all-green full run or independent subagent review is claimed.
+This final evidence-only record changes no implementation, tested behavior, runtime or gate.
+
+Roadmap 264 closeout `378c1c4` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.43 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 08:07:05 UTC.
+The --no-deps disposable check started no auxiliary service; Collabio remains running(3), API 12c85d748e73.
+Log hash: sha256:e6b24d89116c274af68b4d3bc95f83756498628a76a028f99547b2d2388d633c.
+Root matched all five final report/log/screenshot hashes locally. This evidence-only record changes no implementation,
+tested behavior, runtime or gate.
+
+Roadmap 265 closeout `fe093ff` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.33 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 10:10:01 UTC.
+The --no-deps disposable check started no auxiliary service; Collabio remains running(3), API fa32456a32a1.
+Log hash: sha256:5ba93a632d35eb978321f040ab13544b2d6dc8a1da6333cea22501c80f946342, also matched locally.
+This final evidence-only record changes no implementation, tested behavior, runtime or authorization boundary.
+
+Roadmap 266 closeout `878feb0` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 60.60 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 10:52:20 UTC.
+Log sha256:0e86cb7f15a7fdbd0c66202c602dbf35d0119cda410ad4f868ca3747a4497bff matched locally. The --no-deps
+disposable check started no auxiliary service; Collabio remained running(3). This final evidence-only update changes
+no implementation, tested behavior, runtime or authorization boundary.
+
+Roadmap 267 closeout `fd2c092` was published and synchronized. All eleven documentation/module/roadmap checks passed
+in 59.86 seconds with only the known Starlette/AnyIO warning; health remained ok at 2026-09-22 13:54:59 UTC.
+Log sha256:ff9d69bdcca395d2cd1bb398af2e9e22dbc4cb2b369756011981b891ca9f8db4 matched locally. The --no-deps disposable
+check started no auxiliary service; Collabio remained running(3), API bdcb65aa540c. Final spacing and evidence-only
+documentation changes alter no implementation, tested behavior, runtime or admission boundary.
+
+This is the canonical continuation document. Read `AGENTS.md` fully first, then this document, `PLANS.md`,
+`docs/ROADMAP.md`, the append-only `docs/operations/DEV001_OPERATIONS_LOG.md`, and the relevant runbooks.
+AGENTS.md and current code are authoritative. Green development evidence is not production or real-user approval.
+
+## Current slice: Roadmap 270 image text wrapping
+
+Decision: ADR-0093. Optional `wrap` contains exactly left/right `side` and integer `gap` from 0 through 48 CSS pixels.
+Reset omits it and preserves legacy canonical bytes. Ordered image nodes anchor following top-level paragraphs;
+headings, lists, tables, quotes, code, rules and later images clear the float. Wrapping uses at most 45% of the column
+and a displayed-image-height limit of 480px. Columns at most 480px wide and nested images use block fallback without
+rewriting content. The dialog previews the same rules; Apply is one context-bound undo action. Exact crop/source,
+history, comparison, owned copies and confirmed CAS saves remain intact. No endpoint, migration, dependency, asset
+or decoder change is introduced. Rollback requires compatible historical readers while closing further writes.
+
+Print uses the physical column width. A fitting image/caption moves intact to the next page when necessary;
+following text can begin on the preceding page and continue beside it. Over-page captions remain browser-fragmented.
+No arbitrary page-positioned object, DOCX anchor, universal pagination or non-Chromium fidelity is claimed.
+
+Implementation and acceptance are frozen at 1d8a58ffe71ff6aff3d6a39fa314f8102c2ab6d6. The initial 31-case focused browser
+run passed while Mypy rejected an untyped new test fixture. a1c8769 corrects that fixture, widens the desktop preview
+and adds anchor-move/structural-clearance tests; 129 focused Python and all 33 image browser/model cases then passed.
+The final test-only 1d8a58f strengthens the physical page-boundary fixture. Earlier raw reports remain retained.
+
+Full quality passed Ruff, 764-file formatting, Mypy across 575 sources and complete Pytest, with only known Starlette/AnyIO
+warning. One complete browser/model run passed 313/313 (259 browser + 54 model), zero skipped/unexpected/flaky, starting
+2026-09-23T09:00:52.828Z and lasting 1255.726974s. Both processes exited 0 at 09:21:49 UTC. Root matched local report
+counts and hashes and reviewed final desktop/mobile dialog/document and tablet screenshots plus all six PDF pages.
+Each PDF has three A4 pages with full expected text, Figure/Alt semantics and intact left/right crops on page 2.
+At 2000px raster resolution, left/right crops contain 103041/103040 orange pixels and 22/61 adjacent words, with no
+text overlap or cropped-away blue pixels. The original 1000px QA quantization and same-page component-order issues
+were corrected without changing product code or the 2pt tolerance. Checked synthetic text markers are absent from
+the normal and both isolated API logs. No independent-agent review is claimed.
+
+Fresh collabio_work_e2e_270_restore completed 09:26:14 UTC from its own checked dump/catalog/receipt. It verified 426
+documents, 829 exact Office versions, 98 multiversion documents and 916 sources; 32 retained image assets, 50 saved image
+references, 36 cropped and 24 wrapped references. Consecutive left/right/reset versions bind the same parent, asset,
+rendition and crop. Previous crop/reset and all paragraph/character/style evidence passed, alongside 10 review threads/
+18 events and 11 suggestions/7 decisions. Exact bytes/receipts, authoritative read-only access and foreign-tenant
+denial passed. All seven synthetic targets remain retained. No source synchronization occurred during acceptance
+or recovery; main stores and ordinary admission remain unchanged.
+
+Key evidence retained locally and on dev001 under ignored e2e/work/artifacts/roadmap-270/:
+
+- Full report: sha256:354dc941b20bef9bdcd44d8d4af1558849dba6a0dd3e19661eec62537841efff.
+- Browser log: sha256:225a0ba770ceceee26a72eb8a01dc7b625c1d60df7eaadff0e49b5aec57d8e4a.
+- Full quality log: sha256:c17b7b375c5dc39c8a9e3825eff687669211bfb0af5b9e86bc433562d1082a7a.
+- Desktop PDF: sha256:187760afffda4e178fe8b24f0acd92117fc24db799153bc2e3e7eb4b7e189272.
+- Mobile PDF: sha256:b556bc17ec2430ee8f0328ad2c8a34c9e4a6d634d3e7f9ac311db25832329494.
+- Hash-bound PDF-QA: sha256:81eec6eb1cf69a55ba420575ae212fef984b8a28a3ccef8662d8f393c8fb417a.
+- Recovery embedded hash: sha256:09b91cc7a6f32168fe136956fdf46ba124cb04804f65ad63d0efb49d165360ce.
+- Recovery JSON: sha256:ac66d46e64e367e1e16eb9033535355e7c86c8a795fc93a234ad44a819087683.
+- Synthetic dump: sha256:d66e9f89df74658e793c05787fd6f1a4b43b88a6a521d9282fbf865d8214e959.
+
+Main backup collabio-20260923T092650Z.dump verified with hash
+sha256:dbd64d7971cc228e3c75c9f59ca4887e491ff32bf544bbf52da656faf245c4a5. The ordinary isolated PostgreSQL restore
+report hash is sha256:ab95f401fc8b812ab4595a1b7076c65437b3606cae750e2abd0e36d4d833ad1c. Foundation at 09:27:02 UTC
+verified 85 migrations, 95 tables and three restored sources/two tenants; gate hash
+sha256:850e93a743ae437f16eccb0ed99bfedbb151b8620619b9e5692610ce7a04c36f. Business at 09:27:52 is release_ready,
+with no blockers or business writes; hash sha256:67f1a85817ff9f4775af545a46a1fbaab4b2dd760dfe0f068b2f3552ffddd878.
+All operations held build.lock before docker.lock, used fresh inventories and explicit collabio. Loader/gates use
+--no-deps; foundation seed is explicitly 0. No main migration, tenant activation or ordinary business write occurred.
+
+API-only rollout with --no-deps and pilot explicitly 0 reached health ok at 09:28:49 UTC after bounded startup retries.
+API e031e3e9b941 uses image sha256:93407a200513b63ffb0b28967504e0e8f313554c592187489e941768d036ff12.
+Regular decoder 30766f16f16a retains image sha256:d3f95af20d18819e15a49e8ef499821b74a89743c8ed6b2fe1b3e4d0fa8b1276;
+network none, user10001:10001, read-only root, ALL capabilities dropped, no-new-privileges, 384MiB, PIDs16, CPU1 and
+its sole named socket volume were rechecked. No decoder recreation occurred. Live checks verify 15 Office OpenAPI
+operation definitions, wrap/crop and all previous controls, served bundle/assets/licenses, Work link and no-store/CSP.
+These checks do not execute 15 business operations. Office is unprovisioned/non-cacheable404, features closed,
+KB write false and pilot0. Exact E2E services including the test decoder were removed; disposable runners are absent;
+postgres-test and both restore services stopped. Final 09:30:13 UTC health is ok, Collabio running(4), unchanged loopback
+8000/5433/29000/29001. Main PostgreSQL87a6b37942c8, MinIO98ce365f455b, Webcut running(7), provider nodes
+1f644ba2506c/a9ab929053fa/23961c0d8cdb and26443 remain unchanged; Tricert is absent. Seven synthetic restore targets
+and their dumps/receipts remain retained. Live JSON sha256:cb5211212fb3a3800f275c9b4ef507828da15611706ce18b90012ae1fb23766e;
+cleanup log sha256:03fab92e8265e18b3f91a8856b1a2b0cc02e1c89b3c802389b5d3095cc58b0f4. Root matched both locally.
+
+## Previous slice: Roadmap 269 non-destructive image cropping
+
+Decision: ADR-0092. Optional integer source-pixel `crop` geometry is strictly bounded to the normalized image.
+Absence means the full image; reset removes the optional property and legacy canonical bytes remain unchanged.
+Pointer selection, pixel fields and arrow/Shift-arrow movement share one validator. Preview/cancel remain local;
+Apply is one selection/context-bound undo action. Aspect lock follows the crop ratio; unlocked dimensions remain.
+Editor, comparison, history, owned copies and actual print preserve the exact rectangle and caption/Alt semantics.
+Crop is presentation, not redaction: authorized readers can still obtain the complete normalized source image.
+No new endpoint, SQL migration, dependency, image asset or decoder behavior was introduced. Older readers reject
+crop metadata; rollback must close further writes while retaining a compatible reader and exact historical data.
+
+Implementation is frozen at 54fe1ffe5ba460dbfa4f00aab7ec42e6f0d141a4. Test-only
+3da08b89989fe440abe734f90bdfdf9778b4d6a8 observes successful reuse responses passively instead of intercepting them;
+all identity/content/no-store/authorization assertions and explicit fault interception remain. Product/Python sources
+are identical. Initial focused failures (20/23) were fixture mutation-reference collisions and a stopped test database;
+bb37cba corrected setup and passed 113 focused Python cases and all 23 focused browser/model cases.
+
+Full quality passed Ruff, formatting across 762 files, Mypy across 575 sources and full Pytest, with only the known
+Starlette/AnyIO warning. The complete 303-case run on 54fe1ff passed 302 in 1185.579592s; an existing image-copy case
+stalled while fetching an image after reuse interception. Trace showed a pending fetch and no corresponding API
+request, with saved content and the draft image node intact. All 57 cases in the seven helper-importing suites then
+passed on 3da08b8 in 417.950193s, zero skipped/unexpected/flaky. The explicit acceptance aggregation matches file,
+title and project to cover all 303 distinct cases (251 browser, 52 model); no single all-green full run is claimed.
+Raw failed/focused/full/affected reports, logs and traces remain separately retained under ignored roadmap-269/.
+
+- Full report sha256:e2786696db0b960c4c36219d053e8d6c2436840b863163efa87b5978592c1d54.
+- Affected report sha256:cd1ab0ebcf2740feb7479fc3ec556282bd80644f0c5c9813a6b0d0c9b3721f2a.
+- Acceptance JSON sha256:987e2f67ac36b86212f53b7c0507d88b9a9a159bb46d4cb6f7074623393c7905.
+- Quality log sha256:c24384dff141d298e2c76b7471846dcaf77249b625fc04fbcbc5dbeff6ab9b3e.
+- Focused report sha256:a0898f001f578f9e64db2091df1d0d49bde290509489be667de8a5ddc55cd3a4.
+- Initial failed report sha256:165366ffcecadd1d54e634f9c97b54913809e6fe78a9cbaabf954dc808d57fd0.
+
+Root reviewed desktop/tablet/mobile crop controls, mobile comments and both actual rendered PDFs. Each PDF is one
+A4 page (594.96x841.92pt), retaining original 320x160 image pixels, Figure/Alt, literal caption and expected text,
+with no application chrome. Each 1000px raster check finds 31,683 orange pixels and zero cropped-away blue pixels.
+PDF QA ran in the pinned network-none, read-only disposable tool container. No non-Chromium or independent-agent
+acceptance is claimed. Checked synthetic content markers are absent from normal and both isolated API logs.
+
+- Desktop PDF sha256:7b5647b3b8799071e373ecb9ddb1807c9f60c6bd5780ab27f150aa34a3cc4dd8.
+- Mobile PDF sha256:74f7e857470ca3f09e694cbcf84003d2131d2e5169a7d9c74b4192294b2285b0.
+- PDF QA sha256:1052c52735d273e95389a6e10208e7e77e2a906819813ef110c790e152826b94.
+
+Fresh recovery completed 08:26:06 UTC on 3da08b8 using separate checked dump/catalog/receipt and
+collabio_work_e2e_269_restore: 488 documents, 913 exact Office versions, 122 multiversion documents, 1,013 sources,
+43 image assets, 35 saved image references including eight cropped references. A reset immediately following a
+cropped version binds the same parent, asset and rendition. All exact bytes/receipts, prior formatting, 11 review
+threads/19 events, 12 suggestions/7 decisions, authoritative read-only access and foreign-tenant denial passed.
+All six synthetic recovery databases and their dumps/receipts remain retained; no source sync occurred during proof.
+
+- Recovery report hash sha256:70928c5c10e9e6e5a337e61f14ae8d8d0614a185cf95c0ad919a5bc4d9046937.
+- Recovery JSON sha256:0747b846b2bd02ab6929919bc03d88c985e41778aa841b94a3169c82b671d606.
+- Dump sha256:d40221acfda9093809148eeec4ded2b819fd99729d91cc84793e738265c412cc.
+
+Main backup collabio-20260923T082635Z.dump verified; sha256:6e75168bce3e737375caad3d0bb2d552a36ece548f821a9b99e7580e063990ac.
+Only the ordinary isolated restore target was refreshed, hash sha256:ca4696f2651c61e30cb3d1a05da887902a99cede3bb1885f8292cd6e6cc00797.
+Foundation 08:26:48 verified 85 migrations, 95 tables, three restored sources/two tenants;
+gate sha256:cad9b4210da57702a0aa5762f718ef80943fcb0214f450f65690a3ade3eb80d9.
+Business 08:27:37 was release_ready without blockers;
+gate sha256:fb753f69820091758fc44d53d8330a12ea9ce9725287e23f5e5dd6d79990f80a.
+Both gates used --no-deps with foundation seed explicitly 0; no main migration, business write or tenant activation.
+
+API-only rollout with --no-deps and pilot explicitly 0 reached health ok at 08:28:23 UTC. API a67cdfa88bdb,
+image sha256:ba8bea9aeb2bb4118d3e34237d7bea6463b16edf910041540fd06fb7b5805308. Regular decoder 30766f16f16a and
+its image remain unchanged; network none, user10001:10001, read-only, ALL capabilities dropped, no-new-privileges,
+384MiB, pids16, CPU1 and sole collabio_office_image_socket volume were inspected. Live checks verify 15 Office OpenAPI
+operation definitions, old controls, new crop controls and served bundle, assets/licenses, Work link and no-store/CSP.
+Definition checks do not execute 15 business operations. Office remains unprovisioned/non-cacheable404, features closed,
+KB write false and pilot0. Exact E2E services including test decoder were removed; disposable runners absent;
+postgres-test and both restore services stopped. Final 08:29:39 health ok, Collabio running(4), unchanged loopback
+8000/5433/29000/29001. Main PG87a6b37942c8, MinIO98ce365f455b, Webcut and provider nodes/26443 unchanged; Tricert absent.
+Rollout held build.lock before docker.lock; live/cleanup held docker.lock, all with fresh inventories.
+Live JSON sha256:dddb510cd5b8de466a2ed828a5049abecdd4a2ec8c340a4fa3a483a4310131af;
+cleanup log sha256:b5326b7d91f54a66213a86e31489afb864d96f1f51cb72a58554571757baab48.
+
+## Previous slice: Roadmap 268 native images
+
+Decision: ADR-0091. Native PNG/JPEG upload, insertion, dimensions/aspect lock/alignment, literal alt/caption,
+decorative choice, move/remove/undo, confirmed CAS save, historical reads, independent document reuse and actual
+print/PDF are implemented. Upload requires an already saved writable document; it does not change the saved head.
+Up to 40 image nodes/document and 200 retained uploads/document are admitted. Originals, filenames and EXIF are not
+stored. Crop is completed by Roadmap 269 above; wrapping/floating anchors, shared media libraries, active objects and
+DOCX interchange remain separate.
+
+Immutable ATTACHMENT sources use the existing PostgreSQL/S3 storage and receipts. Each image node binds exact asset,
+version, parent, manifest/content hashes and pixel dimensions. The current authoritative parent ACL is the asset ACL;
+independent asset grants cannot authorize reads. Save verifies source bytes under the tenant write lock. Create/reuse
+reauthorizes source parents and clones normalized bytes into new document-owned assets; exact replay returns the
+committed rewritten references. No cross-document reference is accepted by ordinary Save. Removal/cancel never
+deletes historical or unattached assets; retention-aware cleanup remains separate. PostgreSQL cannot roll back S3 PUTs.
+
+The isolated decoder admits PNG/JPEG up to 8 MiB, 4096 pixels/axis and 4 million pixels. It has no network, credentials,
+host port or host socket; only a named Unix socket volume connects it to the API. It uses the existing hash-locked
+Pillow version in bounded child processes and returns raw pixels for minimal PNG reconstruction in the API. The
+regular service uses the office-images profile; the test service has its own socket volume. Missing decoder access
+blocks uploads, while stored-image reads remain available. A downgrade to a pre-image native reader is incompatible
+with saved image versions; retain compatible reads and immutable assets when disabling further writes.
+
+Acceptance:
+
+- Single complete browser/model run on 96a299f: 297/297 in 1157.649996s (247 browser+50 model), zero skipped/unexpected/flaky.
+  Full quality on 5d3eb35: Ruff, 758-file formatting, Mypy on 575 sources and complete Pytest passed. Only the known
+  Starlette/AnyIO warning remains. The sole post-browser difference is test_office_images_pg.py formatting and added
+  revoked-source Create/replay assertions; runtime/browser sources are identical. Initial fixture/infrastructure
+  failures remain retained under ignored roadmap-268/first-focus,second-focus,third-focus and final logs.
+- Root reviewed final desktop/tablet/mobile dialogs and both rendered PDF pages. Each is one A4 page with the exact
+ 320x160 image, expected text/literal caption, Figure/Alt structure and no application chrome. Checked image text
+  markers are absent from regular and E2E application logs. No independent-agent or non-Chromium proof is claimed.
+- Fresh collabio_work_e2e_268_restore verified 410 documents, 787 Office versions, 86 multiversion documents, 858 sources,
+  16 retained image assets and 8 saved image references. Exact metadata/bytes/receipts/parent ownership and all saved
+  image bindings passed, alongside paragraph/character/style fixtures, 10 review threads/18 events and 11 suggestions/
+  7 decisions. Current authoritative read-only access and foreign-tenant denial passed. All five synthetic targets remain.
+- Main backup collabio-20260923T072600Z.dump, isolated restore and both release gates passed. Foundation verifies 85
+  migrations, 95 tables and three restored main sources/two tenants. No main migration or ordinary business write occurred.
+
+Key evidence, retained locally under ignored e2e/work/artifacts/roadmap-268/ and on dev001:
+
+- Browser report: sha256:70439ccf0416762c42befb4c037ff413ee64a72cf1ec2fb74519907b213280bb.
+- Browser log: sha256:1f4098935ddf06260f852c19fb11347e8fcc9a1dc632881d9869fe84eec3adca.
+- Full quality log: sha256:e29aa39fa497c81fde6da6d03d5c66a60772a039c5fe46727819dbd97c826dfb.
+- Desktop PDF: sha256:a2d6a65ec258736db043b99333f61f1f32c4d47437d44a0e161aaf74607b9042.
+- Mobile PDF: sha256:61c56f16b53455956e1b08ee821c8eeb000069692703291a36234e997d650e30.
+- PDF-QA report: sha256:b1689ff842db2c40b4d261df0d5c4441208042e35e7b5307e96c53b6378bff97.
+- Recovery embedded hash: sha256:c40f85de4b5e11725eec576286ab16546f5eb57aba30d11271f3ebd457713eb3;
+  file hash: sha256:95af9c94d4e3677cb845b93fe756293df62222bad4a3fcc0f2977deb3bc898dc.
+- Synthetic dump: sha256:3b2ae22cd33a4138ee5651b9bd84fac8d8b54df573ae33310281ace2c4cd9147.
+- Main dump: sha256:4691780d168f77d2e04e9464d1aceb8ad1d49579c8f72c0c2ad0ec2b109fc8f3.
+- Main restore report: sha256:afce1dc3691f488aad86b61cdde819beba750a21c60d52ed30881ff6ce44c56a.
+- Foundation gate: sha256:9c46c1d9748b2f700a08ab1b080efc0c1ea7d16cf364b89c3e1b72a2228bdd2b.
+- Business gate: sha256:901fdd1051cf03c89ba4fe8c8eb76a4defb13c40895500eefa942a3a091ae1e8.
+
+Controlled rollout reached health ok at 2026-09-23 07:27:57 UTC. API d83a791253d4 and new decoder 30766f16f16a run;
+decoder image sha256:d3f95af20d18819e15a49e8ef499821b74a89743c8ed6b2fe1b3e4d0fa8b1276 was inspected for
+networknone,user10001:10001,readonly,ALLcapdrop,no-new-privileges,384MiB,pids16,CPU1 and its sole socket volume.
+Live checks verify 15 Office OpenAPI operation definitions, discovery/history parameters, image/style/list and prior
+controls, served bundle/local assets/licenses, Work link and no-store/CSP. These checks do not execute 15 business writes.
+Office remains unprovisioned/non-cacheable404, features closed, KB write false and pilot 0. Exact E2E services including
+the test decoder were removed; postgres-test and both restore services stopped. Final cleanup 07:29:06 health ok,
+Collabio running (4), unchanged loopback 8000/5433/29000/29001. Main stores and other projects remain unchanged.
+Live JSONsha256:9658792f48b72118525b4195c1545936273957674e7a1ad14eb5f51c9a012661;
+cleanup logsha256:3d358a7277f83212b982356d77111f42c1ba0d1600dbf16d09a80efc2a4134a7.
+
+## Repository and host
+
+- Repository: `git@github.com:kirchherr/collabio.git`.
+- Workstation: `C:\Users\tkirchherr\Documents\suite`; branch `kirchherr/kb-write-unit-of-work` tracks origin.
+- Validated implementation: `1d8a58f` (full quality and a single complete 313-case browser/model run).
+  Optional native v1 wrap metadata introduces no new endpoint, migration, dependency or decoder change. Fresh
+  Roadmap 270 actual PDF, nonempty image/crop/wrap recovery, release gates and API-only rollout passed.
+  The commit containing this handoff is the continuation
+  baseline. Verify local and remote HEAD before continuing.
+- The user's untracked `erp_modul.md` and `review.md` must never be staged, rewritten or removed without instruction.
+- Generated `e2e/work/artifacts/` output is ignored and must not be committed.
+- PR/merge state has not been verified; do not assume a PR exists.
+- All builds, tests, migrations and service lifecycle work run on `extern@dev001` in `/home/extern/collabio`.
+- Use only `C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001` for SSH and explicit Compose project `-p collabio`.
+- Read `/home/extern/AGENTS.md` before operating. Source sync holds `/home/extern/.codex-coordination/git.lock`.
+- Heavy work holds `build.lock`; lifecycle holds `docker.lock`; always acquire build before docker when both apply.
+- Before every start, stop, recreate or restore inspect `docker compose ls --format json`, `docker ps`, and `ss -ltnH`.
+- Never use daemon-wide prune, broad container matching, plain Compose down or down -v. Never change Webcut,
+  Tricert or provider resources. If SSH or locks are unavailable, report the blocker; do not use local Docker.
+
+Previous item 267 host verification at 2026-09-22 13:50:27 UTC: Collabio running(3), healthok, unchanged loopback
+8000/5433/29000/29001. Only API was rebuilt/recreated (bdcb65aa540c) with --no-deps and pilot explicitly0;
+bounded startup retries reached healthy at13:49:21 UTC. Live13:50:24 verified thirteen Office OpenAPI operation
+definitions, discovery/history contracts, old controls, new style dialog and served bundle, local assets/licenses,
+Work link and no-store/CSP. Definition checks do not execute thirteen business operations. Tenant-demo Office remains
+unprovisioned/non-cacheable404, features closed, KBwritefalse, pilot0. Exact E2E services were removed; disposable
+runners absent; postgres-test and both restore services stopped. Main PostgreSQL87a6b37942c8 and MinIO98ce365f455b
+remain unchanged. Four synthetic restore databases/dumps/receipts remain retained. Webcut running(7), provider nodes
+and26443 unchanged, Tricert absent. No main migration, ordinary business-content write, tenant/pilot/indexing/cloud/
+DOCX activation. Rollout used build.lock before docker.lock; live/cleanup used docker.lock, all with fresh inventories.
+LiveJSONsha256:ce095592b0d4da4fe05664f2bdaddd1dbd17583be7ca2c208c685109016f7e06;
+cleanuplogsha256:e6c6517513faa146e3f039f54562ea50e17305785faf2339cf81604cb83334c3.
+
+Previous item 266 host verification at 2026-09-22 10:49:44 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`641024fc56b5`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 10:48:16 UTC. Live verification at 10:49:40 UTC passed
+thirteen Office OpenAPI operation definitions, discovery/history contracts, prior controls, local assets/licenses,
+Work link and no-store/CSP, plus new list dialog controls and served bundle. Definition checks do not execute thirteen
+business operations. Office in tenant-demo remains unprovisioned/non-cacheable 404, features closed, KB write false,
+pilot 0. Exact E2E services were removed; disposable runners absent; postgres-test and both restore services stopped.
+Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged. All three synthetic restore databases,
+dumps and receipts remain retained. Webcut running(7), provider nodes/listener 26443 unchanged, Tricert absent.
+No main migration, ordinary business-content write or tenant/pilot/indexing/cloud/DOCX activation occurred.
+UI-only: Roadmap 263 recovery/release evidence remains retained, not rerun. Host locks and fresh inventories protected
+every lifecycle action; main rollout used build.lock before docker.lock, live verification/cleanup used docker.lock.
+
+Previous item 265 host verification at 2026-09-22 10:05:54 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fa32456a32a1`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 10:05:00 UTC. Live verification at 10:05:51 UTC passed
+thirteen Office OpenAPI operation definitions, discovery/history contracts, existing controls, assets/licenses,
+Work link and no-store/CSP; new format-transfer controls and served bundle were also checked. These definition checks
+do not execute thirteen business operations. Tenant-demo Office remains unprovisioned/non-cacheable 404, features
+closed, KB write false, pilot 0. Six exact remaining Work-E2E containers were removed; disposable runners already
+absent. postgres-test and both restore services are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`)
+are unchanged; all three synthetic restore databases/dumps/receipts remain retained. Webcut running(7), provider
+nodes/listener 26443 unchanged, Tricert absent. No main migration, ordinary business-content write, tenant/pilot/indexing/
+cloud/DOCX activation occurred. Roadmap 263 recovery and release-gate evidence is retained, not rerun, for this UI-only
+slice. All lifecycle operations used fresh inventories and host coordination locks.
+
+Previous item 264 host verification at 2026-09-22 08:04:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`12c85d748e73`) with --no-deps and
+pilot explicitly 0; bounded startup retries reached healthy at 08:01:58 UTC. Live verification at 08:02:52 UTC passed
+all thirteen Office OpenAPI operation definitions, discovery/history contracts, prior controls, assets/licenses,
+Work link and no-store/CSP; the served bundle also contains the new whole-document confirmation/input path.
+Definition checks do not execute thirteen business operations. Tenant-demo Office remains unprovisioned with a
+non-cacheable 404, Office features closed, KB write false and pilot 0. Six exact remaining Work-E2E containers were
+removed, disposable runners already absent; postgres-test and both restore services are stopped. Main PostgreSQL
+(`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged. All three synthetic restore databases/dumps/receipts remain
+retained. Webcut running(7), provider nodes/listener26443 unchanged, Tricert absent. No main migration, new recovery
+drill, ordinary business-content write, tenant/pilot/indexing/cloud/DOCX activation occurred. Roadmap 263 recovery
+and release-gate evidence is retained for this UI-only change. Host locks and fresh lifecycle inventories were used.
+
+Previous item 263 host verification at 2026-09-22 07:17:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`2dd08092b687`) with pilot explicitly 0;
+bounded startup retries reached healthy at 07:16:02 UTC. Live verification at 07:16:54 UTC confirmed all thirteen
+Office OpenAPI operation definitions, discovery/history parameters, character and previous controls, local assets/licenses,
+Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations. Tenant-demo
+Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0. Six exact remaining
+Work-E2E containers were removed; disposable runners were already absent. Test PostgreSQL and both restore services
+are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) are unchanged; all three synthetic recovery
+databases, dumps and receipts remain retained. The isolated main restore target was refreshed only from its verified
+current main backup. Webcut running(7), all three provider nodes/listener 26443 unchanged, Tricert absent. No main
+migration, ordinary business-content write, tenant/pilot/indexing/cloud/DOCX activation occurred. Recovery and both
+release gates preceded rollout. All operations used host locks and fresh lifecycle inventories.
+
+Previous item 262 host verification at 2026-09-21 15:18:55 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`132526da7a34`) with pilot explicitly 0;
+bounded startup retries reached healthy at 15:17:23 UTC. Live verification at 15:18:18 UTC confirmed all thirteen Office
+OpenAPI operation definitions, discovery/history parameters, paragraph and existing controls, local assets/licenses,
+Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations. Tenant-demo
+Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0. Six remaining
+exact Work-E2E containers were removed, with the disposable runner already absent; postgres-test, postgres-restore
+and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) remain unchanged; both old
+and new synthetic recovery databases/dumps/receipts are retained. The isolated main restore target was refreshed only
+from the verified current main backup. Webcut running(7), all three provider nodes and listener 26443 unchanged,
+Tricert absent. No main-database migration, ordinary tenant/business-content write, indexing, cloud provider or DOCX
+engine activation occurred; isolated test databases ran their required migrations. Recovery and both release gates
+passed before API rollout. Locks and fresh lifecycle inventories are recorded in the operations log.
+
+Previous item 261 host verification at 2026-09-21 14:27:43 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`1585ccedc940`) with pilot explicitly 0;
+bounded startup retries reached healthy at 14:25:53 UTC. Live verification at 14:27:03 UTC confirmed all thirteen Office
+OpenAPI operation definitions, additive history page_size/cursor parameters, new history and existing controls, local
+assets/licenses, Work link and no-store/CSP. These are definition checks, not execution of thirteen business operations.
+Tenant-demo Office remains unprovisioned with non-cacheable 404; Office features closed, KB write false, pilot 0.
+Six remaining exact Work-E2E containers were removed, with the disposable runner already absent; postgres-test,
+postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`) and retained
+synthetic recovery data are unchanged. Webcut running(7), all three provider nodes and listener 26443 unchanged, Tricert
+absent. No main-database migration, new recovery drill, ordinary tenant/business-content write, indexing, cloud provider
+or DOCX engine activation occurred; isolated test databases ran their required migrations.
+
+Previous item 260 host verification at 2026-09-21 13:04:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`6751b0ddada8`) with pilot explicitly 0;
+bounded startup retries reached healthy at 13:03:04 UTC. Live verification at 13:04:01 UTC confirmed all thirteen Office
+OpenAPI operation definitions, additive query/page_size/cursor parameters, new discovery and existing controls, local
+assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with non-cacheable 404; Office
+features closed, KB write false, pilot 0. Six remaining exact Work-E2E containers were removed, with the disposable
+runner already absent; postgres-test, postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`),
+MinIO (`98ce365f455b`) and retained synthetic recovery data are unchanged. Webcut running(7), all three provider nodes
+and listener 26443 unchanged, Tricert absent. No main-database migration, new recovery drill, ordinary tenant/business
+content write, indexing, cloud provider or DOCX engine activation occurred; isolated test databases ran their migrations.
+
+Previous item 259 host verification at 2026-09-21 12:22:11 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`a001838868f7`) with pilot explicitly 0;
+bounded startup retries reached healthy at 12:21:23 UTC. Live checks confirmed thirteen Office OpenAPI operation definitions,
+new reuse and existing controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned with
+non-cacheable 404; Office features closed, KB write false, pilot 0. The six remaining exact Work-E2E containers were
+removed, with the disposable runner already absent; postgres-test, postgres-restore and minio-restore are stopped.
+Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`) and retained synthetic recovery data were unchanged.
+Webcut running(7), all three provider nodes/listener 26443 unchanged, Tricert absent. No migration, business-content
+write, ordinary tenant, indexing, cloud provider or DOCX engine activation occurred.
+
+Previous item 258 host verification at 2026-09-21 11:32:51 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`fc8312db43b7`) with pilot explicitly 0;
+bounded startup retries reached healthy at 11:31:16 UTC. Live verification passed thirteen Office operations, new print
+and existing editor controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo Office remains unprovisioned
+with non-cacheable 404; Office features closed, KB write false, pilot 0. Exact Work-E2E services were removed;
+postgres-test, postgres-restore and minio-restore are stopped. Main PostgreSQL (`87a6b37942c8`), MinIO (`98ce365f455b`)
+and retained synthetic recovery data were unchanged. Webcut running(7), all three provider nodes/listener 26443 unchanged,
+Tricert absent. No migration, business-content write, ordinary tenant, indexing, cloud provider or DOCX engine activation.
+
+Previous item 257 host verification at 2026-09-21 07:18:57 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`b4e2756191a1`); bounded startup retries
+reached healthy at 07:17:41 UTC. Live checks verified thirteen Office operations, suggestion controls, previous editor
+workflows, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned for Office with
+non-cacheable 404; Office features closed, KB write false and pilot 0. Migration 0085 is applied: 85 migrations, 95 tables.
+Fresh verified backups, nonempty document/review/suggestion recovery and foundation/business gates passed before rollout.
+Exact Work-E2E services were removed; postgres-test, postgres-restore and minio-restore are stopped. The synthetic
+`collabio_work_e2e_restore` database and verified ignored dump remain retained; normal `collabio_restore` stays separate.
+Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) were not recreated. Webcut running(7), all three provider
+nodes/listener26443 unchanged, Tricert absent. No ordinary tenant activation or business-content write occurred.
+
+Previous item 256 host verification at 2026-09-18 13:14:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`da71b8ef4e53`); bounded startup retries
+reached healthy at 13:12:07 UTC. Live verification at 13:13:43 UTC confirmed nine Office operations, comments and existing
+version/find/table controls, local assets/licenses, Work link and no-store/CSP. Tenant-demo remains unprovisioned for
+Office with non-cacheable 404; Office features closed, KB write false and pilot 0. Migration 0084 is applied: 84 migrations,
+93 tables. Fresh verified backups, nonempty document/review recovery and foundation/business gates passed before rollout.
+Exact Work-E2E services were removed; postgres-test, postgres-restore and minio-restore are stopped. The new synthetic
+`collabio_work_e2e_restore` database and verified ignored dump remain retained; normal `collabio_restore` stays separate.
+Main PostgreSQL (`87a6b37942c8`) and MinIO (`98ce365f455b`) were not recreated. Webcut running(7), all three provider
+nodes/listener26443 unchanged, Tricert absent. No ordinary tenant activation or business-content write occurred.
+
+Previous item 255 host verification at 2026-09-18 12:10:34 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+unchanged loopback ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`5414963ff755`); bounded startup retries
+reached healthy at 12:08:02 UTC. Live checks verified table, find/replace and version controls in the shell/bundle,
+local assets/licenses, Work link, no-store/CSP and five Office operations. Tenant-demo remains unprovisioned for Office
+with non-cacheable 404; Office features are closed, KB write false and pilot 0. Exact Work-E2E containers were removed
+and postgres-test stopped. Main PostgreSQL/MinIO, stopped restore targets and retained synthetic recovery database were
+untouched. Webcut running(7), all three provider nodes/listener26443 unchanged, Tricert absent. No migration was added.
+
+Previous item 254 host verification at 2026-09-18 11:30:20 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only API was rebuilt/recreated (`1f30ae972f77`); bounded startup retries
+reached healthy at 11:28:21 UTC. Live verification confirmed find/replace and previous version controls in the shell and
+compiled bundle, local assets/licenses, Work link, no-store/CSP and five Office API operations. Tenant-demo Office remains
+unprovisioned with non-cacheable 404; Office features are closed, KB write is false and pilot is 0. Exact Work-E2E
+containers were removed and postgres-test stopped. Restore targets and retained synthetic recovery database stayed
+untouched. Webcut running(7), all three provider nodes/listener26443 unchanged, Tricert absent. No migration was added.
+
+Previous item 253 host verification at 2026-09-18 10:50:07 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated (`765b23c23888`); bounded startup retries
+reached healthy at 10:47:56 UTC. Live verification confirmed the new comparison/takeover controls in the shell and
+bundle, local styles/notices, Work link, all five Office operations and no-store/CSP. Ordinary tenant Office remains
+unprovisioned with a non-cacheable 404; Office features are closed, KB write is false and pilot is 0. Exact Work-E2E
+containers were removed and postgres-test stopped after evidence preservation. Restore targets stayed stopped;
+the retained item 252 synthetic restore database was untouched. Webcut remains running(7), all three provider nodes
+and listener 26443 unchanged, Tricert absent. No migration or new backup/restore was required for this UI-only workflow.
+
+Previous item 252 host verification at 2026-09-18 10:17:19 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated (`e2e37654dd3d`). Live checks verified
+`/office`, its local bundle/styles/license notices, the `/work` link and all five Office API operations. The ordinary
+tenant is not provisioned for Office; its read returns non-cacheable 404, both Office features stay closed, KB write is
+false and the normal pilot is 0. All 73 browser cases and final nonempty recovery passed before this rollout.
+Exact Work-E2E containers were removed; postgres-test, postgres-restore and minio-restore are stopped. The synthetic
+`collabio_work_e2e_restore` database and its ignored verified dump remain in the stopped restore target as evidence;
+the normal restore database is separate `collabio_restore`. A future synthetic restore must account for the existing
+target explicitly. Webcut remains running(7); all three provider nodes and listener 26443 are unchanged; Tricert is absent.
+
+Previous item 251 host verification at 2026-09-18 08:43:14 UTC: Collabio `running(3)` (api, postgres, minio), health `ok`,
+loopback-only ports 8000/5433/29000/29001. Only the API was rebuilt/recreated. Webcut remains `running(7)` and all three
+provider nodes remain unchanged (127.0.0.1:26443). Tricert was absent. Work-E2E containers were removed; postgres-test,
+postgres-restore and minio-restore are stopped. Live checks confirmed the CRM workspace and KB content/authoring
+routes, CRM detail and KB reader in `/work`, the disabled KB write feature in tenant-demo and pilot runtime 0.
+Bounded health retries covered startup connection resets; health and the cold OpenAPI check then passed. The live
+CRM read returns 503 with the exact existing dependency error `Productivity pilot authorization evidence is invalid`,
+before reaching the CRM repository. The first smoke check expected 403/423 and failed; the repeated check explicitly
+verified this fail-closed evidence error. No pilot evidence was repaired or activated. The isolated blocked process
+with synthetic valid scope evidence separately proves its expected CRM 403; these are distinct checks.
+
+## Non-negotiable boundaries
+
+- Tenant isolation, authoritative ACL, ABAC, role and module/feature gates stay server-side.
+- The normal switch stays `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0`. Synthetic tests never authorize real users.
+- `knowledge_base.articles.write` defaults false. Only the isolated synthetic E2E tenant enabled it for this slice.
+- Native Office uses `office_documents.documents.read` and `.write`, both closed by default. Migrations 0083–0085 do not
+  provision or activate an ordinary tenant. Native documents do not authorize a DOCX engine or WOPI session.
+- No real tenant module activation, KB runtime activation, business article write, pilot admission or traffic
+  authorization was performed. Tickets & Incidents remains readiness-only pending separate explicit authorization.
+- RAG and keyword indexing remain false. No LLM receives unauthorized data; retrieval requires authoritative ACL
+  revalidation. Cloud AI requires tenant policy and all providers remain behind the Local LLM Gateway.
+- Article/prompt/output bodies must not enter ordinary logs or audit metadata. LLM output is untrusted.
+- Destructive, external and compliance-relevant actions require explicit human confirmation.
+- Do not invent accountable principals, legal basis, privacy/workforce approval, independent review, signatures,
+  production topology, PITR, offsite recovery, HA promotion or cross-site evidence.
+- The project does not use AWS. Preserve provider-neutral/self-hosted architecture. No external legal review exists;
+  do not claim certification or production readiness.
+- No further Word-runner/account/firewall interventions on the original workstation. The separate disposable
+  Windows test path only supplied a manual DOCX check.
+- Fidelity private keys stay solely as Windows CurrentUser-DPAPI ciphertext under
+  `C:\Users\tkirchherr\.collabio\signing`; never send them to Git, Docker or dev001.
+
+## Development stance
+
+Close coherent, user-visible product loops. Reuse the Platform Module System and the existing tenant, rights,
+audit, classification, retention, Legal Hold, KMS, backup, restore, failover and decommission contracts.
+Do not start preparation-only infrastructure chains without an immediate product or operating need.
+Prefer mature maintained open-source components behind provider-neutral interfaces, reviewing credible alternatives
+before adoption. The user's priority is Office development before further CRM expansion. Extend the native Office
+workspace next; DOCX Quick Edit, full collaboration and Mail retain their separate extension points and release gates.
+Commit and push verified slices; synchronize dev001 only with git pull --ff-only under git.lock.
+
+## Last completed slice: Roadmap 267
+
+Roadmap 267 / PLANS 128 adds document-owned named paragraph styles under ADR-0090. The Formatvorlagen dialog
+provides body/title/heading presets, custom names, six bounded presentation fields, inert preview, selected/affected
+paragraph counts, shared updates, application and removal of bindings. Texttyp remains the separate semantic control.
+Optional root attrs.styles contains up to 20 strict definitions; paragraph/heading styleId binds one definition.
+Application clears direct paragraph values; inline marks remain overrides. Shared updates affect every bound block,
+including nested list/table paragraphs, while direct overrides retain priority. Removing a binding preserves text
+and the reusable catalog. There is no global library or definition-deletion workflow in this slice.
+
+Current editor/session/context/revision/document/selection/pending-mark checks, read/history/busy/uncertain/review/
+suggestion guards, full schema/size validation and isolated undo apply. Confirmed CAS Save creates an immutable
+version with its catalog. Comparison shows effective style descriptions and unused catalog changes. Printing,
+historical mounting, search/replacement and independent reuse preserve the version-owned metadata. Existing native
+v1 identifiers and legacy canonical bytes remain unchanged. This is an additive durable-format extension without
+a new SQL table, endpoint, dependency or engine admission; it requires fresh nonempty recovery before rollout.
+
+The first static run found an imprecise heterogeneous enum-map annotation; the corrected focused Python run on
+f7dcd55 passed all 414 cases in 21.90 seconds, Ruff and Mypy on 567 source files (one known Starlette/AnyIO warning).
+The first 16-case browser run passed 13. Product creation incorrectly used secure-context-only crypto.randomUUID;
+94af79a reuses the existing getRandomValues-based UUID helper. Two new test sequences were corrected to convert a
+heading back to a paragraph before list wrapping and close the still-open print preview before document reuse.
+Existing product assertions were not weakened. An intermediate rerun failed before tests because seed principals
+already existed; only the exact isolated tmpfs E2E services were recreated for the fresh passing run.
+
+All 16 focused cases passed on 94af79a037386dd2b900fcb31bb0b13f916a3684 in 39.855151 seconds, starting at
+2026-09-22 13:03:56.940 UTC, with zero skipped/unexpected/flaky. Ten workflows, two responsive runs and four model
+cases cover creation, shared updates, direct overrides, typing marks, structural transforms, catalog/byte limits,
+cancel/no-op/undo, reader/history/context guards, uncertain saves, immutable versions, comparison, real PDF and reuse.
+Root reviewed desktop/tablet/mobile screenshots: no horizontal overflow; mobile controls are reachable by scrolling.
+Focused evidence is retained under ignored e2e/work/artifacts/roadmap-267/focused:
+
+- Report: sha256:78b7f38e324ead4ff963068552bdf799538231cb60610a50eb1e150c33a6e0dd.
+- Browser log: sha256:6f0e071951a9bba120f8d67e7662bd9824c3371c83691aeb0ee9b1b48ce2151a.
+- Python log: sha256:d6c8797047e4493c1b9dfd5053aa57228d0961aa631e013460717e8151ffe450.
+- Failed browser report: sha256:7dae005bf82fe3643f2d32bfa77b9a29cd955663981d5851835292576a74cc32.
+- Seed rerun log: sha256:38bea8611e3e62fc70351747b899295dbc110e2db0c8c109953daf3425f316e1.
+
+Original static/browser failures and traces are retained separately under roadmap-267/failed-focused. Final full-quality, matrix, PDF and operational evidence follows below.
+The separate docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md proposes native PNG/JPEG insertion followed by inert,
+version-bound file/table/chart references. It is not implemented image/object support. Office remains before CRM.
+
+
+The first complete run on 94af79a passed full quality and 270 of 280 cases in 1019.894177s, starting at
+2026-09-22 13:05:57.286 UTC. All 233 browser cases passed; ten existing comparison-model cases rejected unnecessary
+copies of unchanged source blocks. The initial progress summaries inspected only recent log lines and missed those
+earlier failures; the final report is authoritative. Failed reportsha256:bb63aa048babb8003f74516e643d805141bab9fa97c735467ea8643f24d23401
+and logs/traces/screens/PDF remain under ignored roadmap-267/failed-full. No rollout occurred.
+Commit 1e09a106be3505457d5eca9060797a132dc80f1e preserves references for every unchanged subtree, copying only bound
+styles or changed descendants. Existing assertions remain intact; the style model additionally checks unbound blocks
+and unchanged inline contents by reference. All 20 affected comparison/style model cases passed. The corrected full acceptance on that immutable source is recorded below.
+
+
+Final acceptance on immutable 1e09a106be3505457d5eca9060797a132dc80f1e passed full quality (Ruff, formatting across 748
+files, Mypy on 567 sources and complete Pytest, only the known Starlette/AnyIO warning). The single complete matrix
+passed 280/280 (233 browser+47 model) in 1029.824630s, starting 2026-09-22 13:26:04.752 UTC and finishing 13:43:14 UTC;
+zero skipped/unexpected/flaky and both process exits 0. Root reviewed final style desktop/tablet/mobile, mobile comments
+and the actual PDF page, and matched all 11 final artifact hashes locally. Mobile style actions are scroll-reachable.
+No independent-agent, non-Chromium or operating-system print-dialog proof is claimed.
+
+The actual tagged PDF is one A4 page (594.96x841.92pt), with 279 extracted characters, expected headings/paragraphs/list/
+table/code, literal Unicode, preserved blue24pt style and explicit bold. No empty page, missing expected text, UI chrome,
+clipping or overlap was found. Normal API access logs contain none of the checked synthetic style/content markers.
+Ignored final evidence under e2e/work/artifacts/roadmap-267/final:
+
+- Report: sha256:0306d0e3226d31275a52d11d667e4c2d9f011804905dba73c1e08053d5fded88.
+- Browser log: sha256:0405c83720892bfd679eecc865f58a9536e933fb680bf280fdc247b41dd07595.
+- Quality log: sha256:42ffb311f52a97483e15c8fb5cd6956f19bf15ce87a1fec20c66c3e4ba497617.
+- Access log: sha256:df4db7ab47d76d49fc0f32a28dddc7d34c78a39acb29aab31398c1ab319ccf31.
+- Actual PDF: sha256:d85daa38834ea64bb9fc78a3f762cc11d32c39233e38ecd2099acf3221e64389.
+- Style desktop/tablet/mobile: sha256:e66d3f291aa64f657f16b91353d142dffbb9a331193302aa65a15b10dd866f55,
+  sha256:7b5b30f2244732e37b83fb061357ab03be30f967c6392ee702d14fd47863491d,
+  sha256:6c3b746b37c5da0db9878cd12a56d572239465b921dc9d15fa5f8b878135f56b.
+- Review desktop/tablet/mobile: sha256:575cd99b830fe019011e4be6edf992c5e439745d39054d662d609d3f89e1333b,
+  sha256:2bafd01e01efac6698d0c9ea15f7d449ca704f6d259509dd7340ba7d068383b4,
+  sha256:64eda176f3618bf7a7421f580b2bee6abef0b4ad1ce473931bab2bbbfe22162d.
+
+
+Fresh nonempty recovery completed at 2026-09-22 13:46:58 UTC on 1e09a10. A separate checked dump/catalog/receipt
+restored collabio_work_e2e_267_restore; the three older synthetic databases/dumps/receipts remain retained. The proof
+verified 392 documents,763 immutable Office versions,80 multiversion documents and 818 exact-version source objects.
+It includes10 review threads/18 events and11 suggestions/7 decisions (5 accepted,2 rejected), existing paragraph and
+character fixtures, and3 designated style fixture versions (legacy plus2 styled states, including an unused definition).
+Legacy canonical hashes, exact catalogs/bindings/overrides, receipt bindings, current authoritative read-only access and
+foreign-tenant denial all passed. No source content is included in the report; runtime and engine remain closed.
+
+- Synthetic dump: sha256:e3671a84e535c2a40e9112643f41308876a2cabb130da0eab6f24d6798ab45fc.
+- Canonical recovery report: sha256:79d0a9f472f8cdefb7e854c882703126ae8c3f19c1240a1c2913985a72396a59.
+- Recovery JSON file: sha256:582f21ce775af7011a62f5c4736f8808b28afaf4c49cbbfe0a682acbf72b4984 (matched locally).
+- PostgreSQL restore report: sha256:d2b8647b211fe27375117ab2e630eb76b4e33b7df78ff94b49358e4fb6947858.
+- Exact-version object restore report: sha256:aba1e68fef537d3fef8de286599197ebacf20e62054a79c9cdee54349195aa5e.
+- Style evidence: sha256:729d7792e70aaad3a8d16e8530142ce17f2d2033560d6753b86b78d270fa6a7d.
+- PDF QA report: sha256:99a4c997452a0b6bd05688ed6108ef7016ec6d82462c16d3b2c248c0461ed813.
+- Rendered PDF page: sha256:70c930a15ad8469de08c8a83050423af607d4321d33c4bafdcfccd48e06593fb.
+
+
+Main backup collabio-20260922T134724Z.dump verified successfully and refreshed only the ordinary isolated restore
+target. Backupsha256:527ded83d30ea5db6be367c4f7e8bb52477f716544c7a3574d245571abbcc8c2; bound PostgreSQL restore
+reportsha256:31bb91eb9492ea699440da7df07be784446d86744bda83a5142e3a7a108a3565. No main migration was required.
+Foundation at13:47:36 UTC verified 85 migrations,95 tables, three restored source objects across two tenants and all
+existing controls; gatehashsha256:6144b3ac095cb4583cdeaa0ce11283ccac0b9c6a61b5ad911b88df4597d8e11f.
+Business release at13:48:24 UTC is ready with no blockers and no business write/tenant activation;
+gatehashsha256:50696dd57740f8934cc80e8dcbe6e4b54606a07da7b376dc63d1cf018a611041. Both preceded API rollout.
+Foundation used SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO=0; loader and checks used --no-deps with checked prerequisites.
+
+## Previous completed slice: Roadmap 266
+
+Roadmap 266 / PLANS 127 adds a selection-bound list dialog for indent/outdent and ordered-list starts from
+1 through 1,000,000. Selected siblings move together; contained sublists, text, marks and paragraph attributes
+survive. Outdent at the outer level produces paragraphs. Start changes apply to the nearest entire list, leaving
+other lists alone; automatic continuation and named numbering styles remain outside scope.
+
+Alt+Shift+Right/Left and outside-table Tab/Shift+Tab use the same prevalidated transactions; table Tab still moves
+between cells. Unsupported selections cannot fall through to default list commands, and unavailable Tab actions
+leave via a reachable toolbar control. Actions preserve pending typing marks and one isolated undo group. Invalid,
+cancelled or no-op changes stay clean. Schema, character, node, depth and canonical-byte guards run before dispatch.
+Editor/session/context/revision/document/selection/stored-mark snapshots invalidate stale dialogs. Existing
+reader/history/busy/uncertain/review/suggestion boundaries and confirmed CAS saves remain mandatory.
+
+All twelve focused cases passed on fb8dbd3 in 31.591574 seconds, zero skipped/unexpected/flaky, starting at
+2026-09-22 10:26:00.778 UTC. Ten workflow cases include genuine saved versions, unchanged historical content,
+comparison/print preview, keyboard priority, denied scopes, pending/uncertain saves and exact rejected depth/byte
+fixtures. Two responsive projects and root's three-viewport review confirmed reachable controls and no horizontal
+overflow. Report under ignored e2e/work/artifacts/roadmap-266/focused:
+sha256:a46840d97f7170b1bee7718e02bbb147f87b4840fc226eca2ac4b52e9cb80893.
+
+No backend, endpoint, schema, dependency, native format or durable contract changed. Roadmap 263 recovery and
+release-gate evidence is retained; no new recovery, PDF-generation, independent-agent or non-Chromium proof is
+claimed.
+
+Full quality passed Ruff, formatting across 728 files, Mypy on 562 sources and complete Pytest, with only the known
+Starlette/AnyIO warning. The complete matrix passed all 264 cases (221 browser + 43 model) in 967.211454 seconds,
+zero skipped/unexpected/flaky, starting at 2026-09-22 10:30:40.689 UTC and finishing at 10:46:48 UTC. Both process
+exits were 0 on immutable fb8dbd3. Root reviewed final list desktop/tablet/mobile and mobile comments, and matched
+all nine final artifact hashes locally. Ignored final evidence under e2e/work/artifacts/roadmap-266/final:
+
+- Report: sha256:7ae92a1f0dcdf8a9ede01bde58ab50ac460b534058a359963fd0d11220e86df8.
+- Browser log: sha256:78c9ecfddb0d714a9e7422dc433775b6c67c56382e65f5a21d5054008ee4b9ad.
+- Quality log: sha256:f86a759834d1f1adc1de1d063482db07b499767521a5e889bbaa0af28eabba4b.
+- List desktop/tablet/mobile: sha256:d099d8eb920c87ad1162e51649199da4bb8c9ce85328ccca6339d5d0f55e08bf,
+  sha256:16e167b29bc69ef07ca65930d1d5a680005ae0da8981160bf1c008565213b599,
+  sha256:12be4be53d18dc1f95bd26abe63d7b53755e92f0d3d4038a04d52be86850c841.
+- Review desktop/tablet/mobile: sha256:80b3f6a55f11b1dbf849b0e4f539afd8d06fe84ad10ca24b021df1c894764609,
+  sha256:54d20f45d54cb147486805307c8f6e0546f851995bca9b3ff6caba3cfeef61d0,
+  sha256:53ef3cb5f20f9d3ede79d9cf22e2e178802edc03654c7d0359fb0cf41d387225.
+
+## Previous slice: Roadmap 265
+
+The **Format übertragen** menu captures uniform direct character and paragraph formatting and applies characters,
+paragraphs or both to the target selection. Empty values are defaults, so a plain sample clears selected formatting.
+Character transfer respects exact Unicode/cell ranges or pending caret marks; paragraph-only application preserves
+pending character choices. Text, heading levels, lists, tables, code and unselected content remain intact. Mixed
+sources are rejected with guidance. Capture/discard/no-op stays clean; a document application forms one undo group
+separate from typing. The full schema/size preflight runs before dispatch. Only the normal confirmed CAS Save creates
+a durable version, and old versions remain immutable.
+
+Samples contain only normalized presentation plus editor/session/context references in memory. They are cleared on
+remount, close and context change, including the accessible status description. Reader/history and existing busy,
+uncertain-state/review/suggestion guards remain mandatory. There is no clipboard, browser storage, source-text copy,
+cross-document sample, computed CSS, named style or block-type transfer. ADR-0088 records the boundaries. No backend,
+dependency, migration, schema or durable-format change is introduced.
+
+The first focused run on 655a00c passed nine of ten cases and exposed the stale accessible sample description after a
+context change. Its report and diagnostics remain in ignored roadmap-265/failed-focused. Correction 068152f clears the
+description and preserves pending caret marks during paragraph-only changes. All 40 focused transfer/character/
+paragraph/keyboard cases passed on that commit in 147.939598 seconds, with zero skipped, unexpected or flaky results.
+Focused report: sha256:0fcb8da497f6c863a0ecb7f1857373109389321af40bc627c132ed1ef89ad336.
+Commit 2d42293 adds the ADR and an explicit historical-view assertion; product code is unchanged from the focused run.
+
+Nine workflow cases and two responsive project runs add eleven checks. Root reviewed desktop, tablet and mobile for
+readable content, reachable wrapping controls and no horizontal overflow. No independent subagent, non-Chromium or
+new PDF review is claimed. The first full run on 2d42293 passed quality and 251 of 252 browser/model cases. The
+additional toolbar row reduced the mobile review area enough to put the open thread quote below the viewport.
+Correction ac70c29 positions mobile comments/suggestions between the app bar and footer independently of toolbar
+height, retaining history/outline placement. The first layout correction fa00102 passed 41/43 but covered history
+controls; it was narrowed to review drawers with their own close actions. Existing assertions remain unchanged.
+That failed layout report/trace is retained under roadmap-265/failed-layout-focused, report
+sha256:acd6dd9bca3c25882359248c4ff835e5a7574fadca281395e4901c0ad8ed2e72.
+The failed full report/logs/trace are retained under
+roadmap-265/failed-full, report sha256:b2ce2c257f2575a0285f581886f3e752f80be890946728a1c005fa761505ccf9.
+Roadmap 263 nonempty recovery and release-gate evidence remain retained, not rerun, for this unchanged durable format.
+All 43 responsive/format-transfer cases passed on ac70c29 in 235.258831 seconds, zero skipped/unexpected/flaky.
+Report: sha256:60cdcd6a89e42b3afe5b04adec05ec035c48334b65e9c00a14ef493f73eeebba. Root inspected the corrected mobile
+review drawer and the desktop/tablet/mobile transfer screenshots.
+
+The final ac70c29 matrix passed all 252 cases (209 browser + 43 model) in 908.294889 seconds, with zero skipped,
+unexpected or flaky results, finishing at 10:04:02 UTC. Full quality on that source passed Ruff, formatting across
+727 files, Mypy on 562 sources and all Pytest tests, with only the known Starlette/AnyIO warning. Both process exit
+codes were 0. Root reviewed the final desktop/tablet/mobile transfer screenshots and mobile comments and matched all
+nine final report/log/screenshot hashes locally. API-only rollout and the final closed-gate host state are recorded above.
+
+Ignored final evidence under e2e/work/artifacts/roadmap-265/final:
+
+- Report: sha256:41e8cc172dbdba55b580f75e76ca09245b933f279b07fb806fce52e5d293a899.
+- Browser log: sha256:65cf557db8954241b6ac18ef6b5e9d065e87aff990908f1106ce93c87da43a4c.
+- Quality log: sha256:c79ea12ebf98aad1a48fcc5275cf8bd2e9c5f83cd2b5b50e2a2cbadf87bb2586.
+- Transfer desktop: sha256:099ebc2c36efc61c17b3b25150c631985f151ba30cce0fd994589bd34d908cec.
+- Transfer tablet: sha256:410ad13975e17cae399d9ab3099f5a11d50f9080ccf65796882f0256e57d2a41.
+- Transfer mobile: sha256:9c4743191e4357c33494899363226112a4adbca8b4cf34a3f158cf611f5ca136.
+- Review desktop: sha256:f90bfaaf675178988772e5e7382dd59ae10bf63466be6d8fd2370db7387b77bf.
+- Review tablet: sha256:7ae0506bfa275e0d2bc71c76335c875895ce98d008c56f7fdf4959723937f9aa.
+- Review mobile: sha256:6d10fc148dd04166d73ec7c983cf94758f31ab55b5b3e503852230f1d7dd23ab.
+
+## Previous completed slice: Roadmap 264
+
+Ctrl+A/Cmd+A uses structural AllSelection, including tables at either document boundary and a selection started
+inside a cell. Cancelable beforeinput prevents Chromium from mutating table NodeViews before validation. Whole-document
+typing, plain-text paste, Backspace/Delete/Enter and cut prepare plain paragraphs and require the existing table-removal
+confirmation when tables are present. Empty replacement leaves one paragraph. Cancel/Escape preserves content and
+selection; confirmation checks the session/editor/revision/document/selection/editability snapshot again. One replacement
+is one undo step separated from adjacent typing. Undo restores exact tables, paragraph properties and character marks.
+Saved versions remain immutable; only the separate confirmed CAS Save persists the new draft. Cut copies plain text
+before confirmation, but removes content only after it. No schema, backend, dependency or durable-format change exists.
+
+The original failure was reproduced in a dedicated rich fixture. AllSelection alone still failed, establishing the need
+to intercept native input before DOM mutation. The first early --no-deps rerun also exposed an API-readiness race in the
+exploratory script; subsequent focused starts use --wait. The final test contains no diagnostic content logging.
+All 26 focused keyboard/table/history cases passed on 460d632 in 94.556794 seconds. The history draft case now owns a rich
+head ending in a table and confirms replacement before exercising concurrent history and local review draft preservation.
+The complete d7270a7 matrix passed all 241 cases (198 browser + 43 model) in 873.553288 seconds, with zero skipped,
+unexpected or flaky cases, finishing at 08:00:32 UTC. Full quality on the same source passed Ruff, 722-file formatting,
+Mypy on 562 source files and all Pytest tests, with only the known Starlette/AnyIO warning. Both process exit codes were 0.
+Root reviewed desktop/mobile confirmation screenshots. Clipboard tests use synthetic DataTransfer/ClipboardEvents;
+no OS clipboard roundtrip, IME, non-Chromium, independent subagent review or new PDF proof is claimed.
+
+Ignored evidence under e2e/work/artifacts/roadmap-264:
+
+- Focused report: sha256:4c1ff3f7ec42e62a2a816ac32009f64034190137806eb5e39c8cc90cf0bdc310.
+- Focused browser log: sha256:4df089e6a79c005872706960be6c30186719bc6d702bb0afb5b412aae2092fee.
+- Complete report: sha256:a40528f367d8a032d2d2d2a0ae53304d5172b58e7c7c621a8bccdcaa0bf63efc.
+- Complete browser log: sha256:2c78d8b26e6ceddf22b4e3a80a1b771e21a3c3d44d2ca2ca24c3268f0695df61.
+- Full quality log: sha256:fa15e300bf3abc15289f6b91106e0085a63428d696806007097e570105e681c8.
+- Desktop screenshot: sha256:503846f9e257ec45d99b92807609639fa9887cd7208852116c296bda54ca0543.
+- Mobile screenshot: sha256:f3ce324e6d6f8b0b3b4c9fff089c235ac1602718e93b32cfb4154dc094a3662f.
+
+The original failing reproduction remains retained. This is a single all-green matrix, replacing the combined
+acceptance method of Roadmap 263 without erasing its historical reports. Its complete nonempty recovery and release
+gates remain retained; no new recovery drill or main migration was needed or claimed for this UI-only slice.
+
+## Previous completed slice: Roadmap 263
+
+The selection-aware **Zeichen …** dialog supports fourteen font sizes from 8 to 48 points and eight named colors.
+It changes selected text, including headings/lists/quotes/exact selected table cells, or the next typed text at a
+supported caret. Mixed values remain unchanged unless chosen. Standard removes one property; reset prepares both
+properties for explicit Apply. Cancel/no-op stays clean; caret choices do not dirty saved content. One selection
+application is one undo step separated from adjacent typing. Code remains excluded.
+
+The optional strict textStyle mark preserves native v1 identifiers and unchanged legacy canonical bytes, hashes and
+receipts. Invalid values, CSS strings, unknown attributes, empty marks, nulls, code combinations and block placements
+are rejected. There is no SQL migration, dependency or new endpoint. Rollback editors must understand the mark.
+Only fixed data attributes/CSS reach editor and print. Comparison names sizes/colors; replacement distinguishes full
+mark attributes so differently formatted adjacent text cannot merge. Fresh rights, exact version references, explicit
+confirmed CAS saves, uncertain retry and memory-only drafts retain their existing boundaries.
+
+Validation lineage: product implementation d235b6b; a0b3001 adds only explicit test-fixture types; 0fcf212 changes only
+one history-test input to keyboard replacement and asserts the draft before navigating history. The final test-only
+75f381a gives that history case its own starting head instead of inheriting a prior rich-table takeover. Full quality on
+a0b3001 passed Ruff, formatting, Mypy on 562 sources and complete Pytest at 2026-09-22 06:48:44 UTC, with only the known
+Starlette/AnyIO warning. The first full browser matrix passed 230/231 in 876.201937 seconds. The failing history test
+had already failed to enter its draft before navigation: Chromium's contenteditable fill produced an invalid empty
+table, and the existing document guard correctly rejected it. The keyboard-only correction still failed at the new
+immediate assertion. A second complete run on 0fcf212 retained
+230 passes and one setup failure in 1020.268560 seconds. The final isolated setup on 75f381a passed all eight history
+cases in 31.423815 seconds. All 231 distinct cases have passing evidence (188 browser and 43 model), combining the
+230 full-run successes with the corrected complete history suite. This is not a single 231-pass run; both raw failure
+reports remain retained. No product guard or assertion was weakened. Whole-document keyboard replacement across rich
+tables remains an explicit follow-up usability investigation; fixture isolation does not claim to fix that input path.
+
+Earlier focused checks passed 362 Python/API/PG/recovery tests in 19.18 seconds and all 21 browser cases; a comparison
+model assertion was corrected to inspect the description text and all four new model checks then passed. Root code
+review and six Office/Work screenshot reviews found no remaining character-formatting issue. This turn did not use
+independent subagents.
+
+Evidence under ignored e2e/work/artifacts/roadmap-263:
+
+- Initial full report: sha256:580e4e50f20e9694506ca105a1d4914942a9edeff65b2538e64647c763dad304.
+- Initial full browser log: sha256:04128a67d2bd6ee1e2132b7373d3e2e097bf3b72d9220113e983fcfac2322bc8.
+- Final quality log: sha256:50dc41d7ef0d6193a0a6552292e4efad0de6d4cedf9ff14934bbe55bce99e754.
+- Corrected character-model report: sha256:2e1e6e61c9e800d71bf11585564ebfd521df61dfebb89a76c3e05313ea3161e3.
+- Focused Python log: sha256:b2977274bc79683e51e22919dd6ac7854d455af6cd5e01540d167c2016267fbd.
+
+- Second full report (230 passes, one retained setup failure): `sha256:2c902182d91ffe224d63d70c503ae28e1ad509ae15acbd4bca76afbd17abbec0`.
+- Second full browser log: `sha256:ce700e10077611aca860a748648745863830102e503a6a71e775808c6da0250a`.
+- Corrected eight-case history report: `sha256:35d3111f2630f7b699ef822942f29484237d1604707db12e2f2cac3e49d165d0`.
+- Actual PDF: `sha256:caf2da90f8834ad3f10ea054929f318c5dca4db3dfefbcc65c8d9effafed761a`.
+- PDF QA report: `sha256:0330e6e9c8247b984db31452675a564d642630323034f8ffdbbfd73cba4845d3`.
+- Office desktop/tablet/mobile/print-preview hashes respectively:
+  `5713c2b51517a7a5f7c5fd8fbeaa9a5f286dc90457dddb0357c1063a90fb8ea3`,
+  `3a41543ec464917cfaa042096b0add557f547441a34c50bcbc42f52f1ace1a69`,
+  `f308f8d1333fdde9520b528ef799e06882f777fb3a6c9245150a14171f328b37`,
+  `501cc442fe57614cb113e7b849af6991118f4537905326038727f8f9468a76ac`.
+- Work desktop/mobile hashes: `d233fd33100538aa6382bd0b60d4f0797a44a38600c0b36517de8c945e6942f3`,
+  `3c315fd4e7fede1e8b526f5a3ff33b34ea2aed35b3c58a560714106b87b73965`.
+
+The actual PDF contains two nonempty A4 portrait pages, 2,108 extracted characters, all 24 ordered paragraphs and both
+sentinels with H1/H2/P structure. Root visually reviewed both rendered pages. Access-log inspection at 07:05:49 UTC
+verified 752 list and 445 history records without query/cursor values. No independent-review claim is made for this turn.
+
+Fresh recovery into `collabio_work_e2e_263_restore` completed at 2026-09-22 07:13:41 UTC. It verified 460 documents,
+935 saved versions, 116 multi-version documents and 1,045 source objects using complete authorized pagination.
+One unchanged legacy character version and two distinct saved size/color profiles passed, alongside all paragraph
+profiles, 20 review threads/36 events and 22 suggestions/14 decisions (ten accepted, four rejected). Exact source
+versions/receipts, current parent ACLs, read-only restored services and foreign-tenant denial passed. All earlier
+synthetic targets and their dumps/receipts remain retained. The complete test matrix ran twice against this synthetic
+store before the final targeted correction, explaining the larger inventory; this is not ordinary tenant content.
+
+- Synthetic dump: `sha256:9866eb2c501e7713efcb8661a20b3ae86917a71c4e8f773ddaf1f578ceaf5519`.
+- PostgreSQL restore: `sha256:891768bd28818c110c89beb665ff0b87db4cc0c3b482eeaadcf977eae464ce29`.
+- Exact S3 version restore: `sha256:f16f23b1d99a28bc9b8ecc063426cff4e4e2b0ca8d53e86ea05f31141f6d47de`.
+- Embedded recovery report hash: `sha256:9321026e05318ef59d6bd52216fa46c5a20bd9dc3532fd8a8c39ebf296deb0fd`.
+- Recovery JSON file hash: `sha256:f8b3f4fdd2545ce3ea5fc240d8d9701ce0569b3b0d24314dad7bae4d7e19ca64`.
+
+Root recomputed the canonical recovery report hash from its metadata. Main backup
+`collabio-20260922T071403Z.dump` (`sha256:7d65a6204400f7e044a102e073d96e219e5f07ffa83f008f0e1289746c053775`)
+was verified and restored only into the existing isolated main target. Foundation at 07:14:17 UTC verified 85 migrations,
+95 tables and three existing source objects with seeding explicitly disabled; no migration was applied.
+Foundation: `sha256:83a11bbd91525f416261d9a171ffc7c114b4eb11bd5eaa86a998d6d21a640428`;
+bound main PostgreSQL restore: `sha256:52d52f2b1270cee6a897af98a85f201171651cc90e899304ce3a1ee7eaef1d2a`.
+Business release at 07:15:03 UTC: `sha256:be604e0d9496af80d56d27f21683b2c9c68472fefe72f1bf6744e3495f166bef`;
+all three existing business slices passed, with business writes and tenant activation false. Native Office has the separate
+nonempty proof above. API rollout, live gates and final host state are recorded near the top of this handoff.
+
+## Previous completed slice: Roadmap 262
+
+The compact selection-aware paragraph dialog formats paragraphs and headings, including those inside lists, quotes
+and table cells. Alignment supports left, center, right and justify; line spacing supports the exact strings 1,
+1.15, 1.5 and 2; before/after spacing supports integer 0, 6, 12, 18 and 24 points. Mixed values remain unchanged
+unless selected; Standard removes an attribute. Reset prepares defaults for explicit Apply. A no-op stays clean,
+and one application is one undo step separated from adjacent typing. Historical/read-only views retain their gates.
+
+Strict server validation rejects unknown or malformed values without mutating input. Optional attributes preserve
+legacy canonical bytes, hashes and receipts. Selection, context, revision and document checks prevent stale edits;
+resource limits are checked before applying. Heading shortcuts/input rules, split paragraphs, replacement, reuse,
+version comparison and print preserve formatting. Only fixed allowlisted DOM attributes and styles are rendered.
+No new endpoint, dependency or SQL migration is introduced. The native MIME and collabio_document.v1 remain unchanged.
+
+Acceptance on immutable `8b61d8d`:
+
+- All 294 focused Python/API/PostgreSQL/harness checks passed in 18.05 seconds. All 46 focused browser/model checks
+  passed in 150.538659 seconds, with zero skipped/unexpected/flaky.
+- Full quality passed: Ruff, formatting across 712 files, Mypy across 557 sources and complete Pytest; only the known
+  Starlette/AnyIO warning remains. All 215 checks (176 browser + 39 model) passed in 759.313613 seconds at
+  2026-09-21 15:10:02 UTC, zero skipped/unexpected/flaky, preserving all previous 200 cases.
+- Independent backend/UI/test reviews found no remaining material defect. Root and independent visual review passed
+  four Office views, two Work screenshots and all three actual PDF pages. The A4 portrait PDF contains 5233 extracted
+  characters, all 28 ordered paragraph markers and both boundary markers, H1/H2/P structure, and no empty page.
+- Actual Uvicorn logs verified 349 document-list and 219 history records without query/cursor values at
+  2026-09-21 15:10:45 UTC.
+- Focused report: `sha256:312bf9c8d93747ad8ce7e5cb8a99400ee075bc4998b141f1039e711fc61dbe7f`.
+- Focused Python log: `sha256:0c73376a480c923e0e77292ca7ec307c79c76cd2f72c67ca020dd7c29b1145b9`.
+- Final report: `sha256:b9d422791168a5f1a8dc710eb1574a28fe373a928c44c11227bbd981380d71a6`.
+- Quality log: `sha256:e60159bdafa33d3854347d8fdf6fc5f55bc4bb87c630f8e6ebdbefe6240d358c`.
+- Browser log: `sha256:cdd7dcf868769ec4f793971b0f438294f42d455351224abedc0b3059dbfbf35b`.
+- Actual PDF: `sha256:ab04640d1bb33ad12712de3303fa98037ebad2ae1ff7689baac1419de608222f`.
+- PDF QA report: `sha256:b271848bc5b5c2e3f13f6a2c99621d64f69600cb203946d8ee5eb56ae17023b1`.
+- Office desktop/tablet/mobile/print-preview hashes respectively:
+  `61443567cee46b6406a77388c9eacfd11d5de4ba92c49071262b875a2bad2872`,
+  `e0e39c57ce1ca7c317c6fccd4f0afdc5befb2e85f55fb91f87e05196fc090754`,
+  `6d3cee2186d104ffe1a15f7ac01aafdf54221f08a9fc1bbfe0aa4aee9bfef827`,
+  `39aeddbcc3b2d93d77488117b6394fce8e3f027c009e5c66af566edfda50e7ac`.
+- Work desktop/mobile hashes respectively:
+  `7d40106046bf015678a36f48f3f11d81bbf4949debe3056dba65a4b65f617192`,
+  `c1152844fab0cdf1819eb04e899507b04e9908c3a7adc1e0459952afadb8b851`.
+
+Nonempty recovery completed at 2026-09-21 15:13:34 UTC against the new isolated database
+`collabio_work_e2e_262_restore`; the previous `collabio_work_e2e_restore` remains retained. Complete document/history
+pagination verified 330 documents, 666 versions, 50 multi-version documents and 721 source objects. Active database
+principals, roles and groups supply authoritative read access; no extra grant or synthetic super-role is introduced.
+Immutable predecessor/head inventories, exact source versions, receipts, ACL denial and read-only behavior pass.
+The designated three-version fixture proves unchanged legacy bytes plus two distinct formatting profiles inside
+paragraphs, headings, lists, quotes and table cells. All ten review threads/eighteen events and eleven suggestions/
+seven decisions (five accepted, two rejected) pass the shared checks. No content is included in metadata evidence.
+
+- Recovery report internal canonical hash: `sha256:bfc720ee2ec275061c5f934369a5864259071d5409f7bd4f99368b431951c7f7`.
+- Recovery report file hash: `sha256:bb02922322b46b09627d9c3f842534fda0cabec5d7ab541c58f0500e60fdd94c`.
+- Backup: `sha256:a4481417a96ebff0af7070bf817fcf5ad01e975e9f4fa909717c906e947379f7`.
+- PostgreSQL restore: `sha256:f5b5ebfe499f6164efc6381758ed8bed548d8d1e0dfec150f07f17f462234935`.
+- Exact S3 restore: `sha256:54086c3bbe49cc6576ee1c0ee60ee1f9a239dffa9c9685572587023c11b32b76`.
+- Paragraph evidence: `sha256:1b58df7dd469f375e85291e229b5b1daf635229fe44b743dc3bc6f227fe5dff5`.
+
+A separate current main-database backup was created and verified, then restored into the existing isolated main
+restore target. Foundation gate `sha256:1a36fb9cd2724bd085af7dd0eb68002f53c70869c33871e15dc057e7f1fd00a9` passed
+at 15:14:23 UTC; business release gate `sha256:bbfaaf80a09b1bccb477f8e6632af9fb4656381aa943d63895e4c2844344e341`
+passed at 15:15:09 UTC. Both report no blocking reasons, and business writes/tenant activation remain false.
+Ignored local evidence is under `e2e/work/artifacts/roadmap-262/`; the remote backup, receipt and metadata report remain
+under `e2e/work/artifacts/office-262-recovery-backup/` and `office-native-paragraph-recovery-proof.json`.
+Independent evidence review recomputed the canonical recovery hash and matched final report/quality/counts.
+
+## Previous completed slice: Roadmap 261
+
+The existing versions endpoint now supports bounded pages along the immutable predecessor chain, including identical
+timestamps. Its default remains 200 entries; the UI requests 50. Authenticated cursors bind tenant, actor, roles,
+document and page size, and use a distinct signing domain. Each page rechecks current parent role/ABAC and typed ACL
+before reading metadata. A fixed history head keeps continuation stable; the current head is reported separately so
+concurrent saves are visible without replacing selected content. No source bytes are loaded by history pagination.
+
+History and comparison provide older-version, refresh and retry controls. Appending preserves exact selections,
+rendered comparisons and document/review/suggestion drafts. Refresh can pin the two exact comparison selections outside
+the new window. Opening history retains a version-bound composer; returning resumes its draft. Document/context changes
+and close keep existing discard consent. Transient failure preserves state, rejected cursors offer refresh, and actual
+access denial clears protected data. Inspector hide/tab/focus changes and comparison/context close cancel pending reads.
+Exact source authorization and explicit confirmed CAS saves remain mandatory for historical takeover.
+
+The first integrated browser run on `7f95caf` passed 22 of 23 cases and exposed the inspector discard path. Independent
+review also found uncanceled sidebar reads and stale loading status. Product correction `46a83b4` fixes those cases;
+expanded tests prove both composer drafts and the additional cancellation paths without weakening earlier assertions.
+Independent backend, UI and test reviews found no remaining concrete defects after correction.
+
+- All 249 focused Python/API/PostgreSQL/harness checks passed on `0bdd522` in 40.58 seconds.
+- All 23 focused browser cases passed on `46a83b4` in 94.693441 seconds, zero skipped/unexpected/flaky.
+- The fixture creates a genuine PostgreSQL/S3 document with 225 confirmed versions under dedicated author/reader
+  principals. Complete unique history, exact earliest rich content, current ACL denial, cross-role cursors, concurrent
+  heads, comparison, takeover, real CAS conflict and same-cursor retry are covered.
+- Root and independent visual inspection passed desktop/tablet/mobile controls. Actual Uvicorn logs verified 63
+  document-list and 110 history access records without query or cursor values at 2026-09-21 14:12:06 UTC.
+- Focused report: `sha256:ef46cb8c44612e6dcb6261f784d42a5dbfbeaca1e1bf9604e3f6869bf5e464b3`.
+- Focused Python log: `sha256:57c57ffa90404f8f0fb763e86f655a2726fa16264d2f0fc3c0bf60e809053122`.
+- Initial failed browser report: `sha256:c668c76b5ccf00227eebeb03735633a80a02388b95a8b5e4a2cbb6601c7a1348`.
+
+Full acceptance completed on unchanged `46a83b4` at 2026-09-21 14:24:43 UTC:
+
+- Ruff and formatting across 705 files, Mypy across 551 sources and complete Pytest passed; only the known
+  Starlette/AnyIO warning remains.
+- All 200 checks passed in 688.743181 seconds: 165 browser and 35 model cases, zero skipped/unexpected/flaky.
+  All previous 190 cases remain included.
+- Final report: `sha256:926b3a0c808d6baed3c65d904257cabc85996da6eb956f58eb5d7d03fb747e79`.
+- Quality log: `sha256:296215f2c5250e1199918099f88565806f30b1a49276e818f457b312e1508025`.
+- Root and independent final visual review passed three Office history and two Work screenshots.
+- Office desktop: `sha256:0892e8209a114f6e330161ea44668f5338da58afbfae2a428b54600b299c431a`;
+  tablet: `sha256:916637c44793934818ed7068f5aae091141fd50d851709c861250e8c83c6cc05`;
+  mobile: `sha256:cd21aac209668a7719e59a06ee0b4314b570a8fe9b23fb749dad862fc2e84c64`.
+- Work desktop: `sha256:c45d47f7839bc45fb3d6ba79ec4364e86f35afbc94db86d2ce65bf1a5432dd08`;
+  mobile: `sha256:ad1fc69cbc16d518a1c13a786a95ac214b88acfdbf5f50a6a0ac26065622afc7`.
+- Actual Uvicorn logs verified 322 document-list and 205 history access records without query/cursor values at
+  2026-09-21 14:25:11 UTC.
+
+API rollout, live verification and exact cleanup passed as recorded above. Ignored evidence is under
+`e2e/work/artifacts/roadmap-261/`. There is no new endpoint, schema, durable format or dependency; no main-database
+migration or new recovery drill ran. Roadmap 257 recovery evidence remains retained. Ordinary tenant, pilot, indexing,
+cloud provider and DOCX engine admission remain closed.
+
+## Previous completed slice: Roadmap 260
+
+The existing document-list operation now supports bounded literal title search and context-bound cursor pagination.
+The UI requests 50 entries per page, shows loaded counts, and exposes clear next-page, reset and retry controls.
+Current role/ABAC and typed ACL checks precede the page limit and lookahead. Creation time and object ID provide a
+stable order across saves and renames; concurrent title/ACL changes remain live and this is not a frozen snapshot.
+Cursors bind tenant, actor, roles, normalized query and page size. The per-service HMAC key supports the current
+single-worker deployment; restart invalidates cursors and requires a list refresh. No shared multi-worker key is claimed.
+
+Search and pagination preserve open documents and all local drafts independently of list membership. Manual refresh
+reauthorizes the exact saved source and updates its write capability without replacing edited content or review drafts.
+Actual read denial clears protected state; transient list/read failures preserve drafts. Historical takeover and
+suggestion acceptance use fresh exact content permissions instead of filtered-list membership. Existing confirmation,
+version/hash validation, CAS and exact save retry remain intact. Query text and cursors are excluded from audit metadata
+and ordinary Uvicorn access records. The compact Work navigation now exposes the existing Office link on mobile.
+
+Backend implementation `ac250d7` received formatting-only correction `35fdb1e`. Its real PostgreSQL revocation fixture
+then required the existing mandatory revoked_at_utc value; `e304b28` corrects that fixture and integrates the UI/tests.
+All 180 focused Python checks passed in 23.04 seconds, including genuine PostgreSQL authorization-before-limit tests.
+The first browser run passed nine of ten and found the hidden mobile Work link. Product correction `5bcb7d2` preserves
+the unchanged real-click test. All ten focused browser checks then passed in 46.602456 seconds, zero skipped/unexpected/flaky.
+The separate synthetic author owns 225 real PostgreSQL/S3 documents; a separate reader can see only three oldest entries.
+Independent desktop/tablet/mobile visual review passed. Actual Uvicorn logs verified 51 redacted list access records.
+
+- Focused report: `sha256:663d6370c40b38e432000b458ea2f7fb662121fd3a0be3b19ddfdf2b59e42c03`.
+- Focused Python log: `sha256:424ede12b4e521f026d5e8535595879e23de559bc4e7cd9cf7d1026d9cd622c5`.
+- Failed initial browser report: `sha256:74199fc7e94aaa0580778fcef451c7d7a4f81cf4faf77369672fc404879b37c4`.
+- Failed PostgreSQL fixture log: `sha256:0d6509f0c156b72c42c8502a12ac8872fe6ff9c8ad974a1f137bbfc8d328c29c`.
+
+Full acceptance completed on immutable `5bcb7d2` at 2026-09-21 13:01:19 UTC:
+
+- Ruff and formatting across 699 files, Mypy across 547 sources and complete Pytest passed; only the known
+  Starlette/AnyIO deprecation warning remains.
+- All 190 checks passed in 651.284899 seconds: 155 browser and 35 model cases, zero skipped/unexpected/flaky.
+- Final report: `sha256:f11d3d0e6130351760439eec1ea7e71ae85de1fe881d76d2df4c9eee0ac8b8ef`.
+- Quality log: `sha256:627d7e5a71376e443db09d5bc78e953c86298b699d3df8a8b2e3feaba1fc446c`.
+- Independent final visual review passed all three Office and both Work screenshots, including mobile navigation.
+- Office desktop: `sha256:2dc5a26e4a3e5002f221e9d01fc4852de6ac984ea41c7ff240a6310f871ce23e`;
+  tablet: `sha256:b05b0ef9fed915953a45a12858b1e12eb70bc2b09f80b7c9091e39facae323b8`;
+  mobile: `sha256:7623c55a537cba751d8626bc4a6a4edb03f87e6265ae836e0083390d529909df`.
+- Work desktop: `sha256:8280b8ca8309031eefea8d13080c9d0f97d0840a5621d5490869fdeecd5f9796`;
+  mobile: `sha256:693614c26b4f68e2ac4558a01d36368ed3c6221f0a702a7bc411e5f6621bc482`.
+- Actual Uvicorn logs verified 306 list access records without query/cursor values at 13:01:29 UTC.
+
+Ignored reports and diagnostics remain under `e2e/work/artifacts/roadmap-260/`. API rollout, live verification and
+exact cleanup passed as recorded above and in the append-only operations log. No schema, durable storage or dependency
+change is introduced and no endpoint is added; the existing read endpoint receives additive parameters/response fields.
+No main-database migration or new recovery drill is claimed. Roadmap 257 recovery evidence remains retained.
+
+## Previous completed slice: Roadmap 259
+
+Saved current or historical native Office versions can now become independent memory-only drafts through
+"Als neues Dokument". The dialog identifies the saved title/version/date and accepts a bounded new title.
+Unsaved source edits are excluded. Canceling or a transient read failure preserves the current document and
+discussion/suggestion drafts. Existing discard consent precedes fresh exact-version content and create-capability
+reads; validation and detached editor preparation finish before the workspace is replaced.
+
+Source read access plus create capability suffices; source write access is unnecessary. The bounded listing is not
+used to authorize the source. Busy, uncertain or conflicting saves cannot be reused; close/context/session changes
+reject late responses. The fresh editor has no source object/version, mutation attempt, history, ACL or discussions.
+No write occurs until the existing explicit Create confirmation. That operation checks current create rights and
+retains exact retry after an unknown outcome. This is a local drafting workflow, not an atomic server-side copy or
+a persisted provenance link; later Create does not reauthorize the former source.
+
+Implementation `b4add9d` initially passed nine of ten focused checks. The rich-content fixture omitted standard
+unit-span table attributes that the established editor serializes explicitly. Test-only correction `e7fec24` supplies
+those attributes without weakening exact content equality. All ten focused checks then passed in 41.694688 seconds.
+Full quality and all 180 browser/model checks passed on the same immutable source at 2026-09-21 12:20:09 UTC:
+
+- Ruff and formatting across 691 files, Mypy across 541 sources and the complete Pytest suite passed;
+  only the known Starlette/AnyIO deprecation warning remains.
+- 180/180 in 664.306054 seconds: 145 browser and 35 model cases; zero skipped, unexpected or flaky results.
+- Final desktop/tablet/mobile screenshots passed independent visual review with no clipping, overflow or hidden actions.
+- Final report `sha256:9792822a6de9a37b6b92acd67805e3f52ae535ad63836a70be176d72ea8f3237`;
+  quality log `sha256:f66e1d0bacac61ebd7625e182d4293791b5b1c4856bd466d6b0a6db0f65a5cfe`.
+- Focused report `sha256:95646616c21d7d1d140dfc05ddda7998e035551440cc5a74ef5a203711240385`;
+  failed first report `sha256:54fb33988aaa253b66b662fcd19828c499890c43fbfb34554ae9c01f4cf8691b`.
+- Final screenshots: desktop `sha256:30606618ab192d770dc04d6a1e1ec3e24c5e58250703d33aa735c712cf841ca2`,
+  tablet `sha256:0f2adf14eca0cf9445f9c4051183e72f7855043fef27a9ebcbe8505d29d40b1a`,
+  mobile `sha256:1190b026f1d0f7ee0cbfab9d26573a137e56251528bd3f3b89299a82a14819f5`.
+
+Reports, logs, screenshots and failed-run diagnostics remain ignored under `e2e/work/artifacts/roadmap-259/`.
+All execution used dev001 Compose project collabio, required locks and fresh lifecycle inventories. Quality and browser
+tests used separate test databases. API rollout, live verification and cleanup are recorded above and in the append-only
+operations log. Thirteen API operations, schema, storage and gates remain unchanged. No new recovery execution is claimed.
+
+## Previous completed slice: Roadmap 258
+
+Roadmap 258 / PLANS 119 completes native saved-version printing. A clean current or historical version opens a
+literal, semantic print preview with A4/Letter and portrait/landscape settings. Readers may print without write rights.
+The existing exact-version endpoint freshly rechecks current access both on preview and immediately before the
+explicit browser call. Historical output uses its own saved title. Dirty, new and unresolved-save states remain blocked;
+no content is implicitly saved or discarded. Prepared output is cleared after printing, close or context invalidation.
+
+The browser controls final pagination, destination and settings; opening its dialog does not prove output completed.
+The isolated print surface excludes editor controls, context, comments and suggestions. Other print entry points show
+neutral guidance. Native headings, lists and table cells survive PDF structure export; the preview becomes temporarily
+nonmodal during the browser call, then returns only for the still-valid session. No PDF/UA or cross-browser fidelity
+claim, server export, new receipt, storage derivative, dependency, migration or engine admission is added.
+
+- Full quality on `cf2244c` passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest;
+  only the known Starlette/AnyIO warning remains.
+- All 170 checks passed in 562.234 seconds: 135 browser cases plus 35 comparison/search-model cases, zero skipped,
+  unexpected or flaky. The previous 162 checks remain. Twelve targeted error cases passed first. The final
+  cleanup-only guard on `d8300aa` passed its affected parallel-revocation case in 9.0 seconds.
+- All eight print cases cover exact saved/historical content, ordinary readers, literal markup, all supported native
+  structures, paper/orientation, current ACL revocation, transient failures, late responses, dirty/unresolved states,
+  output isolation and responsive layout. Same-page Chromium PDF generation exercises the freshly prepared product surface.
+- Independent Poppler/QPDF inspection verified all 80 numbered paragraphs and final sentinel across nine Letter
+  landscape pages, preserved text and table content, A4 historical output on one page and one guidance-only page.
+  Real H1/P/list/table/header/data-cell dictionaries are present; no application-shell or protected-current-version leakage.
+  Desktop/tablet/mobile screenshots and all eleven PDF pages were visually reviewed.
+- The first complete runs passed 169/170 on `a939b1b` and 168/170 on `4545d48`; all print cases passed. Existing
+  error-body observations failed because Chromium discarded streamed no-store bodies. Test-only buffering preserves
+  actual upstream status/headers/bytes and has no retries. A focused 11/12 run then exposed the expected canceled
+  sibling request after a parallel 404. Its observer now checks the identical request's ERR_ABORTED and waits for both
+  reads before restoring the synthetic ACL. Subsequent focused and full runs passed. Failed reports/traces remain retained.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-258/`:
+
+- `results.json`: `sha256:8198c66138af5af63d6d767ab9e8c4c06acaf18e60013809ed31879f39faa86f`.
+- `quality.log`: `sha256:541ce600a21a8651c99c4cb0182b24c80f5f0b3132b161c7099ea4c164d4de1a`.
+- Desktop: `sha256:1cf476412f3b51cc20110eadf1d816b8669e01e19352357c82e4cab8a325f924`.
+- Tablet: `sha256:b8e061e59054f8c8b6e35c6e6e569c5de0313ff5c3c5535c08f335010ac99654`.
+- Mobile: `sha256:42524d1e6f332e586d4b9e48b631584cc744254ede18120aa979b18265c058c8`.
+- Rich PDF: `sha256:15c5bb6c81b7fd75a9b53ad22e1c80496f3b34584ee6bc654a8133b0b7a13785`.
+- Historical PDF: `sha256:3e6094137a2b1e78191b7ba08c01d970d0250c78f179f22904e5ac562f428a67`.
+- Guidance PDF: `sha256:233a9b4e3b27324c3ed86362813b0fe5f8fa6cb8bbc37dcd9bd0f84eeb1cb495`.
+- `pdf-qa/report.json`: `sha256:598c1e210e3cb3f4920d78120b479d36f42bb8f8d8bfb6cf3677b61a3bedb63b`.
+- First failed full report: `sha256:18415b02c2ddc62922231905f297ba9dd7dbdf800e0fe64d1171de9d862191f9`.
+- Second failed full report: `sha256:0cb6cfd6cad7cc95d1d359f1ba3314e75978d0c4dde43349964bd58a9b1b5cb4`.
+- Failed error-focused report: `sha256:8bc6dc421e49ceb88018d48c05dffe94623c0655e64960037ccdaecf2c77d8bf`.
+
+## Previous completed slice: Roadmap 257
+
+Roadmap 257 / PLANS 118 completes explicit saved-text suggestions: select text in a clean current saved version,
+propose replacement (including deletion), inspect literal before/after and confirm accept or reject. Acceptance
+saves its immutable decision and exact new document version in one PostgreSQL transaction and shared Office tenant
+lock. Rejection appends only its decision. Historical anchors never move automatically; stale acceptance conflicts.
+Fresh current parent ACLs, write-feature gates, strict revisions and actor-bound exact retries apply to every mutation.
+The fourth inspector tab uses memory-only drafts, current capabilities, explicit confirmation, conflict preservation,
+uncertain-result retries and close/context invalidation; known success cannot trigger a second write after refresh failure.
+
+Migration 0085 adds append-only `office.text_suggestions` and `office.text_suggestion_decisions`, immutable COMMENT
+sources/receipts, forced RLS and exact source/result bindings. A deferred constraint trigger prevents an acceptance
+version without its decision. Public saves reject reserved internal acceptance references before any PUT. S3 remains
+outside PostgreSQL rollback; focused tests prove metadata rollback and detectable orphans after storage/DB failures.
+The restore gate pins all six Office tables, grants, policies, constraints and complete trigger functions, including
+the deferred requirement. Continuous keystroke tracking, automatic merge and live collaboration are not implemented.
+
+- On `0d5350d`, all 688 focused backend/API/PostgreSQL/recovery tests passed in 52.37 seconds and ten focused browser
+  runs passed in 50.1 seconds. Full Python quality on `9c17a31` passed Ruff, formatting across 684 files, Mypy across
+  541 sources and full Pytest; only the known Starlette/AnyIO warning remains.
+- The full matrix on `9c17a31` passed 162/162 in 535.956 seconds: 127 browser cases plus 35 model cases, zero skipped,
+  unexpected or flaky results. All previous 152 checks remain. Final desktop/tablet/mobile screenshots passed
+  independent visual review. Code review and independent recovery review also led to alias-safe success responses,
+  preserved-title validation and reserved-reference rejection before the final full run.
+- Fresh nonempty recovery restored 67 documents, 109 versions, 36 multi-version documents and 162 source objects.
+  Nine review threads/17 events include the complete prior review lifecycle. Ten proposals and seven decisions include
+  five acceptances and two rejections. Exact original/replacement bytes, receipts, result content/title/lineage,
+  current ACLs, foreign denial and read-only restored services passed. Report
+  `sha256:e1ab971a88c43ff06c12544ba24619731b2b8304908da53ab5b73ad8bb017c53`; synthetic backup
+  `sha256:06bbf77f9e41db9a7ecbc525bf17fd3e69c08b8dac7840ade2e7f10ecb9f4160`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-257/`:
+
+- `results.json`: `sha256:42317e268bb6cd56cff3d85615bc012aed06d28ccd88f99b62228cdc03168e47`.
+- Desktop: `sha256:79d78928d16ff5c35fdcbe95640037fbf07e92ba6af8b026b8cf2a6f3108983e`.
+- Tablet: `sha256:3325d16574ccea994966ad6e474821595c592a752c99fb0dbac5c7f00000fa79`.
+- Mobile: `sha256:199bf6260aea647f747ee875edb8d6b0899598cc87d9ec41786f1ef804ec7e77`.
+- `quality.log`: `sha256:6b49b2f2fa706fd0d42baee0a72a19111e404f66309eca3a554830804cd19a21`.
+
+Main migration/release evidence:
+
+- Pre-0085 `collabio-20260921T071612Z.dump`: `sha256:ed83da613feb5792a209bf428630df302804dcfe377af9b89e1e58182de63a83`.
+- Post-0085 `collabio-20260921T071618Z.dump`: `sha256:c937926687291d847cd07daaf36034a5318bead0c13926322ac3ba2035934aeb`.
+- Foundation-bound PostgreSQL restore: `sha256:1a2d6c846bd5617ffbf20175aed5a97155c85144f5be107b3d64b345a38f5045`.
+- Foundation: `sha256:f257c62d06ba81432a909f60161faba69c1d9e3db82f998c4cfdbd02c1294ffd`; 85 migrations/95 tables,
+  expanded Office controls and three existing main sources restored, with source seeding explicitly disabled.
+- Business release: `sha256:b14e152ee2355a82a1a22cb06457daac58fe2fa0149d32b8df31678e618dca63`; existing CRM/Tasks/Time
+  three-slice gate passed without business writes or tenant activation. Office has the separate nonempty proof above.
+
+Primary implementation: `office_suggestions.py`, `office_suggestion_repository.py`, the transaction-scoped document
+persist primitive, Office API/UI and migration 0085. Tests include `test_office_suggestion*.py`,
+`office_suggestion_recovery.py`, the shared restore gate and `office-suggestions*.spec.mjs`. See ADR-0081,
+the Office module document, Work E2E runbook and append-only operations log. The initial restore helper typo stopped
+after dump creation and before target modification; its corrected resume verified that dump and completed the proof.
+
+## Previous slice: Roadmap 256
+
+Roadmap 256 / PLANS 117 completes native Office review discussions: comments on an exact saved version or selected
+text, replies, resolve/reopen and explicit confirmation. Historical discussions keep their original version and quotation.
+The server derives bounded Unicode-safe anchors from exact saved content. Every operation checks current parent rights;
+mutations also require the existing write feature, thread revision CAS and actor-bound exact retries. Comments do not
+create or modify document versions. Literal bodies/quotations stay in immutable COMMENT SourceObjects, never normal logs.
+
+Migration 0084 adds `office.review_threads` and append-only `office.review_events` with source/receipt bindings, forced
+RLS and guarded heads. The comments inspector uses memory-only drafts, paginated discussions, exact-version highlights,
+current capabilities, explicit conflict refresh and safe retries after uncertain writes. Late responses are discarded;
+compact layouts use a closable scrollable overlay. No editing/deletion of comments, notifications, tracked changes or
+live collaboration was introduced. There are now nine Office API operations.
+
+- Initial implementation through `c7cff5d` passed 389 focused backend/API/PostgreSQL/restore tests and full Python quality.
+  Ten focused browser cases passed in 44.978 seconds. The first full run passed 150/152; two Chromium response-body
+  observation errors affected expected 409/503 cases. `7400b35` captures those real upstream responses unchanged,
+  without retrying writes or generating test responses. Final full matrix: 152/152 in 432.486 seconds, zero skipped,
+  unexpected or flaky; 117 browser cases plus 35 model cases. All prior 142 checks remain. Final screenshots were
+  visually checked by root and an independent UI reviewer.
+- Independent restore review found omitted unrelated Office grants/MAINTAIN and unpinned review CHECKs. `1cf9ee9` and
+  `552b6b6` capture all direct Office grantees and effective column grants, exact owner/runtime rights and nine canonical state/anchor/byte
+  CHECKs. Thirty-seven regressions include three real PostgreSQL grant cases. One old fixture assumed the first grant
+  belonged to the runtime; `2305a96` selects that role explicitly. All 269 focused restore/recovery/backup checks passed
+  in 23.40 seconds. Full quality on `2305a96`: Ruff/format 674 files, Mypy 532 sources and full Pytest passed, with only
+  the known Starlette/AnyIO warning. No product/UI/schema behavior changed after the successful browser run.
+- Fresh nonempty PostgreSQL/S3 recovery on `2305a96` restored 57 documents, 93 exact versions, 30 multi-version
+  documents and 129 total sources. Nine discussions and 17 events include three selected-text anchors, one historical
+  discussion and one complete create/reply/resolve/reopen lifecycle. Exact bytes/quotations/receipts, current ACLs,
+  foreign-tenant denial and read-only restored services passed. Report
+  `sha256:330a544deb64fbcb374d1c23732660cb7c2f80b8a2f2cc14289b8e2fa59fae92`; synthetic backup
+  `sha256:3d9fe80e786c501967d30a5b1e75614cd55e60bfb46e815d926fcb2093e64af6`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-256/`:
+
+- `results.json`: `sha256:96f4a596d21e395073967745c1811448fdbc2e04bc7f2f7e20ae4e4075fe156f`.
+- Desktop: `sha256:a09972a0509a51e31f1a62e3cb33e966d5d29d728dbc80c96966fe47c1fc6827`.
+- Tablet: `sha256:f499a343c87bd0c735c15ce38726b28cc6331a3a2b8f431e9217943f0e2b4452`.
+- Mobile: `sha256:4783a6257d6db4f312449298c7ec207682122028aa9a49e088724d3f73564e28`.
+- Final quality log: `sha256:4274b75408916a13e6ef41885ce7f3dc2c1a89d21a73cc85a7d3cd5416f3769e`.
+
+Main database migration/release evidence:
+
+- Pre-0084 `collabio-20260918T131039Z.dump`: `sha256:ec98cd064b010c2d905ed64ab97a84a0edc186ed9c1d99ef19499140a0abfc06`.
+- Post-0084 `collabio-20260918T131046Z.dump`: `sha256:b3058ce54bb3a0b36ef97af1c031fcca1c0315797a930b0531fb6602ac27602b`.
+- Foundation-bound PostgreSQL restore: `sha256:14dfaf92e80eef0a9a6967a06f2a666d79445e03dea423e4e452ec48bab09b68`.
+- Foundation: `sha256:4ee5691940bec2e1b2b48623bf8a671e67efaaa8232057a01e913c3ab820b4ce`; 84 migrations, 93 tables,
+  expanded Office controls verified and three existing main sources restored. Source seeding was explicitly disabled.
+- Business release: `sha256:e8109c8e126d80fd4bd55f16a5c432e8841e5c44a374de654b8e1eaaa354faa4`; existing CRM/Tasks/Time
+  three-slice gate passed without business writes or tenant activation. Office has the separate nonempty proof above.
+
+Primary implementation: `office_reviews.py`, `office_review_repository.py`, `office_api.py`, Office UI, migration 0084;
+`tests/test_office_review*.py`, the expanded restore verifier/product proof and review E2E cases. See ADR-0080,
+`docs/modules/OFFICE_NATIVE_DOCUMENTS.md`, `docs/operations/WORK_E2E.md` and the append-only operations log.
+
+## Previous slice: Roadmap 255
+
+Roadmap 255 / PLANS 116 completes contextual table editing in `/office`: custom size and optional header on insertion,
+rows above/below, columns left/right, first-row header toggle and cell/row/column/table selection. Removal requires
+explicit confirmation, including whole-table Delete/Backspace; cancellation preserves the draft. Each structural edit
+is one undo step separated from typing. Tab moves between cells and creates a bounded new row from its first cell;
+when extension is unavailable, focus leaves the table for an available control. Legacy menu actions share the same path.
+
+Native ProseMirror transactions are staged before dispatch. A global document guard also checks keyboard/paste/undo
+changes against schema, rectangular geometry, 200 rows/20 columns and existing codepoint/node/depth/canonical-byte
+limits. Read-only/history/loading/saving/restoring/uncertain states prohibit edits. Dialogs bind session, revision,
+document and selection; context changes discard pending actions. Existing confirmed CAS save alone persists changes.
+The inspector closes on entry to tablet width to avoid covering the table; explicit reopening remains available.
+
+- Initial `93cbd71` focused run passed 9/10; the remaining test asserted a disabled option with an unsuitable control
+  matcher. `a27c433` checks its native disabled property; all ten focused cases passed in 38.975 seconds. No product
+  permission or size check was weakened. Visual review then prompted the tablet fix and regression in `e3cf88c`.
+- Full quality on `e3cf88c`: Ruff/format across 665 files, Mypy across 526 source files and full Pytest passed; only the
+  known Starlette/AnyIO warning remains. Full matrix: 142/142 in 359.156 seconds, zero skipped/unexpected/flaky,
+  consisting of 107 browser cases and 35 model cases. All previous 132 checks remain; eight workflows and two
+  responsive runs are new. Final desktop/tablet/mobile screenshots were visually reviewed.
+- Proof includes real version saves/reopen/immutable history, preserved marks, structure and cell selections,
+  isolated undo/redo, immediate focus, removal cancellation, keyboard-created rows, blocked final-row expansion,
+  valid-dimension but excessive canonical bytes, reader/history, pending/uncertain saves with retry and context changes.
+- Documentation closeout `58b9f9e` passed all 11 targeted module/KB/roadmap contracts in 59.83 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 12:13:31 UTC.
+- No dependency, schema, API, storage or tenant activation change. Item 252 migration/backup/nonempty recovery/
+  foundation/business proofs remain retained, not rerun. Primary implementation is the existing Office JS/HTML/CSS;
+  tests are `office-tables.spec.mjs` and `office-tables-responsive.spec.mjs`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-255/`:
+
+- `results.json`: `sha256:89c132f192d7a3302ab3a48dc201dfdc0f60c007e8334c993e79be9f7df9d2d8`.
+- Desktop: `sha256:e939f0f5d8fe69b8536e4c8d23b0a0b85625c33ee3cd74f985dbb41bfb3584c0`.
+- Tablet: `sha256:46f02424be9de63d73e4941e1443fa77d975a655c0b466410facf84652335c39`.
+- Mobile: `sha256:8c97a0b58cae3e26d342db1bfc17e9257f6aee14b9b871b1b202fe367cc29500`.
+
+## Previous slice: Roadmap 254
+
+Roadmap 254 / PLANS 115 completes literal find/replace in `/office`: Unicode-safe original positions, case and whole-word
+options, complete counts, previous/next navigation, current/all replacement, keyboard shortcuts and responsive controls.
+Matches span adjacent formatting nodes but never cross paragraphs, hard breaks or cells. Untouched text/structure stays
+intact; replacement inherits the first matched character's marks. A labelled 200-match highlight window follows the
+active result; all results remain navigable and replaceable. Character/node/depth/canonical-byte limits are checked
+before applying changes. No regex/HTML interpretation, background request, new dependency, index or persistence format.
+
+Replacement affects only the local draft as one undo step isolated from adjacent typing. Read-only/history and busy or
+uncertain-save states prohibit replacement. Existing confirmed CAS save persists a new version. Loading a document is
+excluded from undo history, so undoing its first edit cannot erase the loaded source. Context/panel/workspace clearing,
+cancelled discard, no-op, source history and safe retry contracts remain intact.
+
+- Source `1142642` first passed 24 focused checks; one test incorrectly ignored a lowercase match, and undo exposed
+  initial content loading as a history event. Both were corrected in `f4c37e5`. All 32 focused checks then passed.
+- Full quality on `f4c37e5`: Ruff/format across 665 files, Mypy across 526 source files and full Pytest passed; only the
+  known Starlette/AnyIO warning remains. Full matrix: 132/132 in 291.588 seconds, zero skipped/unexpected/flaky,
+  consisting of 97 browser cases and 35 model cases. All prior 100 checks remain; nine browser and 23 model cases are new.
+- New proof includes actual saved replacements/reopen/version comparison, isolated undo/redo, current/history reader
+  restrictions, literal hostile text, complete large result sets, no-op/delete/expansion limits and late context reads.
+  Model proof reaches 100,000 matches and checks original Unicode positions, mark boundaries and resource preflight.
+  Final desktop/tablet/mobile screenshots were visually reviewed.
+- Documentation closeout `d63139c` passed all 11 targeted module/KB/roadmap contracts in 61.97 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 11:32:44 UTC.
+- No schema or durable contract change; the item 252 migration/backup/restore/foundation/business evidence below
+  remains retained, not rerun. No tenant/pilot/indexing/engine activation. Main code is `office-search.mjs` and the
+  existing Office UI; tests are `office-search-model.spec.mjs`, `office-search.spec.mjs`, `office-search-responsive.spec.mjs`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-254/`:
+
+- `results.json`: `sha256:e12cf71865e5a013852d6482b6a96a33d5a37c4c031157721d0d980324d32b71`.
+- Desktop: `sha256:301e7030dd649df94023e5ac4d2e81d2385cbf10b7fb530ab44b832eeaa91350`.
+- Tablet: `sha256:32174cead5fdc1d292439d6633fe2f71f350a73984de4d9c7100287662094ccc`.
+- Mobile: `sha256:0cfac05e9a82fd705655c7e9831e868ac334afb313e4f48d24f14e489d508613`.
+
+## Previous slice: Roadmap 253
+
+Roadmap 253 / PLANS 114 adds saved-version comparison and historical takeover to `/office`, using the existing five
+Office APIs. Text, titles, format-only changes, lists and tables are compared as literal block content. Bounded alignment
+preserves every input block; large approximate results are labelled and paginated. The last 200 history entries may form
+a connected partial chain; relative labels avoid invented absolute version numbers.
+
+Historical takeover freshly reads exact historical content, the current head and current write capabilities. It produces
+only an in-memory draft based on that fresh head; explicit confirmed CAS save appends a successor without rewriting
+history. Read-only users can compare. Access denial clears protected state; transient failure, cancelled discard and a
+later competing save preserve existing drafts. Closing, changing selection/context or superseding an operation invalidates
+pending responses. Identical takeover creates no dirty state or redundant save. This is block comparison, not tracked
+changes or automatic merging.
+
+- Implementation `3aa0069` passed full Ruff/format (665 files), Mypy (526 source files) and Pytest. Only the known
+  Starlette/AnyIO warning remains. The focused 27 checks passed before the complete matrix.
+- Full matrix: 100/100 in 249.923 seconds, zero skipped, unexpected or flaky; 88 browser cases plus 12 pure model cases.
+  All previous 73 browser cases remain green. New coverage includes large/duplicate model inputs, exact comparison,
+  fresh-head takeover, CAS conflicts, current ACL/feature removal, cancelled discard, failure retry, bounded real history,
+  no-op takeover and late responses. Final desktop/tablet/mobile screenshots passed visual review.
+- Documentation closeout `5a15195` passed all 11 targeted module/KB/roadmap contracts in 61.94 seconds, with only the
+  known warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 10:52:56 UTC.
+- No new schema, durable record or save endpoint. Item 252's migration 0083, verified backups, nonempty recovery and
+  foundation/business proofs below remain retained, not newly rerun. No new engine, tenant or pilot admission.
+- Primary changes: `app/suite/ui/office/office.js`, `office-comparison.mjs`, `office.css`, `index.html`;
+  `e2e/work/tests/office-comparison-model.spec.mjs`, `office-versions.spec.mjs`, `office-versions-responsive.spec.mjs`;
+  Docker bundle/module mounts and metadata-only roadmap capability evidence.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-253/`:
+
+- `results.json`: `sha256:42448945e2d326b56552c886d3603d69d1dcaf4d416ca4c727bf2e66e3ce8859`.
+- Desktop: `sha256:0d28f346e40703ee5aae43f1b97f1d935af540d3757fbe2fc881c6a33037ca24`.
+- Tablet: `sha256:7df8d3dd56d2f4b9d5ef1df12664a75ad7dbafc9e0d89ca5cd7f8670b8b9b53e`.
+- Mobile: `sha256:33024e5aed9b0ac0b9c68787839cca0fdfe7856c7950cb8f61359e84685c5a3c`.
+
+## Previous slice: Roadmap 252
+
+Roadmap 252 / PLANS 113 delivers `/office`, linked from `/work`: native rich text, headings, lists, tables, templates,
+outline, local text search, word count, focus mode, explicit version saves and historical reads. Desktop, tablet and
+mobile controls were visually checked. Formatting returns focus synchronously for immediate mouse/keyboard input.
+Conflicts and storage failures preserve drafts; context changes and close/reopen discard late responses. Drafts are
+memory-only and do not promise crash recovery. DOCX interchange, comments, tracked changes, live collaboration,
+spreadsheets, presentations and mail remain open product work; no claim of Office feature parity is made.
+
+- Native content is bounded `collabio_document.v1` JSON. Server-side schema validation rejects unsupported nodes,
+  remote resources, arbitrary attributes and excessive size/depth. CSP allows only local assets; no content enters logs.
+- Five operations under `/v1/office/documents` enforce tenant/module/read/write gates, current typed object ACLs and
+  server-derived ABAC. Read permission does not grant writing. Historical reads and retries recheck current access.
+- Migration `0083_office_native_documents.sql` adds document heads and append-only versions with forced RLS, narrow
+  column grants, atomic creator ACLs and source/receipt/head binding triggers. Canonical bytes use shared versioned S3.
+  Tenant serialization precedes stale-head validation and PUT. PostgreSQL rollback does not roll back S3; post-PUT
+  database failure can leave an orphan, covered by reconciliation tests. CAS and exact retry keys prevent lost updates
+  and duplicate versions. Explicit human confirmation remains mandatory for each persisted save.
+- ProseMirror/Tiptap 3.31.3 is bundled locally using a pinned image and locked dependencies. The runtime retains license
+  notices and dependency inventory, without Node execution. Dependency audit reported no vulnerabilities.
+- Full quality on `7bba74f`: Ruff and formatting across 665 files, Mypy across 526 source files, full Pytest green;
+  only the known Starlette/AnyIO warning remains. The focused Office/API/PostgreSQL/restore/guard matrix passed 246 tests.
+- Final browser proof on `5917bdf`: 73/73 in 160.237 seconds, zero skipped, unexpected or flaky cases. It preserves all
+  60 Work/KB/CRM regressions and adds 13 Office workflow/policy/responsive cases. Earlier failures and corrections are
+  retained in the operations log. The final focus regression checks focus during the control event, without sleeps.
+- Documentation closeout `39980c5` passed all 11 targeted module/KB/roadmap contract tests in 59.58 seconds, with only
+  the same warning. The disposable `test --no-deps` run started no auxiliary service; health remained ok at 10:19:15 UTC.
+- Final nonempty recovery on `5917bdf`: 13 documents, 18 exact versions, five multi-version documents and 37 total source
+  objects restored to separate PostgreSQL/S3 targets. Historical reads, canonical content/receipt hashes, current ACLs
+  and foreign-tenant denial pass. Report `sha256:e61e7a26da539fa5a974a4faff62c31eb68502bd5c30f8f941df3effc2ae4cda`;
+  synthetic backup `sha256:149e45637e20bafdaf93a76c7643b2ce77f7d1f23d2430888b77b951ea23c7ab`.
+
+Ignored final evidence under `e2e/work/artifacts/roadmap-252/`:
+
+- `results.json`: `sha256:ee074eca0c0897a8da5f232fc694d505b51ddb7413ccda4db4a8c9ee1e7e8792`.
+- Desktop: `sha256:3201c529a199e88c6293672846fa66d24c7abc7bce40c7f15ca17a45f7c97c70`.
+- Tablet: `sha256:23fb6d65e8d74e6d153f0ef828c23a059a01b1a167b419c434cfe085090d1ed9`.
+- Mobile: `sha256:4321a07003b9729d069351d7f4f75f4b1b350482791d6f588e4317749325f144`.
+
+Main database migration/recovery evidence:
+
+- Pre-0083 backup `collabio-20260918T101259Z.dump`,
+  `sha256:d0e243c70dcb6dbf6e3503331ee37ddc830059729edea44d67786f83e8b8314a`.
+- Post-0083 backup `collabio-20260918T101306Z.dump`,
+  `sha256:d82aadb4f0400282df0a4e6e036cf0fc3e60b53032eaf1810d51c1407f581f73`.
+- Foundation-bound PostgreSQL restore `sha256:f659f89867d09e483c75ff046b3e0c7632590ad2d1603284c1a27294264e78f1`.
+- Foundation `sha256:4fbba77852cc9e625aacc069d54495f69ddbd517f0e539fd49705c1ef47ae3fd`: 83 migrations, 91 tables,
+  Office controls verified and three existing main source objects restored. Source seeding was explicitly disabled.
+- Business release `sha256:a364a91a0044a62444fd69bfa95280cf01b7375389bd692e862948e32599b835` passed the existing
+  three CRM/Tasks/Time slices without business writes or tenant activation. Native Office has the separate proof above.
+
+Primary implementation: `office_document_schema.py`, `office_documents.py`, `office_document_repository.py`,
+`office_api.py` under `app/suite/platform/`; `app/suite/ui/office/`; `frontend/office/`; migration 0083;
+`tests/test_office_documents*.py`, `tests/office_recovery_proof.py`, `tests/test_office_recovery_proof.py` and Office E2E
+cases. See `docs/modules/OFFICE_NATIVE_DOCUMENTS.md`, ADR-0079 and `docs/operations/WORK_E2E.md`.
+
+## Previous slice: Roadmap 251
+
+Roadmap item 251 and PLANS item 112 are complete. The existing account workspace is available in `/work` as an
+account-detail dialog with associated contacts and activities. It reuses
+`GET /v1/crm/accounts/{account_object_id}/workspace`; no new CRM mutation or schema is added.
+
+- All three CRM feature gates and the existing pilot traffic-scope dependency remain mandatory. Account access is
+  checked before child queries; every child requires its own current ACL and a relation to the selected account.
+- Unreadable linked IDs remain redacted. JWT/OIDC ignores browser-provided grants. Contact names, email and phone
+  remain personal data; the API's metadata-only contract does not make these fields anonymous.
+- Successful responses and route-local errors are non-cacheable. Database failures return a constant 503 message;
+  audit metadata contains IDs/counts, never CRM field values or note bodies. The UI does not display notes.
+- Refresh clears old details before checking permissions again. Close/reopen and context changes invalidate late
+  responses. Fields render as literal text; empty contacts and activities have independent messages.
+- The guarded browser harness uses real PostgreSQL CRM rows and fresh database ACLs for the synthetic reader.
+  Its narrowly scoped ACL administration and request-local database failure controls exist only in test code.
+- Quality on `e966989` passed Ruff, formatting across 653 files, Mypy on 516 source files and full Pytest. Only the
+  existing Starlette/AnyIO deprecation warning remains.
+- All 60 browser cases passed in 130.014 seconds, with zero skipped, unexpected or flaky tests. The ten new CRM cases
+  cover child filtering/redaction, literal fields, empty children, missing/forged/foreign permissions, closed pilot,
+  account ACL revocation, disabled contacts feature, database failure/retry, late responses and desktop/mobile layout.
+  Both viewport screenshots passed visual review; the previous 50 Work/KB cases remain green.
+- After the operator approved publishing the described development evidence to the public repository, documentation
+  commit `43149aa` was pushed and synchronized to dev001. All 11 targeted KB/module-contract/roadmap tests passed in
+  19.88 seconds; health remained ok at 09:01:01 UTC. The disposable test used --no-deps and started no persistent
+  service or auxiliary database. The final evidence-only update changes no runtime code or pilot state.
+
+Current proof artifacts are ignored under `e2e/work/artifacts/roadmap-251/`:
+
+- `results.json`: `sha256:64a245368f0e6a4e3665c761550a34e3477ed27ad47eccd56e16680087575455`.
+- `work-crm-detail-complete.png`: `sha256:848fe140a83488d340c5f6e5c0f01a8aa58308c639da84d9448c672a3081e8f0`.
+- `work-crm-detail-desktop-chromium.png`: `sha256:5587442989c9c890d8250349e20e13beeb92f2e554640c2bd3e6b51088a77a23`.
+- `work-crm-detail-mobile-chromium.png`: `sha256:b1bf72c13d9928dd609f8f3f0ad27135c8c4e61603ef6469707e5f48cfd9c910`.
+
+## Previous slice: Roadmap 250
+
+Roadmap item 250 and PLANS item 111 are complete. Authorized ordinary readers can open published Knowledge Base
+articles in `/work` with `knowledge_base.articles.read`, without an admin role or write feature.
+
+- `GET /v1/kb/articles/{article_object_id}/content` returns the current article, exact source version, plain-text body,
+  audit event ID and false RAG/search flags. Successful content responses and route-local errors use `no-store`.
+- Article, current-version and source ACLs are checked before source access. JWT/OIDC ignores forged browser grants.
+  Metadata preflight and loaded-byte validation bind exact identity, manifest/content hashes and security metadata.
+- Only published article/lifecycle and WIKI/text/plain saved-version sources are supported, bounded to 400,000 bytes
+  and 100,000 characters. Missing/denied, corrupt and unavailable sources return generic 404/400/503 responses.
+- The read audit includes IDs and evidence hashes, never the article body. The editor shares the integrity helper;
+  all existing write gates and approval stages remain intact.
+- The dialog displays title, version and change date; literal markup stays plain text. Refresh clears old content
+  before revalidation. Closing/reopening or changing context invalidates late responses. Desktop and mobile fit.
+- The isolated browser proof uses a seeded ordinary reader, current PostgreSQL ACLs and the blocked API with write
+  disabled. New-version access proves migration 0082 ACL inheritance without an extra version grant. Article/version
+  revocation, S3 read failure/retry, foreign tenant, malicious markup and delayed-response cases pass.
+
+No schema or durable business-data change was added. The migration 0082 backup/restore/release evidence below is
+retained from item 249 and was not rerun for this read slice. No real tenant/runtime activation or pilot opening occurred.
+
+## Previous slice: Roadmap 249 authoring foundation
+
+Roadmap item 249 and PLANS item 110 are complete. The original Work browser slice (item 248/PLANS 109) remains intact.
+
+Knowledge Base create/edit is available in `/work` for tenant-admins with an enabled module and write feature.
+The narrow product endpoints construct trusted source metadata and expose the existing authoritative guard:
+
+- `POST /v1/admin/kb/articles/prepare-write`
+- `GET /v1/admin/kb/articles/{article_object_id}/edit-content`
+- `POST /v1/admin/kb/articles/source-object-write-guard`
+
+The existing dry-run, approve, refresh-preview, execution-skeleton and execute stages remain separate and hash-bound.
+The UI carries their evidence between explicit preview, approval and final confirmation; users do not copy hashes.
+Draft changes invalidate approval. Stale versions fail with conflict; failed writes preserve the draft and other
+Work sources remain independent. Context generations discard old tenant responses and write capabilities.
+
+Security and durability:
+
+- Product metadata is server-created: internal classification, rp-standard, WIKI/text/plain, bounded title/body,
+  fresh source/version identity, authenticated creator/owner and canonical security fields.
+- Every stage rechecks module/feature, tenant-admin role and authoritative article/current-version/source access.
+  Disabled compliance evidence reads remain available through their existing read gate.
+- Migration `0082_knowledge_base_version_acls.sql` bootstraps the new article creator's ACL and copies active article
+  ACLs to new versions in the same transaction. Trigger functions have pinned search_path and no PUBLIC/runtime
+  execute grant; identity collisions and inappropriate preexisting objects fail closed.
+- A tenant advisory transaction lock serializes all KB writes, including two first creates in an empty tenant.
+  Approved restore state and expected version are checked under that lock before receipts/content writes.
+- Source and restore evidence are verified inside the transaction and returned from its committed snapshot; a later
+  write cannot cause a committed success to be reported as failed during post-commit evidence refresh.
+- PostgreSQL metadata, approval lineage, receipt and exact S3 source versions remain bound. S3 is not part of the
+  PostgreSQL transaction: an unexpected database failure after PUT can leave orphaned content, which the existing
+  reconciliation/recovery controls detect. Never claim cross-system transactional rollback.
+- Audits contain metadata/hashes, and storage/database errors return safe errors without logging article bodies.
+- Restore verification binds both KB ACL triggers and their complete function definitions, owners, signatures,
+  security mode, search_path, enablement and grants to migration 0082 and compares source/restore snapshots.
+
+## Retained Knowledge Base validation and recovery evidence
+
+On commit `d8d0386`, full quality passed: Ruff, formatting across 652 files, Mypy on 515 source files and full Pytest
+to 100 percent. Only the known Starlette/AnyIO deprecation warning remains. This includes the PostgreSQL concurrency,
+atomic ACL, API policy, storage-failure and restore-function tamper tests.
+The new normal-reader API and isolated-harness policy tests are included. After documentation closeout, `6b1b82f`
+passed all 11 targeted KB/module-contract/roadmap tests in 19.99 seconds; health remained ok at 08:19:34 UTC.
+Item 249 implementation quality, documentation checks and 41-case browser evidence remain in the operations log.
+
+Item 250 browser report: 50/50 passed in 120.480 seconds, zero skipped, unexpected or flaky tests. Desktop and mobile
+reader screenshots were visually checked. Ignored local artifacts are retained under `e2e/work/artifacts/roadmap-250/`:
+
+- `results.json`: `sha256:3dfb92a96f8cd61ec353c96e438ba94608476abc7321da223ea4f65f2b0f0a11`.
+- `work-knowledge-reader-complete.png`: `sha256:98e0885f2a1370fa259fddf61dd518ae89dd672bf3f7e625716f913819d0db61`.
+- `work-knowledge-reader-desktop-chromium.png`: `sha256:4e61218844b82d6f320a53bdbe9a49485de77273f4128ed0c78e10818dadd07a`.
+- `work-knowledge-reader-mobile-chromium.png`: `sha256:9241af34e5fc7011298b80bbbf1544aca505d4828ff12529ec233873cb0c5ef6`.
+
+Retained item 249 post-migration recovery and release proofs on dev001 (not newly executed for read-only items 250/251):
+
+- Backup `collabio-20260918T070901Z.dump`:
+  `sha256:9de68a2febdaa66c5f880ee1478d03bf343bea9004da67ee1b34966a875fb253`.
+- PostgreSQL restore bound by the foundation gate:
+  `sha256:a563ec0e557fe0c83e775c0a776e496b555b77f76015488fb0d8f3c854c283b3`.
+- Foundation gate: `sha256:bf17fc1797e44b7a0a54ba6a0155313e7e5686a0537fac8ef22b4a6b0d3f5c06`.
+- Business release gate: `sha256:8794acf1da3725851beaccba00adafed108166cf99966e24bec9dc3596fe2def`.
+
+The foundation verified 82 migrations, 89 tables, tenant/IAM and trigger integrity, and exact restoration of three
+existing source objects. The business gate remains the existing CRM/Tasks/Time three-slice gate; the KB product proof
+is the separate API/PostgreSQL/browser matrix above. No new real-user pilot preflight/admission was created.
+
+The isolated browser profile has tmpfs PostgreSQL and MinIO, internal networking, no host ports, tenant
+`tenant-work-e2e` only, memory-only synthetic runtime activation and the normal pilot switch closed.
+It ignores browser-supplied KB/CRM readable IDs and resolves current database ACLs on every KB/CRM request.
+Its request-local storage failure injection is restricted to the exact synthetic tenant and execute or content-read route.
+No failure injection exists in production API code.
+
+The browser matrix is now 60 tests: the previous 41 cases, seven KB reader workflow/policy/race cases, two reader
+responsive runs, eight CRM detail cases and two CRM responsive runs. The original 28 independent source-state cases,
+closed-pilot route policy proof, real task/time workflow and guarded authoring remain intact. Artifacts and their
+hashes are development evidence only.
+
+Pre-0082 backup: `collabio-20260918T062951Z.dump`,
+`sha256:d2724821f35c11cb9de0b023696593f70ce9dab69dbb458d003d4860c373b0e5`, checksum/catalog verified.
+Migration 0082 was the only new migration applied; 82 migrations and 89 tables were verified after this slice.
+
+Primary code and runbooks:
+
+- `app/suite/platform/crm_workspace.py`, `crm_runtime.py`, `tests/test_crm_workspace_api.py`,
+  `tests/work_e2e_crm.py` and `docs/modules/CRM_ACCOUNT_WORKSPACE_VERTICAL_SLICE.md`.
+- `app/main.py`; `app/suite/platform/knowledge_base.py`; `knowledge_base_runtime.py`.
+- `app/suite/persistence/migrations/0082_knowledge_base_version_acls.sql`.
+- `app/suite/operations/postgres_restore_drill.py`.
+- `app/suite/ui/work/index.html`, `work.js`, `work.css`.
+- `tests/test_knowledge_base_read_api.py`, `test_knowledge_base_product_api.py`, `test_knowledge_base_acl_migration.py`,
+  `test_knowledge_base_write_unit_of_work.py`, `test_knowledge_base_pg_repository.py` and `test_postgres_restore_drill.py`.
+- `tests/work_e2e_server.py`, `tests/work_e2e_seed.py`, `tests/work_e2e_controls.py`,
+  `app/suite/testing/work_e2e_guard.py`, `e2e/work/tests/`.
+- `docs/modules/KNOWLEDGE_BASE_READER_VERTICAL_SLICE.md`, `KNOWLEDGE_BASE_ARTICLES_VERTICAL_SLICE.md`,
+  `KNOWLEDGE_BASE_WRITE_APPROVAL_LEDGER.md`,
+  `KNOWLEDGE_BASE_SOURCE_RESTORE_EVIDENCE.md` and `MODULE_IMPLEMENTATION_CONTRACT.md`.
+- `docs/operations/WORK_E2E.md`, `BACKUP_FAILOVER.md`, `REMOTE_DEVELOPMENT_HOST.md`.
+
+## Existing product and platform status
+
+- `/office` provides native document authoring with explicit saved-text suggestions and atomic acceptance, version-bound review discussions, contextual table editing, find/replace, immutable history, saved-version comparison and historical takeover
+  into an unsaved local draft. Explicitly confirmed save appends a new version, under the closed tenant gates.
+- `/roadmap` presents capabilities, including guarded native Office; KB shows authoring and ordinary reading, and CRM includes Work account
+  details, with real API route paths.
+- `/workspace` provides the module cockpit and controlled foundation workflows.
+- `/work` provides Tasks/activity, Time, Tickets, KB and CRM with independent loading/error states and responsive UI.
+- Tasks include durable lifecycle, reassignment and due-date changes with append-only evidence and shared mutation
+  serialization. Time includes submission, maker-checker decisions, correction and resubmission.
+- CRM has PostgreSQL/RLS accounts, contacts, activities and notes; Work exposes account details with authorized
+  contacts and activities through the existing account workspace.
+- ERP remains deliberately limited. LMS and later modules have contracts, not broad user-facing products.
+- AI/RAG/voice control planes exist; productive provider execution remains closed.
+- Office/Mail architecture, parser/CDR/preview and fidelity paths exist. LibreOffice evidence is ahead of
+  Word/GenOffice; production Quick Edit, WOPI and a complete mail client remain open.
+- Platform foundation includes signed OIDC/JWT, server-side principals/roles/groups/ACL/ABAC, Forced RLS, append-only
+  audit/checkpoints/WORM evidence, classification/retention/Legal Hold/KMS, versioned S3 recovery, module lifecycle,
+  isolated PG restore and combined foundation/business release gates.
+- Supply-chain controls retain hashed locks, pinned images/actions, SBOM/provenance, license and vulnerability gates.
+
+## Continuation point
+
+Roadmap 504 through 510 / PLANS 365 through 371 are complete. Preserve canonical alignment omission, bounded
+center/end values, bounded distribution extent, deterministic effective gaps, arbitrary-angle member bounds,
+responsive compact layout and exact uniform/per-edge connection behavior. Keep the complete shape, comparison,
+print and full Python quality matrices green.
+
+Continue native Office before CRM with native multi-selection as the next coherent authoring loop. Freely routed
+endpoints, freehand paths, arbitrary polygons, nested groups, continuous editor pagination and DOCX DrawingML
+interchange require separate decisions. Full workbook semantics, cross-table
+references, relative formula rewriting, formula-driven charts, transitive references, content-wide reference search,
+persistent backlink indexing, continuous tracked changes and live collaboration also remain separate.
+
+Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
+memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic
+corpus and source-blind/CDR validation.
+Real Word/GenOffice fidelity results, calibrated thresholds and human review remain outstanding; current runtime
+authorization and executable-image admission must precede an engine proof. Productive saves and WOPI remain separate
+later release steps. The prohibition on Word/account/firewall interventions on the original workstation still applies.
+
+CRM account onboarding in `/work` through `POST /v1/crm/account-onboardings` and subsequent CRM mutations are deferred
+behind Office development. Preserve the completed CRM read workflow and its existing atomic backend contracts.
+This priority update changes the implementation order; it does not activate any engine, tenant, pilot or indexing.
+
+For any subsequent code change, run the appropriate focused tests and full quality remotely. For durable schema or
+data changes, obtain a verified backup and isolated restore/release proofs before the controlled API rollout.
+Restore loader runs with --no-deps against isolated postgres-restore only; foundation checks use
+`SUITE_SOURCE_OBJECT_RUNTIME_SEED_DEMO=0` to avoid implicit seed writes. Prefer --no-deps where prerequisites have
+already been explicitly started and checked, so Compose cannot silently migrate, bootstrap or recreate the API.
+After recording hashes, remove only exact Work-E2E services per the runbook and stop auxiliary test/restore services.
+Verify health, ports and other projects, then append the complete operation to the owning project's log.
+
+## Open human/external lanes
+
+- Import/activate `.github/rulesets/main.json` for main; enforcement remains pending in REPOSITORY_GOVERNANCE.md.
+- Configure protected GitHub staging/production environments and reviewer/bypass policy.
+- Supply accountable real-user purpose/principals/legal basis/privacy/workforce evidence and fresh four-eyes approval.
+- Supply actual production topology, PITR, immutable offsite, fenced promotion and cross-site recovery evidence plus
+  independent signatures before production continuity can pass.
+- Separately authorize any Tickets tenant activation.
+- Complete Word/GenOffice fidelity rows, calibration and human review; then separately gated Quick Edit/WOPI/mail work.
+
+## New chat bootstrap
+
+Roadmap 363 through 370 / PLANS 224 through 231 are complete; product implementation is published through `d9e22846`.
+Preserve safe Word/Excel clipboard translation, bounded server-verified local table formulas, merged table grids,
+semantic row/column headers, protected row/column duplication, inert native
+charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
+atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
+bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
+including the fresh Roadmap-309 PostgreSQL/S3 proof.
+Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
+
+Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
+Continue the same branch from its verified current HEAD, preserve the user's untracked files and the closed pilot,
+and follow the user's next product instruction without inferring permission to activate a tenant.

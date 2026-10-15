@@ -4,8 +4,7 @@
   "provider_api": "s3-compatible",
   "development_provider": "minio",
   "production_compatibility_targets": [
-    "aws_s3_object_lock",
-    "minio_object_lock",
+    "ceph_rgw_object_lock_openbao_transit",
     "s3_compatible_enterprise_object_storage"
   ],
   "required_source_object_types": [

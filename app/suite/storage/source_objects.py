@@ -5,13 +5,17 @@ import os
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Protocol, Self
+from typing import Any, Protocol, Self, runtime_checkable
 
 import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.models import DataClass
 from suite.kms.adapter import KmsKeyReference, KmsKeyReferenceError
+from suite.platform.persistent_metadata import (
+    PERSISTENT_OBJECT_REQUIRED_FIELDS,
+    validate_persistent_object_metadata,
+)
 from suite.rag.models import SourceDocument
 from suite.rag.source_indexing import ResolvedSource
 from suite.storage.content_hash import ContentHashVerificationError, compute_content_hash, verify_content_hash
@@ -165,6 +169,7 @@ class SourceObjectMetadata(BaseModel):
 
     @model_validator(mode="after")
     def enforce_source_object_rules(self) -> Self:
+        validate_persistent_object_metadata(self)
         if self.object_type in {SourceObjectType.ATTACHMENT, SourceObjectType.COMMENT} and not self.parent_object_id:
             raise ValueError("attachments and comments require parent_object_id")
         if self.object_type == SourceObjectType.MAIL and self.mime_type != "message/rfc822":
@@ -400,55 +405,24 @@ class PgSourceObjectWriteReceiptStore:
         self.database_dsn = database_dsn
 
     def append(self, receipt: SourceObjectWriteReceipt) -> SourceObjectWriteReceipt:
-        expected_hash = build_source_object_write_receipt_hash(receipt)
-        if receipt.receipt_hash != expected_hash:
-            raise ValueError("source object write receipt hash is invalid")
+        self._require_valid_receipt(receipt)
         try:
             with psycopg.connect(self.database_dsn) as connection:
                 self._set_tenant(connection, receipt.tenant_id)
-                connection.execute(
-                    """
-                    INSERT INTO collabio.source_object_write_receipts (
-                        tenant_id,
-                        receipt_reference,
-                        object_id,
-                        object_type,
-                        version_id,
-                        title,
-                        owner_principal_id,
-                        created_by,
-                        created_at_utc,
-                        updated_at_utc,
-                        classification,
-                        retention_policy_id,
-                        legal_hold_state,
-                        kms_key_ref,
-                        manifest_hash,
-                        audit_chain_ref,
-                        source_system,
-                        source_schema_version,
-                        mime_type,
-                        acl_hash,
-                        acl_version,
-                        content_hash,
-                        content_byte_length,
-                        lifecycle_state,
-                        parent_object_id,
-                        thread_id,
-                        parser_profile_id,
-                        captured_at_utc,
-                        receipt_hash,
-                        receipt_schema_version
-                    )
-                    VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s
-                    )
-                    """,
-                    self._receipt_values(receipt),
-                )
+                self._insert_receipt(connection, receipt)
                 connection.commit()
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("source object write receipt already exists") from exc
+        return receipt
+
+    def append_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        receipt: SourceObjectWriteReceipt,
+    ) -> SourceObjectWriteReceipt:
+        self._require_valid_receipt(receipt)
+        try:
+            self._insert_receipt(connection, receipt)
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("source object write receipt already exists") from exc
         return receipt
@@ -542,6 +516,59 @@ class PgSourceObjectWriteReceiptStore:
                 (tenant_id,),
             ).fetchall()
         return tuple(self._receipt_from_row(row) for row in rows)
+
+    def _require_valid_receipt(self, receipt: SourceObjectWriteReceipt) -> None:
+        expected_hash = build_source_object_write_receipt_hash(receipt)
+        if receipt.receipt_hash != expected_hash:
+            raise ValueError("source object write receipt hash is invalid")
+
+    def _insert_receipt(
+        self,
+        connection: psycopg.Connection[Any],
+        receipt: SourceObjectWriteReceipt,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO collabio.source_object_write_receipts (
+                tenant_id,
+                receipt_reference,
+                object_id,
+                object_type,
+                version_id,
+                title,
+                owner_principal_id,
+                created_by,
+                created_at_utc,
+                updated_at_utc,
+                classification,
+                retention_policy_id,
+                legal_hold_state,
+                kms_key_ref,
+                manifest_hash,
+                audit_chain_ref,
+                source_system,
+                source_schema_version,
+                mime_type,
+                acl_hash,
+                acl_version,
+                content_hash,
+                content_byte_length,
+                lifecycle_state,
+                parent_object_id,
+                thread_id,
+                parser_profile_id,
+                captured_at_utc,
+                receipt_hash,
+                receipt_schema_version
+            )
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s
+            )
+            """,
+            self._receipt_values(receipt),
+        )
 
     def _receipt_values(self, receipt: SourceObjectWriteReceipt) -> tuple[Any, ...]:
         return (
@@ -643,25 +670,28 @@ class SourceObjectRepository(Protocol):
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord: ...
 
 
+@runtime_checkable
+class SourceObjectMetadataRepository(Protocol):
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata: ...
+
+
 class SourceObjectWriteGuard:
-    required_metadata_fields: tuple[str, ...] = (
-        "tenant_id",
-        "classification",
-        "retention_policy_id",
-        "kms_key_ref",
-        "manifest_hash",
-        "content_hash",
-    )
+    required_metadata_fields: tuple[str, ...] = (*PERSISTENT_OBJECT_REQUIRED_FIELDS, "manifest_hash", "content_hash")
+    source_object_required_metadata_fields: tuple[str, ...] = ("manifest_hash", "content_hash")
 
     def validate_before_write(self, record: SourceObjectRecord) -> None:
         metadata = record.metadata
+        try:
+            validate_persistent_object_metadata(metadata)
+        except ValueError as exc:
+            raise SourceObjectWriteDeniedError(str(exc)) from exc
         self._require_write_metadata(metadata)
         self._require_kms_reference(metadata)
         self._require_content_hash_match(record)
         self._require_manifest_hash_match(metadata)
 
     def _require_write_metadata(self, metadata: SourceObjectMetadata) -> None:
-        for field_name in self.required_metadata_fields:
+        for field_name in self.source_object_required_metadata_fields:
             value = getattr(metadata, field_name)
             if value is None:
                 raise SourceObjectWriteDeniedError(f"{field_name} is required for storage write")
@@ -718,6 +748,9 @@ class InMemorySourceObjectRepository:
 
     def get(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectRecord:
         return self._records[(tenant_id, object_id, version_id)]
+
+    def get_metadata(self, *, tenant_id: str, object_id: str, version_id: str) -> SourceObjectMetadata:
+        return self._records[(tenant_id, object_id, version_id)].metadata
 
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord:
         return self._records[self._latest_keys[(tenant_id, object_id)]]

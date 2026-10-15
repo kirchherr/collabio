@@ -4,7 +4,11 @@ This file tracks the active implementation sequence. The canonical roadmap is `d
 
 ## Current Journey
 
-Theme: Build proof capability before product surface.
+Theme: Turn the proven foundation into coherent product workflows without weakening its gates.
+
+User priority (2026-09-18): Office development comes before further CRM expansion. Continue native document and version
+workflows; keep DOCX Quick Edit/fidelity on its separate gated path. Defer CRM account onboarding in `/work` and
+subsequent CRM mutations until after the Office work.
 
 Current sprint:
 
@@ -94,14 +98,2056 @@ Current sprint:
 84. [x] PostgreSQL-backed Knowledge Base article/version/source-evidence/restore-evidence transaction adapter for guarded create/edit writes.
 85. [x] Durable metadata-only source-object write receipts with PostgreSQL/RLS store, API execution evidence, and backup/failover coverage.
 86. [x] PostgreSQL/RLS source-object metadata and storage-manifest bridge with explicit content-store interface.
+87. [x] Coordinated Knowledge Base write unit-of-work that binds source-object receipts, source metadata, storage manifests, article/version metadata, source-version evidence, and restore evidence.
+88. [x] Shared PostgreSQL metadata transaction for Knowledge Base write unit-of-work across receipts, source metadata/storage manifests, and article/version/source/restore evidence.
+89. [x] Content-store recovery evidence for Knowledge Base writes with inventory comparison, orphan detection, restore-drill hash, and API-wiring gate signal.
+90. [x] S3/MinIO-compatible content-store adapter port with Object-Lock/WORM capability checks, metadata-only orphan-reconciliation worker output, and clean recovery-evidence gate for `PostgresKnowledgeBaseWriteUnitOfWork`.
+91. [x] Knowledge Base production write deployment gate that requires clean source-content recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence before Postgres UoW API wiring can be enabled.
+92. [x] Concrete boto3/MinIO-compatible SDK client behind `S3CompatibleObjectStoreClient`, Compose `object-storage` profile, bucket bootstrap, and provider-profile evidence check service.
+93. [x] Default API runtime on PostgreSQL source manifests plus S3-compatible exact-version content, with isolated test database and metadata-only runtime report.
+94. [x] Exact-version restore drill to an independently addressed MinIO target with source/target version reads, manifest/content verification, Object Lock, Legal Hold, and metadata-only report.
+95. [x] Backend storage foundation gate that binds the current restore report to a freshly recomputed persistent runtime report.
+96. [x] Isolated PostgreSQL restore drill with checksum-bound loader receipt, exact schema/row-count comparison, migration catalog validation, RLS, roles, and grants.
+97. [x] Metadata-only backend foundation completion gate combining Tenant/IAM, append-only Audit, Module Registry, PostgreSQL recovery, persistent SourceObjects, and exact-version object restore.
+98. [x] Separate hash-only real-user pilot closure with append-only PostgreSQL/RLS evidence, complete observation and receipt manifests, safe zero-activity closure, API audit metadata, and restore coverage.
+99. [x] Fail-closed production continuity deployment gate for PostgreSQL PITR/WAL, encrypted immutable offsite recovery, fenced HA promotion, cross-site PostgreSQL/Object Storage/KMS recovery, fresh three-party approvals, and runtime-switch binding without deployment or failover execution.
+100. [x] Tenant-bound Security-Admin evidence-requirements and gate-status read models for accountable production continuity collection, with normalized fail-closed states, metadata-only audit, and no upload, mutation, deployment or failover surface.
+101. [x] Tenant-safe real-user pilot readiness read model that revalidates the current nomination-to-closure hash chain, separates stale prior-cycle evidence, identifies the next admissible step, and performs no activation or write.
+102. [x] Consolidated Tickets & Incidents controlled-pilot status with authoritative approval-boundary hashing, persisted receipt-chain validation, exact next human confirmation, and no activation or content surface.
+103. [x] PostgreSQL/RLS-backed append-only persistence and restore coverage for the first Tickets & Incidents tenant activation-readiness approval.
+104. [x] First end-user Work surface over the existing guarded Tasks, Time, Tickets, Knowledge Base, and CRM APIs, with partial-failure isolation and explicit business mutations.
+105. [x] Append-only task lifecycle workflow with atomic status activities, optimistic state checks, database-enforced hash-chain continuity, exact destructive confirmation, restore coverage, API, and Work UI actions.
+106. [x] Append-only time-entry submission and maker-checker approval workflow with database-enforced chain integrity, hash-only exact confirmation, restore coverage, API, and Work UI actions.
+107. [x] Append-only task reassignment and due-date amendments with optimistic checks, active-principal validation, precise ACL rebinding, activity evidence, shared serialization with lifecycle transitions, restore coverage, API, and Work UI actions.
+108. [x] Versioned time-entry correction and resubmission bound to the exact correction-request and correction hashes, with database enforcement, restore coverage, API, and Work UI actions.
+109. [x] Isolated browser-level `/work` proof with 32 deterministic desktop/mobile cases across ready, empty, blocked, and unavailable domain states, the real task-reassignment and time-correction workflow, production route-policy checks, and a fully closed pilot runtime.
+110. [x] Guarded Knowledge Base create/edit in `/work` with server-prepared source metadata, authoritative ACLs, explicit approval/confirmation, tenant-serialized PostgreSQL/S3 writes, conflict/failure recovery, migration 0082 ACL restore verification, and 41 passing isolated browser cases; full remote quality and backup/restore/release gates passed with pilot and indexing closed.
+111. [x] Complete Knowledge Base reading in `/work`: authorized non-admin readers open exact current article content with the read feature alone, safe plain-text rendering, integrity checks and context-safe refresh; full remote quality and 50 isolated browser cases pass, with pilot/indexing closed and existing write controls preserved.
+112. [x] Bring the existing CRM account workspace into `/work`: authorized account details, associated contacts and activities, explicit empty/blocked/unavailable states, safe refresh and context handling; full remote quality and 60 isolated browser cases pass with current PostgreSQL ACLs and the existing pilot boundary closed.
+
+113. [x] Complete the native Office product foundation at `/office`: rich-text editing, tables, outline, search, focus mode, confirmed version saves, current ACLs, PostgreSQL/S3, CAS and exact retries. Backend quality passed on `7bba74f`; all 73 browser cases and nonempty recovery passed on `5917bdf`, with desktop/tablet/mobile visual review. Migration 0083 and the 83-migration/91-table foundation gate passed; ordinary tenant activation, pilot, indexing and DOCX engine gates remain closed. Business/API rollout verification is recorded separately.
+114. [x] Compare authorized saved Office versions, including text, titles, formatting, lists and tables, and take an earlier version into a new local draft. Refresh the current head and capabilities; require a confirmed CAS save to append without rewriting history. Full remote quality and all 100 checks (88 browser cases plus 12 comparison-model cases) pass on `3aa0069`, including desktop/tablet/mobile review, current access removal, late responses, partial history and no-op takeover. Existing migration/recovery contracts and closed tenant/pilot/engine gates remain unchanged.
+115. [x] Complete native Office find and replace: literal Unicode-safe positions, case/whole-word options, full counts and current/all replacement as one reversible local edit. Preserve structure, outside formatting, limits and read-only/history boundaries. Loaded content stays outside undo history. Full remote quality and all 132 checks (97 browser cases plus 35 model cases) pass on `f4c37e5`; desktop/tablet/mobile visually reviewed. Existing confirmed CAS saves and closed tenant/pilot/engine gates remain unchanged.
+
+116. [x] Complete contextual native Office table editing: configurable insertion, row/column operations, first-row headers, cell/row/column/table selection and bounded keyboard navigation. Validate prospective changes before dispatch, separate each edit in undo history, confirm removals and preserve current read-only/history/save-state boundaries. Full remote quality and all 142 checks (107 browser cases and 35 model cases) passed on `e3cf88c`, preserving the previous 132. Desktop/tablet/mobile reviewed; entering tablet width closes the inspector to keep the table visible. Existing schema, recovery and closed tenant/pilot/engine gates remain unchanged.
+
+117. [x] Complete version-bound native Office review discussions: confirmed create/reply/resolve/reopen, server-validated text anchors, fresh parent ACLs, thread revision conflicts and exact retries, backed by immutable PostgreSQL/S3 event evidence. Full quality passed on `2305a96` (Ruff/format across 674 files, Mypy across 532 files and full Pytest); all 152 checks (117 browser cases and 35 model cases) passed on `7400b35` in 432.486 seconds, with zero skipped, unexpected or flaky cases. Migration 0084, the 84-migration/93-table foundation and nonempty isolated recovery of 57 documents, 93 versions, nine review threads and 17 events passed. API rollout, health and cleanup were verified green at 2026-09-18 13:14:20 UTC. Ordinary tenant activation, pilot, indexing and DOCX/engine gates remain closed.
+
+118. [x] Complete saved-version native Office text suggestions: confirmed creation, literal before/after review, atomic acceptance/new document version, immutable rejection, current ACLs, exact retries and version conflicts. Full quality passed on `9c17a31` (684 formatted files, Mypy 541 sources and full Pytest); 688 focused tests passed and all 162 browser/model checks passed in 535.956 seconds, preserving the prior 152 with zero skipped, unexpected or flaky results. Migration 0085, 85-migration/95-table foundation and nonempty PostgreSQL/S3 recovery verified 67 documents, 109 versions, ten suggestions and seven decisions (five accepted, two rejected). API rollout, thirteen Office operations, health and cleanup passed at 2026-09-21 07:18:57 UTC. Ordinary tenant, pilot, indexing and engine gates remain closed.
+
+119. [x] Complete native Office saved-version print preview with A4/Letter and orientation, fresh exact-version authorization before browser print/PDF, safe literal content rendering, isolated print media and cleanup. Full quality on cf2244c passed Ruff, formatting across 689 files, Mypy across 541 sources and full Pytest. All 170 browser/model checks passed in 562.234 seconds (135 browser + 35 model, zero skipped, unexpected or flaky), preserving the previous 162. Real PDF output passed text, pagination, semantic-structure and visual checks. The final test-cleanup guard on d8300aa passed its affected browser case. No new persistence, schema, API, dependency, server export or DOCX admission; item 257 recovery evidence is retained. Final rollout, health and safeguards are recorded in docs/CURRENT_HANDOFF.md.
+
+120. [x] Reuse an exact saved native Office version as an independent new document draft: fresh source read and create capability after discard consent, editable bounded title, protected dirty drafts and existing explicit create confirmation. Preserve source history and ACLs; do not copy discussion/suggestion state. Full quality and all 180 checks (145 browser + 35 model) passed on e7fec24; API-only rollout and final health/gates passed on dev001. No new persistence or recovery execution; closed tenant/pilot/engine gates remain.
+
+121. [x] Make native Office documents discoverable beyond the initial 200 records: bounded server-side literal title search, current ACL checks before pagination, authenticated context-bound cursors, and clear next-page/retry controls. Preserve open and dirty documents independently of list membership; reauthorize exact saved sources for refresh/takeover/acceptance. Search values stay outside normal logs; mobile Work navigation exposes Office. Full quality passed on 5bcb7d2; all 190 checks (155 browser + 35 model) passed in 651.284899 seconds, and 180 focused Python and ten focused browser cases passed. API-only rollout, live checks and cleanup completed at 2026-09-21 13:04:19 UTC with closed gates. No new schema/persistence or recovery drill; item 257 evidence remains retained.
+
+122. [x] Load older saved native Office versions beyond the 200-version window through authenticated, document-bound
+pagination along the immutable predecessor chain. Revalidate current parent ACLs for every page; preserve drafts,
+comparison selections and already rendered results while appending. Clearly identify newer saved heads and restart
+history without silently replacing content. Discussion/suggestion drafts survive history navigation; hide, tab and
+focus changes cancel pending reads. Full quality passed on 46a83b4; all 200 checks (165 browser + 35 model) passed in
+688.743181 seconds, with zero skipped/unexpected/flaky and all previous 190 preserved. Also passed: 249 focused Python
+checks and 23 focused browser cases, independent code/visual review and actual access-log cursor redaction. API rollout
+and final health/gate evidence are recorded in docs/CURRENT_HANDOFF.md; no new schema, durable format or recovery drill.
+
+123. [x] Implement native Office paragraph alignment and line/before/after spacing through a compact selection-aware
+dialog. Strict optional attributes survive saved versions, undo, comparison, reuse, print and recovery without changing
+legacy canonical bytes. Full quality on 8b61d8d passed Ruff, formatting across 712 files, Mypy across 557 sources and
+complete Pytest. All 215 checks (176 browser + 39 model) passed in 759.313613 seconds, zero skipped/unexpected/flaky;
+294 focused Python and 46 focused browser/model checks also passed. Independent responsive and three-page PDF review
+passed. Complete paginated nonempty recovery verified 330 documents, 666 versions and 721 sources; release gates passed.
+API rollout and final health/gate details are recorded in docs/CURRENT_HANDOFF.md. See ADR-0086; Office remains ahead of CRM.
+
+124. [x] Add native Office character font sizes and named text colors with selection/caret formatting, mixed values,
+explicit reset, strict validation, isolated undo and complete save/comparison/replacement/reuse/print/recovery preservation.
+Full remote quality passed; all 231 distinct browser/model cases have passing evidence: 230 full-run passes plus
+the corrected complete eight-case history suite. The original setup failure remains in the raw reports. Actual PDF
+and responsive review passed. Fresh recovery verified 460 documents, 935 versions and 1,045 source objects; both
+release gates passed. See ADR-0087 and docs/CURRENT_HANDOFF.md for rollout and the remaining rich-table input follow-up.
+
+125. [x] Make whole-document keyboard replacement reliable across rich tables, with structural full selection,
+confirmation, cancellation, isolated undo and unchanged schema/size guards. Preserve local review drafts, immutable
+saved versions, reader/history gates and context invalidation. Ten new browser cases and the existing table/history
+suites cover this UI-only change. Full quality and all 241 browser/model checks passed on d7270a7; desktop/mobile
+confirmation review passed. Rollout and closed-gate evidence are recorded in docs/CURRENT_HANDOFF.md.
+
+126. [x] Add in-document native Office format transfer for direct character and paragraph formatting, together or
+separately. Preserve text/structure/code, exact text/cell selection, default values, pending typing marks, isolated undo,
+confirmed immutable versions, size guards and read/history/context boundaries. Mobile review drawers retain usable
+space independently of wrapping tools. Full quality and all 252 browser/model cases passed on ac70c29; the 43-case
+responsive/transfer run and visual review passed. See ADR-0088 and docs/CURRENT_HANDOFF.md for API rollout and closed gates.
+
+127. [x] Add selection-bound native Office list levels and ordered-list start values using the existing format.
+Preserve text/marks/paragraphs/sublists, table Tab navigation, pending typing marks, isolated undo, size/depth guards,
+read/history/context boundaries and confirmed immutable saves. All twelve focused cases, full quality and the single
+264-case browser/model matrix passed on fb8dbd3. Responsive visual review passed; see ADR-0089 and
+docs/CURRENT_HANDOFF.md for API rollout and closed gates.
+
+128. [x] Add document-owned named paragraph styles with reusable definitions, shared updates, fixed presentation
+values, contextual controls and preview. Preserve direct overrides, immutable versions, comparison/print/reuse,
+selection-bound undo and authorization gates. ADR-0090; full quality and all 280 browser/model cases passed on 1e09a10.
+Actual PDF/visual checks, fresh nonempty recovery, release gates and API-only rollout passed; see CURRENT_HANDOFF.md.
+Image/object follow-up design is in docs/modules/OFFICE_IMAGES_AND_OBJECTS_CONCEPT.md; implementation remains separate.
+
+129. [x] Implement document-owned native images with isolated PNG/JPEG normalization, upload/insert, resize/align,
+alt/caption, move/remove/undo, confirmed save, history, independent copy and print. ADR-0091; all297 browser/model cases
+passed on96a299f and full quality on5d3eb35 with identical runtime/browser sources. PDF/visual checks, fresh nonempty
+document-plus-asset recovery and both release gates passed before decoder/API rollout. See CURRENT_HANDOFF.md.
+Active objects and other object types remain separate work; ordinary admission stays closed.
+
+130. [x] Add non-destructive native image cropping with interactive preview, reset and keyboard-accessible bounded
+controls under ADR-0092. Immutable versions retain geometry and exact normalized renditions; undo, comparison, reuse,
+actual PDF and fresh nonempty recovery passed. Full quality passed on 54fe1ff; passing browser/model evidence covers
+all 303 distinct cases via the 302/303 full attempt and corrected 57-case helper suite on 3da08b8, not a single green
+full run. Both release gates passed before API-only rollout. See CURRENT_HANDOFF.md.
+
+131. [x] Add native image text wrapping with stable in-flow anchors, left/right placement and bounded text distance
+under ADR-0093. Narrow-screen/nested block fallback, physical page-break behavior, crop, accessible controls, isolated
+undo, exact history and owned copies are verified. Full quality and one complete 313-case browser/model run passed
+on 1d8a58f. Actual PDF/visual checks, fresh nonempty wrap/reset recovery, both release gates and API-only rollout passed.
+See CURRENT_HANDOFF.md. Arbitrary page-positioned objects and other object types remain separate.
+
+132. [x] Add explicit native page breaks under ADR-0094: visible root-only markers, menu/keyboard insertion and
+removal, isolated undo and preserved text/image/table placement. History, comparison, owned copies, actual PDFs and
+legacy bytes retain their exact contracts. Full quality passed; all 325 distinct browser/model cases are covered by
+the 324/325 complete run plus the 12/12 corrected subset (not one all-green full run). Four PDFs/14 pages, fresh
+nonempty insert/remove recovery, both release gates and API-only rollout passed. Evidence: CURRENT_HANDOFF.md.
+Continuous pagination, section layouts and DOCX interchange remain separate. Continue native Office before CRM.
+
+133. [x] Add document-owned page settings under ADR-0095: A4/Letter, portrait/landscape and bounded margins,
+accessible preview/reset and isolated undo. Exact optional metadata preserves legacy bytes, saved history and copies.
+Full Python quality and one complete 345-case browser/model run passed on 800a3a5. Eight actual PDFs/16 pages,
+fresh four-version recovery, both release gates and API-only rollout passed. Independent PDF QA caught and verified
+the correction of a legacy CSS cascade override. Evidence: CURRENT_HANDOFF.md. Section layouts and pagination remain separate.
+
+134. [x] Add document-owned headers/footers and page numbers under ADR-0096: bounded literal text,
+page/page-total choices, accessible preview, independent reset and isolated undo. Exact history/copies remain.
+All 2924 Python cases passed; full 367 browser/model cases plus 42 affected cases after a final reset correction
+passed, not a single full run on final source. Twelve PDFs/36 pages, fresh nonempty recovery, both release
+gates and API-only rollout passed. Published as implementation commit `9892e41`. Evidence: CURRENT_HANDOFF.md.
+
+135. [x] Add first-page header/footer differences and explicit first-page number suppression under ADR-0097.
+Separate previews, complete reset, isolated undo and trusted static print rules preserve legacy bytes and exact
+history/copies. All 2936 Python and 372 browser/model cases passed. Four real three-page PDFs verify separate
+profiles, hidden/shown first-page numbers and continued pages 2/3; fresh six-version recovery, both release gates,
+API-only rollout and live checks passed. General sections, arbitrary fields, continuous editor pagination and DOCX
+interchange remain separate. Published as implementation commit `48ae9c9`.
+
+136. [x] Add native root-level section breaks under ADR-0098. Each marker starts a new printed page and owns the
+complete validated page and running-text profile of the following section. Provide responsive insert/edit/remove,
+preview, isolated undo, exact save/history/copy positions, global continuous numbering, trusted static print slots,
+real mixed-format PDF proof and a four-version legacy/one-section/two-section/reset recovery fixture. Keep arbitrary
+fields, per-section first-page variants, number restarts, continuous editor pagination, floating objects and DOCX
+interchange separate. Full quality, one complete 379-case browser/model run, responsive visual review, two real
+mixed-format PDFs, fresh four-version recovery, main backup/restore, both release gates and API-only rollout passed.
+Published as implementation commit `04d45cd`.
+
+137. [x] Add safe native hyperlinks under ADR-0099. Store an exact bounded inline target restricted to absolute HTTPS
+or simple mailto addresses; reject credentials, active/ambiguous schemes and automatic navigation. Provide responsive
+add/edit/remove and deliberate-open controls, isolated undo, exact history/comparison/reuse positions, semantic print
+output and a four-version legacy/add/edit/remove recovery fixture. Keep bookmarks, cross-references, URL previews,
+automatic link recognition, arbitrary fields and DOCX interchange separate. Full Python quality, one complete 384-case
+browser/model run, responsive visual review, two real PDFs, fresh four-version recovery, main backup/restore, both
+release gates, API-only rollout and live verification passed. Published as implementation commit `12e8fca`.
+
+138. [x] Add native document-local bookmarks and internal cross-references under ADR-0100. Store bounded unique
+bookmark atoms and explicit selected-text references to stable IDs. Provide responsive insert/rename/remove and
+deliberate-jump controls, safe broken-target behavior, isolated undo, exact history/comparison/reuse positions,
+semantic internal PDF anchors and a five-version legacy/add/rename/broken/reset recovery fixture. Keep automatic
+captions, page fields, cross-document references, backlinks, URL previews and DOCX interchange separate. Full Python
+quality, one complete 389-case browser/model run, responsive visual review, two real PDFs, fresh five-version recovery,
+main backup/restore, both release gates, API-only rollout and live verification passed. Published as implementation
+commits `6c4c6e0` through `7e61f72`.
+
+139. [x] Add native figure captions and stable figure numbering. Let document-owned images carry an optional semantic
+caption, derive numbering deterministically from document order, and preserve exact image/caption identity through
+undo, save, history, comparison, copies and print. Reuse stable destination IDs for explicit figure references and
+safe broken-target behavior. Keep table captions, arbitrary page fields, cross-document references, backlinks and
+DOCX interchange separate. Full Python quality, two complete 394-case browser/model runs, responsive visual review,
+two real tagged PDFs, fresh five-version recovery, main backup/restore, both release gates, API-only rollout and live
+verification passed. Published as implementation commits `1559bb5` through `42a6f67`.
+
+140. [x] Add native table captions and stable table numbering. Let tables carry an optional semantic caption and a
+stable document-local destination ID, derive a separate table-number sequence from document order, and preserve exact
+identity through undo, save, history, comparison, copies, print and explicit cross-references. Keep arbitrary page
+fields, cross-document references, backlinks and DOCX interchange separate. Full Python quality, one complete
+398-case browser/model run, responsive visual review, two real tagged A4 PDFs, fresh five-version recovery, main
+backup/restore, both release gates, API-only rollout and live verification passed. Published as implementation commits
+`e757b7e` through `d2fe43f`.
+
+141. [x] Add native free document fields. Store a bounded document-owned key/value catalog and explicit field nodes
+for reuse in body and running text without scripts, external resolution or silent rewrites. Preserve exact undo,
+save, history, comparison, copies, print and broken-field behavior. Keep cross-document references, backlinks,
+formulas and DOCX interchange separate.
+
+142. [x] Add a native generated table of contents derived from current heading order and bounded depth without storing stale rendered entries.
+
+143. [x] Add native footnotes with stable local identities, order-derived numbering and semantic print output.
+
+144. [x] Add native endnotes with an independent sequence and exact version, comparison, copy and recovery behavior.
+
+145. [x] Add native citations and a generated bibliography backed only by a bounded document-owned source catalog; never fetch a source.
+
+146. [x] Add native inert formulas with bounded literal source and required accessible text; keep evaluation and external engines closed.
+
+147. [x] Add a native local reference navigator derived from fields, notes, citations and formulas, including visible broken targets without cross-document lookup.
+
+148. [x] Add bounded native outbound document references under ADR-0104. Store only exact target object/version IDs on
+selected text. Re-read the exact source and revalidate target tenant, current authoritative ACL and exact version for
+loading, deliberate open and every print action. Collapse missing, deleted and unauthorized targets into one inert
+title-free state; print no cross-document action. Preserve exact marks through undo, confirmed CAS save, immutable
+history, comparison, copies and recovery. Keep global backlinks, graph discovery, URL previews and DOCX relationships
+separate.
+
+149. [x] Add bounded native backlinks under ADR-0105. Reauthorize the exact target version, then derive matches only
+from current versions of source documents readable under the current tenant and authoritative ACL. Return no content
+or inaccessible-source metadata. Bind signed pagination to tenant, actor, roles, exact target and page size; cap each
+scan and result page at 50. Recheck the exact source on deliberate open. Keep the view out of print and avoid a
+persistent backlink index, deletion queue or authorization snapshot. Preserve exact behavior through recovery.
+
+150. [x] Add bounded anchored image layers under ADR-0106. Keep the ordered image node as the durable anchor, admit
+only front/behind plus normalized horizontal and bounded vertical coordinates, and make the anchor draggable and
+keyboard operable. Keep wrapping mutually exclusive; preserve exact undo, history, owned copy, print and recovery.
+Absolute DOCX page anchors, wrap contours, rotation and grouping remain separate.
+
+151. [x] Add bounded native image transforms under ADR-0107. Store only quarter-turn rotation and explicit horizontal
+or vertical mirror booleans; reject arbitrary angles, matrices, CSS and explicit identity defaults. Reserve responsive
+rotated bounds while keeping source pixels and crop immutable. Preserve exact preview, undo, comparison, history,
+owned copy, print and fresh recovery through a rotate/mirror/reset lineage. Arbitrary angles, wrap contours, grouping
+and absolute DOCX page anchors remain separate.
+
+152. [x] Add bounded native image groups under ADR-0108. Group two through eight existing images with exact member
+order, row/stack layout and a bounded gap. Preserve responsive fallback, undo, history, copies, print and recovery;
+keep nested groups, positioning and transforms outside the group contract.
+
+153. [x] Add bounded inert native shapes under ADR-0109. Admit only top-level rectangles, rounded rectangles and
+ellipses with fixed colors, integer geometry, literal text and fixed alignment. Preserve exact undo, history,
+comparison, print and independent copies while rejecting arbitrary SVG, CSS, URLs, scripts and freeform paths.
+
+154. [x] Add bounded native shape layers under ADR-0110. Store only optional front/behind plus normalized horizontal
+and bounded vertical coordinates. Keep a separate pointer/touch/keyboard anchor operable above content, preserve
+isolated undo and exact flow reset, and exclude arbitrary z-index, physical page anchors and wrap contours.
+
+155. [x] Add bounded direct native shape resizing under ADR-0111. Expose a focusable control on the selected shape,
+preview pointer/touch width and height within the existing limits, and commit one isolated undo step on release.
+Support one- and ten-pixel keyboard changes and preserve the existing canonical dimensions through history, copies
+and print without adding schema, arbitrary transforms or DrawingML.
+
+156. [x] Add bounded native shape rotation under ADR-0112. Store only optional 90/180/270 degree values and keep zero
+as canonical omission. Provide dialog and direct clockwise control with isolated undo, responsive transposed bounds
+for sideways flow shapes, accessible descriptions and exact history/copy/print preservation. Reject arbitrary angles,
+matrices, separate text rotation and DrawingML.
+
+157. [x] Add bounded native shape text wrapping under ADR-0113. Store only left/right plus an integer 0–48 pixel gap,
+make wrapping mutually exclusive with free positioning, cap wrapped width and visual height, and fall back to a block
+at narrow container widths. Preserve exact undo, history, copies and print while rejecting CSS floats, contour paths
+and simultaneous positioning.
+
+158. [x] Add bounded native shape groups under ADR-0114. Group two through eight adjacent flow shapes with exact member
+order, row/stack layout and an integer 0–48 pixel gap. Support extension, member edits/removal, isolated undo/redo and
+dissolution; collapse rows on narrow screens and preserve exact comparison, history, copies and print. Reject nested or
+mixed groups, member positioning/wrapping, arbitrary group transforms, connectors and DrawingML.
+
+159. [x] Add bounded native connections inside shape groups under ADR-0115. Apply one optional line, direction-arrow
+or double-arrow style uniformly between consecutive ordered members, with a fixed color token and integer 1–8 pixel
+width. Orient it for rows, stacks and compact fallback; preserve exact undo, comparison, history, copies and print.
+Reject arbitrary endpoints, paths, per-edge styling, SVG, URLs, CSS and DrawingML.
+
+160. [x] Add direct accessible member ordering inside native shape groups under ADR-0116. Let an author move the
+selected member one exact position earlier or later, disable unavailable boundary actions and commit each move as one
+isolated undo step. Preserve the existing exact member sequence, group presentation, connections, history, copies and
+print without adding schema, drag-only interaction, overlap ordering or arbitrary z-index behavior.
+
+161. [x] Add bounded native shape typography under ADR-0117. Let each shape optionally override the canonical
+16-pixel text size with an integer 10–72 pixel size, select one fixed text-color token and select bold, italic or both.
+Preserve exact preview, accessibility, undo, comparison, immutable history, groups, copies and print. Reject fonts,
+URLs, CSS, markup, arbitrary style strings and transparent text.
+
+162. [x] Add direct native shape duplication under ADR-0118. Create a new opaque shape identity while preserving all
+validated presentation, text and layout attributes. Insert grouped copies immediately after their source and visibly
+offset positioned copies within existing bounds. Make each duplication one undo step, enforce global and group limits
+before mutation and preserve exact save, history, print and independent document-copy behavior.
+
+163. [x] Add direct native shape-group duplication under ADR-0119. Clone the complete validated group with a fresh
+group identity and fresh identities for every member while preserving exact order, layout, gap, connection and member
+attributes. Insert the copy after its source as one undo step and enforce both the 20-group and 100-shape limits before
+mutation. Preserve exact save, history, comparison and print behavior without introducing shared identities.
+
+164. [x] Add atomic native shape-group removal under ADR-0120. Resolve the selected group's stable validated identity
+against the current editor document, remove the complete group as one isolated undo step and restore the exact group on
+undo. Preserve unrelated content, immutable earlier versions, confirmed save and print while failing closed for stale,
+missing or read-only targets without adding durable schema.
+
+165. [x] Add direct native shape-group ordering under ADR-0121. Move the complete selected group exactly one top-level
+document position earlier or later, disable unavailable boundary actions and commit each move as one isolated undo
+step. Preserve group and member identities, member order, layout, gap, connection, attributes, immutable history and
+print without adding durable schema, arbitrary drag ordering or overlap layers.
+
+166. [x] Add direct standalone native shape ordering under ADR-0122. Move the selected ungrouped shape exactly one
+top-level document position earlier or later, disable unavailable boundary actions and commit each move as one
+isolated undo step. Preserve stable identity and every validated presentation attribute through save, immutable
+history and print without adding durable schema, arbitrary drag ordering or overlap layers.
+
+167. [x] Add atomic native image-group removal under ADR-0123. Resolve the selected group's stable validated identity
+against the current editor document, remove the complete group as one isolated undo step and restore the exact group
+on undo. Preserve source assets, member bindings and attributes, unrelated content, immutable earlier versions,
+confirmed save and print without adding an asset-deletion path or durable schema.
+
+168. [x] Add independent native image-group duplication under ADR-0124. Revalidate current tenant/write access and
+all source members, create fresh document-owned asset/version identities atomically, then insert a fresh group and
+fresh figure identities directly after the source as one undo step. Preserve exact ordered pixels and presentation,
+enforce the existing group/image/storage limits before mutation, fail closed without a partial draft copy, and prove
+the new durable assets through an isolated PostgreSQL/S3 recovery.
+
+169. [x] Add independent standalone native image duplication under ADR-0125. Revalidate current tenant/write access
+and immutable source bytes, create a fresh document-owned asset/version, then insert the copy directly after its
+source as one isolated undo step. Preserve exact pixels and presentation, issue a fresh figure identity when
+numbered, visibly offset bounded free-positioned copies, fail closed on stale or incomplete responses, and prove the
+durable copies through an isolated PostgreSQL/S3 recovery.
+
+170. [x] Add in-place native image-file replacement under ADR-0126. Reuse the authorized normalized upload path to
+create a fresh document-owned asset/version, preserve accessibility text, caption, numbering, layout, group placement
+and inert transforms, reset source-pixel crop coordinates and change the draft only on explicit apply as one undo
+step. Prove cancel, undo/redo, immutable predecessor pixels, persisted reload and fresh PostgreSQL/S3 recovery.
+
+171. [x] Add direct accessible native image-group member ordering under ADR-0127. Move the selected member exactly one
+position earlier or later, disable boundary actions, keep selection on the moved image and preserve the complete
+validated group and member representation in one isolated undo step. Distinguish member order from whole-group
+document order and prove exact save, immutable predecessor, reload, print and desktop/mobile behavior.
+
+172. [x] Add bounded responsive native image-group grids under ADR-0128. Extend the canonical saved layout vocabulary
+with two-, three- and four-column grids, derive editor/comparison/print columns from one model and retain readable
+two-column fallback for denser grids on narrow viewports. Preserve every group/member attribute and prove exact save,
+reload, immutable predecessor and print geometry.
+
+173. [x] Add independent duplication of one selected native image-group member under ADR-0128. Give every nested image
+a focusable edit entry point, reuse the authorized immutable-image copy endpoint, require fresh asset/version identity
+with exact source pixels and insert the copy immediately after its source as one isolated undo step. Keep all existing
+group, image and retained-asset limits fail closed.
+
+174. [x] Add atomic extraction of one selected native image-group member under ADR-0128. Place the existing member
+before or after its group, rebuild larger groups exactly and dissolve two-member groups into ordered standalone images
+without creating or deleting assets. Prove both placements, undo/redo, save, reload and print on desktop and mobile.
+
+175. [x] Add an inert native Office document-object block under ADR-0129. Store only an exact authorized target object
+and version plus a bounded snapshot/linked mode, share the existing 100-reference limit and authoritative ACL-safe
+resolution/backlink path, and never persist a resolved title, target body, URL, HTML or executable payload.
+
+176. [x] Separate fixed snapshots from explicitly refreshable document links under ADR-0129. Keep every saved source
+version pinned; allow a linked draft to adopt the target's current saved version only through a visible author action
+that creates an ordinary undoable draft change. Never refresh during load, print or historical rendering.
+
+177. [x] Complete accessible document-object authoring under ADR-0129. Provide focusable edit, exact-target open,
+one-position movement, duplicate and remove actions with disabled boundaries and isolated undo. Prove confirmed save,
+reload, comparison, print, fresh ACL revocation, backlinks and desktop/mobile behavior without active embedding.
+
+178. [x] Add bounded inert native Office charts under ADR-0130. Store only a fresh stable ID, bar/line/pie kind,
+literal title and alternative text, legend flag, unique categories and small integer series. Reject formulas, URLs,
+remote sources, arbitrary markup/style and executable payloads in both server and browser validation.
+
+179. [x] Render the canonical chart model accessibly under ADR-0130. Use fixed colors and limits, generated inert DOM
+for bar and pie charts, generated internal SVG for lines and an exact assistive data table. Keep editor and print on
+the same model without a network, calculation or embedded-runtime path.
+
+180. [x] Complete accessible chart draft operations under ADR-0130. Provide tab-separated data entry with preview,
+insert, edit, fresh-ID duplicate, one-position movement and removal as isolated undo steps with disabled boundaries.
+
+181. [x] Close the native chart lifecycle under ADR-0130. Prove confirmed save, immutable predecessor, reload,
+comparison, print and responsive desktop/mobile containment, retaining the existing Office version and recovery
+contracts without a database migration or document-engine admission.
+
+182. [x] Add bounded native merged table cells under ADR-0131. Persist canonical row and column spans and validate a
+rectangular logical grid independently in browser and server without gaps, overlaps, truncated spans or expansion
+beyond twenty columns and two hundred rows.
+
+183. [x] Add focusable merge and split operations under ADR-0131. Enable each action only for a valid selection and
+commit every accepted change as one isolated undo step while leaving rejected drafts untouched.
+
+184. [x] Add a semantic header-column toggle under ADR-0131. Derive row and column header state from the logical grid
+and print native spans with exact `scope="col"` and `scope="row"` semantics.
+
+185. [x] Close the merged-table lifecycle under ADR-0131. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print and responsive desktop/mobile containment without a migration or spreadsheet runtime.
+
+186. [x] Add safe native SVG image import under ADR-0132. Admit bounded inert vectors through the authorized image
+upload, reject active and external content before rendering, preserve source alpha and store only a canonical
+document-owned RGBA PNG rendition.
+
+187. [x] Add bounded EPS image import under ADR-0132. Require EPSF plus a finite numeric bounding box, render only the
+first page with Ghostscript `SAFER` on a transparent canvas and reject generic PostScript while retaining the shared
+pixel, byte, time and process limits.
+
+188. [x] Keep vector rendering inside the credential-free network-none decoder under ADR-0132. Pin the renderer
+packages, use a fresh resource-limited child for each request and prevent original SVG/EPS bytes or external-resource
+dependencies from entering immutable Office versions.
+
+189. [x] Close the SVG/EPS authoring lifecycle under ADR-0132. Support browser MIME and extension selection, preview,
+insert, replacement, confirmed save and reload, and prove alpha plus the complete PNG/JPEG image regression on
+desktop and mobile.
+
+190. [x] Add bounded native table-cell fills under ADR-0133. Store only one optional token from a fixed print-safe
+palette, reject arbitrary color and style input in browser and server validation, and preserve canonical legacy cells.
+
+191. [x] Add bounded vertical table-cell alignment under ADR-0133. Treat top as the absent default and admit only
+middle or bottom, with identical inert editor and print rendering.
+
+192. [x] Add accessible multi-cell styling under ADR-0133. Apply the selected fill and alignment across cell, row,
+column or rectangular selections in one validated undo step, preserve mixed values until explicitly changed and
+retain exact styling through merge, split and header conversion.
+
+193. [x] Close the table-cell styling lifecycle under ADR-0133. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print, responsive desktop/mobile containment and fail-closed reader/historical controls.
+
+194. [x] Add fixed native table presentation styles under ADR-0134. Keep grid as the absent default and admit only
+minimal, banded or accent presentation while rejecting arbitrary CSS, classes, colors and URLs.
+
+195. [x] Add bounded table width and alignment under ADR-0134. Keep full width and left alignment canonical, with
+only wide/compact and center/right alternatives and no pixel dimensions or physical page anchors.
+
+196. [x] Add bounded column distribution under ADR-0134. Support equal columns plus fixed first-wide and first-narrow
+presets without a free grid expression, preserving semantic headers and merged cells.
+
+197. [x] Add top or bottom table-caption placement under ADR-0134. Preserve layout while captions are added, edited
+or removed, and preserve stable caption identity and text while layout changes.
+
+198. [x] Add one accessible table-layout dialog and canonical reset under ADR-0134. Apply or reset every layout
+dimension in one validated undo step with fail-closed read-only and historical controls.
+
+199. [x] Close the native table-layout lifecycle under ADR-0134. Prove undo/redo, confirmed save, immutable
+predecessor, reload, comparison, print and responsive desktop/mobile containment with a reachable document canvas.
+
+200. [x] Add bounded horizontal table-cell alignment under ADR-0135. Keep left alignment canonical and admit only
+center or right as inert cell defaults without overriding explicit paragraph formatting.
+
+201. [x] Add bounded table-cell padding under ADR-0135. Keep normal padding canonical and admit only compact or
+spacious fixed mappings without pixels, percentages or arbitrary dimensions in saved content.
+
+202. [x] Add bounded table-cell borders under ADR-0135. Keep the table style canonical and admit only no border or
+one fixed strong border without per-edge models, arbitrary colors or CSS.
+
+203. [x] Extend the accessible multi-cell formatting dialog and add a complete canonical reset under ADR-0135.
+Preserve mixed values until explicitly changed and apply or reset the full selection in one validated undo step.
+
+204. [x] Preserve the complete cell presentation through merge, split and header conversion under ADR-0135, with
+identical inert editor, comparison and print attributes.
+
+205. [x] Close the expanded table-cell presentation lifecycle under ADR-0135. Prove undo/redo, confirmed save,
+immutable predecessor, reload, comparison, print, desktop/mobile containment and fail-closed reader/history controls.
+
+206. [x] Add deterministic stable native text sorting under ADR-0136 for simple rectangular tables. Normalize with
+Unicode NFKC and lowercase code-point ordering without locale-dependent collation or automatic type inference.
+
+207. [x] Add strict bounded number sorting under ADR-0136. Accept plain integers and decimals with one dot or comma,
+reject grouping and invalid or oversized values, and leave the document unchanged on failure.
+
+208. [x] Add strict ISO-date sorting under ADR-0136. Validate real `YYYY-MM-DD` calendar dates, keep empty cells last
+in both directions and retain the original order of equal values.
+
+209. [x] Preserve a leading header row and every complete row and cell attribute while sorting. Reject merged or
+non-rectangular grids fail closed.
+
+210. [x] Add one accessible table-sort dialog for column, type and direction. Commit one successful sort as one
+validated undo transaction; cancellation, invalid input and stale selection remain no-ops.
+
+211. [x] Close the native table-sort lifecycle under ADR-0136. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print, responsive desktop/mobile behavior and fail-closed reader/history controls.
+
+212. [x] Add direct contiguous row movement under ADR-0137. Move the selected rows exactly one position before or
+after while disabling boundary actions and leaving rejected commands unchanged.
+
+213. [x] Add direct contiguous column movement under ADR-0137. Move complete selected cells exactly one position left
+or right while preserving their content, marks, semantic type and bounded presentation.
+
+214. [x] Protect an all-header first row and all-header first column under ADR-0137. Reject selections that overlap a
+protected area and reject merged or non-rectangular grids fail closed.
+
+215. [x] Preserve the complete rectangular selection after movement and commit each accepted row or column move as
+one validated undo transaction.
+
+216. [x] Integrate accessible move actions into the existing row and column menus under ADR-0137. Expose unavailable
+directions as disabled and keep stale selections, readers and historical versions as no-ops.
+
+217. [x] Close the native table-reordering lifecycle under ADR-0137. Prove undo/redo, confirmed save, immutable
+predecessor, reload, comparison, print and responsive desktop/mobile behavior.
+
+218. [x] Add direct contiguous data-row duplication under ADR-0138. Insert the complete selected block directly
+below its source without reconstructing individual cells.
+
+219. [x] Add direct contiguous data-column duplication under ADR-0138. Insert every complete selected cell directly
+to the right of its source across all rows.
+
+220. [x] Protect an all-header first row and all-header first column during duplication. Reject merged or
+non-rectangular grids and enforce the existing 200-row and 20-column limits before mutation.
+
+221. [x] Preserve complete content, marks, semantic cell types and bounded presentation, select the inserted block
+and commit each successful duplication as one validated undo transaction.
+
+222. [x] Integrate accessible duplication actions into the existing row and column menus. Keep protected selections,
+size-limit crossings, stale selections, readers and historical versions disabled or no-ops.
+
+223. [x] Close the native table-duplication lifecycle under ADR-0138. Prove undo/redo, confirmed save, immutable
+predecessor, reload, comparison, print and responsive desktop/mobile behavior.
+
+224. [x] Add safe structured HTML-table clipboard import under ADR-0139. Translate exactly one Word/Excel table into
+canonical native cells while stripping active, embedded and external content.
+
+225. [x] Add a bounded quoted-TSV fallback with the existing 200-row, 20-column and document-size limits. Reject
+irregular, oversized and unsupported input without changing the draft.
+
+226. [x] Preserve semantic headers, bounded spans and fixed cell presentation. Keep displayed values from unknown
+Excel formula dialects as inert text without executing or persisting the unsupported formula.
+
+227. [x] Add bounded local formulas with A1 through T200 references, arithmetic, ranges and SUM, AVERAGE, MIN, MAX
+and COUNT. Canonically normalize the supported German names and semicolon separators.
+
+228. [x] Add deterministic results, fixed errors, cycle detection and live recalculation. Independently parse and
+evaluate every submitted formula on the server and reject stale or forged stored results.
+
+229. [x] Add an accessible formula dialog, removal flow and visible formula-cell marker. Reject external workbooks,
+macros, networks, arbitrary identifiers and documents exceeding 1,000 formula cells.
+
+230. [x] Limit recalculation to minimal formula-cell updates so source edits and derived results retain clean undo/redo.
+Expose inert formula source/result details in comparison and preserve canonical results in print.
+
+231. [x] Close the clipboard/formula lifecycle under ADR-0139. Prove undo/redo, confirmed save, immutable predecessor,
+reload, comparison, print and responsive desktop/mobile behavior.
+
+232. [x] Add safe rectangular Word/Excel range paste into an existing simple native table under ADR-0140. Use one cell
+as the range origin and require matching dimensions for an explicit rectangular selection.
+
+233. [x] Grow a target table from one origin within the existing 200-row and 20-column limits. Preserve complete header
+row and header-column semantics and reject merged or irregular grids atomically.
+
+234. [x] Shift admitted local formulas by the target row and column offset and recalculate the resulting table. Reject
+coordinates outside A1:T200 and retain every ADR-0139 external-reference and grammar boundary.
+
+235. [x] Preserve only safe bold, italic, underline, strike and code marks from clipboard cells. Flatten links to text
+and continue stripping active, styled, embedded, framed, form, media and nested-table content.
+
+236. [x] Commit a successful range paste as one validated undo step and select the resulting rectangle. Keep stale
+sessions, readers, historical versions, dimension mismatches and size-limit failures unchanged.
+
+237. [x] Close the range-paste lifecycle under ADR-0140. Prove undo/redo, confirmed save, immutable predecessor and
+responsive desktop/mobile behavior without adding a spreadsheet runtime or recovery target.
+
+238. [x] Add explicit source-identity maps for local formulas during row and column insertion or deletion under
+ADR-0141. Move each surviving A1 reference to its logical source cell rather than retaining a stale coordinate.
+
+239. [x] Persist deleted direct and range endpoints as the exact canonical `#BEZUG!` token. Independently parse and
+recalculate it in browser and server while rejecting every other unsupported `#` or `!` form.
+
+240. [x] Preserve logical formula targets through direct row/column movement and stable row sorting without weakening
+protected headers, simple-grid validation or existing size limits.
+
+241. [x] Deep-clone row and column duplicates and apply relative-copy semantics to copied formulas. Keep original,
+copied and following cells structurally independent.
+
+242. [x] Commit each formula-aware structural edit as one validated table replacement with a restored selection and
+one undo step. Keep stale sessions, readers, historical versions, merged formula grids and limit failures unchanged.
+
+243. [x] Close the structural-formula lifecycle under ADR-0141. Prove undo/redo, confirmed save, reload, comparison,
+print and responsive desktop/mobile behavior without adding absolute references or a workbook runtime.
+
+244. [x] Add canonical absolute and mixed local references under ADR-0142. Preserve `A1`, `$A1`, `A$1` and `$A$1`
+inside A1:T200 while rejecting repeated or detached `$` anchors.
+
+245. [x] Independently extend browser and server parsing, evaluation and stored-result validation for anchored row and
+column coordinates without admitting sheets, workbooks or external references.
+
+246. [x] Make Word/Excel range paste anchor-aware. Shift only relative axes, handle each range endpoint separately and
+reject a copied reference outside the global coordinate limits atomically.
+
+247. [x] Keep anchored references bound to logical cells through row/column insertion, deletion, movement and stable
+sorting. Preserve marker placement and use canonical `#BEZUG!` for deleted dependencies.
+
+248. [x] Apply axis-specific copy semantics to independent deep-cloned row and column duplicates. Keep fully fixed
+references unchanged and shift only the relative part of mixed references.
+
+249. [x] Close the anchored-formula lifecycle under ADR-0142. Prove dialog entry, undo/redo, confirmed save, reload,
+comparison, print and responsive desktop/mobile behavior without adding a workbook runtime.
+
+250. [x] Add bounded formula fill for a rectangular selection of ordinary data cells under ADR-0143. Treat the
+top-left formula as the source for every selected target.
+
+251. [x] Shift relative, absolute and mixed references independently for each target offset. Reject the complete fill
+when any translated reference leaves A1:T200.
+
+252. [x] Clear formulas across the current selection in one operation. Preserve the last visible results as ordinary
+cell content and recalculate every formula outside the cleared range.
+
+253. [x] Extend the accessible formula dialog with range coordinates, selected-cell and existing-formula counts.
+Restore the rectangular selection and commit fill or removal as exactly one undo step.
+
+254. [x] Keep header cells, merged grids, invalid bounds and formula-count overflow fail closed. Preserve current
+authorization, stale-session, reader, historical-version and document-size boundaries.
+
+255. [x] Close the formula-range lifecycle under ADR-0143. Prove anchored fill, atomic undo/redo, range removal,
+confirmed save, reload, print and responsive desktop/mobile behavior without adding fill handles or a workbook runtime.
+
+256. [x] Add the bounded Office information-classification contract under ADR-0144 with `public`, `internal`,
+`confidential` and `restricted`, separate from canonical storage, retention and regulatory data classes.
+
+257. [x] Persist classification on the Office document head and every immutable version through migration 0086. Bind
+the current head to its version and extend PostgreSQL restore verification for the new column and grant.
+
+258. [x] Include classification in create/save commands, actor-bound idempotency hashes, list/content/history views and
+content-free audit metadata while leaving SourceObject `data_classification`, retention, legal hold and KMS unchanged.
+
+259. [x] Allow authorized writers to retain or increase protection. Require tenant administration for public creation,
+publication and every protection downgrade; never derive access rights from the label.
+
+260. [x] Add responsive creation and editor controls with fail-closed response validation. Preserve the selected
+version value through historical reads, reuse, restore, explicit confirmation and optimistic saves.
+
+261. [x] Show classification changes in version comparison and mark the exact saved classification in print/PDF output.
+
+262. [x] Close the classification lifecycle under ADR-0144 across permission, audit, migration, restore, history,
+comparison, print and responsive desktop/mobile browser evidence.
+
+263. [x] Add bounded direct-user document sharing under ADR-0145: list current shares, grant or change `read` and
+`write`, and revoke a direct user grant.
+
+264. [x] Source targets only from active principals with active membership in the same tenant. Reject disabled,
+unknown and cross-tenant principals fail closed.
+
+265. [x] Restrict direct-user share management to a current direct `admin` user grant and preserve the immutable owner
+grant. Role and group grants may authorize access but never direct-user share mutation.
+
+266. [x] Persist every mutation as a complete monotonically versioned ACL snapshot with optimistic
+`expected_acl_version` comparison so stale dialogs cannot overwrite newer access decisions.
+
+267. [x] Require explicit human confirmation and a unique mutation reference. Emit content-free audit events and an
+append-only decision receipt for grants, permission changes and revocations.
+
+268. [x] Add a responsive Office sharing dialog with active tenant-member selection, permission choice, owner
+protection, revoke confirmation and fail-closed response validation.
+
+269. [x] Enforce current ACLs for current and historical content while binding the current ACL snapshot version to
+each immutable saved version for audit and recovery traceability.
+
+270. [x] Close the sharing lifecycle under ADR-0145 across service, API, PostgreSQL functions, migration, restore and
+responsive desktop/mobile browser evidence.
+
+271. [x] Add optional UTC expiration to direct Office document `read` and `write` grants under ADR-0146. Keep owner
+and administrative grants permanent.
+
+272. [x] Accept only timezone-aware future expirations within 366 days. Expose the bounded choices permanent, one day,
+seven days and 30 days in the responsive sharing dialog.
+
+273. [x] Persist the exact expiration in authoritative ACL rows and append-only share decisions through migration
+0088. Preserve every unaffected grant term when replacing the complete ACL snapshot.
+
+274. [x] Exclude expired grants at request time in both the central PostgreSQL principal directory and native Office
+repository for list, read, write, history and share authorization without relying on a scheduler.
+
+275. [x] Show permanent and expiring access clearly in the sharing dialog and allow a confirmed, conflict-protected
+grant mutation to change either permission or term.
+
+276. [x] Bind the expiration to content-free audit metadata, the monotonic ACL snapshot, immutable decision evidence,
+the migration catalog and PostgreSQL restore contracts.
+
+277. [x] Close the expiration lifecycle under ADR-0146 across model, API, principal resolution, PostgreSQL, migration,
+restore and responsive desktop/mobile browser evidence.
+
+278. [x] Extend native Office sharing under ADR-0147 to explicitly typed active tenant users, roles and groups.
+
+279. [x] Carry the subject type through API commands, share state and append-only decisions so identical IDs in
+different subject namespaces cannot collide.
+
+280. [x] Add migration 0089 with subject-aware security-definer functions that revalidate tenant, direct admin actor,
+active target, owner boundary, expected ACL version, unique mutation and optional expiration.
+
+281. [x] Preserve complete monotonic ACL snapshots and every unaffected expiration across user, role and group grant
+changes while keeping direct ACL writes unavailable to the application role.
+
+282. [x] Authorize role and group document access through current authoritative role claims and active group
+membership while retaining direct-user administration as the only share-management authority.
+
+283. [x] Label people, roles and groups distinctly in the responsive sharing dialog and keep confirmation, expiration,
+revoke confirmation, stale-write handling and fail-closed response validation.
+
+284. [x] Prove typed targets, direct-admin boundaries, membership authorization and tenant-safe rejection through
+in-memory, API, PostgreSQL, migration and responsive browser contracts.
+
+285. [x] Close the role/group sharing lifecycle under ADR-0147 across model, API, PostgreSQL, migration, restore and
+responsive desktop/mobile browser evidence.
+
+286. [x] Add native paragraph pagination under ADR-0148 with strict optional booleans for keep-with-next, keep-lines
+and page-break-before while preserving absent legacy bytes and explicit false overrides.
+
+287. [x] Reject coercion, null persisted values, arbitrary CSS and unknown pagination attributes in server and browser
+validation before storage or rendering.
+
+288. [x] Extend the responsive multi-paragraph dialog with default, enabled, disabled and mixed states and expose the
+same fixed controls through document-owned named styles.
+
+289. [x] Preserve pagination metadata through text-type conversion, splitting, format transfer, undo/redo, comparison,
+reviews, suggestions, confirmed CAS save, history and immutable predecessors.
+
+290. [x] Map inert `data-office-*` attributes to trusted static editor/print break rules without page estimation,
+content synthesis or saved-text mutation.
+
+291. [x] Bind an exact version containing all three rules into the paragraph and named-style recovery contracts without
+a SQL migration, endpoint or new restore store.
+
+292. [x] Close paragraph pagination under ADR-0148 across schema, editor, styles, print, recovery and responsive
+desktop/mobile browser and real-PDF evidence.
+
+293. [x] Add safe native automatic link recognition under ADR-0149 for complete HTTPS addresses, explicit `mailto:`
+targets and simple email addresses completed by typing or pasted as plain text.
+
+294. [x] Preserve every literal character while excluding sentence punctuation and unmatched closing brackets from
+targets and retaining balanced URL brackets.
+
+295. [x] Mark only candidates accepted by the existing strict link validator; leave HTTP, credentials, active/local
+schemes, prepared mail messages, controls, malformed domains and overlong values as inert text.
+
+296. [x] Exclude code, existing links, cross-references and document references from automatic rewriting and keep
+legacy document loading free of scanning, mutation, resolution, fetches or automatic navigation.
+
+297. [x] Make multi-link plain-text paste one isolated undo step and preserve exact undo/redo, confirmed CAS save,
+immutable history, comparison, reuse and print behavior through the existing canonical link mark.
+
+298. [x] Prove typing, paste, punctuation, unsafe inert text, undo/redo, immutable predecessor, reload and semantic
+PDF output through pure models plus responsive desktop/mobile browser coverage with zero target requests.
+
+299. [x] Close automatic links under ADR-0149 without a migration, endpoint, network lookup, URL preview, provider,
+worker, new recovery store or DOCX admission.
+
+300. [x] Add bounded native Office font families under ADR-0150. Store only optional `sans`, `serif` or `mono`
+character tokens while retaining absence as the canonical legacy default.
+
+301. [x] Reject arbitrary family names, CSS, URLs, files, embedded fonts and unknown values independently in browser
+and server validation; map accepted tokens only through fixed local print-safe CSS fallback stacks.
+
+302. [x] Extend the responsive character dialog with default, mixed, Sans Serif, Serif and Monospace choices for
+selections and pending caret input, canonical reset and one isolated undo step.
+
+303. [x] Extend document-owned named styles with the same font-family contract. Inherit the family across bound
+paragraphs and headings while retaining direct character-mark precedence.
+
+304. [x] Preserve font families through format transfer, text-type conversion, lists, tables, search/replacement,
+comparison, suggestions, confirmed CAS save, immutable history, reload and independent reuse.
+
+305. [x] Prove identical inert editor, style-preview and semantic print/PDF rendering and bind exact family-bearing
+versions into the existing character-format recovery fixture.
+
+306. [x] Close the font-family lifecycle under ADR-0150 without a migration, endpoint, dependency, font download,
+provider, worker, new recovery store or DOCX admission.
+
+307. [x] Add bounded native Office text highlighting under ADR-0151. Store only optional `yellow`, `lime`, `cyan`,
+`pink`, `lavender` or `gray` direct character tokens while retaining absence as the canonical default.
+
+308. [x] Reject arbitrary colors, CSS, alpha, gradients, URLs, files and unknown values independently in browser and
+server validation; map accepted tokens only through fixed opaque print-safe CSS colors.
+
+309. [x] Extend the responsive character dialog with default, mixed and six highlight choices for selections and
+pending caret input, canonical reset and one isolated undo step.
+
+310. [x] Keep highlights as direct character formatting and reject them from document-owned paragraph styles so a
+text highlight cannot turn into full-width paragraph shading.
+
+311. [x] Preserve highlights through format transfer, text-type conversion, lists, tables, search/replacement,
+comparison, suggestions, confirmed CAS save, immutable history, reload and independent reuse.
+
+312. [x] Prove identical inert editor and semantic print/PDF rendering and bind exact highlighted versions into the
+existing character-format recovery fixture.
+
+313. [x] Close the text-highlight lifecycle under ADR-0151 without a migration, endpoint, dependency, external
+request, provider, worker, new recovery store or DOCX admission.
+
+314. [x] Add bounded native Office superscript, subscript and character spacing under ADR-0152. Store only optional
+`superscript` or `subscript` baseline tokens and `tight` or `wide` spacing tokens while preserving absence.
+
+315. [x] Reject numeric offsets, dimensions, percentages, arbitrary CSS, URLs and unknown tokens independently in
+browser and server validation; map accepted values only through fixed print-safe CSS.
+
+316. [x] Extend the responsive character dialog with default, mixed, superscript, subscript, tight and wide choices
+for selections and pending caret input, canonical reset and one isolated undo step.
+
+317. [x] Keep baseline position direct-text-only because block styles cannot raise inline contents; allow bounded
+character spacing in document-owned styles while direct character values retain precedence.
+
+318. [x] Preserve the typography tokens through format transfer, text-type conversion, lists, tables,
+search/replacement, comparison, suggestions, confirmed CAS save, immutable history, reload and independent reuse.
+
+319. [x] Prove identical inert editor and semantic print/PDF rendering and bind exact superscript/wide and
+subscript/tight versions into the existing character-format recovery fixture.
+
+320. [x] Close the bounded typography lifecycle under ADR-0152 without a migration, endpoint, dependency, external
+request, provider, worker, new recovery store or DOCX admission.
+
+321. [x] Add bounded native Office text case under ADR-0153. Store only optional `uppercase` or `smallCaps` tokens
+for direct character formatting and document-owned styles while preserving absence and the literal source text.
+
+322. [x] Reject lowercase, title case, locale or script controls, arbitrary CSS, URLs and unknown tokens
+independently in browser and server validation; map accepted values only through fixed print-safe CSS.
+
+323. [x] Extend the responsive character dialog with default, mixed, uppercase and small-caps choices for
+selections and pending caret input, canonical reset and one isolated undo step.
+
+324. [x] Allow both inheritable tokens in document-owned styles while direct character values retain precedence
+and explicitly neutralize the other inherited case property.
+
+325. [x] Preserve the presentation token and literal text through format transfer, text-type conversion, lists,
+tables, search/replacement, comparison, suggestions, confirmed CAS save, immutable history, reload and reuse.
+
+326. [x] Prove identical inert editor and semantic print/PDF rendering and bind exact uppercase and small-caps
+versions into the existing character-format recovery fixture.
+
+327. [x] Close the bounded text-case lifecycle under ADR-0153 without a migration, endpoint, dependency, external
+request, provider, worker, new recovery store, source-text mutation or DOCX admission.
+
+328. [x] Fail closed on section page-number restart after a real Chromium PDF probe. A reset in a named `@page`
+rule resets every page in that sequence, while an element reset does not affect the page-margin counter. Keep restart
+metadata rejected until a segmented render-and-merge pipeline is independently proven.
+
+329. [x] Add bounded native Office paragraph indentation under ADR-0154. Store only optional 0, 18, 36, 54 or 72 pt
+left and right indents plus fixed none, first-line 18/36 pt and hanging 18/36 pt tokens.
+
+330. [x] Reject fractional, negative, arbitrary length, percentage, CSS, URL and unknown values independently in
+browser and server validation; map accepted values only through fixed logical margin, padding and text-indent CSS.
+
+331. [x] Extend the responsive paragraph dialog with default, mixed, explicit zero and all bounded indent choices,
+canonical reset and one isolated undo step while retaining mobile scroll reachability.
+
+332. [x] Allow the same values in document-owned named styles while direct paragraph values retain precedence and
+Standard returns to the linked style or text-type default.
+
+333. [x] Preserve indentation through text-type conversion, paragraph splitting, lists, quotations, selected table
+cells, format transfer, search/replacement, comparison, suggestions, confirmed CAS save, immutable history, reload
+and independent reuse.
+
+334. [x] Prove identical inert editor, style-preview and semantic print/PDF rendering and bind exact first-line and
+hanging profiles into the existing paragraph recovery fixture.
+
+335. [x] Close the paragraph-indentation lifecycle under ADR-0154 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, arbitrary length, page-number restart or DOCX admission.
+
+336. [x] Add bounded native Office text columns under ADR-0155. Document and complete section page profiles support
+exactly one, two or three columns while absence remains the canonical one-column default.
+
+337. [x] Reject every other number, token, dimension, CSS value, URL and unexpected object key independently in the
+browser and server, mapping accepted values only through trusted static CSS.
+
+338. [x] Extend responsive page and section dialogs with an accessible column choice and proportionate preview;
+keep compact editing usable in one column while retaining the exact saved print count.
+
+339. [x] Render two and three columns in the continuous editor for documents without section markers and protect
+tables, figures, code, quotations, cards and object groups from uncontrolled column splits.
+
+340. [x] Bind every print segment to its active exact column profile, preserving section columns across manual page
+breaks and switching deterministically at validated section markers.
+
+341. [x] Preserve columns through confirmed CAS save, immutable history, comparison, reload, independent reuse and
+recovery, binding two- and three-column document and section profiles in recovery versions two and three.
+
+342. [x] Close the text-column lifecycle under ADR-0155 without a migration, endpoint, dependency, external request,
+provider, worker, new recovery store, free column widths, continuous section pagination or DOCX admission.
+
+343. [x] Fail closed on per-section first-page variants after a real four-page Chromium PDF probe. A named
+`@page …:first` rule applies only to the document's first page; a later named section starts with its general rule.
+Keep section first-page metadata rejected until a separately proven segmented render-and-merge path can guarantee it.
+
+344. [x] Expand native Office shape rotation under ADR-0156 to optional whole-degree values from 1 through 359;
+retain canonical omission for zero and compatibility with every existing quarter-turn document.
+
+345. [x] Reject booleans, fractions, negative and out-of-range values, CSS, transform matrices, URLs and unexpected
+keys independently in browser and server validation.
+
+346. [x] Extend the responsive shape dialog and direct focusable handle with exact pointer/touch rotation,
+one-degree arrow steps, 15-degree Shift steps, Home reset, the existing 90-degree click and one isolated undo unit.
+
+347. [x] Reserve the exact axis-aligned bounds of arbitrary rotations for normal-flow, wrapped and grouped shapes,
+keeping compact layouts contained without trusting document-provided style expressions.
+
+348. [x] Preserve the exact validated angle and bounds in semantic print/PDF while positioned shapes retain their
+logical anchors and group members retain their order.
+
+349. [x] Preserve arbitrary angles through confirmed CAS save, immutable history, comparison, undo/redo and
+independent shape and group duplication using the existing native-document representation.
+
+350. [x] Close the arbitrary-angle shape-rotation lifecycle under ADR-0156 without a migration, endpoint,
+dependency, external request, provider, worker, new recovery store, transform matrix, separate text rotation,
+physical page anchor or DOCX DrawingML admission.
+
+351. [x] Add freely positioned native Office shape groups under ADR-0157. A root group may optionally carry exactly
+one front/behind-text layer, an integer normalized X position from 0 through 1000 and an integer Y offset from -1200
+through 1200 pixels; omission remains canonical normal flow.
+
+352. [x] Reject booleans, fractions, arbitrary CSS or z-index values, URLs, unexpected position keys and any member
+positioning or wrapping independently in browser and server validation.
+
+353. [x] Extend the responsive group dialog and direct focusable group anchor with live pointer/touch movement,
+one-pixel arrow steps, ten-pixel Shift steps, Home reset and exactly one isolated undo unit per completed gesture.
+
+354. [x] Compute exact axis-aligned group bounds from row/stack layout, gap and arbitrarily rotated members, and use
+the same validated geometry for editor, comparison and semantic print/PDF on the front or behind-text layer.
+
+355. [x] Duplicate positioned groups with fresh group/member identities and a bounded visible 25/24 offset. Require
+normal flow before ungrouping, while atomically promoting the survivor of a two-member positioned group to a
+standalone shape at the group anchor when its sibling is removed.
+
+356. [x] Preserve group positions through confirmed CAS save, immutable history, comparison, undo/redo, print,
+reload, independent reuse and recovery in the existing native-document JSON.
+
+357. [x] Close the freely positioned shape-group lifecycle under ADR-0157 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, physical page anchor, arbitrary z-index, mixed member anchors,
+nesting or DOCX DrawingML admission.
+
+358. [x] Add per-edge native Office shape-group connections under ADR-0158 while preserving the existing uniform
+connection representation. An explicit list contains exactly one bounded connection or null value per ordered member
+gap, and the two representations are mutually exclusive.
+
+359. [x] Reject mismatched list lengths, unknown keys, boolean widths, arbitrary paths, SVG, CSS, URLs and ambiguous
+uniform/per-edge combinations independently in browser and server validation.
+
+360. [x] Extend the responsive group dialog with an all-connections scope and numbered gap choices. Preserve untouched
+edges when converting a uniform connection to individual editing and disable color/width without an active connection.
+
+361. [x] Resolve uniform and individual values into the same exact edge sequence for accessible editor and semantic
+print/PDF rendering, with horizontal rows and vertical stacks or compact-row fallback through trusted static CSS.
+
+362. [x] Keep structural edits deterministic: member insertion and duplication add one disconnected gap, removal drops
+one adjacent gap, reordering retains presentation at the ordered gap and whole-group duplication preserves the exact
+sequence with fresh identities.
+
+363. [x] Preserve per-edge connections through isolated undo/redo, confirmed CAS save, immutable history, comparison,
+reload, print, independent reuse and recovery in the existing native-document JSON.
+
+364. [x] Close the per-edge shape-group connection lifecycle under ADR-0158 without a migration, endpoint,
+dependency, external request, provider, worker, new recovery store, freehand path, arbitrary endpoint, nesting or
+DOCX DrawingML admission.
+
+365. [x] Add direct cross-axis alignment to native Office shape groups under ADR-0159. Canonical omission means
+start; center and end map rows to top/middle/bottom and stacks to left/middle/right.
+
+366. [x] Add equal distribution across one bounded 160 through 2400 pixel extent. Preserve the existing gap as a
+minimum and derive one deterministic effective gap from ordered arbitrary-angle member bounds and the target extent.
+
+367. [x] Reject unknown alignment values, explicit `start`, boolean or fractional extents, out-of-range values and
+free CSS independently in browser and server validation while keeping existing documents byte-compatible.
+
+368. [x] Extend the responsive group dialog with contextual alignment, fixed/equal distribution and a bounded pixel
+extent; disable inapplicable controls and explain row/stack semantics and the minimum-gap rule.
+
+369. [x] Use one layout function for editor and semantic print/PDF so arbitrary-angle bounds, equal effective gaps,
+compact-row fallback and per-edge connections stay aligned through trusted static CSS.
+
+370. [x] Preserve alignment and distribution through isolated undo/redo, confirmed CAS save, immutable predecessor
+history, reload, print, independent reuse and recovery in the existing native-document JSON.
+
+371. [x] Close the shape-group alignment and distribution lifecycle under ADR-0159 without a migration, endpoint,
+dependency, external request, provider, worker, new recovery store, arbitrary CSS geometry, multi-selection, nesting
+or DOCX DrawingML admission.
+
+372. [x] Add transient root-level native Office multi-selection for up to 20 standalone shapes and complete shape
+groups under ADR-0160. Track stable object IDs across DOM rebuilds and map a member hit to its owning group.
+
+373. [x] Support an explicit mouse/touch selection mode plus Ctrl/Cmd toggle, Shift range selection, visible markers,
+live status and Escape clearing. Clear the selection on document, version and session changes.
+
+374. [x] Duplicate two or more selected shapes and groups atomically with fresh group/member IDs, bounded visible
+offsets for positioned objects, preflighted document/group limits and exactly one undo unit.
+
+375. [x] Remove two or more selected root objects atomically from the draft with exactly one undo unit and no save
+before the existing confirmed CAS boundary.
+
+376. [x] Group two through eight adjacent standalone normal-flow shapes atomically. Reject positioned or wrapped
+shapes, existing groups, intervening blocks and nesting.
+
+377. [x] Preserve resulting shapes and groups through undo/redo, confirmed CAS save, immutable predecessor history,
+reload, semantic print and independent reuse while keeping the selection itself transient.
+
+378. [x] Close the native multi-selection lifecycle under ADR-0160 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, persisted UI selection, nested groups or DOCX DrawingML
+admission.
+
+379. [x] Add bounded multi-object alignment for selected positioned root standalone shapes and complete shape groups
+under ADR-0161. Accept only existing fully validated logical positions and never position flow or wrapped objects
+implicitly.
+
+380. [x] Provide minimum, rounded midpoint and maximum alignment for horizontal and vertical anchors while preserving
+every object's layer and orthogonal coordinate.
+
+381. [x] Equally distribute at least three selected positioned roots horizontally or vertically while preserving the
+extreme anchors and sorting deterministically by coordinate, root order and stable ID.
+
+382. [x] Expose accessible responsive alignment and distribution controls that remain disabled for insufficient or
+mixed selections and cannot apply a partial mutation.
+
+383. [x] Commit each alignment or distribution across the entire selection as exactly one validated transaction and
+undo unit while retaining IDs, layers and the transient selection.
+
+384. [x] Preserve resulting positions through undo/redo, confirmed CAS save, immutable predecessor history, reload,
+semantic print and independent reuse while keeping the selection itself transient.
+
+385. [x] Close the multi-object arrangement lifecycle under ADR-0161 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, free CSS geometry, physical page anchors, nested groups or
+DOCX DrawingML admission.
+
+386. [x] Add one common front/behind-text layer action for at least two selected positioned root shapes or complete
+groups under ADR-0162 while preserving both coordinates and never positioning flow or wrapped objects implicitly.
+
+387. [x] Move the complete eligible selection by one logical unit with an arrow key or ten units with Shift plus an
+arrow, and expose four accessible responsive one-unit direction buttons for pointer and touch use.
+
+388. [x] Derive one shared bounded delta from all selected anchors so the complete selection stops at X/Y limits and
+retains every relative distance, stable ID, layer and document order.
+
+389. [x] Enable layer and movement controls only for at least two fully positioned roots and reject dialogs, text
+inputs, readers, historical views, saving, uncertain and stale sessions.
+
+390. [x] Commit every common layer change or movement step as exactly one validated transaction and undo unit while
+retaining the transient multi-selection.
+
+391. [x] Preserve resulting layers and positions through undo/redo, confirmed CAS save, immutable predecessor
+history, reload, semantic print and independent reuse while keeping selection state transient.
+
+392. [x] Close the multi-object layer and nudge lifecycle under ADR-0162 without a migration, endpoint, dependency,
+external request, provider, worker, new recovery store, arbitrary movement values, physical page anchors, nested
+groups or DOCX DrawingML admission.
+
+393. [x] Drag at least two selected positioned root shapes or complete groups together from any selected position
+anchor with mouse or touch under ADR-0163 without ever positioning normal-flow or wrapped objects implicitly.
+
+394. [x] Convert horizontal pointer movement through the current editor width into the established integer X scale
+and vertical movement into an integer pixel delta while using one shared X/Y delta for the complete gesture.
+
+395. [x] Clamp both axes against every selected anchor so the selection stops as one unit at all boundaries while
+preserving relative geometry, stable IDs, layers and document order.
+
+396. [x] Expose a DOM-only live preview, effective X/Y status, common dragging marker and accessible whole-selection
+anchor description while keeping selection and gesture state transient.
+
+397. [x] Restore the original preview without mutation on pointer cancellation, Escape, document or session change,
+read-only or stale state, and suppress individual anchor dragging plus the following click during the common gesture.
+
+398. [x] Commit a completed effective gesture as exactly one validated transaction and undo unit, create no history
+for no movement, and preserve resulting positions through save, history, reload, print and independent reuse.
+
+399. [x] Close the collective pointer and touch drag lifecycle under ADR-0163 without a migration, endpoint,
+dependency, external request, provider, worker, recovery store, free coordinate field, physical page anchor, nested
+group or DOCX DrawingML admission.
+
+400. [x] Resize at least two selected positioned root shapes or complete groups together from any selected resize
+handle with mouse, touch or keyboard under ADR-0164 without ever positioning normal-flow or wrapped objects implicitly.
+
+401. [x] Derive common per-mille X/Y scale factors from the active handle and clamp them against the intersection of
+all member dimension limits: widths remain 80-1200 and heights remain 40-800. Shift uses one aspect-locked factor.
+
+402. [x] Reuse the standalone shape handle and add an accessible group handle for pointer/touch gestures plus one
+source-pixel arrow steps and ten-pixel Shift-arrow steps while retaining group structure, gaps, connections, layers,
+positions, rotations, typography and stable IDs.
+
+403. [x] Expose a DOM-only live preview, common percentage status and whole-selection resize labels, and restore all
+original dimensions without mutation on pointer cancellation, Escape, document/session change, read-only or stale state.
+
+404. [x] Commit one effective collective resize as exactly one fully validated transaction and undo unit, suppress
+individual resize/click handling during the gesture, and create no history when dimensions do not change.
+
+405. [x] Preserve resulting dimensions through undo/redo, confirmed CAS save, immutable predecessor history,
+semantic print, reload and independent reuse while keeping selection, preview and gesture state transient.
+
+406. [x] Close the collective resize lifecycle under ADR-0164 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, arbitrary CSS, physical page anchor, nested group or DOCX DrawingML admission.
+
+407. [x] Rotate at least two selected positioned root shapes or complete groups through one shared relative angle
+under ADR-0165 while preserving distinct starting angles, group structure, stable IDs, positions, layers and sizes.
+
+408. [x] Convert mouse and touch movement around the active root center into one shortest integer angle delta, with
+Shift snapping the live gesture deterministically to 15-degree increments.
+
+409. [x] Reuse the standalone shape rotation handle and add an accessible group handle. Arrow keys rotate one degree,
+Shift-arrows rotate 15 degrees, click rotates 90 degrees and Home aligns the source angle to zero while preserving
+all relative angles.
+
+410. [x] Expose a DOM-only live preview, effective-angle status, common rotation markers and whole-selection labels,
+and restore every original angle without mutation on pointer cancellation, Escape, document/session change,
+read-only or stale state.
+
+411. [x] Commit one effective collective rotation as exactly one fully validated transaction and undo unit, suppress
+individual rotation/click handling during the gesture, and create no history when angles do not change.
+
+412. [x] Preserve resulting angles through undo/redo, confirmed CAS save, immutable predecessor history, semantic
+print, reload and independent reuse while keeping selection, preview and gesture state transient.
+
+413. [x] Close the collective rotation lifecycle under ADR-0165 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, arbitrary transform values, physical page anchor, nested group or DOCX
+DrawingML admission.
+
+414. [x] Add an accessible numeric transform inspector for at least two selected positioned root shapes or complete
+groups under ADR-0166, combining relative X/Y movement, width, height, rotation and an optional common text layer.
+
+415. [x] Accept exactly seven typed values: X -1000 through 1000, Y -2400 through 2400, width/height 10 through 500
+percent, a boolean aspect lock, rotation -359 through 359 degrees and unchanged/front/behind layer; reject unknown
+keys, fractions, numeric booleans and out-of-range values.
+
+416. [x] Derive one shared effective movement and scale range from every selected root and group member so no
+canonical position or size boundary is crossed while distinct source rotations and complete group structure remain.
+
+417. [x] Preview complete standalone shapes and groups in editor-owned DOM only, including root position/layer and
+member size/rotation, report effective clamped values, and restore the source preview while application is invalid.
+
+418. [x] Apply all rebuilt and validated shapes/groups as exactly one document transaction and undo unit. Close,
+Cancel, Escape, document/session changes, read-only state and stale selection restore the complete source without
+history; selection, dialog and preview remain transient.
+
+419. [x] Preserve the result through undo/redo, confirmed CAS save, immutable predecessor history, reload, semantic
+print and independent reuse. Use three responsive two-field rows plus one inline aspect lock and advance the CSS asset
+URL to `v=2` so long-lived sessions receive the accepted layout.
+
+420. [x] Close the exact multi-object transform lifecycle under ADR-0166 without a migration, endpoint, dependency,
+external request, provider, worker, recovery store, arbitrary transform/CSS values, physical page anchor, nested
+group or DOCX DrawingML admission.
+
+421. [x] Add a bounded common appearance inspector for two through twenty selected root shapes or complete shape
+groups under ADR-0167, retaining each established positioned or normal-flow anchor and rejecting mixed, incomplete
+or nested groups.
+
+422. [x] Apply common fill, stroke and integer zero-through-eight stroke width to standalone roots and every member
+of complete groups. Treat null as unchanged and admit only established canonical color values.
+
+423. [x] Apply common 10-through-72 font size, automatic or established text color, normal/bold/italic/bold-italic
+style and left/center/right alignment to every affected shape, canonically omitting defaults and rejecting arbitrary
+fonts, CSS and style strings.
+
+424. [x] Provide an accessible responsive seven-field dialog with common/mixed source values, DOM-only live preview,
+strict validation and atomic apply. Restore the complete source without history on Cancel, Escape, document/session
+change, read-only state or stale selection.
+
+425. [x] Harden direct mouse, touch and pen selection against editor retargeting by selecting mouse targets before
+ProseMirror on `mousedown` and touch/pen targets on `pointerdown`, while preserving drag, resize and rotate priority
+plus exact Ctrl/Cmd and Shift selection behavior.
+
+426. [x] Preserve common appearance through one undo unit, redo, confirmed CAS save, immutable predecessor history,
+reload, semantic print and independent reuse, with model, real-mouse and responsive desktop/mobile coverage plus the
+complete 37-case native-shape matrix.
+
+427. [x] Close the common appearance lifecycle under ADR-0167 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, arbitrary colors/CSS/font values, physical page anchor, nested group or
+DOCX DrawingML admission.
+
+428. [x] Derive one copyable appearance from exactly one selected standalone root shape or complete root shape group
+under ADR-0168, accepting a group only when all seven normalized member values match and rejecting mixed, partial or
+nested groups.
+
+429. [x] Normalize exactly fill, stroke, stroke width, font size, text color, text style and text alignment, restoring
+canonical omission for the established 16/automatic/normal defaults and rejecting unknown, empty or arbitrary values.
+
+430. [x] Keep the remembered appearance strictly in memory for the current authorized document session. Clear it on
+document/session change or lost write permission and exclude system clipboard, browser storage, Office JSON, API,
+telemetry and cross-document or cross-tenant transfer.
+
+431. [x] Provide accessible responsive `Remember appearance` and `Apply appearance` actions with explicit status,
+enabling copy for one valid source and paste for two through twenty valid target roots.
+
+432. [x] Apply all seven values to standalone targets and every member of complete target groups in exactly one
+validated document transaction and undo unit while retaining IDs, group structure, order, connections, text,
+geometry, anchors, layers, positions, sizes and rotations.
+
+433. [x] Harden common-appearance live preview for normal-flow groups without assuming a free position, and cover
+model, desktop/mobile, undo/redo, confirmed CAS save, immutable history, print, reload clearing, independent reuse and
+the complete 37-case native-shape matrix.
+
+434. [x] Close bounded appearance copy/paste under ADR-0168 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, clipboard/browser persistence, arbitrary appearance value, physical page
+anchor, nested group or DOCX DrawingML admission.
+
+435. [x] Add collective document ordering for two through twenty selected standalone root shapes or complete root
+shape groups under ADR-0169, allowing positioned, wrapped and normal-flow roots because only canonical top-level
+document order changes.
+
+436. [x] Expose four responsive accessible actions, explicitly grouped as document order: beginning, one position
+earlier, one position later and end. Recalculate eligibility from current write permission, selection and boundaries.
+
+437. [x] Define one-step movement as moving each selected run across at most one adjacent unselected node, and
+beginning/end movement as one selected block, preserving the relative order of selected and unselected nodes.
+
+438. [x] Move each complete group as one root while retaining group identity and member order, connections, stable
+IDs, text, appearance, geometry, anchors, wrap, position and front/behind-text layer.
+
+439. [x] Commit every effective order action as one validated document transaction and undo unit, retain the same
+selected IDs and make boundary no-ops disabled without history.
+
+440. [x] Cover pure permutations, responsive desktop/mobile controls, boundary disabling, selection retention,
+undo/redo, confirmed CAS save, immutable history, print, reload and independent reuse. Pass the focused 3/3 workflow
+and complete 38/38 native-shape matrix.
+
+441. [x] Close bounded collective document ordering under ADR-0169 without a migration, endpoint, dependency,
+external request, provider, worker, recovery store, arbitrary z-index, drag ordering, physical page anchor, nested
+group or DOCX DrawingML admission.
+
+442. [x] Add collective ungrouping for two through twenty selected complete root shape groups under ADR-0170 while
+retaining the established two-through-eight member bound for every group.
+
+443. [x] Admit only complete normal-flow groups. Fail closed for one group, mixed, partial, nested, positioned,
+duplicate, stale, unknown or otherwise invalid selections.
+
+444. [x] Remove only the selected group wrappers and replace each at its current top-level position with its ordered
+members, retaining member IDs, text, appearance, dimensions, rotations and every other canonical shape attribute
+while preserving all unselected node order and content.
+
+445. [x] Expose one accessible responsive `Ungroup groups` action whose eligibility follows current write permission
+and selection state. Clear transient multi-selection after success and focus the first resulting shape as an ordinary
+node selection.
+
+446. [x] Replace all selected groups from the document end toward the beginning in exactly one validated transaction
+and undo unit. Restore the complete grouped state with one undo, repeat with one redo and create no transaction or
+history for an ineligible action.
+
+447. [x] Cover the pure eligibility/plan contract, responsive desktop/mobile controls, wrapper removal, identity and
+order preservation, selection clearing, undo/redo, confirmed CAS save, immutable predecessor history, semantic print,
+reload, range selection and independent reuse. Pass the focused 3/3 workflow and complete 39/39 native-shape matrix.
+
+448. [x] Close bounded collective ungrouping under ADR-0170 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, inferred position or layer, member rewrite, nested group, arbitrary
+connector or DOCX DrawingML admission.
+
+449. [x] Remember the exact wrappers from the latest successful collective ungroup in memory for the current
+authorized document and editor session, covering two through twenty previously ungrouped normal-flow groups with the
+established two-through-eight member bound.
+
+450. [x] Revalidate group and member IDs, current standalone root nodes, exact member order and contiguous document
+ranges, normal-flow anchors, connections, group/member limits and ID collisions before every regroup. Fail closed for
+stale, partial, moved, positioned, unknown or otherwise invalid remembered state.
+
+451. [x] Restore the original group IDs, layout, gap, alignment, distribution and connections while consuming the
+current member nodes so allowed member edits made after ungroup remain intact. Preserve all unrelated node order and
+content.
+
+452. [x] Expose one accessible responsive `Regroup groups` action without requiring a new object selection. Show it
+only while current-session memory exists, enable it only for a currently valid plan, preserve it across a confirmed
+save in the same session and clear it on document/session change, historical mode or lost write permission.
+
+453. [x] Replace every remembered member range from the document end toward the beginning in exactly one validated
+transaction and undo unit. Let undo/redo dynamically re-enable or disable regrouping and create no transaction or
+history for invalid state.
+
+454. [x] Cover the pure regroup model, responsive desktop/mobile controls, canonical wrapper attributes, connection,
+order and collision validation, member-edit preservation, undo/redo, ungroup-save and regroup-save version chains,
+semantic print, reload/session clearing and independent reuse. Retain the diagnostic first failed run; pass the
+corrected focused 4/4 workflow in 46.2 seconds and the complete 40/40 native-shape matrix in 4.8 minutes.
+
+455. [x] Close bounded current-session regrouping under ADR-0171 without a migration, endpoint, dependency, external
+request, provider, worker, recovery store, browser or clipboard persistence, cross-document or cross-tenant transfer,
+positioned or nested group support or DOCX DrawingML admission.
+
+456. [x] Extend collective ungrouping to two through twenty complete freely positioned shape groups when every
+selected group has the same anchor kind. Fail closed for mixed flow/position anchors, single or partial groups,
+nested groups or members that already carry independent positions.
+
+457. [x] Derive one explicit established standalone anchor from each rendered member center: retain the common group
+layer, bound X to 0 through 1000 and Y to -1200 through 1200, preserve canonical size, rotation, text and appearance,
+and account for responsive shrink, selection expansion and new root nodes. At a boundary accept only the nearest
+representable position within four pixels; otherwise reject the complete operation without a document change.
+
+458. [x] Write only established standalone shape nodes and their derived positions in the ordinary Office transaction.
+Keep original wrappers and exact derived anchors solely in current-session regroup memory.
+
+459. [x] Revalidate IDs, standalone roots, exact order, contiguous ranges, exact derived positions, common layer,
+group/member limits, connections and collisions before regroup. Disable and reject moved, missing, duplicated or
+otherwise repositioned members fail closed.
+
+460. [x] Strip derived standalone positions while restoring the original positioned group IDs, anchors, layer,
+layout, gap, alignment, distribution and connections. Preserve other allowed member edits and every unrelated node.
+
+461. [x] Perform positioned ungroup and regroup in one validated transaction and undo unit each. Reuse the accessible
+responsive same-anchor controls while keeping undo/redo, confirmed saves, immutable predecessors, reload, print and
+independent reuse consistent.
+
+462. [x] Extend pure-model and desktop/mobile coverage with positioned groups, exact anchor snapshots, moved-member
+rejection, boundary clamping and a narrow desktop viewport. Pass the final focused 3/3 workflow in 33.7 seconds and
+the complete 40/40 native-shape matrix in 4.9 minutes, retaining both earlier geometry failures as diagnostics.
+
+463. [x] Close bounded positioned-group ungrouping and current-session regrouping under ADR-0172 without a migration,
+endpoint, dependency, external request, provider, worker, recovery store, browser or clipboard persistence,
+cross-document or cross-tenant transfer, nested groups, arbitrary physical page anchors or DOCX DrawingML admission.
+
+464. [x] Add exact one-based target placement for two through twenty selected standalone root shapes or complete root
+shape groups. Bound the target to `1..root count - selection count + 1`, require at least one unselected root and
+reject fractions, booleans, stale roots, duplicate/unsorted indexes and unsupported node kinds.
+
+465. [x] Remove the selected roots from the logical order and insert them as one stable block at the requested start
+slot. Preserve relative selected order, relative remainder order and every complete root node without rebuilding
+group members, shape attributes or unrelated document content.
+
+466. [x] Expose one responsive accessible `Position ...` dialog with current selection/root counts, dynamic integer
+bounds, explicit stable-order help, live valid/invalid/no-op status, cancel, close and Escape behavior.
+
+467. [x] Snapshot and revalidate authorized session, exact document instance, write permission, selected IDs, root
+count and target immediately before commit. Close or reject stale, historical, read-only or changed state without a
+document transaction.
+
+468. [x] Commit effective placement through one validated root replacement and undo unit, preserve the same selected
+IDs and focus the first moved node. Create no history for an invalid or already-closed target; make undo/redo restore
+the complete order atomically.
+
+469. [x] Cover pure beginning/middle/end permutations and invalid boundaries plus responsive desktop/mobile dialog,
+cancel, exact placement, notice, selection retention and undo/redo within the existing save, immutable history,
+print, reload and independent-reuse workflow. Pass focused 3/3 in 50.4 seconds and the full 41/41 shape matrix in
+5.0 minutes.
+
+470. [x] Close bounded exact multi-object document placement under ADR-0173 without a migration, endpoint,
+dependency, external request, provider, worker, recovery store, browser or clipboard persistence, cross-document or
+cross-tenant transfer, arbitrary z-index, drag ordering, physical page anchor, nested group or DOCX DrawingML
+admission.
+
+471. [x] Add one accessible responsive object navigator over every standalone root shape and complete root shape
+group in the current document, including objects behind text or otherwise visually obscured. Preserve canonical
+document order and cap the resulting selection at twenty objects.
+
+472. [x] Search normalized shape text, kind, group-member text, document position and logical anchor, and filter the
+result set by all objects, standalone shapes or complete groups. Render every document-derived label as DOM text.
+
+473. [x] Support select-all-matches, invert-matches and clear-selection with an atomic hard limit of twenty. Reject
+an over-limit result instead of silently applying a partial selection.
+
+474. [x] Snapshot and revalidate the authorized session, exact document instance, current write permission and the
+complete unique root-ID/type/order tuple. Reject stale, unknown, duplicate, unsorted or no-longer-complete roots
+without changing selection or document state.
+
+475. [x] Apply only the normalized transient selection in document order so every established multi-object command
+can consume it. Create no document transaction or history; make cancel, close and Escape preserve the prior
+selection.
+
+476. [x] Cover strict planning plus responsive desktop/mobile search, filtering, match operations, application,
+cancellation, obscured roots and complete groups. After compacting the mobile toolbar, pass the targeted rotation
+1/1, focused workflow 3/3 in 51.0 seconds and complete native-shape matrix 42/42 in 5.0 minutes; retain the initial
+41/42 pointer-rotation failure as diagnostic evidence.
+
+477. [x] Close the bounded native Office object selection navigator under ADR-0174 without a migration, endpoint,
+dependency, external request, provider, worker, recovery store, browser or clipboard persistence, cross-document or
+cross-tenant transfer, content write, nested group or DOCX DrawingML admission.
+
+478. [x] Add optional canonical object names of at most 80 characters and alternative text of at most 500 characters
+to standalone shapes, grouped member shapes and complete root shape groups. Keep omission byte-compatible for every
+existing document.
+
+479. [x] Enforce the same browser and authoritative-server plain-text contract: nonempty exactly trimmed strings,
+no C0/C1 controls, surrogates or Unicode line/paragraph separators, and fail-closed rejection for booleans, unknown
+attributes and limit violations.
+
+480. [x] Extend the responsive shape dialog with shape name and alternative text plus group name and group
+alternative text. Commit accepted changes inside the existing validated shape/group transaction and one undo unit.
+
+481. [x] Make names the primary object-navigator label and alternative text searchable detail while retaining shape
+text, kind, document position and logical anchor. Insert every document-derived value as DOM text only.
+
+482. [x] Preserve names and alternative text through editor accessibility labels, semantic print/PDF, comparison,
+confirmed save, immutable history, duplication, grouping operations and independent document reuse.
+
+483. [x] Pass two focused Python schema contracts, 21/21 strict model tests, 4/4 targeted desktop/mobile workflows
+and the complete 43/43 native-shape matrix in 5.0 minutes. Retain the first 422 save rejection as diagnostic proof
+that the missing server contract was found and closed; confirm name, alternative text, search and position live.
+
+484. [x] Close bounded accessible native Office shape and group metadata under ADR-0175 without a migration, new
+endpoint, dependency, external request, provider, worker, recovery store, HTML, URL, arbitrary attribute,
+cross-document or cross-tenant transfer, or DOCX DrawingML admission.
+
+485. [x] Add optional canonical `hidden: true` and `locked: true` states to standalone root shapes and complete root
+shape groups. Keep omission visible and editable, and reject either state on grouped member shapes.
+
+486. [x] Enforce one identical browser and authoritative-server boolean contract. Persist only literal `true`, omit
+internal nulls canonically and fail closed on false, numbers, strings, unknown keys and member-level root states.
+
+487. [x] Extend the responsive object navigator with searchable state labels and atomic show, hide, lock and unlock
+actions for one through twenty complete roots. Keep hidden roots reachable in canonical document order.
+
+488. [x] Suppress hidden roots in the editor and semantic print/PDF while preserving them in canonical document
+content. Explain in the UI that hiding neither deletes nor protects content and is not a confidentiality boundary.
+
+489. [x] Disable dialog, handle, pointer, touch, keyboard and multi-object mutations for locked roots while retaining
+selection, navigation, visibility controls and unlock. Treat this as accidental-edit protection, never as ACL,
+authorization or a collaborative lease.
+
+490. [x] Snapshot and revalidate the authorized session, exact document instance, current write access and strict
+root ID/type/order tuple. Reject stale, duplicate, unsorted or changed targets without mutation and commit every
+effective state action as one validated transaction and one undo unit.
+
+491. [x] Pass two focused Python schema contracts, 22/22 strict model tests, targeted desktop/mobile workflows and
+the complete 46/46 native-shape matrix in 5.3 minutes. Cover confirmed save, immutable history, comparison, navigator
+recovery, semantic print and undo/redo; pass Ruff, formatting, Mypy over 607 source files and full Pytest.
+
+492. [x] Close bounded native Office object visibility and editing protection under ADR-0176 without a migration,
+new endpoint, dependency, external request, provider, worker, recovery store, security label, access-control change,
+collaborative lock, cross-document or cross-tenant transfer, or DOCX DrawingML admission.
+
+493. [x] Add migration 0090 with one durable tenant/document edit-lease row, a 90-second expiry, revision,
+base-version binding, release timestamp, takeover count and audit reference. Force tenant RLS, deny delete and grant
+the app updates only on the bounded mutable lease columns.
+
+494. [x] Persist browser session identity only as a SHA-256 binding over tenant, document, principal and session.
+Require authoritative document write access and the Office write gate for every lease operation, and disclose no
+foreign principal or raw session identifier in responses or logs.
+
+495. [x] Serialize acquire, renew, expiry and release with a tenant/document PostgreSQL advisory transaction lock.
+Keep the expected current immutable version as mandatory optimistic CAS and make a successful save invalidate every
+lease still bound to its predecessor.
+
+496. [x] Keep an active foreign session fail-closed and require an explicit confirmed takeover. Audit read, request,
+actual takeover, actual release and ineffective release request as metadata only, with distinct event types and no
+document body or raw session value.
+
+497. [x] Add a responsive lease banner, 15-second reconciliation and renewal, a confirmation-gated takeover dialog
+and best-effort release on close. Make the editor and Save read-only whenever another session holds the lease or the
+authoritative lease state is unavailable.
+
+498. [x] Preserve an existing unsaved local draft after lease loss while blocking further saves. Allow the confirmed
+second session to edit and make the first session observe takeover within the bounded polling interval without
+discarding its text.
+
+499. [x] Extend in-memory, API, PostgreSQL, migration and restore contracts for contention, explicit takeover,
+hashed storage, tenant isolation, stale version CAS, release and precise audit outcomes. Pass the final focused lease
+and migration suite completely.
+
+500. [x] Pass the real two-browser desktop/mobile workflow 2/2 in 41.4 seconds, covering blocked secondary editing,
+confirmed takeover, first-session read-only reconciliation within 30 seconds and retained unsaved text. Run complete
+Pytest to its end with only two static catalog expectations remaining, then pass all 56 affected migration tests after
+correcting them.
+
+501. [x] Close bounded native Office advisory edit leases under ADR-0177. Keep ACL and immutable-version CAS
+authoritative; leave CRDT, WebSocket, presence, merge, coauthoring and DOCX lock interoperability outside this slice.
+
+502. [x] Add an authoritative read-only Office lifecycle contract for request-transient working data, browser-memory
+drafts, lease-based collaborative state, the current immutable saved version, business records and WORM evidence
+records. Do not duplicate document content or place it in audit metadata.
+
+503. [x] Bind observed collaboration state to tenant, document, current version, authoritative ACL and the same
+hashed browser session used by the edit lease. Return no editing state to readers without write access and disclose
+no foreign principal or raw session identifier.
+
+504. [x] Declare the saved version as the only current persistent document state. Keep business-record and WORM
+transitions explicitly closed, require a future separate human confirmation and expose no route by which AI or this
+read-only surface can perform either transition.
+
+505. [x] Add a responsive **Dokumentstatus** dialog that explains local draft state, current lease, exact immutable
+version ID and closed record transitions together. Preserve unsaved editor changes while authoritative state loads.
+
+506. [x] Fail closed on the fixed browser-session format, current read authorization and exact current-version
+binding. Audit lifecycle reads with metadata only and exclude raw session values and content from responses and audit.
+
+507. [x] Pass Ruff, formatting and focused Mypy, plus all 62 tests in the complete Office document service/API files.
+Pass the real responsive desktop/mobile lifecycle workflow 2/2 in 10.1 seconds, including the explicit rule that AI
+cannot commit a business record.
+
+508. [x] Close the bounded native Office lifecycle-state model under ADR-0178 without a migration, writable lifecycle
+route, record promotion, retention change, object-lock transition, AI action, external provider or production
+admission.
+
+509. [x] Extend the existing version-bound, append-only Office review contract with canonical `@[principal-id]`
+mentions and explicit change attribution without duplicating comment content or adding a persistence layer.
+
+510. [x] Parse mentions fail closed: require complete canonical principal tokens, preserve first-occurrence order,
+deduplicate repeats and cap one event at twenty distinct mentioned principals.
+
+511. [x] Authorize each new mention against the exact tenant/document and an active direct user ACL or document
+ownership. Do not expand role/group grants into recipients, grant access or disclose a document through a mention.
+
+512. [x] Preserve idempotent replay before current mention revalidation. Keep historical mentions readable after later
+ACL revocation only within the still-authorized review thread, while rejecting every new mention of the revoked user
+atomically.
+
+513. [x] Return explicit actor, operation, revision and human-confirmed attribution for every review event. Audit only
+the bounded mention count; exclude mentioned principal IDs and comment bodies from audit metadata and normal logs.
+
+514. [x] Add responsive composer guidance and safe literal rendering for mentions plus visible human attribution.
+State directly that a mention currently sends no notification and grants no document access.
+
+515. [x] Pass focused Ruff, format and Mypy, 44 service/API tests, all seven PostgreSQL review tests, the exact
+desktop/mobile responsive workflow 2/2 in 17.2 seconds and the complete Office review browser matrix 10/10 in 1.3
+minutes.
+
+516. [x] Close bounded native Office comments, mentions and change attribution under ADR-0179 without a migration,
+notification outbox, email, push, access expansion, role/group recipient expansion, RAG/search indexing, CRDT,
+WebSocket or production admission.
+
+517. [x] Define a versioned metadata-only CRDT preflight contract for binary updates and state vectors. Publish the
+exact protocol version, canonical capability set, 256 KiB update ceiling and 50-editor target without accepting
+document content or update bytes.
+
+518. [x] Bind every preflight to tenant, exact document, authoritative current write access, exact immutable current
+version and the current edit lease held by the same browser session. Reject stale versions and foreign sessions.
+
+519. [x] Return only `prepared_runtime_closed` and `websocket_not_admitted`. Enumerate the missing engine, durable
+update log, restore replay, malicious-update fuzzing, fifty-editor load and WebSocket gateway evidence as ordered
+blockers.
+
+520. [x] Keep browser session and client instance IDs request-transient. Persist and audit neither raw identifier,
+document content nor update payload; audit only bounded protocol and closed-state metadata.
+
+521. [x] Add a responsive Live-CRDT row to **Dokumentstatus**. Require the current write lease for preflight and make
+the closed runtime, closed WebSocket and outstanding restore, fuzzing and load evidence visible.
+
+522. [x] Cover canonical capabilities, ACL/version/lease binding, write disablement, metadata-only audit and unchanged
+persistent document state in service, API and capability-manifest tests. Exercise fifty distinct client metadata
+values without presenting that functional loop as a concurrent load test.
+
+523. [x] Pass focused Ruff, formatting and Mypy plus affected service, API and roadmap tests. Pass the real responsive
+desktop/mobile lifecycle workflow 2/2 in 11.0 seconds.
+
+524. [x] Close bounded native Office CRDT service preparation under ADR-0180 without a migration, CRDT engine,
+update ingestion, durable log, presence, merge, WebSocket, restore claim, fifty-editor load claim or production
+admission.
+
+525. [x] Add a versioned metadata-only WebSocket gateway preflight after the CRDT contract. Describe the future
+socket path without returning a URL, ticket, HTTP upgrade or connection.
+
+526. [x] Enforce exact same-origin from the browser `Origin` and actual request origin. Accept only
+`collabio-office-crdt.v1` and the complete canonical transport capability list; reject body-origin and query
+credential designs.
+
+527. [x] Rebind gateway preparation to the Office write gate, current tenant/document ACL, exact immutable version
+and current browser edit lease. Keep session and client IDs request-transient and out of audit.
+
+528. [x] Fix binary-only uncompressed framing, a 256 KiB frame ceiling, 1 MiB queued-byte backpressure with close
+code 1013, a 25-second heartbeat, 60-second reauthorization and a five-minute maximum connection lifetime.
+
+529. [x] Require a future short-lived single-use hash-bound upgrade credential while issuing none. Return neither a
+ticket nor socket URL and keep server connection acceptance false.
+
+530. [x] Require state-vector resume reconciliation, at-least-once delivery with client deduplication and per-update
+ACL checks. Keep upgrade routing, ticket storage, real origin/subprotocol rejection, update authorization,
+backpressure/disconnect recovery, multi-node fan-out, CRDT engine and load evidence as ordered blockers.
+
+531. [x] Pass focused Ruff, formatting, Mypy and affected service/API/capability tests. Pass the real responsive
+desktop/mobile lifecycle workflow 2/2 in 11.0 seconds with the closed upgrade, credential and connection states
+visible.
+
+532. [x] Close bounded native Office WebSocket gateway preparation under ADR-0181 without a migration, upgrade
+route, credential store, WebSocket connection, CRDT engine, update ingestion, fan-out, recovery or load claim, or
+production admission.
+
+533. [x] Expose the existing bounded rich-document parser through a versioned, tenant-scoped, metadata-only Office
+parser-worker plan. Accept no file bytes or source/version identifiers and keep dispatch and production closed.
+
+534. [x] Require authoritative tenant/object ACL, exact source version and manifest hash, classification, retention,
+legal-hold and ACL version, plus a malware and active-content decision before any future source read.
+
+535. [x] Fix the future pipeline to authorization before read, content-addressed materialization, one-shot no-network
+parsing, bounded schema/hash validation, reauthorization before result use and secure scratch erasure.
+
+536. [x] Harden the existing development worker with no network, read-only root filesystem, UID/GID 1000, all Linux
+capabilities dropped, no-new-privileges and a noexec/nosuid/nodev tmpfs. Provide no database, object-storage or
+provider credentials and permit no direct storage or vector write.
+
+537. [x] Bound input to 25 MB, expanded archives to 20 MB, extracted text to two million characters, memory to
+256 MiB, processes to 64 and CPU to one core. Verify the applied Docker HostConfig with a real transient probe.
+
+538. [x] Keep output untrusted until independent validation and list the missing materializer, write-only result
+handoff, scheduler/timeout, malicious corpus, sandbox escape fuzzing, nonempty recovery and worker-image admission as
+ordered blockers.
+
+539. [x] Pass focused service, API, Compose and existing parser contracts with metadata-only audit. Pass the real
+responsive desktop/mobile lifecycle workflow 2/2 in 12.0 seconds with dispatch and production visibly closed.
+
+540. [x] Close the isolated Office parser-worker plan under ADR-0182 without a migration, content intake, job
+dispatch, scheduler, storage/vector mutation, productive worker-image admission or production release.
+
+541. [x] Add a versioned, tenant-scoped, metadata-only `office_macro_policy.v1`. Accept no content or source
+identifier and keep parser dispatch, active-content execution and automatic removal closed.
+
+542. [x] Detect macro-enabled DOCM MIME, embedded VBA projects, ActiveX, OLE/packages and external templates in DOCX
+containers before text extraction. Fail closed on unsafe, ambiguous, encrypted or unsupported ZIP structures.
+
+543. [x] Detect ODF Basic/script parts, event listeners and script URIs, plus PDF JavaScript, launch/open actions,
+additional actions and embedded files. Never execute macros, scripts, actions or embedded payloads.
+
+544. [x] Deny extraction for blocked inputs and do not silently strip active content. Preserve the original for a
+future quarantine/review workflow rather than presenting a modified file as the original.
+
+545. [x] Treat nonexecuting signature and external-link indicators as `allow_marked`. Permit extraction with a
+generic visible review warning while excluding paths, targets, identifiers and content from normal logs and audit.
+
+546. [x] Bind the policy read to the Office read gate and current tenant. Audit only schema, policy state, bounded
+counts and closed execution/dispatch values, and return a noncacheable response.
+
+547. [x] Pass detector, parser, service, API and dashboard contracts for DOCM, VBA, OLE, ODF script, PDF action,
+unsafe archive and visible signature marking. Pass the real responsive desktop/mobile workflow 2/2 in 11.7 seconds.
+
+548. [x] Close the bounded native Office macro policy under ADR-0183 without a migration, policy-endpoint content
+intake, macro execution, automatic sanitization, quarantine workflow, persisted policy receipt, productive parser
+dispatch or production release.
+
+549. [x] Add a versioned, tenant-scoped, metadata-only `office_import_compatibility_matrix.v1`. Accept no file bytes
+or source/version identifiers and keep import dispatch, export, round-trip fidelity and production closed.
+
+550. [x] Define thirteen feature-specific DOCX, ODT and PDF entries across `text_supported`, `text_flattened`,
+`blocked_active_content`, `visible_review_marker` and `unsupported`, with fidelity false for every entry.
+
+551. [x] Describe DOCX main-text support, flattened heading/list/table text, unsupported secondary parts, blocked
+VBA/ActiveX/OLE/templates and visible signature/link review markers.
+
+552. [x] Describe ODT paragraph/heading support, flattened lists/tables/styles/fields/annotations, blocked scripts
+and visible signature/link review markers.
+
+553. [x] Describe flattened basic PDF text, unsupported scans/complex fonts/layout/forms/accessibility, blocked
+JavaScript/actions/embedded files and visible signature/link review markers.
+
+554. [x] Bind the matrix read to the Office read gate and current tenant. Audit only schema, state, bounded counts
+and closed import/export/fidelity values, and return a noncacheable content-free response.
+
+555. [x] Pass exact matrix, service, API and dashboard contracts. Pass the real responsive desktop/mobile lifecycle
+workflow 2/2 in 11.9 seconds with feature-specific compatibility and the closed interchange boundary visible.
+
+556. [x] Close the native Office import compatibility matrix under ADR-0184 without a migration, content intake,
+import dispatch, export, round-trip fidelity claim, productive parser admission or production release.
+
+557. [x] Add a versioned, tenant-scoped, metadata-only `office_interchange_corpus_manifest.v1` with nine synthetic
+repository fixtures across DOCX, ODT and PDF, while returning no fixture bytes.
+
+558. [x] Define exactly one allowed text, one visibly marked signature and one blocked active-content fixture per
+format, using VBA, ODF Basic script and PDF JavaScript for the real block paths.
+
+559. [x] Make ZIP timestamps, order and permissions deterministic; bind every source to SHA-256 and byte length and
+bind fixture IDs, policy decisions and expected text hashes into a canonical manifest hash.
+
+560. [x] Record exact expected policy decision, parser outcome, text hash and warning count and execute the real
+active-content detector and development parser against every fixture.
+
+561. [x] Keep every fixture at `export_expected=blocked_no_engine` and round-trip fidelity false. Do not open import
+dispatch, export or a compatibility claim from the corpus.
+
+562. [x] Bind manifest reads to the Office read gate and current tenant. Audit only schema, state, bounded counts and
+closed import/export/fidelity values without fixture bytes or content.
+
+563. [x] Pass focused corpus, parser, policy, service, API and dashboard contracts and the exact responsive
+desktop/mobile lifecycle workflow 2/2 in 12.2 seconds.
+
+564. [x] Close the deterministic Office interchange test corpus under ADR-0185 without a migration, fixture-byte
+response, import dispatch, export engine, round-trip fidelity claim or production release.
+
+565. [x] Add a read-gated native Office selection-summary endpoint under ADR-0186. Accept only an exact current saved
+version and bounded native text anchor; derive the model input server-side after authoritative document ACL checks.
+
+566. [x] Select only summarization-approved models from the tenant allowlist whose registry deployment is local and
+whose provider is admitted behind the Local LLM Gateway. Keep confidential and restricted documents fail closed
+until tenant, model and prompt registries all admit the confidential data class.
+
+567. [x] Bind every inference to the exact source object and version. Audit model, prompt template, source object,
+tool-independent purpose and input/output hashes without normal-log or audit storage of selection or output bodies.
+
+568. [x] Validate the generated text and return it as untrusted and transient with the exact source anchor and
+selection hash. Persist no AI draft, suggestion or document version and keep indexing false.
+
+569. [x] Put the result into the existing native proposal composer with a visible untrusted-AI label. Require the
+existing explicit suggestion confirmation and a second explicit acceptance before any immutable version changes.
+
+570. [x] Prove stale-version, invalid-anchor, missing-ACL, disabled-policy, confidential-classification, nonlocal-
+model and invalid-output failures without a document write or sensitive application log.
+
+571. [x] Pass service, API, capability and browser contracts, including responsive desktop/mobile proof that one AI
+draft leaves the document and version count unchanged before it is discarded.
+
+572. [x] Close bounded native Office selection summaries under ADR-0186 without a migration, durable AI draft,
+automatic suggestion, automatic save, cloud-provider selection, whole-document inference or production admission.
+
+573. [x] Add a read-gated native Office rewrite endpoint under ADR-0187. Accept only an exact current saved version,
+bounded native text anchor and fixed rewrite/tone operation; accept no browser text, model, provider or free prompt.
+
+574. [x] Register one versioned approved rewrite prompt and five fixed tone prompts. Reject unapproved prompts in the
+common AI policy engine and add missing built-in prompts without replacing existing registry rows.
+
+575. [x] Select only drafting-approved tenant-allowed local models behind the Local LLM Gateway. Keep confidential
+and restricted sources closed until tenant, model and exact prompt registries all admit the confidential class.
+
+576. [x] Bind inference to the exact source object, version, anchor, selection hash, operation and tone. Audit model,
+prompt, source IDs and input/output hashes without prompt, selection or output bodies in normal logs or audit.
+
+577. [x] Validate the returned rewrite as nonempty bounded Unicode and reject unchanged output. Keep every result
+untrusted, transient and excluded from RAG/search indexing, suggestion storage and document history.
+
+578. [x] Integrate rewrite plus neutral, professional, friendly, formal and concise tone controls into the existing
+proposal composer. Label the AI draft and preserve explicit suggestion creation plus separate confirmed acceptance.
+
+579. [x] Prove fixed prompt selection, no free instructions, prompt approval, ACL/current-version enforcement,
+confidential/nonlocal denials, invalid/unchanged output denial, responsive UI and zero writes before confirmation.
+
+580. [x] Close native Office rewrite and tone drafts under ADR-0187 without a migration, free-form prompting,
+automatic suggestion/save, whole-document inference, translation, indexing or production admission.
+
+581. [x] Add a read-gated native Office translation endpoint under ADR-0188. Accept only an exact current saved
+version, bounded native text anchor and one fixed target-language code; derive source text server-side after ACL.
+
+582. [x] Register separate approved versioned prompts for German, English, French, Spanish, Italian, Dutch, Polish,
+Portuguese and Ukrainian. Accept no free target language, source-language claim, model, provider or instruction.
+
+583. [x] Select only drafting-approved tenant-allowed local models behind the Local LLM Gateway. Keep confidential
+and restricted sources closed until tenant, model and exact target-language prompt all admit confidential data.
+
+584. [x] Bind inference to exact source object, version, anchor, selection hash and target language. Audit model,
+prompt, source IDs and input/output hashes without source, prompt or translation bodies.
+
+585. [x] Validate translations as nonempty changed bounded Unicode. Keep output untrusted, transient and excluded
+from RAG/search indexing, suggestion storage and document history until explicit confirmation.
+
+586. [x] Add an accessible fixed-language selector to the existing AI writing panel and place the result in the
+editable proposal composer with a visible target-language label and both existing confirmation steps.
+
+587. [x] Prove fixed prompt selection, no free instructions, ACL/current-version enforcement, confidential/nonlocal
+denials, invalid/unchanged output denial, responsive UI and zero writes before confirmation.
+
+588. [x] Close native Office marked-text translation under ADR-0188 without a migration, automatic source-language
+detection, translation memory, whole-document translation, automatic save, indexing or production admission.
+
+589. [x] Add a read-gated native Office outline endpoint under ADR-0189. Accept only an exact current saved version,
+bounded native text anchor and fixed concise/detailed detail value; derive source server-side after ACL validation.
+
+590. [x] Register separate approved concise and detailed outline prompts. Require Markdown bullet lines, preserve
+language, facts, names, numbers and commitments and reject browser source, model, provider, format or free prompt.
+
+591. [x] Select only drafting-approved tenant-allowed local models behind the Local LLM Gateway. Keep confidential
+and restricted sources closed until tenant, model and exact outline prompt all admit the confidential class.
+
+592. [x] Validate two through eight concise or two through twenty detailed nonempty outline lines and reject empty,
+unchanged, oversized, invalid-Unicode, unstructured, one-line or over-limit model output.
+
+593. [x] Bind inference to exact object, version, anchor, selection hash, detail and validated line count. Audit model,
+prompt, source IDs and input/output hashes without prompt, selection or output bodies.
+
+594. [x] Add an accessible fixed-detail outline control and place the result in the existing editable proposal
+composer with visible AI/detail label and both explicit confirmation steps before a version can change.
+
+595. [x] Prove fixed prompt selection, no free instructions, ACL/current-version enforcement, confidential/nonlocal
+denials, strict output grammar, responsive UI and zero writes before confirmation.
+
+596. [x] Close native Office marked-text outline drafts under ADR-0189 without a migration, whole-document inference,
+semantic heading insertion, arbitrary depth, automatic save, indexing or production admission.
+
+597. [x] Add a read-gated native Office policy-comparison endpoint under ADR-0190. Accept only an exact current source
+version and a different readable policy object plus exact current policy version; derive both bodies server-side.
+
+598. [x] Revalidate authoritative ACLs and current-version identity for both documents. Reject empty or over-16,000-
+character native text sources atomically instead of truncating or accepting browser-provided content.
+
+599. [x] Register one approved fixed comparison prompt and select only drafting-approved tenant-allowed local models
+behind the Local LLM Gateway. Apply the higher source classification and keep confidential inference fail closed.
+
+600. [x] Require a bounded structured status, finding and recommendation grammar. Reject invalid status, missing
+findings, unstructured lines, invalid Unicode, excessive line count and oversized model output.
+
+601. [x] Bind the response to source version/hash and an ACL-validated exact policy object/version/title/hash citation.
+Keep the comparison visibly untrusted, transient, non-indexed and incapable of approving compliance or actions.
+
+602. [x] Audit tenant, model, prompt, both source IDs and versions, status, counts and input/output hashes without
+storing document, policy, prompt or output bodies in ordinary logs or audit.
+
+603. [x] Add a responsive accessible policy selector and dismissible read-only report. Prove exact citations, current
+version and ACL enforcement, policy denials, strict output validation and unchanged document version counts.
+
+604. [x] Close native Office policy comparison under ADR-0190 without a migration, durable AI result, automatic edit,
+compliance certification, action execution, indexing, cloud provider or production admission.
+
+605. [x] Add a read-gated native Office risk-marking endpoint under ADR-0191. Accept only an exact current saved
+version; derive all native text blocks and anchors server-side after authoritative document ACL validation.
+
+606. [x] Register one fixed approved prompt and select only drafting-approved tenant-allowed local models behind the
+Local LLM Gateway. Keep confidential and restricted documents fail closed without complete registry admission.
+
+607. [x] Require `clear` or one through eight structured findings with fixed severity/category allowlists and exact
+existing block numbers. Reject duplicate, unknown, malformed, oversized and invalid-Unicode model output.
+
+608. [x] Return source excerpts and ProseMirror UTF-16 anchors only from the server's pre-inference native block
+inventory. Never trust model-provided source text, positions or actions.
+
+609. [x] Keep the report visibly untrusted, transient, non-indexed and incapable of editing the document, creating a
+record, making a compliance decision or triggering an action. Audit only IDs, counts and input/output hashes.
+
+610. [x] Add a responsive dismissible risk report with fixed category/severity labels and a `Stelle anzeigen` action
+that selects and scrolls to the exact saved passage without changing document content or version count.
+
+611. [x] Prove exact current version and ACL enforcement, fixed prompt/local-model admission, strict grammar,
+server-derived anchors, clear findings, browser navigation, no writes and responsive layout.
+
+612. [x] Close native Office risk marking under ADR-0191 without a migration, durable annotation, automatic edit,
+compliance certification, action execution, indexing, cloud provider or production admission.
+
+613. [x] Add a read-gated native Office source-search endpoint under ADR-0192. Accept only an exact current saved
+source version, a bounded one-through-eight-term query and a result limit; accept no source body, model or prompt.
+
+614. [x] Enumerate only documents returned by the tenant-scoped authoritative repository, then revalidate every
+candidate document ACL and exact current version immediately before reading its bounded native text.
+
+615. [x] Search at most 100 candidate documents, 32,000 native text characters per document and 256,000 characters
+in aggregate. Report corpus truncation explicitly instead of silently widening the authorization or resource bound.
+
+616. [x] Return only server-derived excerpts and exact UTF-16 anchors together with object ID, immutable version ID,
+title, information classification, content hash and ACL version. Mark ACL and current-version validation explicitly.
+
+617. [x] Keep the operation deterministic and read-only without LLM inference, vector search, RAG context, durable
+search result, document mutation or indexing. Hash the normalized query and never audit query or document bodies.
+
+618. [x] Add an accessible bounded search field and dismissible versioned source cards to the Office suggestions
+panel. Opening a result uses the ordinary exact-version document read path and therefore reauthorizes access.
+
+619. [x] Prove stale source rejection, strict request grammar, inaccessible-source omission, current-version citation,
+hash-only audit, noncacheable API behavior, zero document writes and responsive desktop/mobile rendering.
+
+620. [x] Close native Office versioned source search under ADR-0192 without a migration, LLM, vector index, RAG
+answer, cross-tenant discovery, historical-candidate search, persistent search results or production admission.
+
+621. [x] Add exact-current native Office dictation capability and preparation endpoints under ADR-0193. Require the
+document write feature and freshly revalidate authoritative tenant, object ACL and exact current version identity.
+
+622. [x] Require explicit push-to-talk activation, a bounded language and one fixed recognition adapter. Admit local
+client STT only with voice policy and browser speech recognition only with additional external-provider policy.
+
+623. [x] Accept only a normalized one-through-4,000-character transcript and a server-bounded ProseMirror UTF-16
+insertion position. Reject unknown fields, invalid Unicode, stale versions and forged or inaccessible objects.
+
+624. [x] Route every admitted transcript through the Voice Privacy Guard. Audit tenant, object, version, adapter,
+language, position, counts, policy, event IDs and hashes without transcript, document, prompt or output bodies.
+
+625. [x] Reject raw-audio storage unconditionally and upload no audio to Collabio. Mark the transcript as personal
+`voice_transcript` data with transient non-persistence; add no server-side transcript or document mutation.
+
+626. [x] Insert a fully validated transcript only into the local ProseMirror draft. Keep the immutable version count
+unchanged until the author uses the existing separately confirmed version-save flow.
+
+627. [x] Add an accessible responsive language selector, visible hold-to-talk control and live recording, policy,
+provider and draft-state feedback. Cancel capture when the document, editor, lease or version context changes.
+
+628. [x] Prove policy, ACL, exact-version, insertion-bound, strict-schema, hash-only audit and no-persistence behavior;
+run desktop/mobile synthetic speech, ten-case suggestion regression and visible UI review; close under ADR-0193.
+
+629. [x] Add read-gated native Office read-aloud capability and preparation endpoints under ADR-0194. Require the
+exact current saved version and freshly revalidate authoritative tenant, object and read ACL boundaries.
+
+630. [x] Accept only a bounded same-block ProseMirror UTF-16 anchor, fixed language, bounded rate, explicit activation,
+false audio-storage intent and one fixed synthesis adapter. Derive all source text server-side after authorization.
+
+631. [x] Admit local client TTS only with tenant voice policy and browser speech synthesis only with the additional
+external-provider policy. Keep provider choice visible and fail closed when no admitted voice is available.
+
+632. [x] Route each admitted passage through the Voice Privacy Guard. Audit tenant, object, version, anchor, adapter,
+language, rate, classification, counts, policy, event IDs and hashes without selection or document bodies.
+
+633. [x] Generate no audio on the server, upload no audio to Collabio, store no audio and persist no selected text.
+Keep the operation read-only, transient, non-indexed and unable to change a document, record or action.
+
+634. [x] Validate the complete response, exact selection and UTF-8 hash in the browser before speaking. Cancel output
+when the selection, document, editor, version or tenant context changes and expose an explicit stop control.
+
+635. [x] Add accessible responsive language, speed and start/stop controls for authorized readers and authors. Show
+whether a local voice or browser speech service is used and that selection and audio remain transient.
+
+636. [x] Prove exact-version/ACL enforcement, provider policy, strict schema, hash-only audit, zero persistence and
+zero writes; run desktop/mobile synthetic speech plus dictation/suggestion regression and close under ADR-0194.
+
+637. [x] Add an isolated deterministic native Office load harness under ADR-0195 with fifty genuinely parallel
+worker sessions against one tenant-bound document state; do not count the former sequential client-ID loop as load.
+
+638. [x] Process eight synchronized update envelopes per editor and prove 400 unique updates, fifty simultaneously
+active editors and identical final state-vector and update-set hashes across all editor snapshots.
+
+639. [x] Recheck tenant/editor authorization for every update and reauthorize every editor at connection plus twice
+during the run. Reject revoked access and a foreign tenant fail closed.
+
+640. [x] Deduplicate repeated delivery and prove state-vector resume from an exact 200-update midpoint by replaying
+the remaining 200 updates to the same converged state.
+
+641. [x] Fill the fixed one-MiB queue with four 256-KiB envelopes and reject the next byte with close code 1013.
+
+642. [x] Commit a deterministic metadata-only golden report with counts, booleans and hashes and no document body or
+raw browser session identifier.
+
+643. [x] Show the verified isolated fifty-editor proof in Dokumentstatus while keeping WebSocket load and production
+runtime false and preserving the remaining engine, durable-log, restore, fuzzing, upgrade, fan-out and recovery gates.
+
+644. [x] Pass focused Ruff, format, Mypy and service/API/load tests and close under ADR-0195 without a migration,
+document content, WebSocket connection or production runtime admission.
+
+645. [x] Add a read-gated native Office RAG-answer endpoint under ADR-0196. Accept only an exact current saved
+document version, a normalized one-through-eight-term question and a bounded result limit; accept no browser-provided
+source body, citation, prompt, model, action or persistence intent.
+
+646. [x] Require tenant AI and RAG policy and select only a tenant-allowed local model approved for RAG and every
+admitted source classification. Keep confidential and restricted sources fail closed without complete registry
+admission.
+
+647. [x] Reuse the bounded ADR-0192 current-version retrieval and immediately reauthorize every candidate through
+the authoritative repository. Require the same current version, content hash, ACL version, title, classification,
+server-derived anchor and excerpt before inference.
+
+648. [x] Use one approved fixed prompt with explicitly untrusted authorized-source blocks. Bound source and aggregate
+context, validate model output and invoke no model when no authorized source remains.
+
+649. [x] Return only a bounded untrusted answer and server-derived citations containing exact object/version IDs,
+title, classification, content hash, ACL version, anchor and excerpt. Mark unsupported answers explicitly.
+
+650. [x] Audit question/output hashes, model/prompt/event IDs and exact citation references/hashes without question,
+source, prompt or answer bodies. Keep answers transient, noncacheable, non-indexed, write-free and unable to trigger
+actions or compliance decisions.
+
+651. [x] Add an accessible responsive question field, answer state and dismissible versioned citation cards. Opening
+a citation uses the ordinary exact-version document read path and therefore reauthorizes access again.
+
+652. [x] Prove policy, ACL, exact-current-version, strict schema, invalid-output, unsupported-without-inference,
+hash-only audit, zero-write and desktop/mobile behavior; close the final Phase-3 Office exit criterion under ADR-0196
+without a migration, vector index, durable AI result, cloud provider or production admission.
+
+653. [x] Extend native table calculations under ADR-0197 with comparisons plus conditional, logical, rounding,
+absolute-value, power, square-root, product and median functions while retaining transitive recalculation and cycles.
+
+654. [x] Normalize German function names and separators to one canonical formula grammar. Evaluate only the selected
+`IF` branch so an unreachable error cannot invalidate an otherwise valid calculation.
+
+655. [x] Keep formula results finite and bounded and expose deterministic reference, division, cycle, value and
+resource-limit errors. Independently recalculate every saved result in the browser and server.
+
+656. [x] Let bar, line and pie charts optionally bind to one bounded rectangular range in a numbered native table.
+Use the first row as series names, the first column as categories and accept verified finite decimal values.
+
+657. [x] Recalculate formulas and all affected linked chart snapshots in the same local editor transaction after a
+table edit. Preserve manual charts and immutable version snapshots.
+
+658. [x] Re-resolve linked table IDs and ranges server-side before every save and reject missing tables, merged grids,
+out-of-range sources, stale or forged snapshots, unknown fields, URLs and nonnumeric results.
+
+659. [x] Add accessible source-table and range controls, a read-only derived-data preview and responsive chart
+rendering. Prove automatic update, undo-safe editing, two immutable versions, reload and no viewport overflow.
+
+660. [x] Close native Office calculations and linked charts under ADR-0197 with focused schema/API and model tests,
+desktop/mobile browser proof, visual review and the complete repository quality gate; add no migration or engine.
+
+661. [x] Add at most 100 canonical document-wide named ranges under ADR-0198. Bind each unique non-reserved name to
+one stable numbered-table ID and one exact bounded `A1:T200` rectangle without URLs or executable source data.
+
+662. [x] Add an accessible range dialog for the current simple-cell selection. Require a numbered table, show the
+exact coordinate, support replacement and removal, and keep the definition inside the local draft until version save.
+
+663. [x] Recalculate all table formulas as one document dependency graph so local references remain table-relative
+while named single cells and ranges can feed formulas in other numbered tables with shared memoization and cycles.
+
+664. [x] Add exact numeric `XLOOKUP`/`XVERWEIS` over equal-length local or named ranges with bounded size and explicit
+reference/value errors. Keep text, approximate and external-workbook lookup outside this contract.
+
+665. [x] Add deterministic `DATE`/`DATUM`, `YEAR`/`JAHR`, `MONTH`/`MONAT` and `DAY`/`TAG` over UTC day numbers. Reject
+invalid dates and retain the closure of volatile current-time functions.
+
+666. [x] Remap named rectangles through row/column insertion, deletion, movement and duplication when their cells stay
+contiguous; remove invalidated definitions and remove all definitions atomically with their numbered table target.
+
+667. [x] Independently validate named definitions and recalculate cross-table results on the server, rejecting missing
+tables, merged target grids, out-of-range definitions, cross-table cycles and stale or forged formula results.
+
+668. [x] Prove the block with focused schema/API tests, 16 formula-model cases, a desktop/mobile saved-version workflow,
+visual review and the complete repository quality gate. Add no migration, external engine, network read or auto-save.
+
+669. [x] Add exact numeric `SUMIF`/`SUMMEWENN`, `COUNTIF`/`ZÄHLENWENN` and `AVERAGEIF`/`MITTELWERTWENN` under
+ADR-0199. Accept only local or named bounded ranges, one numeric criterion and equal-sized optional result ranges.
+
+670. [x] Evaluate conditional aggregates inside the existing document-wide dependency graph with shared memoization,
+cross-table references, deterministic cycles and explicit value, division and resource-limit errors.
+
+671. [x] Add a fixed cell-presentation vocabulary for integer, two-decimal, percent, EUR and UTC-derived ISO/German
+date display while retaining the canonical numeric cell or formula result as the sole calculation value.
+
+672. [x] Render formatted values through document decorations in editor and print without rewriting source values.
+Expose the formats in the existing multi-cell dialog with mixed-selection preservation and one-step undo/reset.
+
+673. [x] Let linked charts read their exact numbered-table source either by columns or by rows. Preserve the chosen
+orientation in the immutable binding and re-derive category/series snapshots after every table or formula change.
+
+674. [x] Add optional visible chart value labels and retain editability of source table, range, orientation, type,
+title, alternative text and legend in the accessible chart dialog.
+
+675. [x] Independently validate conditional results, finite numeric presentation, deterministic dates, chart source
+orientation and snapshots on the server. Reject free formats, stale/forged values, missing tables and invalid ranges.
+
+676. [x] Prove the block with focused schema/API tests, 22 formula/chart model cases, a desktop/mobile saved-version
+workflow, visual review and the complete repository quality gate. Add no migration, network source or external engine.
+
+677. [x] Add exact numeric `SUMIFS`/`SUMMEWENNS`, `COUNTIFS`/`ZÄHLENWENNS` and
+`AVERAGEIFS`/`MITTELWERTWENNS` under ADR-0200 while preserving canonical English persistence.
+
+678. [x] Require one through ten criteria-range/value pairs, equal result and criteria dimensions and the existing
+4,000-value bound. Reject missing pairs, surplus arguments and mismatched ranges deterministically.
+
+679. [x] Resolve local and document-wide named ranges inside the existing dependency graph with shared memoization,
+cross-table references, cycle detection and explicit reference, value, division and resource-limit errors.
+
+680. [x] Preserve formula and named-range structural remapping for row/column insert, delete, move and duplication so
+every criteria pair continues to follow the same logical source cells or fails closed when invalidated.
+
+681. [x] Extend the accessible formula help and German normalization without adding free format strings, external
+workbook links, volatile values, macros, network sources or automatic actions.
+
+682. [x] Independently parse and recalculate every multiple-criteria result on the server before confirmed version
+save. Reject unknown functions, invalid dimensions and stale or forged results.
+
+683. [x] Prove German authoring, canonical persistence, immutable save/reload and responsive desktop/mobile layout in
+one browser workflow, with separately reviewed screenshots and no viewport overflow.
+
+684. [x] Close the block with focused schema/API tests, 19 formula-model cases and the complete repository quality
+gate. Add no migration, external engine, production admission or new durable state.
+
+685. [x] Extend the bounded scalar grammar with double-quoted text literals under ADR-0201. Preserve literal case,
+punctuation and semicolons during German-name normalization, and escape an embedded quote with a doubled quote.
+
+686. [x] Add canonical `CONCAT`, `LEFT`, `RIGHT` and `LEN` plus `VERKETTEN`, `LINKS`, `RECHTS` and `LÄNGE`. Bound
+formula and result text, reject unsafe controls and retain `#` prefixes for explicit formula errors.
+
+687. [x] Resolve ordinary text cells and named ranges inside the existing dependency graph. Extend exact `XLOOKUP`
+to text keys and results while retaining equal-sized local or named ranges and deterministic scalar type rules.
+
+688. [x] Add deterministic `EDATE`, `EOMONTH`, `DAYS` and ISO `WEEKDAY` plus their German aliases over integer UTC
+day numbers. Clip month ends, bound offsets and supported years and reject locale-, timezone- or clock-dependent input.
+
+689. [x] Keep text and calendar formulas inside shared memoization, cross-table dependency and cycle handling. Make
+all structural formula-reference remapping skip quoted literals so reference-looking text is never rewritten.
+
+690. [x] Extend accessible formula help, preserve canonical English formulas on save and clear numeric presentation
+when a formula produces text without changing the canonical underlying result.
+
+691. [x] Independently parse and recalculate every text and calendar result on the server before confirmed version
+save. Reject invalid syntax, unsafe or oversized text, type errors, calendar overflow and stale or forged results.
+
+692. [x] Prove the block with focused schema/API tests, 22 formula-model cases, a desktop/mobile saved-version
+workflow, visual review and the complete repository quality gate. Add no migration, external engine or network source.
+
+693. [x] Add one strict optional axis-presentation contract to native bar and line charts under ADR-0202, with bounded
+category and value titles, automatic or manual value scaling, major gridlines and a closed number-format set.
+
+694. [x] Derive deterministic zero-inclusive automatic scales with 1/2/5 major steps and at most thirteen ticks.
+Require finite ordered manual bounds, a positive major unit, at most twelve exact intervals and all data inside range.
+
+695. [x] Render category and value titles, formatted tick and data labels and optional major gridlines without changing
+canonical numeric chart values. Reject axes on pie charts.
+
+696. [x] Place visible legends at the top, bottom, left or right and collapse side legends responsively so chart and
+controls remain contained on desktop and mobile.
+
+697. [x] Preserve axes, formats and legend placement through chart editing, linked-table recalculation, confirmed
+immutable save and reload. Keep the accessible chart description and hidden source-data table authoritative.
+
+698. [x] Independently validate the complete closed chart-presentation schema on the server. Reject surplus fields,
+invalid titles, formats and placements, non-finite or uneven scales, out-of-range values and forged pie axes.
+
+699. [x] Prove fixed-scale EUR presentation, axis titles, gridlines, legend movement, data labels, save/reload and
+responsive containment in one desktop/mobile browser workflow with separately reviewed screenshots.
+
+700. [x] Close the block with focused schema/API and chart-model tests plus the complete repository quality gate. Add
+no migration, external chart engine, network source, automatic action or new durable state.
 
 ## Next Engineering Step
 
-After proving the reusable module contract outside CRM/ERP, the Knowledge Base now has a readable evidence trail, audit-only authoring dry-run, a persistent approval ledger schema, ledger persistence wiring, a source-object write guard, an append-only approval transition path, a metadata-only restore/source evidence refresh preview, an execution skeleton, atomic in-memory edit/create execution paths, a PostgreSQL transaction adapter for article/version/evidence metadata, durable source-object write receipts, and a PostgreSQL source metadata/storage-manifest bridge. The next narrow step is the Knowledge Base write unit-of-work:
+Close the next coherent product loop instead of extending preparation-only boundaries:
 
-- Add a coordinated commit contract that binds source-object receipt, source metadata, storage manifest, article/version metadata, source-version evidence, and restore evidence.
-- Wire API execution to PostgreSQL-backed writes only when the source-object bridge and KB transaction adapter are configured together.
-- Keep hybrid search behind the same candidate-only, authoritative-ACL search contract.
+- Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
+- Native Office is complete through Roadmap 839 / PLANS 700. Strict deterministic chart axes, fixed or automatic
+  scales, bounded number formats, gridlines and responsive legend placement now build on linked table calculations.
+  Continue Office with richer native chart types and advanced presentation as the next coherent loop before deferred CRM onboarding. Preserve all earlier AI,
+  voice, interchange, collaboration,
+  object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
+  print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,
+  public links, external guests, live collaboration and DOCX interchange remain closed until their separate gates pass.
+- Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.
+- Keep RAG/indexing disabled for these writes until deletion propagation, source-version citation, and authoritative ACL revalidation pass together.
+- Keep every new durable workflow in the PostgreSQL restore catalog, continuity policy, backend release gate, and isolated recovery drill.
+- Treat real-user pilot and production-continuity evidence as a separate accountable-human lane; read current readiness, but never fabricate principals, approvals, topology, PITR, offsite, promotion, or cross-site evidence.
+- Keep `SUITE_PRODUCTIVITY_PILOT_RUNTIME_ENABLED=0` until a new evidence chain, four-eyes approvals, and the hash-only closure path pass together.
+- Keep productive Legacy SQL writes, DOCX engine/WOPI and Mail runtime execution, AI provider execution, and destructive automation closed until their current release gates are independently satisfied.
 
 ## Module Expansion Stance
 

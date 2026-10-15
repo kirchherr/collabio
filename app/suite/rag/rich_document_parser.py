@@ -7,6 +7,7 @@ from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
+from suite.rag.office_active_content import DOCM_MIME_TYPE, enforce_office_active_content_policy
 from suite.rag.parser_worker import (
     ParsedTextArtifact,
     ParserInputTooLargeError,
@@ -64,24 +65,41 @@ class RichDocumentParserWorker:
                 "read_only_filesystem=true",
                 "no_direct_storage_mutation=true",
                 "no_direct_vector_writes=true",
+                "active_content_execution_allowed=false",
             ),
         )
 
     def parse(self, request: ParserWorkerRequest) -> ParsedTextArtifact:
+        claimed_mime_type = request.mime_type.partition(";")[0].strip().lower()
+        if claimed_mime_type == DOCM_MIME_TYPE:
+            enforce_office_active_content_policy(
+                mime_type=claimed_mime_type,
+                content=request.content,
+                max_archive_uncompressed_bytes=self.max_archive_uncompressed_bytes,
+                max_control_part_bytes=self.max_archive_uncompressed_bytes,
+            )
         mime_type = self.policy.validate(request)
         if self.policy.network_access_allowed:
             raise ParserWorkerError("rich document parser must run without network access")
         if self.policy.external_processes_allowed:
             raise ParserWorkerError("rich document parser must not spawn external processes")
 
-        warnings: tuple[str, ...] = ()
+        active_content = enforce_office_active_content_policy(
+            mime_type=mime_type,
+            content=request.content,
+            max_archive_uncompressed_bytes=self.max_archive_uncompressed_bytes,
+            max_control_part_bytes=self.max_archive_uncompressed_bytes,
+        )
+        warnings: tuple[str, ...] = (
+            ("non-executable security markers require review",) if active_content.review_markings else ()
+        )
         if mime_type == DOCX_MIME_TYPE:
             text = self._parse_docx(request.content)
         elif mime_type == ODT_MIME_TYPE:
             text = self._parse_odt(request.content)
         elif mime_type == PDF_MIME_TYPE:
             text = self._parse_pdf(request.content)
-            warnings = ("basic PDF text parser used; scanned or complex PDFs require a dedicated engine",)
+            warnings = (*warnings, "basic PDF text parser used; scanned or complex PDFs require a dedicated engine")
         else:
             raise UnsupportedParserInputError(f"unsupported rich document mime type: {mime_type}")
 

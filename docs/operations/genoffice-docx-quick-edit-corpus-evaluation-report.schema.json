@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "GenOfficeDocxQuickEditPreflightReport": {
+      "additionalProperties": false,
+      "properties": {
+        "active_content_marker_count": {
+          "title": "Active Content Marker Count",
+          "type": "integer"
+        },
+        "archive_extracted_to_filesystem": {
+          "const": false,
+          "default": false,
+          "title": "Archive Extracted To Filesystem",
+          "type": "boolean"
+        },
+        "archive_part_count": {
+          "title": "Archive Part Count",
+          "type": "integer"
+        },
+        "decision": {
+          "enum": [
+            "allow_future_engine_evaluation",
+            "reject_before_engine"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "declared_total_uncompressed_bytes": {
+          "title": "Declared Total Uncompressed Bytes",
+          "type": "integer"
+        },
+        "derived_signature_state": {
+          "enum": [
+            "not_applicable",
+            "invalidated_by_edit"
+          ],
+          "title": "Derived Signature State",
+          "type": "string"
+        },
+        "document_content_included_in_report": {
+          "const": false,
+          "default": false,
+          "title": "Document Content Included In Report",
+          "type": "boolean"
+        },
+        "embedded_object_marker_count": {
+          "title": "Embedded Object Marker Count",
+          "type": "integer"
+        },
+        "engine_executed": {
+          "const": false,
+          "default": false,
+          "title": "Engine Executed",
+          "type": "boolean"
+        },
+        "engine_invocation_authorized": {
+          "const": false,
+          "default": false,
+          "title": "Engine Invocation Authorized",
+          "type": "boolean"
+        },
+        "external_network_used": {
+          "const": false,
+          "default": false,
+          "title": "External Network Used",
+          "type": "boolean"
+        },
+        "external_relationship_count": {
+          "title": "External Relationship Count",
+          "type": "integer"
+        },
+        "findings": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Findings",
+          "type": "array"
+        },
+        "future_engine_evaluation_eligible": {
+          "title": "Future Engine Evaluation Eligible",
+          "type": "boolean"
+        },
+        "input_sha256": {
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "input_size_bytes": {
+          "title": "Input Size Bytes",
+          "type": "integer"
+        },
+        "original_bytes_retention_required": {
+          "title": "Original Bytes Retention Required",
+          "type": "boolean"
+        },
+        "persistent_document_write_performed": {
+          "const": false,
+          "default": false,
+          "title": "Persistent Document Write Performed",
+          "type": "boolean"
+        },
+        "preflight_policy_hash": {
+          "title": "Preflight Policy Hash",
+          "type": "string"
+        },
+        "relationship_count": {
+          "title": "Relationship Count",
+          "type": "integer"
+        },
+        "report_hash": {
+          "title": "Report Hash",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "genoffice_docx_quick_edit_preflight_report.v1",
+          "default": "genoffice_docx_quick_edit_preflight_report.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signature_part_count": {
+          "title": "Signature Part Count",
+          "type": "integer"
+        },
+        "signature_state": {
+          "enum": [
+            "absent",
+            "present_unverified"
+          ],
+          "title": "Signature State",
+          "type": "string"
+        },
+        "tenant_content_processed": {
+          "const": false,
+          "default": false,
+          "title": "Tenant Content Processed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "input_sha256",
+        "input_size_bytes",
+        "preflight_policy_hash",
+        "archive_part_count",
+        "declared_total_uncompressed_bytes",
+        "relationship_count",
+        "external_relationship_count",
+        "active_content_marker_count",
+        "embedded_object_marker_count",
+        "signature_part_count",
+        "signature_state",
+        "derived_signature_state",
+        "original_bytes_retention_required",
+        "decision",
+        "findings",
+        "future_engine_evaluation_eligible",
+        "report_hash"
+      ],
+      "title": "GenOfficeDocxQuickEditPreflightReport",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "allowed_fixture_count": {
+      "title": "Allowed Fixture Count",
+      "type": "integer"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "document_content_included_in_report": {
+      "const": false,
+      "default": false,
+      "title": "Document Content Included In Report",
+      "type": "boolean"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "expected_outcomes_matched": {
+      "const": true,
+      "default": true,
+      "title": "Expected Outcomes Matched",
+      "type": "boolean"
+    },
+    "external_network_used": {
+      "const": false,
+      "default": false,
+      "title": "External Network Used",
+      "type": "boolean"
+    },
+    "fixture_reports": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxQuickEditPreflightReport"
+      },
+      "title": "Fixture Reports",
+      "type": "array"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "rejected_fixture_count": {
+      "title": "Rejected Fixture Count",
+      "type": "integer"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_quick_edit_corpus_evaluation_report.v1",
+      "default": "genoffice_docx_quick_edit_corpus_evaluation_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "corpus_manifest_hash",
+    "preflight_policy_hash",
+    "fixture_reports",
+    "allowed_fixture_count",
+    "rejected_fixture_count",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxQuickEditCorpusEvaluationReport",
+  "type": "object"
+}

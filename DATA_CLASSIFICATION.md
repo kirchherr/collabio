@@ -57,6 +57,23 @@ Earlier planning terms are aliases or object/lifecycle concepts, not active runt
 | `export_package` | `confidential`, `gobd`, `legal_hold`, or `personal` based on contained records |
 | `voice_audio` | not stored by default; future storage must add explicit policy before activation |
 
+## Native Office Information Classification
+
+Native Office documents also carry a separate user-facing `information_classification` under ADR-0144. This is an
+ISO/IEC-27001-aligned organizational handling scheme; ISO/IEC 27001 does not mandate these exact labels.
+
+| Value | German label | Handling intent |
+| --- | --- | --- |
+| `public` | Öffentlich | Approved for public handling; initial publication and later downgrade require tenant administration |
+| `internal` | Intern | Default organizational working information |
+| `confidential` | Vertraulich | Limited business information requiring increased care |
+| `restricted` | Streng vertraulich | Highest built-in Office handling level |
+
+The field is stored on the document head and every immutable Office version. It is included in confirmed command
+hashes, history, audit metadata, comparison, print and restore verification. It never grants access: tenant isolation,
+feature gates and authoritative object ACLs remain decisive. Office SourceObjects continue to use the canonical
+runtime `data_classification=internal`; retention, legal hold, KMS and regulatory classes remain independent.
+
 ## Lifecycle Conflict Order
 
 When policies conflict, evaluate in this order:

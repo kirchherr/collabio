@@ -1,0 +1,122 @@
+{
+  "$defs": {
+    "GenOfficeRuntimeProofAccessArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "content_sha256": {
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "relative_path": {
+          "title": "Relative Path",
+          "type": "string"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "relative_path",
+        "content_sha256",
+        "size_bytes"
+      ],
+      "title": "GenOfficeRuntimeProofAccessArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "content_hashes_preserved": {
+      "const": true,
+      "default": true,
+      "title": "Content Hashes Preserved",
+      "type": "boolean"
+    },
+    "corpus_artifacts": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeRuntimeProofAccessArtifact"
+      },
+      "title": "Corpus Artifacts",
+      "type": "array"
+    },
+    "directory_mode": {
+      "const": "0750",
+      "default": "0750",
+      "title": "Directory Mode",
+      "type": "string"
+    },
+    "evidence_artifacts": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeRuntimeProofAccessArtifact"
+      },
+      "title": "Evidence Artifacts",
+      "type": "array"
+    },
+    "file_mode": {
+      "const": "0640",
+      "default": "0640",
+      "title": "File Mode",
+      "type": "string"
+    },
+    "ownership_scope_verified": {
+      "const": true,
+      "default": true,
+      "title": "Ownership Scope Verified",
+      "type": "boolean"
+    },
+    "prepared_at_utc": {
+      "format": "date-time",
+      "title": "Prepared At Utc",
+      "type": "string"
+    },
+    "probe_identity": {
+      "const": "10003:10003",
+      "default": "10003:10003",
+      "title": "Probe Identity",
+      "type": "string"
+    },
+    "receipt_hash": {
+      "title": "Receipt Hash",
+      "type": "string"
+    },
+    "runtime_authorization_granted": {
+      "const": false,
+      "default": false,
+      "title": "Runtime Authorization Granted",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_proof_access_receipt.v1",
+      "default": "genoffice_runtime_proof_access_receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "symlink_absence_verified": {
+      "const": true,
+      "default": true,
+      "title": "Symlink Absence Verified",
+      "type": "boolean"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    },
+    "unrelated_evidence_untouched": {
+      "const": true,
+      "default": true,
+      "title": "Unrelated Evidence Untouched",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "prepared_at_utc",
+    "corpus_artifacts",
+    "evidence_artifacts",
+    "receipt_hash"
+  ],
+  "title": "GenOfficeRuntimeProofAccessReceipt",
+  "type": "object"
+}

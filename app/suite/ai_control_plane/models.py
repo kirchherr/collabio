@@ -47,6 +47,7 @@ class TenantPolicy(BaseModel):
     rag_enabled: bool = False
     voice_enabled: bool = False
     external_ai_enabled: bool = False
+    content_preview_enabled: bool = False
     raw_audio_storage_allowed: bool = False
     allowed_model_ids: set[str] = Field(default_factory=set)
     allowed_data_classes: set[DataClass] = Field(default_factory=set)

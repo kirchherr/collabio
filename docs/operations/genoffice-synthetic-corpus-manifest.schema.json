@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "GenOfficeSyntheticCorpusArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "enum": [
+            "fidelity",
+            "parser_resilience",
+            "no_egress",
+            "resource_exhaustion",
+            "active_content"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "content_sha256": {
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "engine_invocation_allowed": {
+          "title": "Engine Invocation Allowed",
+          "type": "boolean"
+        },
+        "expected_boundary": {
+          "enum": [
+            "parse_save_roundtrip",
+            "byte_preserving_passthrough",
+            "no_external_fetch",
+            "engine_rejection",
+            "preflight_rejection"
+          ],
+          "title": "Expected Boundary",
+          "type": "string"
+        },
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "size_bytes": {
+          "title": "Size Bytes",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "filename",
+        "category",
+        "expected_boundary",
+        "engine_invocation_allowed",
+        "content_sha256",
+        "size_bytes"
+      ],
+      "title": "GenOfficeSyntheticCorpusArtifact",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeSyntheticCorpusArtifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "classification": {
+      "const": "synthetic_public_non_personal",
+      "default": "synthetic_public_non_personal",
+      "title": "Classification",
+      "type": "string"
+    },
+    "customer_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Customer Content Included",
+      "type": "boolean"
+    },
+    "external_fetch_required": {
+      "const": false,
+      "default": false,
+      "title": "External Fetch Required",
+      "type": "boolean"
+    },
+    "manifest_hash": {
+      "title": "Manifest Hash",
+      "type": "string"
+    },
+    "personal_data_included": {
+      "const": false,
+      "default": false,
+      "title": "Personal Data Included",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "genoffice_synthetic_docx_corpus_manifest.v1",
+      "default": "genoffice_synthetic_docx_corpus_manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_date_epoch": {
+      "const": 0,
+      "default": 0,
+      "title": "Source Date Epoch",
+      "type": "integer"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    },
+    "total_size_bytes": {
+      "title": "Total Size Bytes",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "artifacts",
+    "total_size_bytes",
+    "manifest_hash"
+  ],
+  "title": "GenOfficeSyntheticCorpusManifest",
+  "type": "object"
+}

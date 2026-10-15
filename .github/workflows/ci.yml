@@ -21,7 +21,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Verify dependency locks are current
+        run: |
+          sh docker/regenerate-dependency-locks.sh
+          git diff --exit-code -- requirements.lock requirements-dev.lock requirements-preview.lock
 
       - name: Validate Docker Compose config
         run: docker compose config --quiet
@@ -31,3 +36,113 @@ jobs:
 
       - name: Run quality gate
         run: docker compose run --rm quality
+
+  supply-chain:
+    name: supply-chain
+    needs: quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      RUNTIME_IMAGE: collabio-runtime:${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build runtime image
+        run: docker build --provenance=false --target runtime --tag "${RUNTIME_IMAGE}" .
+
+      - name: Smoke-test non-root runtime
+        run: docker run --rm "${RUNTIME_IMAGE}" python -W error -c "import os; import main; assert os.geteuid() == 10001"
+
+      - name: Create evidence directory
+        run: mkdir -p artifacts
+
+      - name: Scan repository dependencies, secrets, and configuration
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        env:
+          TRIVY_VEX: ${{ github.workspace }}/security/vex/collabio.openvex.json
+          TRIVY_SHOW_SUPPRESSED: "true"
+        with:
+          version: v0.73.0
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          format: json
+          output: artifacts/repository-security.json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          trivyignores: .trivyignore.yaml
+          exit-code: 1
+
+      - name: Scan runtime image
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        env:
+          TRIVY_VEX: ${{ github.workspace }}/security/vex/collabio.openvex.json
+          TRIVY_SHOW_SUPPRESSED: "true"
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.RUNTIME_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          scanners: vuln,secret,misconfig
+          format: json
+          output: artifacts/runtime-security.json
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: 1
+          skip-setup-trivy: true
+
+      - name: Capture runtime license evidence
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.RUNTIME_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          scanners: license
+          format: json
+          output: artifacts/runtime-licenses.json
+          severity: UNKNOWN,HIGH,CRITICAL
+          exit-code: 0
+          skip-setup-trivy: true
+
+      - name: Gate forbidden runtime licenses
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.RUNTIME_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          scanners: license
+          format: table
+          severity: CRITICAL
+          exit-code: 1
+          skip-setup-trivy: true
+
+      - name: Generate CycloneDX runtime SBOM
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          version: v0.73.0
+          scan-type: image
+          image-ref: ${{ env.RUNTIME_IMAGE }}
+          skip-files: "**/*.dist-info/sboms/*.json,**/pip/_vendor/bom.cdx.json"
+          format: cyclonedx
+          output: artifacts/collabio-runtime.cdx.json
+          exit-code: 0
+          skip-setup-trivy: true
+
+      - name: Hash supply-chain evidence
+        working-directory: artifacts
+        run: sha256sum ./*.json > SHA256SUMS
+
+      - name: Upload supply-chain evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: collabio-supply-chain-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "GenOfficeRuntimeSigner": {
+      "additionalProperties": false,
+      "properties": {
+        "active": {
+          "default": true,
+          "title": "Active",
+          "type": "boolean"
+        },
+        "ed25519_public_key_base64": {
+          "title": "Ed25519 Public Key Base64",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        },
+        "signer_role": {
+          "enum": [
+            "product_owner",
+            "security_compliance_owner"
+          ],
+          "title": "Signer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "signer_role",
+        "key_id",
+        "ed25519_public_key_base64"
+      ],
+      "title": "GenOfficeRuntimeSigner",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "effective_at_utc": {
+      "format": "date-time",
+      "title": "Effective At Utc",
+      "type": "string"
+    },
+    "policy_hash": {
+      "title": "Policy Hash",
+      "type": "string"
+    },
+    "policy_id": {
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "purpose": {
+      "const": "synthetic_docx_fidelity_proof",
+      "default": "synthetic_docx_fidelity_proof",
+      "title": "Purpose",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_signer_policy.v1",
+      "default": "genoffice_runtime_signer_policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signers": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeRuntimeSigner"
+      },
+      "title": "Signers",
+      "type": "array"
+    }
+  },
+  "required": [
+    "policy_id",
+    "effective_at_utc",
+    "signers",
+    "policy_hash"
+  ],
+  "title": "GenOfficeRuntimeSignerPolicy",
+  "type": "object"
+}

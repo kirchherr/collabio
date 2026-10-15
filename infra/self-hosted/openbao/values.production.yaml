@@ -1,0 +1,132 @@
+global:
+  enabled: true
+  tlsDisable: false
+
+injector:
+  enabled: false
+
+server:
+  enabled: true
+  image:
+    registry: quay.io
+    repository: openbao/openbao
+    tag: "2.6.2@sha256:11fd73a2102cda9c55d5d881a8c3210303146a7ec1e8ac76f526e175c6d24641"
+    pullPolicy: IfNotPresent
+  updateStrategyType: OnDelete
+  logLevel: warn
+  logFormat: json
+  resources:
+    requests:
+      cpu: "500m"
+      memory: 1Gi
+    limits:
+      memory: 4Gi
+  ingress:
+    enabled: false
+  service:
+    enabled: true
+    type: ClusterIP
+    active:
+      enabled: true
+    standby:
+      enabled: true
+  dataStorage:
+    enabled: true
+    size: 20Gi
+    mountPath: /openbao/data
+    accessMode: ReadWriteOnce
+    storageClass: openbao-independent-rwo
+  auditStorage:
+    enabled: true
+    size: 20Gi
+    mountPath: /openbao/audit
+    accessMode: ReadWriteOnce
+    storageClass: openbao-independent-rwo
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  volumes:
+    - name: openbao-tls
+      secret:
+        secretName: openbao-server-tls
+        defaultMode: 0440
+  volumeMounts:
+    - name: openbao-tls
+      mountPath: /openbao/tls
+      readOnly: true
+  readinessProbe:
+    enabled: true
+    port: 8200
+  livenessProbe:
+    enabled: true
+    path: /v1/sys/health?standbyok=true
+    port: 8200
+  terminationGracePeriodSeconds: 30
+  affinity: |
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: openbao
+              component: server
+          topologyKey: kubernetes.io/hostname
+  networkPolicy:
+    enabled: true
+    ingress:
+      - from:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: collabio
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: rook-ceph
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: openbao
+        ports:
+          - port: 8200
+            protocol: TCP
+          - port: 8201
+            protocol: TCP
+  dev:
+    enabled: false
+  standalone:
+    enabled: false
+  ha:
+    enabled: true
+    replicas: 3
+    disruptionBudget:
+      enabled: true
+      maxUnavailable: 1
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = false
+        disable_mlock = true
+        cluster_name = "collabio-openbao"
+
+        listener "tcp" {
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_disable = 0
+          tls_cert_file = "/openbao/tls/tls.crt"
+          tls_key_file = "/openbao/tls/tls.key"
+          tls_client_ca_file = "/openbao/tls/ca.crt"
+          tls_min_version = "tls12"
+        }
+
+        storage "raft" {
+          path = "/openbao/data"
+        }
+
+        service_registration "kubernetes" {}
+
+ui:
+  enabled: false
+
+csi:
+  enabled: false
+
+snapshotAgent:
+  enabled: false
