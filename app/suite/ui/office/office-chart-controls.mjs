@@ -8,7 +8,8 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "dataLabelPresentation", "referenceLines", "analysis", "axes", "presentation", "seriesPresentation", "categories", "series", "source"]
+      "dataLabelPresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
+      "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -184,6 +185,37 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     errorBars: errorBars ? { seriesIndex: Number($("chart-error-bars-series").value),
       amount: Number($("chart-error-bars-amount").value), color: $("chart-error-bars-color").value } : null };
   };
+  const chartAxisOptions = (kind, series) => {
+    const firstIndex = kind === "scatter" ? 1 : 0;
+    const candidates = series.map((entry, index) => ({ entry, index })).filter(({ index }) => index >= firstIndex);
+    const supported = ["line", "area", "scatter", "combo"].includes(kind);
+    const fieldset = $("chart-advanced-axis-fields"); fieldset.hidden = !supported; fieldset.disabled = !supported;
+    if (!supported) return null;
+    const seed = action?.axisOptionsSeed, select = $("chart-secondary-series");
+    const previous = seed?.secondary?.seriesIndex ?? Number(select.value);
+    select.replaceChildren(...candidates.map(({ entry, index }) => { const option = document.createElement("option");
+      option.value = String(index); option.textContent = entry.name; option.selected = index === previous; return option; }));
+    if (!candidates.some(({ index }) => index === previous) && candidates.length) select.value = String(candidates[0].index);
+    if (action) action.axisOptionsSeed = null;
+    const secondaryEnabled = $("chart-secondary-enabled").checked && candidates.length >= 2;
+    $("chart-secondary-enabled").disabled = candidates.length < 2;
+    for (const id of ["chart-secondary-series", "chart-secondary-title", "chart-secondary-scale",
+      "chart-secondary-mode", "chart-secondary-number-format"]) $(id).disabled = !secondaryEnabled;
+    const secondaryManual = secondaryEnabled && $("chart-secondary-mode").value === "manual";
+    $("chart-secondary-manual-fields").hidden = !secondaryManual;
+    for (const id of ["chart-secondary-minimum", "chart-secondary-maximum", "chart-secondary-major-unit"]) {
+      $(id).disabled = !secondaryManual;
+    }
+    const primaryScale = $("chart-primary-scale").value;
+    if (primaryScale === "linear" && !secondaryEnabled) return null;
+    return { primaryScale, secondary: secondaryEnabled ? { seriesIndex: Number(select.value),
+      title: $("chart-secondary-title").value, scale: $("chart-secondary-scale").value,
+      mode: $("chart-secondary-mode").value,
+      minimum: secondaryManual ? Number($("chart-secondary-minimum").value) : null,
+      maximum: secondaryManual ? Number($("chart-secondary-maximum").value) : null,
+      majorUnit: secondaryManual ? Number($("chart-secondary-major-unit").value) : null,
+      numberFormat: $("chart-secondary-number-format").value } : null };
+  };
   const read = (id = action?.attrs?.id || action?.id || (action.id = identifier())) => {
     const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
     const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
@@ -198,6 +230,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       titleAlignment: $("chart-title-alignment").value };
     const seriesStyles = seriesPresentation(kind, data.series);
     const analysis = chartAnalysis(kind, data.series, seriesStyles);
+    const axisOptions = chartAxisOptions(kind, data.series);
     const references = circular(kind) ? [] : referenceLines();
     const labelPresentation = $("chart-data-labels").checked ? { content: $("chart-data-label-content").value,
       position: $("chart-data-label-position").value } : null;
@@ -206,7 +239,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(seriesStyles ? { seriesPresentation: seriesStyles } : {}),
       ...(labelPresentation ? { dataLabelPresentation: labelPresentation } : {}),
       ...(references.length ? { referenceLines: references } : {}), ...(analysis ? { analysis } : {}),
-      ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
+      ...(axisOptions ? { axisOptions } : {}), ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-reference-lines").replaceChildren();
@@ -243,7 +276,8 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     const attrs = editing ? officeChartAttributes(selection.node.attrs) : null;
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
       editing, position: editing ? selection.from : null, attrs, rootIndex: null,
-      seriesPresentationSeed: attrs?.seriesPresentation || null, analysisSeed: attrs?.analysis || null };
+      seriesPresentationSeed: attrs?.seriesPresentation || null, analysisSeed: attrs?.analysis || null,
+      axisOptionsSeed: attrs?.axisOptions || null };
     if (editing) { let index = 0; state.editor.state.doc.forEach((_node, offset) => { if (offset === action.position) action.rootIndex = index; index += 1; }); }
     const tables = officeTableInventory(state.editor.getJSON()); $("chart-source-table").replaceChildren(...tables.map((entry) => {
       const option = document.createElement("option"); option.value = entry.id; option.textContent = entry.label; return option; }));
@@ -271,6 +305,15 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-error-bars-enabled").checked = Boolean(attrs?.analysis?.errorBars);
     $("chart-error-bars-amount").value = attrs?.analysis?.errorBars?.amount ?? "10";
     $("chart-error-bars-color").value = attrs?.analysis?.errorBars?.color || "purple";
+    $("chart-primary-scale").value = attrs?.axisOptions?.primaryScale || "linear";
+    $("chart-secondary-enabled").checked = Boolean(attrs?.axisOptions?.secondary);
+    $("chart-secondary-title").value = attrs?.axisOptions?.secondary?.title || "Sekundärwerte";
+    $("chart-secondary-scale").value = attrs?.axisOptions?.secondary?.scale || "linear";
+    $("chart-secondary-mode").value = attrs?.axisOptions?.secondary?.mode || "auto";
+    $("chart-secondary-minimum").value = attrs?.axisOptions?.secondary?.minimum ?? "0";
+    $("chart-secondary-maximum").value = attrs?.axisOptions?.secondary?.maximum ?? "1000";
+    $("chart-secondary-major-unit").value = attrs?.axisOptions?.secondary?.majorUnit ?? "100";
+    $("chart-secondary-number-format").value = attrs?.axisOptions?.secondary?.numberFormat || "general";
     renderReferenceLines(attrs?.referenceLines || []);
     $("chart-linked").checked = Boolean(attrs?.source); $("chart-linked").disabled = !tables.length && !attrs?.source;
     if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range;

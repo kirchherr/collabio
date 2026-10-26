@@ -872,12 +872,15 @@ _CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
 
 
-def _chart_scale_values(kind: str, series: list[dict[str, Any]]) -> list[int | float]:
+def _chart_series_indices(kind: str, series: list[dict[str, Any]]) -> list[int]:
+    return list(range(1 if kind == "scatter" else 0, len(series)))
+
+
+def _chart_scale_values(kind: str, series: list[dict[str, Any]], indices: list[int] | None = None) -> list[int | float]:
     if kind == "stacked-bar":
         return [sum(entry["values"][index] for entry in series) for index in range(len(series[0]["values"]))]
-    if kind == "scatter":
-        return [number for entry in series[1:] for number in entry["values"]]
-    return [number for entry in series for number in entry["values"]]
+    selected = indices if indices is not None else _chart_series_indices(kind, series)
+    return [number for index in selected for number in series[index]["values"]]
 
 
 def _valid_chart_presentation(value: Any) -> bool:
@@ -983,13 +986,17 @@ def _chart_linear_regression(x_values: list[int | float], y_values: list[int | f
 
 
 def _chart_analysis_values(
-    kind: str, series: list[dict[str, Any]], series_presentation: Any, analysis: Any
+    kind: str,
+    series: list[dict[str, Any]],
+    series_presentation: Any,
+    analysis: Any,
+    series_indices: list[int] | None = None,
 ) -> list[float] | None:
     if not isinstance(analysis, dict):
         return []
     values: list[float] = []
     trendline = analysis.get("trendline")
-    if isinstance(trendline, dict):
+    if isinstance(trendline, dict) and (series_indices is None or trendline.get("seriesIndex") in series_indices):
         selected = _chart_analysis_series(kind, series, series_presentation, trendline.get("seriesIndex"))
         if selected is None:
             return None
@@ -997,7 +1004,7 @@ def _chart_analysis_values(
         slope, intercept = _chart_linear_regression(x_values, y_values)
         values.extend([intercept + slope * min(x_values), intercept + slope * max(x_values)])
     error_bars = analysis.get("errorBars")
-    if isinstance(error_bars, dict):
+    if isinstance(error_bars, dict) and (series_indices is None or error_bars.get("seriesIndex") in series_indices):
         selected = _chart_analysis_series(kind, series, series_presentation, error_bars.get("seriesIndex"))
         if selected is None:
             return None
@@ -1041,6 +1048,94 @@ def _valid_chart_analysis(value: Any, kind: str, series: list[dict[str, Any]], s
     return _chart_analysis_values(kind, series, series_presentation, value) is not None
 
 
+def _valid_chart_manual_scale(
+    value: dict[str, Any], scale: str, values: list[int | float], stacked: bool = False
+) -> bool:
+    minimum, maximum, major_unit = value.get("minimum"), value.get("maximum"), value.get("majorUnit")
+    if value.get("mode") == "auto":
+        return minimum is None and maximum is None and major_unit is None
+    if not isinstance(minimum, (int, float)) or isinstance(minimum, bool):
+        return False
+    if not isinstance(maximum, (int, float)) or isinstance(maximum, bool):
+        return False
+    if not isinstance(major_unit, (int, float)) or isinstance(major_unit, bool):
+        return False
+    minimum_value, maximum_value, major_unit_value = float(minimum), float(maximum), float(major_unit)
+    if (
+        not all(
+            math.isfinite(number) and abs(number) <= 1_000_000_000
+            for number in (minimum_value, maximum_value, major_unit_value)
+        )
+        or minimum_value >= maximum_value
+        or any(number < minimum_value or number > maximum_value for number in values)
+    ):
+        return False
+    if scale == "logarithmic":
+        if minimum_value <= 0 or major_unit_value <= 1 or any(number <= 0 for number in values):
+            return False
+        intervals = math.log(maximum_value / minimum_value, major_unit_value)
+    else:
+        if (
+            major_unit_value <= 0
+            or major_unit_value > maximum_value - minimum_value
+            or (stacked and minimum_value != 0)
+        ):
+            return False
+        intervals = (maximum_value - minimum_value) / major_unit_value
+    return math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9) and intervals <= 12
+
+
+def _valid_chart_axis_options(
+    value: Any,
+    kind: str,
+    series: list[dict[str, Any]],
+    series_presentation: Any,
+    analysis: Any,
+    reference_lines: Any,
+) -> bool:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"primaryScale", "secondary"}
+        or value.get("primaryScale") not in {"linear", "logarithmic"}
+        or kind not in {"line", "area", "scatter", "combo"}
+    ):
+        return False
+    secondary = value.get("secondary")
+    secondary_index: int | None = None
+    if secondary is not None:
+        if (
+            not isinstance(secondary, dict)
+            or set(secondary)
+            != {"seriesIndex", "title", "scale", "mode", "minimum", "maximum", "majorUnit", "numberFormat"}
+            or type(secondary.get("seriesIndex")) is not int
+            or secondary["seriesIndex"] not in _chart_series_indices(kind, series)
+            or len(_chart_series_indices(kind, series)) < 2
+            or not _valid_literal(secondary.get("title"), 1, 60)
+            or secondary.get("scale") not in {"linear", "logarithmic"}
+            or secondary.get("mode") not in {"auto", "manual"}
+            or secondary.get("numberFormat") not in _CHART_NUMBER_FORMATS
+        ):
+            return False
+        secondary_index = secondary["seriesIndex"]
+        analysis_values = _chart_analysis_values(kind, series, series_presentation, analysis, [secondary_index])
+        if analysis_values is None:
+            return False
+        values = _chart_scale_values(kind, series, [secondary_index]) + analysis_values
+        invalid_log_values = secondary["scale"] == "logarithmic" and any(number <= 0 for number in values)
+        if invalid_log_values or not _valid_chart_manual_scale(secondary, secondary["scale"], values):
+            return False
+    primary_indices = [index for index in _chart_series_indices(kind, series) if index != secondary_index]
+    primary_analysis = _chart_analysis_values(kind, series, series_presentation, analysis, primary_indices)
+    if primary_analysis is None:
+        return False
+    primary_values = (
+        _chart_scale_values(kind, series, primary_indices)
+        + [entry["value"] for entry in reference_lines or []]
+        + primary_analysis
+    )
+    return value["primaryScale"] != "logarithmic" or all(number > 0 for number in primary_values)
+
+
 def _valid_chart_axes(
     value: Any,
     series: list[dict[str, Any]],
@@ -1048,6 +1143,7 @@ def _valid_chart_axes(
     reference_lines: list[dict[str, Any]] | None = None,
     analysis: Any = None,
     series_presentation: Any = None,
+    axis_options: Any = None,
 ) -> bool:
     if not isinstance(value, dict) or set(value) != {
         "mode",
@@ -1068,38 +1164,20 @@ def _valid_chart_axes(
         or not (value.get("valueTitle") == "" or _valid_literal(value.get("valueTitle"), 1, 60))
     ):
         return False
-    minimum, maximum, major_unit = value.get("minimum"), value.get("maximum"), value.get("majorUnit")
-    if value["mode"] == "auto":
-        return minimum is None and maximum is None and major_unit is None
-    if not isinstance(minimum, (int, float)) or isinstance(minimum, bool):
-        return False
-    if not isinstance(maximum, (int, float)) or isinstance(maximum, bool):
-        return False
-    if not isinstance(major_unit, (int, float)) or isinstance(major_unit, bool):
-        return False
-    minimum_value, maximum_value, major_unit_value = float(minimum), float(maximum), float(major_unit)
-    if (
-        not all(
-            math.isfinite(number) and abs(number) <= 1_000_000_000
-            for number in (minimum_value, maximum_value, major_unit_value)
-        )
-        or minimum_value >= maximum_value
-        or major_unit_value <= 0
-        or major_unit_value > maximum_value - minimum_value
-    ):
-        return False
-    intervals = (maximum_value - minimum_value) / major_unit_value
-    analysis_values = _chart_analysis_values(kind, series, series_presentation, analysis)
+    secondary = axis_options.get("secondary") if isinstance(axis_options, dict) else None
+    secondary_index = secondary.get("seriesIndex") if isinstance(secondary, dict) else None
+    primary_indices = [index for index in _chart_series_indices(kind, series) if index != secondary_index]
+    analysis_values = _chart_analysis_values(kind, series, series_presentation, analysis, primary_indices)
     if analysis_values is None:
         return False
     scale_values = (
-        _chart_scale_values(kind, series) + [entry["value"] for entry in reference_lines or []] + analysis_values
+        _chart_scale_values(kind, series, primary_indices)
+        + [entry["value"] for entry in reference_lines or []]
+        + analysis_values
     )
-    return (
-        math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
-        and intervals <= 12
-        and (kind != "stacked-bar" or minimum_value == 0)
-        and all(minimum_value <= number <= maximum_value for number in scale_values)
+    scale = axis_options.get("primaryScale", "linear") if isinstance(axis_options, dict) else "linear"
+    return (scale != "logarithmic" or all(number > 0 for number in scale_values)) and _valid_chart_manual_scale(
+        value, scale, scale_values, kind == "stacked-bar"
     )
 
 
@@ -1558,6 +1636,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("referenceLines")
             if "analysis" in attrs:
                 expected_chart_attrs.add("analysis")
+            if "axisOptions" in attrs:
+                expected_chart_attrs.add("axisOptions")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1628,6 +1708,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 attrs["analysis"], attrs["kind"], series, attrs.get("seriesPresentation")
             ):
                 reject()
+            if "axisOptions" in attrs and not _valid_chart_axis_options(
+                attrs["axisOptions"],
+                attrs["kind"],
+                series,
+                attrs.get("seriesPresentation"),
+                attrs.get("analysis"),
+                attrs.get("referenceLines"),
+            ):
+                reject()
             if "axes" in attrs and (
                 attrs.get("kind") in _CHART_CIRCULAR_KINDS
                 or not _valid_chart_axes(
@@ -1637,6 +1726,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     attrs.get("referenceLines"),
                     attrs.get("analysis"),
                     attrs.get("seriesPresentation"),
+                    attrs.get("axisOptions"),
                 )
             ):
                 reject()

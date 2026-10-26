@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { compareOfficeDocuments, describeOfficeBlock } from "../office-comparison.mjs";
 import { officeChartAttributes, officeChartAxisScale, officeChartBindingMatches, officeChartDataFromDocument, officeChartDescription,
-  validateOfficeChartBindings } from "../office-charts.mjs";
+  officeChartSecondaryAxisScale, validateOfficeChartBindings } from "../office-charts.mjs";
 import { officeTableFromTSV, setOfficeTableFormula } from "../office-table-formulas.mjs";
 
 const attrs = { id: "chart-" + "a".repeat(24), kind: "bar", title: "Quarterly plan",
@@ -161,6 +161,33 @@ test("Office trendlines and fixed error bars are deterministic, bounded, and sca
     { ...combo, analysis: { trendline: { ...analysis.trendline, seriesIndex: 0 }, errorBars: null } },
     { ...scatter, analysis: { trendline: { ...analysis.trendline, seriesIndex: 0 }, errorBars: null } },
     { ...attrs, kind: "pie", series: [attrs.series[0]], analysis },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
+test("Office logarithmic and secondary axes remain explicit, bounded, and series-aware", () => {
+  const secondary = { seriesIndex: 1, title: "Actual scale", scale: "linear", mode: "auto",
+    minimum: null, maximum: null, majorUnit: null, numberFormat: "decimal" };
+  const chart = officeChartAttributes({ ...attrs, kind: "line",
+    axisOptions: { primaryScale: "logarithmic", secondary } });
+  expect(officeChartAxisScale(chart)).toMatchObject({ minimum: 100, maximum: 1000, majorUnit: 10,
+    scaleType: "logarithmic", ticks: [100, 1000] });
+  expect(officeChartSecondaryAxisScale(chart)).toMatchObject({ minimum: 0, maximum: 200, majorUnit: 50,
+    scaleType: "linear", valueTitle: "Actual scale" });
+  expect(officeChartDescription(chart)).toContain("logarithmische Hauptachse · Sekundärachse Actual scale: Actual");
+  const manual = { ...chart, axes: { mode: "manual", categoryTitle: "", valueTitle: "Plan scale",
+    minimum: 100, maximum: 1000, majorUnit: 10, gridlines: true, numberFormat: "integer" },
+  axisOptions: { ...chart.axisOptions, secondary: { ...secondary, mode: "manual", minimum: 100, maximum: 200,
+    majorUnit: 20 } } };
+  expect(officeChartSecondaryAxisScale(officeChartAttributes(manual)).ticks).toEqual([100, 120, 140, 160, 180, 200]);
+  for (const invalid of [
+    { ...attrs, axisOptions: { primaryScale: "logarithmic", secondary: null } },
+    { ...attrs, kind: "line", series: [{ name: "Delta", color: "teal", values: [-1, 2, 3, 4] }],
+      axisOptions: { primaryScale: "logarithmic", secondary: null } },
+    { ...attrs, kind: "line", axisOptions: { primaryScale: "linear", secondary: { ...secondary, seriesIndex: 7 } } },
+    { ...attrs, kind: "line", series: [attrs.series[0], { ...attrs.series[1], values: [0, 152, 171, 176] }],
+      axisOptions: { primaryScale: "linear", secondary: { ...secondary, scale: "logarithmic" } } },
+    { ...attrs, kind: "pie", series: [attrs.series[0]], axisOptions: { primaryScale: "linear", secondary: null } },
+    { ...manual, axes: { ...manual.axes, majorUnit: 5 } },
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 

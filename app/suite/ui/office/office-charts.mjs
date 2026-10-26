@@ -35,11 +35,16 @@ function literal(value, minimum, maximum) {
 
 const circularKind = (kind) => ["pie", "doughnut"].includes(kind);
 
-function chartScaleValues(kind, series) {
+function chartSeriesIndices(kind, series) {
+  return Array.from({ length: series.length - (kind === "scatter" ? 1 : 0) }, (_value, index) =>
+    index + (kind === "scatter" ? 1 : 0));
+}
+
+function chartScaleValues(kind, series, indices = null) {
   if (kind === "stacked-bar") return series[0].values.map((_value, index) =>
     series.reduce((sum, entry) => sum + entry.values[index], 0));
-  if (kind === "scatter") return series.slice(1).flatMap((entry) => entry.values);
-  return series.flatMap((entry) => entry.values);
+  const selected = indices || chartSeriesIndices(kind, series);
+  return selected.flatMap((index) => series[index].values);
 }
 
 function officeChartPresentation(value) {
@@ -110,15 +115,16 @@ function linearRegression(xValues, yValues) {
   return { slope, intercept: yMean - slope * xMean };
 }
 
-function chartAnalysisValues(kind, series, seriesPresentation, analysis) {
+function chartAnalysisValues(kind, series, seriesPresentation, analysis, seriesIndices = null) {
   if (!analysis) return [];
+  const includes = (seriesIndex) => seriesIndices == null || seriesIndices.includes(seriesIndex);
   const values = [];
-  if (analysis.trendline) {
+  if (analysis.trendline && includes(analysis.trendline.seriesIndex)) {
     const { x, y } = chartAnalysisSeries(kind, series, seriesPresentation, analysis.trendline.seriesIndex);
     const regression = linearRegression(x, y), minimum = Math.min(...x), maximum = Math.max(...x);
     values.push(regression.intercept + regression.slope * minimum, regression.intercept + regression.slope * maximum);
   }
-  if (analysis.errorBars) {
+  if (analysis.errorBars && includes(analysis.errorBars.seriesIndex)) {
     const { y } = chartAnalysisSeries(kind, series, seriesPresentation, analysis.errorBars.seriesIndex);
     y.forEach((value) => values.push(value - analysis.errorBars.amount, value + analysis.errorBars.amount));
   }
@@ -154,26 +160,66 @@ function officeChartAnalysis(value, kind, series, seriesPresentation) {
   return result;
 }
 
-function officeChartAxes(value, series, kind, referenceLines = [], analysisValues = []) {
+function manualScale(value, scaleType, scaleValues, stacked = false) {
+  const numbers = [value.minimum, value.maximum, value.majorUnit];
+  if (value.mode === "auto") return numbers.every((entry) => entry === null);
+  if (numbers.some((entry) => typeof entry !== "number" || !Number.isFinite(entry) || Math.abs(entry) > 1000000000) ||
+      value.minimum >= value.maximum || scaleValues.some((entry) => entry < value.minimum || entry > value.maximum)) return false;
+  if (scaleType === "logarithmic") {
+    if (value.minimum <= 0 || value.majorUnit <= 1 || scaleValues.some((entry) => entry <= 0)) return false;
+    const intervals = Math.log(value.maximum / value.minimum) / Math.log(value.majorUnit);
+    return Math.abs(intervals - Math.round(intervals)) <= 1e-9 && intervals <= 12;
+  }
+  const intervals = (value.maximum - value.minimum) / value.majorUnit;
+  return value.majorUnit > 0 && value.majorUnit <= value.maximum - value.minimum &&
+    Math.abs(intervals - Math.round(intervals)) <= 1e-9 && intervals <= 12 && (!stacked || value.minimum === 0);
+}
+
+function officeChartAxisOptions(value, kind, series, seriesPresentation, analysis, referenceLines = []) {
+  if (!value || Object.keys(value).sort().join(",") !== "primaryScale,secondary" ||
+      !["linear", "logarithmic"].includes(value.primaryScale) ||
+      !["line", "area", "scatter", "combo"].includes(kind)) throw new Error("chart-axis-options");
+  let secondary = null;
+  if (value.secondary != null) {
+    const entry = value.secondary;
+    if (!entry || Object.keys(entry).sort().join(",") !==
+      "majorUnit,maximum,minimum,mode,numberFormat,scale,seriesIndex,title" ||
+      !Number.isInteger(entry.seriesIndex) || !chartSeriesIndices(kind, series).includes(entry.seriesIndex) ||
+      chartSeriesIndices(kind, series).length < 2 || !literal(entry.title, 1, 60) ||
+      !["linear", "logarithmic"].includes(entry.scale) || !["auto", "manual"].includes(entry.mode) ||
+      !OFFICE_CHART_NUMBER_FORMATS.includes(entry.numberFormat)) throw new Error("chart-axis-options");
+    const values = [...chartScaleValues(kind, series, [entry.seriesIndex]),
+      ...chartAnalysisValues(kind, series, seriesPresentation, analysis, [entry.seriesIndex])];
+    if (entry.scale === "logarithmic" && values.some((number) => number <= 0) || !manualScale(entry, entry.scale, values)) {
+      throw new Error("chart-axis-options");
+    }
+    secondary = { seriesIndex: entry.seriesIndex, title: entry.title, scale: entry.scale, mode: entry.mode,
+      minimum: entry.minimum, maximum: entry.maximum, majorUnit: entry.majorUnit, numberFormat: entry.numberFormat };
+  }
+  const primaryIndices = chartSeriesIndices(kind, series).filter((index) => index !== secondary?.seriesIndex);
+  const primaryValues = [...chartScaleValues(kind, series, primaryIndices),
+    ...referenceLines.map((entry) => entry.value),
+    ...chartAnalysisValues(kind, series, seriesPresentation, analysis, primaryIndices)];
+  if (value.primaryScale === "logarithmic" && primaryValues.some((number) => number <= 0)) {
+    throw new Error("chart-axis-options");
+  }
+  return { primaryScale: value.primaryScale, secondary };
+}
+
+function officeChartAxes(value, series, kind, referenceLines = [], analysis = null, seriesPresentation = null,
+  axisOptions = null) {
   const keys = Object.keys(value || {}).sort().join(",");
   if (!value || keys !== "categoryTitle,gridlines,majorUnit,maximum,minimum,mode,numberFormat,valueTitle" ||
       !["auto", "manual"].includes(value.mode) || typeof value.gridlines !== "boolean" ||
       !OFFICE_CHART_NUMBER_FORMATS.includes(value.numberFormat) ||
       !(value.categoryTitle === "" || literal(value.categoryTitle, 1, 60)) ||
       !(value.valueTitle === "" || literal(value.valueTitle, 1, 60))) throw new Error("chart-axes");
-  const numbers = [value.minimum, value.maximum, value.majorUnit];
-  if (value.mode === "auto") {
-    if (numbers.some((entry) => entry !== null)) throw new Error("chart-axes");
-  } else {
-    const intervals = (value.maximum - value.minimum) / value.majorUnit;
-    const scaleValues = [...chartScaleValues(kind, series), ...referenceLines.map((entry) => entry.value), ...analysisValues];
-    if (numbers.some((entry) => typeof entry !== "number" || !Number.isFinite(entry) || Math.abs(entry) > 1000000000) ||
-        value.minimum >= value.maximum || value.majorUnit <= 0 || value.majorUnit > value.maximum - value.minimum ||
-        Math.abs(intervals - Math.round(intervals)) > 1e-9 || intervals > 12 || (kind === "stacked-bar" && value.minimum !== 0) ||
-        scaleValues.some((entry) => entry < value.minimum || entry > value.maximum)) {
-      throw new Error("chart-axes");
-    }
-  }
+  const primaryIndices = chartSeriesIndices(kind, series).filter((index) => index !== axisOptions?.secondary?.seriesIndex);
+  const scaleType = axisOptions?.primaryScale || "linear";
+  const scaleValues = [...chartScaleValues(kind, series, primaryIndices), ...referenceLines.map((entry) => entry.value),
+    ...chartAnalysisValues(kind, series, seriesPresentation, analysis, primaryIndices)];
+  if (scaleType === "logarithmic" && scaleValues.some((number) => number <= 0) ||
+      !manualScale(value, scaleType, scaleValues, kind === "stacked-bar")) throw new Error("chart-axes");
   return { mode: value.mode, categoryTitle: value.categoryTitle, valueTitle: value.valueTitle,
     minimum: value.minimum, maximum: value.maximum, majorUnit: value.majorUnit,
     gridlines: value.gridlines, numberFormat: value.numberFormat };
@@ -186,10 +232,11 @@ export function officeChartAttributes(value) {
     ...(value?.axes == null ? [] : ["axes"]), ...(value?.presentation == null ? [] : ["presentation"]),
     ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"]),
     ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
-    ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"])];
+    ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"]),
+    ...(value?.axisOptions == null ? [] : ["axisOptions"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
     !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
-      "referenceLines", "analysis"].includes(key) || value[key] != null);
+      "referenceLines", "analysis", "axisOptions"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
       !literal(value.title, 1, 120) || !literal(value.altText, 1, 500) || typeof value.legend !== "boolean" ||
@@ -233,11 +280,14 @@ export function officeChartAttributes(value) {
   }
   const analysis = value.analysis == null ? null : officeChartAnalysis(value.analysis, value.kind, series,
     result.seriesPresentation);
-  const analysisValues = chartAnalysisValues(value.kind, series, result.seriesPresentation, analysis);
   if (analysis) result.analysis = analysis;
+  const axisOptions = value.axisOptions == null ? null : officeChartAxisOptions(value.axisOptions, value.kind, series,
+    result.seriesPresentation, analysis, referenceLines);
+  if (axisOptions) result.axisOptions = axisOptions;
   if (value.axes != null) {
     if (circularKind(value.kind)) throw new Error("chart-axes");
-    result.axes = officeChartAxes(value.axes, series, value.kind, referenceLines, analysisValues);
+    result.axes = officeChartAxes(value.axes, series, value.kind, referenceLines, analysis, result.seriesPresentation,
+      axisOptions);
   }
   if (value.source != null) result.source = officeChartSource(value.source);
   return result;
@@ -262,22 +312,55 @@ function automaticScale(values) {
   return { minimum, maximum, majorUnit, ticks };
 }
 
+function automaticLogScale(values) {
+  if (!values.length || values.some((value) => value <= 0)) throw new Error("chart-axis-options");
+  const minimumPower = Math.floor(Math.log10(Math.min(...values)));
+  const maximumPower = Math.ceil(Math.log10(Math.max(...values)));
+  const maximum = maximumPower === minimumPower ? 10 ** (maximumPower + 1) : 10 ** maximumPower;
+  const minimum = 10 ** minimumPower, span = Math.round(Math.log10(maximum / minimum));
+  const exponentStep = Math.max(1, Math.ceil(span / 12)), majorUnit = 10 ** exponentStep, ticks = [];
+  for (let value = minimum, index = 0; index <= 12 && value <= maximum; index += 1, value *= majorUnit) ticks.push(value);
+  if (ticks.at(-1) !== maximum) ticks.push(maximum);
+  return { minimum, maximum, majorUnit, ticks };
+}
+
+function scaleFromSettings(settings, scaleType, values) {
+  if (settings.mode === "manual") {
+    const ticks = [];
+    if (scaleType === "logarithmic") {
+      for (let value = settings.minimum, index = 0; index <= 12 && value < settings.maximum; index += 1,
+        value *= settings.majorUnit) ticks.push(value);
+    } else {
+      for (let index = 0; index <= 12 && settings.minimum + settings.majorUnit * index < settings.maximum; index += 1) {
+        ticks.push(settings.minimum + settings.majorUnit * index);
+      }
+    }
+    ticks.push(settings.maximum); return { ...settings, scaleType, ticks };
+  }
+  const automatic = scaleType === "logarithmic" ? automaticLogScale(values) : automaticScale(values);
+  return { ...settings, ...automatic, scaleType };
+}
+
 export function officeChartAxisScale(value) {
   const chart = officeChartAttributes(value);
   if (circularKind(chart.kind)) return null;
   const axes = chart.axes || { mode: "auto", categoryTitle: "", valueTitle: "", minimum: null, maximum: null,
     majorUnit: null, gridlines: true, numberFormat: "general" };
-  if (axes.mode === "manual") {
-    const ticks = [];
-    for (let index = 0; index <= 12 && axes.minimum + axes.majorUnit * index < axes.maximum; index += 1) {
-      ticks.push(axes.minimum + axes.majorUnit * index);
-    }
-    ticks.push(axes.maximum);
-    return { ...axes, ticks };
-  }
-  return { ...axes, ...automaticScale([...chartScaleValues(chart.kind, chart.series),
+  const primaryIndices = chartSeriesIndices(chart.kind, chart.series).filter((index) =>
+    index !== chart.axisOptions?.secondary?.seriesIndex);
+  const values = [...chartScaleValues(chart.kind, chart.series, primaryIndices),
     ...(chart.referenceLines || []).map((entry) => entry.value),
-    ...chartAnalysisValues(chart.kind, chart.series, chart.seriesPresentation, chart.analysis)]) };
+    ...chartAnalysisValues(chart.kind, chart.series, chart.seriesPresentation, chart.analysis, primaryIndices)];
+  return scaleFromSettings(axes, chart.axisOptions?.primaryScale || "linear", values);
+}
+
+export function officeChartSecondaryAxisScale(value) {
+  const chart = officeChartAttributes(value), secondary = chart.axisOptions?.secondary;
+  if (!secondary) return null;
+  const values = [...chartScaleValues(chart.kind, chart.series, [secondary.seriesIndex]),
+    ...chartAnalysisValues(chart.kind, chart.series, chart.seriesPresentation, chart.analysis, [secondary.seriesIndex])];
+  return scaleFromSettings({ ...secondary, categoryTitle: "", valueTitle: secondary.title, gridlines: false },
+    secondary.scale, values);
 }
 
 function formatChartNumber(value, format = "general") {
@@ -372,11 +455,13 @@ export function validateOfficeChartBindings(document) {
 export function officeChartDescription(value) {
   const chart = officeChartAttributes(value);
   const axes = chart.axes ? ` · Achsen ${chart.axes.categoryTitle || "Kategorien"} / ${chart.axes.valueTitle || "Werte"}` : "";
+  const axisOptions = chart.axisOptions ? ` · ${chart.axisOptions.primaryScale === "logarithmic" ? "logarithmische Hauptachse" :
+    "lineare Hauptachse"}${chart.axisOptions.secondary ? ` · Sekundärachse ${chart.axisOptions.secondary.title}: ${chart.series[chart.axisOptions.secondary.seriesIndex].name}` : ""}` : "";
   const references = chart.referenceLines?.length ? ` · Referenzlinien ${chart.referenceLines.map((entry) =>
     `${entry.label}: ${entry.value}`).join(", ")}` : "";
   const analysis = chart.analysis ? `${chart.analysis.trendline ? ` · Trendlinie ${chart.series[chart.analysis.trendline.seriesIndex].name}` : ""}${chart.analysis.errorBars ?
     ` · Fehlerbalken ${chart.series[chart.analysis.errorBars.seriesIndex].name}: ±${chart.analysis.errorBars.amount}` : ""}` : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${references}${analysis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
 }
 
 function chartTable(chart, dom) {
@@ -453,13 +538,23 @@ function addChartLine(svg, points, style, color, dom, namespace) {
   svg.append(line);
 }
 
-function addChartAnalysis(svg, chart, scale, xPosition, dom, namespace) {
+function scalePosition(value, scale) {
+  if (scale.scaleType === "logarithmic") return Math.log(value / scale.minimum) / Math.log(scale.maximum / scale.minimum);
+  return (value - scale.minimum) / (scale.maximum - scale.minimum);
+}
+
+function chartSeriesScale(chart, scale, secondaryScale, seriesIndex) {
+  return chart.axisOptions?.secondary?.seriesIndex === seriesIndex ? secondaryScale : scale;
+}
+
+function addChartAnalysis(svg, chart, scale, secondaryScale, xPosition, dom, namespace) {
   if (!chart.analysis) return;
-  const yPosition = (value) => 280 - (value - scale.minimum) / (scale.maximum - scale.minimum) * 240;
   if (chart.analysis.trendline) {
     const analysis = chart.analysis.trendline;
     const { x, y } = chartAnalysisSeries(chart.kind, chart.series, chart.seriesPresentation, analysis.seriesIndex);
     const regression = linearRegression(x, y), minimum = Math.min(...x), maximum = Math.max(...x);
+    const targetScale = chartSeriesScale(chart, scale, secondaryScale, analysis.seriesIndex);
+    const yPosition = (value) => 280 - scalePosition(value, targetScale) * 240;
     const line = dom.createElementNS(namespace, "polyline");
     line.classList.add("office-chart-trendline");
     line.setAttribute("points", `${xPosition(minimum)},${yPosition(regression.intercept + regression.slope * minimum)} ` +
@@ -472,6 +567,8 @@ function addChartAnalysis(svg, chart, scale, xPosition, dom, namespace) {
   if (chart.analysis.errorBars) {
     const analysis = chart.analysis.errorBars;
     const { x, y } = chartAnalysisSeries(chart.kind, chart.series, chart.seriesPresentation, analysis.seriesIndex);
+    const targetScale = chartSeriesScale(chart, scale, secondaryScale, analysis.seriesIndex);
+    const yPosition = (value) => 280 - scalePosition(value, targetScale) * 240;
     y.forEach((value, index) => {
       const center = xPosition(x[index]), top = yPosition(value + analysis.amount), bottom = yPosition(value - analysis.amount);
       const bar = dom.createElementNS(namespace, "path"); bar.classList.add("office-chart-error-bar");
@@ -483,37 +580,42 @@ function addChartAnalysis(svg, chart, scale, xPosition, dom, namespace) {
   }
 }
 
-function lineChart(chart, scale, dom) {
+function lineChart(chart, scale, secondaryScale, dom) {
   const namespace = "http://www.w3.org/2000/svg", svg = dom.createElementNS(namespace, "svg");
   svg.classList.add("office-chart-lines"); svg.setAttribute("viewBox", "0 0 800 320"); svg.setAttribute("aria-hidden", "true");
-  const span = scale.maximum - scale.minimum, denominator = Math.max(1, chart.categories.length - 1);
+  const denominator = Math.max(1, chart.categories.length - 1);
   chart.series.forEach((entry, seriesIndex) => {
     const style = chart.seriesPresentation?.[seriesIndex] || { renderAs: "line", marker: "circle", lineStyle: "solid" };
-    const points = entry.values.map((number, index) => `${40 + index / denominator * 720},${280 - (number - scale.minimum) / span * 240}`).join(" ");
-    if (chart.kind === "area") { const baseline = 280 - (0 - scale.minimum) / span * 240;
+    const targetScale = chartSeriesScale(chart, scale, secondaryScale, seriesIndex);
+    const points = entry.values.map((number, index) =>
+      `${40 + index / denominator * 720},${280 - scalePosition(number, targetScale) * 240}`).join(" ");
+    if (chart.kind === "area") { const baselineValue = targetScale.scaleType === "logarithmic" ? targetScale.minimum : 0;
+      const baseline = 280 - scalePosition(baselineValue, targetScale) * 240;
       const area = dom.createElementNS(namespace, "polygon"); area.setAttribute("points", `40,${baseline} ${points} 760,${baseline}`);
       area.setAttribute("fill", chartColor(chart, entry.color)); area.setAttribute("fill-opacity", "0.22"); svg.append(area); }
     const color = chartColor(chart, entry.color); addChartLine(svg, points, style, color, dom, namespace);
     entry.values.forEach((number, index) => addChartMarker(svg, 40 + index / denominator * 720,
-      280 - (number - scale.minimum) / span * 240, style, color, dom, namespace));
+      280 - scalePosition(number, targetScale) * 240, style, color, dom, namespace));
   });
-  addChartAnalysis(svg, chart, scale, (value) => 40 + value / denominator * 720, dom, namespace);
+  addChartAnalysis(svg, chart, scale, secondaryScale, (value) => 40 + value / denominator * 720, dom, namespace);
   return svg;
 }
 
-function comboChart(chart, scale, dom) {
+function comboChart(chart, scale, secondaryScale, dom) {
   const namespace = "http://www.w3.org/2000/svg", svg = dom.createElementNS(namespace, "svg");
   svg.classList.add("office-chart-lines", "office-chart-combo"); svg.setAttribute("viewBox", "0 0 800 320");
   svg.setAttribute("aria-hidden", "true");
-  const span = scale.maximum - scale.minimum, denominator = Math.max(1, chart.categories.length - 1);
+  const denominator = Math.max(1, chart.categories.length - 1);
   const barCount = chart.seriesPresentation.filter((entry) => entry.renderAs === "bar").length;
   chart.series.forEach((entry, seriesIndex) => {
     const style = chart.seriesPresentation[seriesIndex], color = chartColor(chart, entry.color);
+    const targetScale = chartSeriesScale(chart, scale, secondaryScale, seriesIndex);
     if (style.renderAs === "bar") {
       const barIndex = chart.seriesPresentation.slice(0, seriesIndex).filter((item) => item.renderAs === "bar").length;
       entry.values.forEach((number, index) => {
         const center = 40 + index / denominator * 720, width = Math.min(54 / barCount, 28);
-        const baseline = 280 - (0 - scale.minimum) / span * 240, y = 280 - (number - scale.minimum) / span * 240;
+        const baseline = 280 - scalePosition(Math.max(0, targetScale.minimum), targetScale) * 240;
+        const y = 280 - scalePosition(number, targetScale) * 240;
         const bar = dom.createElementNS(namespace, "rect");
         bar.setAttribute("x", String(center - barCount * width / 2 + barIndex * width));
         bar.setAttribute("y", String(Math.min(y, baseline))); bar.setAttribute("width", String(Math.max(4, width - 3)));
@@ -521,37 +623,40 @@ function comboChart(chart, scale, dom) {
       });
     } else {
       const points = entry.values.map((number, index) =>
-        `${40 + index / denominator * 720},${280 - (number - scale.minimum) / span * 240}`).join(" ");
+        `${40 + index / denominator * 720},${280 - scalePosition(number, targetScale) * 240}`).join(" ");
       addChartLine(svg, points, style, color, dom, namespace);
       entry.values.forEach((number, index) => addChartMarker(svg, 40 + index / denominator * 720,
-        280 - (number - scale.minimum) / span * 240, style, color, dom, namespace));
+        280 - scalePosition(number, targetScale) * 240, style, color, dom, namespace));
     }
   });
-  addChartAnalysis(svg, chart, scale, (value) => 40 + value / denominator * 720, dom, namespace);
+  addChartAnalysis(svg, chart, scale, secondaryScale, (value) => 40 + value / denominator * 720, dom, namespace);
   return svg;
 }
 
-function scatterChart(chart, scale, dom) {
+function scatterChart(chart, scale, secondaryScale, dom) {
   const namespace = "http://www.w3.org/2000/svg", svg = dom.createElementNS(namespace, "svg");
   svg.classList.add("office-chart-lines", "office-chart-scatter"); svg.setAttribute("viewBox", "0 0 800 320");
   svg.setAttribute("aria-hidden", "true");
   const xValues = chart.series[0].values, xScale = automaticScale(xValues);
-  const xSpan = xScale.maximum - xScale.minimum, ySpan = scale.maximum - scale.minimum;
+  const xSpan = xScale.maximum - xScale.minimum;
   chart.series.slice(1).forEach((entry, seriesIndex) => {
-    const style = chart.seriesPresentation[seriesIndex], color = chartColor(chart, entry.color);
+    const actualIndex = seriesIndex + 1, style = chart.seriesPresentation[seriesIndex], color = chartColor(chart, entry.color);
+    const targetScale = chartSeriesScale(chart, scale, secondaryScale, actualIndex);
     const coordinates = entry.values.map((number, index) => ({
       x: 40 + (xValues[index] - xScale.minimum) / xSpan * 720,
-      y: 280 - (number - scale.minimum) / ySpan * 240,
+      y: 280 - scalePosition(number, targetScale) * 240,
     }));
     addChartLine(svg, coordinates.map((point) => `${point.x},${point.y}`).join(" "), style, color, dom, namespace);
     coordinates.forEach((point) => addChartMarker(svg, point.x, point.y, style, color, dom, namespace));
   });
-  addChartAnalysis(svg, chart, scale, (value) => 40 + (value - xScale.minimum) / xSpan * 720, dom, namespace);
+  addChartAnalysis(svg, chart, scale, secondaryScale,
+    (value) => 40 + (value - xScale.minimum) / xSpan * 720, dom, namespace);
   return svg;
 }
 
-function axisFrame(chart, scale, visual, dom) {
+function axisFrame(chart, scale, secondaryScale, visual, dom) {
   const frame = dom.createElement("div"); frame.className = "office-chart-axis-frame";
+  frame.dataset.secondaryAxis = String(Boolean(secondaryScale));
   const valueTitle = dom.createElement("span"); valueTitle.className = "office-chart-value-axis-title";
   valueTitle.textContent = scale.valueTitle; valueTitle.hidden = !scale.valueTitle;
   const ticks = dom.createElement("div"); ticks.className = "office-chart-axis-ticks";
@@ -562,11 +667,19 @@ function axisFrame(chart, scale, visual, dom) {
     scale.ticks.forEach(() => grid.append(dom.createElement("i"))); stage.append(grid); }
   if (chart.referenceLines?.length) { const lines = dom.createElement("div"); lines.className = "office-chart-reference-lines";
     chart.referenceLines.forEach((entry) => { const line = dom.createElement("span"), label = dom.createElement("b");
-      line.style.setProperty("--reference-position", String((entry.value - scale.minimum) /
-        (scale.maximum - scale.minimum) * 100)); line.style.setProperty("--reference-color", chartColor(chart, entry.color));
+      line.style.setProperty("--reference-position", String(scalePosition(entry.value, scale) * 100));
+      line.style.setProperty("--reference-color", chartColor(chart, entry.color));
       line.dataset.lineStyle = entry.lineStyle; label.textContent = `${entry.label}: ${formatChartNumber(entry.value, scale.numberFormat)}`;
       line.append(label); lines.append(line); }); stage.append(lines); }
-  stage.append(visual); frame.append(valueTitle, ticks, stage); return frame;
+  stage.append(visual); frame.append(valueTitle, ticks, stage);
+  if (secondaryScale) {
+    const secondaryTicks = dom.createElement("div"); secondaryTicks.className = "office-chart-secondary-axis-ticks";
+    [...secondaryScale.ticks].reverse().forEach((tick) => { const label = dom.createElement("span");
+      label.textContent = formatChartNumber(tick, secondaryScale.numberFormat); secondaryTicks.append(label); });
+    const secondaryTitle = dom.createElement("span"); secondaryTitle.className = "office-chart-secondary-axis-title";
+    secondaryTitle.textContent = secondaryScale.valueTitle; frame.append(secondaryTicks, secondaryTitle);
+  }
+  return frame;
 }
 
 function pieChart(chart, dom) {
@@ -586,11 +699,11 @@ export function officeChartElement(value, dom = document) {
   figure.setAttribute("role", "img"); figure.setAttribute("aria-label", officeChartDescription(chart));
   figure.setAttribute("aria-describedby", `${chart.id}-data`);
   const title = dom.createElement("figcaption"); title.className = "office-chart-title"; title.textContent = chart.title;
-  const scale = officeChartAxisScale(chart);
+  const scale = officeChartAxisScale(chart), secondaryScale = officeChartSecondaryAxisScale(chart);
   const visual = ["bar", "stacked-bar"].includes(chart.kind) ? barChart(chart, scale, dom) :
-    ["line", "area"].includes(chart.kind) ? lineChart(chart, scale, dom) :
-    chart.kind === "combo" ? comboChart(chart, scale, dom) :
-    chart.kind === "scatter" ? scatterChart(chart, scale, dom) : pieChart(chart, dom);
+    ["line", "area"].includes(chart.kind) ? lineChart(chart, scale, secondaryScale, dom) :
+    chart.kind === "combo" ? comboChart(chart, scale, secondaryScale, dom) :
+    chart.kind === "scatter" ? scatterChart(chart, scale, secondaryScale, dom) : pieChart(chart, dom);
   visual.classList.add("office-chart-visual");
   const labels = dom.createElement("div"); labels.className = "office-chart-categories";
   const labelValues = chart.kind === "scatter" ? automaticScale(chart.series[0].values).ticks.map((tick) =>
@@ -604,7 +717,7 @@ export function officeChartElement(value, dom = document) {
   for (const entry of legendEntries) { const item = dom.createElement("span"), swatch = dom.createElement("i");
     swatch.style.background = chartColor(chart, entry.color); item.append(swatch, entry.name); legend.append(item); }
   const plot = dom.createElement("div"); plot.className = "office-chart-plot";
-  if (scale) plot.append(axisFrame(chart, scale, visual, dom)); else plot.append(visual);
+  if (scale) plot.append(axisFrame(chart, scale, secondaryScale, visual, dom)); else plot.append(visual);
   plot.append(labels);
   if (scale?.categoryTitle) { const categoryTitle = dom.createElement("div"); categoryTitle.className = "office-chart-category-axis-title";
     categoryTitle.textContent = scale.categoryTitle; plot.append(categoryTitle); }
@@ -616,7 +729,9 @@ export function officeChartElement(value, dom = document) {
     const entries = chart.kind === "scatter" ? chart.series.slice(1) : chart.series;
     entries.forEach((entry) => { const label = dom.createElement("span");
       const xValue = chart.kind === "scatter" ? ` · ${chart.series[0].name}: ${formatChartNumber(chart.series[0].values[index], scale?.numberFormat)}` : "";
-      const number = formatChartNumber(entry.values[index], scale?.numberFormat);
+      const entryIndex = chart.kind === "scatter" ? chart.series.indexOf(entry) : chart.series.indexOf(entry);
+      const numberFormat = chart.axisOptions?.secondary?.seriesIndex === entryIndex ? secondaryScale.numberFormat : scale?.numberFormat;
+      const number = formatChartNumber(entry.values[index], numberFormat);
       const content = labelPresentation.content === "value" ? number :
         labelPresentation.content === "category-value" ? `${category}: ${number}` :
           labelPresentation.content === "series-value" ? `${entry.name}: ${number}` :

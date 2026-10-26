@@ -794,6 +794,45 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         },
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": analytical_manual}]})
+    secondary_axis = {
+        "seriesIndex": 1,
+        "title": "Actual scale",
+        "scale": "linear",
+        "mode": "auto",
+        "minimum": None,
+        "maximum": None,
+        "majorUnit": None,
+        "numberFormat": "decimal",
+    }
+    advanced_axes = {
+        **attrs,
+        "kind": "line",
+        "axisOptions": {"primaryScale": "logarithmic", "secondary": secondary_axis},
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": advanced_axes}]})
+    advanced_manual = {
+        **advanced_axes,
+        "axes": {
+            **axes,
+            "categoryTitle": "",
+            "valueTitle": "Plan scale",
+            "minimum": 100,
+            "maximum": 1000,
+            "majorUnit": 10,
+            "numberFormat": "integer",
+        },
+        "axisOptions": {
+            "primaryScale": "logarithmic",
+            "secondary": {
+                **secondary_axis,
+                "mode": "manual",
+                "minimum": 100,
+                "maximum": 200,
+                "majorUnit": 20,
+            },
+        },
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": advanced_manual}]})
     invalid = [
         {**attrs, "id": "chart-short"},
         {**attrs, "kind": "script"},
@@ -851,6 +890,30 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
             },
         },
         {**pie, "analysis": analysis},
+        {**attrs, "axisOptions": {"primaryScale": "logarithmic", "secondary": None}},
+        {
+            **attrs,
+            "kind": "line",
+            "series": [{"name": "Delta", "color": "teal", "values": [-1, 2, 3, 4]}],
+            "axisOptions": {"primaryScale": "logarithmic", "secondary": None},
+        },
+        {
+            **advanced_axes,
+            "axisOptions": {
+                "primaryScale": "linear",
+                "secondary": {**secondary_axis, "seriesIndex": 7},
+            },
+        },
+        {
+            **advanced_axes,
+            "series": [attrs["series"][0], {**attrs["series"][1], "values": [0, 152, 171, 176]}],
+            "axisOptions": {
+                "primaryScale": "linear",
+                "secondary": {**secondary_axis, "scale": "logarithmic"},
+            },
+        },
+        {**pie, "axisOptions": {"primaryScale": "linear", "secondary": None}},
+        {**advanced_manual, "axes": {**advanced_manual["axes"], "majorUnit": 5}},
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:

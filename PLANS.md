@@ -2225,14 +2225,38 @@ on the server before immutable save. Reject surplus fields, booleans, invalid st
 732. [x] Close the block with 88 focused tests, nine chart-model cases, desktop/mobile saved-version and visual proof
 and the complete repository quality gate. Add no migration, dependency, external calculation or durable state.
 
+733. [x] Add one strict optional advanced-axis contract under ADR-0207 with an explicit linear or logarithmic primary
+scale and at most one explicitly assigned secondary series.
+
+734. [x] Restrict advanced axes to line, area, scatter and combo charts. Require at least one primary value series and
+reject circular, stacked, ordinary bar, scatter-X and out-of-range secondary assignments.
+
+735. [x] Derive logarithmic automatic bounds and ticks from powers of ten with at most twelve intervals. Require every
+value, reference and analytical bound on a logarithmic axis to be finite and strictly positive.
+
+736. [x] Define manual logarithmic major units as multiplicative factors greater than one. Require exact bounded
+factor intervals and retain the existing additive interval rules for linear axes.
+
+737. [x] Give the secondary axis its own bounded title, linear or logarithmic scale, automatic or manual bounds and
+closed number format while retaining primary gridlines and explicit series ownership.
+
+738. [x] Render each series and its trend/error overlays against its assigned axis, expose readable left/right ticks
+and titles and preserve responsive containment without altering canonical data or hidden tables.
+
+739. [x] Independently validate the exact axis schema, positive-log rules, assignments, derived analytical extents and
+manual containment on the server. Reject surplus fields, booleans and ambiguous or impossible scales.
+
+740. [x] Close the block with 88 focused tests, ten chart-model cases, desktop/mobile saved-version and visual proof
+and the complete repository quality gate. Add no migration, dependency, external calculation or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 871 / PLANS 732. Deterministic trendlines and fixed error bars now build
-  on scatter, combination and linked-table charts. Continue Office with a separately decided secondary/logarithmic-axis
-  or chart-accessibility loop before deferred CRM
+- Native Office is complete through Roadmap 879 / PLANS 740. Explicit logarithmic and secondary axes now build on
+  deterministic trendlines, scatter, combination and linked-table charts. Continue Office with a coherent chart
+  accessibility and visible-data-table loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,

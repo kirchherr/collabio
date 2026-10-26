@@ -681,6 +681,8 @@ Aufgaben:
   (Roadmap 856-863 / PLANS 717-724).
 - [x] Deterministische lineare Trendlinien und feste symmetrische Fehlerbalken fuer linienfaehige Datenreihen mit
   gemeinsamer automatischer und manueller Skalenpruefung (Roadmap 864-871 / PLANS 725-732).
+- [x] Explizite logarithmische Hauptachsen und eine begrenzte Sekundaerachse mit eigener Skalierung, Zahlenformatierung
+  und responsiver Darstellung fuer native Liniendiagramme (Roadmap 872-879 / PLANS 733-740).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

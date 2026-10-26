@@ -1,9 +1,27 @@
 # Native Office Documents
 
-Status: Roadmap 252–871 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 871 / PLANS 732 chart analysis overlays
-Module: `office_documents` / version 0.9.17
-Decisions: ADR-0079 through ADR-0206; current movement: `ARCHITECTURE_DECISIONS/ADR-0206-native-office-trendlines-and-error-bars.md`
+Status: Roadmap 252–879 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 879 / PLANS 740 advanced chart axes
+Module: `office_documents` / version 0.9.18
+Decisions: ADR-0079 through ADR-0207; current movement: `ARCHITECTURE_DECISIONS/ADR-0207-native-office-logarithmic-and-secondary-chart-axes.md`
+
+## Logarithmic and secondary chart axes (Roadmap 872–879)
+
+Line, area, scatter and combo charts may explicitly select a linear or logarithmic primary value scale and assign one
+value series to a secondary axis. The secondary axis owns a bounded title, scale, automatic or manual bounds and closed
+number format. At least one primary series always remains; no automatic assignment or scale inference occurs.
+
+Logarithmic automatic ticks use bounded powers of ten. Manual logarithmic intervals are exact multiplicative factors
+greater than one. Every canonical, reference, trend and error-bound value assigned to a logarithmic axis must be
+strictly positive. Browser and server independently enforce the same schema and containment rules.
+
+Focused schema/API tests pass 88/88, all ten chart-model cases pass and the final desktop/mobile workflow passes 2/2
+inside a 12-case run in 17.7 seconds. A first visual review exposed and the final build fixed character-wise wrapping
+on decimal secondary ticks. Final screenshot hashes are
+`sha256:ae33dcb6ebd2c81914e5944b2bfbe021f2b7262b94d63688f26a8e838e1a1e07` and
+`sha256:321ee997c3ef1f7e1d17b07a999204a317753dec3e2600d29c285d69ee68e3bf`. Review is available at
+`http://192.168.0.108:42880/office?review=advanced-axes-adr0207` with asset keys `office.css?v=19` and `editor.js?v=19`.
+Complete quality passes Ruff, 968-file formatting, Mypy over 639 sources and Pytest at 100 percent.
 
 ## Trendlines and fixed error bars (Roadmap 864–871)
 

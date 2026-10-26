@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=18" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=19" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -199,6 +199,13 @@
             <label class="check-row"><input id="chart-error-bars-enabled" type="checkbox" /> Feste symmetrische Fehlerbalken anzeigen</label>
             <div class="chart-analysis-row"><label>Datenreihe<select id="chart-error-bars-series"></select></label><label>Absoluter Betrag<input id="chart-error-bars-amount" type="number" min="0.0000000001" max="1000000000" step="any" value="10" /></label><label>Farbe<select id="chart-error-bars-color"><option value="teal">Türkis</option><option value="blue">Blau</option><option value="orange">Orange</option><option value="purple" selected>Violett</option></select></label></div>
             <p class="paragraph-help">Die Trendlinie wird deterministisch per linearer Regression berechnet. Fehlerbalken verwenden einen festen absoluten Betrag; automatische und manuelle Skalen schließen beide Analysen vollständig ein.</p>
+          </fieldset>
+          <fieldset id="chart-advanced-axis-fields" class="chart-axis-fields" hidden><legend>Erweiterte Wertachsen</legend>
+            <div class="chart-fields"><label>Hauptachse<select id="chart-primary-scale"><option value="linear">Linear</option><option value="logarithmic">Logarithmisch</option></select></label></div>
+            <label class="check-row"><input id="chart-secondary-enabled" type="checkbox" /> Eine Datenreihe auf einer Sekundärachse darstellen</label>
+            <div class="chart-secondary-axis-row"><label>Datenreihe<select id="chart-secondary-series"></select></label><label>Achsentitel<input id="chart-secondary-title" maxlength="60" value="Sekundärwerte" /></label><label>Skala<select id="chart-secondary-scale"><option value="linear">Linear</option><option value="logarithmic">Logarithmisch</option></select></label><label>Skalierung<select id="chart-secondary-mode"><option value="auto">Automatisch</option><option value="manual">Manuell</option></select></label><label>Zahlenformat<select id="chart-secondary-number-format"><option value="general">Allgemein</option><option value="integer">Ganzzahl</option><option value="decimal">Zwei Dezimalstellen</option><option value="percent">Prozent</option><option value="currency-eur">Euro</option></select></label></div>
+            <div class="chart-fields" id="chart-secondary-manual-fields" hidden><label>Minimum<input id="chart-secondary-minimum" type="number" min="-1000000000" max="1000000000" step="any" value="0" /></label><label>Maximum<input id="chart-secondary-maximum" type="number" min="-1000000000" max="1000000000" step="any" value="1000" /></label><label>Hauptintervall oder Faktor<input id="chart-secondary-major-unit" type="number" min="0.0000000001" max="1000000000" step="any" value="100" /></label></div>
+            <p class="paragraph-help">Logarithmische Achsen verlangen ausschließlich positive Werte. Bei manueller logarithmischer Skalierung ist das Hauptintervall ein Multiplikationsfaktor größer als eins. Die Sekundärachse bleibt auf genau eine Reihe begrenzt.</p>
           </fieldset>
           <fieldset id="chart-axis-fields" class="chart-axis-fields"><legend>Achsen und Skala</legend>
             <div class="chart-fields"><label>Kategorieachse<input id="chart-category-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Quartal" /></label><label>Wertachse<input id="chart-value-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Umsatz" /></label><label>Zahlenformat<select id="chart-number-format"><option value="general">Allgemein</option><option value="integer">Ganzzahl</option><option value="decimal">Zwei Dezimalstellen</option><option value="percent">Prozent</option><option value="currency-eur">Euro</option></select></label><label>Skalierung<select id="chart-axis-mode"><option value="auto">Automatisch</option><option value="manual">Manuell</option></select></label></div>
@@ -541,6 +548,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=18"></script>
+    <script type="module" src="/office/editor.js?v=19"></script>
   </body>
 </html>

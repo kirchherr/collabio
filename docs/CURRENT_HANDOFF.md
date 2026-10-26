@@ -2,30 +2,30 @@
 
 Updated: 2026-10-26
 
-Roadmap 864 through 871 / PLANS 725 through 732 are complete under ADR-0206. Line and area series, scatter Y series and
-line-rendered combo series now support one deterministic least-squares trendline and one fixed symmetric absolute
-error-bar definition. Automatic scales include derived trend endpoints and every error bound; manual scales must
-contain the complete analytical extent. Constant-X scatter input uses a deterministic zero-slope fallback.
+Roadmap 872 through 879 / PLANS 733 through 740 are complete under ADR-0207. Line, area, scatter and combo charts now
+support an explicit linear or logarithmic primary scale and one explicitly assigned secondary value series with its
+own bounded title, scale, automatic or manual bounds and number format. At least one primary series always remains.
 
-The accessible dialog follows chart kind, target series and combo-renderer changes. Browser and server independently
-reject surplus fields, invalid or bar/X targets, nonpositive amounts, non-finite derived values and out-of-range manual
-scales. Canonical values, linked-table snapshots, hidden authoritative tables and immutable save semantics remain
-unchanged. No external calculation engine, dependency, migration, network source, action or new durable state exists.
+Logarithmic automatic scales use bounded powers of ten. Manual logarithmic intervals are exact multiplicative factors
+greater than one. Canonical values, references, trend endpoints and error bounds assigned to a logarithmic axis must be
+strictly positive. Browser and server independently reject surplus fields, invalid assignments, booleans, ambiguous
+scales and out-of-range manual values; no automatic axis assignment occurs.
 
-Focused schema/API tests pass 88/88. All nine chart-model cases pass, and the desktop/mobile saved-version workflow
-passes 2/2 as part of an 11-case focused browser run in 18.3 seconds. Visual review passed; screenshot hashes are
-`sha256:b3371c23ffe84e31a4504e0431d8a1e5083faf0893a03ab94a759a01266bb4e8` and
-`sha256:e882e68b6706da440a348484d088d4fd4cc64e0e594ec772406872f9dbd485f8`; report hash is
-`sha256:310f34cc666ec1676c8a85ebc08f135d5b426e891fc638d12db0ce3fb6fc1f40`.
+Focused schema/API tests pass 88/88. All ten chart-model cases pass, and the desktop/mobile saved-version workflow
+passes 2/2 as part of a final 12-case run in 17.7 seconds. Initial visual review exposed character-wise wrapping of
+decimal right-axis ticks; the final build fixes it and passed renewed review. Screenshot hashes are
+`sha256:ae33dcb6ebd2c81914e5944b2bfbe021f2b7262b94d63688f26a8e838e1a1e07` and
+`sha256:321ee997c3ef1f7e1d17b07a999204a317753dec3e2600d29c285d69ee68e3bf`; report hash is
+`sha256:aae236c0ad31e4b25b8c7ca20d3a80b59e546a010f68e50eee27763ef53b0610`.
 
-Review is `http://192.168.0.108:42880/office?review=trend-error-adr0206` with `office.css?v=18` and `editor.js?v=18`.
-Work-E2E and review API images are `sha256:15db17605c0b1e02607d75791dcf77d38206878f8c0d66b4c5342c757c164fac`
-and `sha256:6c37686a9c331c1605eef8f93346ed694d1062c2bd79944e6a8214b564c0f89f`.
+Review is `http://192.168.0.108:42880/office?review=advanced-axes-adr0207` with `office.css?v=19` and `editor.js?v=19`.
+Work-E2E and review API images are `sha256:0af8c1033dbf2c589b5279537cda4c6fb9e5ab6bf177435853a5067c08d66613`
+and `sha256:195c4436bf0ab414cae7407490f58db1a657fd1a38f1cc8c5189ed6a6bee7365`.
 
-Complete quality passes Ruff, finds 967 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
-Pytest with only the known Starlette/AnyIO warning. ADR-0205 is published through commit `276c5ca0`; ADR-0206
-publication requires a new content-specific approval. The next Office loop should separately decide secondary or
-logarithmic axes or richer chart accessibility. CRM onboarding remains deferred by the Office-first priority.
+Complete quality passes Ruff, finds 968 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. ADR-0206 is published through commit `c24a9295`; ADR-0207
+publication requires a new content-specific approval. The next Office loop is chart accessibility with a visible data
+table and keyboard-focused data inspection. CRM onboarding remains deferred by the Office-first priority.
 
 Roadmap 848 through 855 / PLANS 709 through 716 are complete under ADR-0204. Native Office now supports scatter charts
 whose first series supplies numeric X coordinates and whose following series supply Y values, plus combo charts with
