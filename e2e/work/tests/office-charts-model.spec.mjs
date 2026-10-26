@@ -22,6 +22,10 @@ test("Office charts admit bounded literal decimal datasets", () => {
   }
   expect(officeChartAttributes({ ...attrs, kind: "line",
     series: [{ name: "Delta", color: "purple", values: [-1, 2, 3, 4] }] }).kind).toBe("line");
+  expect(officeChartAttributes({ ...attrs, kind: "area",
+    series: [{ name: "Delta", color: "purple", values: [-1, 2, 3, 4] }] }).kind).toBe("area");
+  expect(officeChartAttributes({ ...attrs, kind: "doughnut",
+    series: [{ name: "Share", color: "orange", values: [1, 2, 3, 4] }] }).kind).toBe("doughnut");
   expect(officeChartAttributes({ ...attrs,
     series: [{ name: "Plan", color: "teal", values: [1.5, 2.25, 3.75, 4.125] }] }).series[0].values[3]).toBe(4.125);
 });
@@ -76,6 +80,21 @@ test("Office chart axes use deterministic automatic and bounded manual scales", 
     { ...attrs, kind: "pie", series: [{ name: "Share", color: "orange", values: [1, 2, 3, 4] }], axes },
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
   expect(officeChartDescription(presented)).toContain("Achsen Quartal / Umsatz");
+});
+
+test("Office richer chart types retain bounded presentation and stacked totals", () => {
+  const presentation = { palette: "accessible", style: "soft", titleAlignment: "left" };
+  const stacked = officeChartAttributes({ ...attrs, kind: "stacked-bar", presentation,
+    axes: { mode: "manual", categoryTitle: "Quartal", valueTitle: "Gesamt", minimum: 0, maximum: 400,
+      majorUnit: 100, gridlines: true, numberFormat: "integer" } });
+  expect(stacked.presentation).toEqual(presentation);
+  expect(officeChartAxisScale(stacked)).toMatchObject({ minimum: 0, maximum: 400, majorUnit: 100 });
+  expect(officeChartDescription(stacked)).toContain("Gestapeltes Säulendiagramm");
+  for (const invalid of [
+    { ...stacked, presentation: { ...presentation, palette: "script" } },
+    { ...stacked, axes: { ...stacked.axes, maximum: 300, majorUnit: 50 } },
+    { ...stacked, axes: { ...stacked.axes, minimum: 100, maximum: 400 } },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
 test("Office chart descriptions and comparisons expose exact data changes", () => {

@@ -737,8 +737,19 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         "numberFormat": "general",
     }
     assert validate_office_document(automatic) == automatic
+    presentation = {"palette": "accessible", "style": "soft", "titleAlignment": "left"}
+    rich = deepcopy(document)
+    rich["content"][0]["attrs"].update({"kind": "stacked-bar", "presentation": presentation})
+    rich["content"][0]["attrs"]["axes"] = {**axes, "minimum": 0, "maximum": 400, "majorUnit": 100}
+    assert validate_office_document(rich) == rich
+    area = deepcopy(document)
+    area["content"][0]["attrs"].update({"kind": "area", "presentation": presentation})
+    area["content"][0]["attrs"]["series"][0]["values"][0] = -10
+    assert validate_office_document(area) == area
     pie = {**attrs, "kind": "pie", "series": [{"name": "Share", "color": "orange", "values": [1, 2, 3, 4]}]}
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": pie}]})
+    doughnut = {**pie, "kind": "doughnut", "presentation": presentation}
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": doughnut}]})
     invalid = [
         {**attrs, "id": "chart-short"},
         {**attrs, "kind": "script"},
@@ -746,6 +757,8 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "altText": "bad\x00text"},
         {**attrs, "legend": 1},
         {**attrs, "legendPosition": "floating"},
+        {**attrs, "presentation": {**presentation, "palette": "url"}},
+        {**attrs, "presentation": {**presentation, "shadow": "script"}},
         {**attrs, "categories": []},
         {**attrs, "categories": ["Q1", "Q1"]},
         {**attrs, "series": attrs["series"] * 3},
@@ -758,6 +771,8 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "axes": {**axes, "maximum": 160}},
         {**attrs, "axes": {**axes, "majorUnit": 30}},
         {**pie, "axes": axes},
+        {**doughnut, "axes": axes},
+        {**rich["content"][0]["attrs"], "axes": {**axes, "minimum": 0, "maximum": 300, "majorUnit": 50}},
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:

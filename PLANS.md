@@ -2130,14 +2130,39 @@ responsive containment in one desktop/mobile browser workflow with separately re
 700. [x] Close the block with focused schema/API and chart-model tests plus the complete repository quality gate. Add
 no migration, external chart engine, network source, automatic action or new durable state.
 
+701. [x] Extend native charts under ADR-0203 with strict `stacked-bar`, `area` and `doughnut` kinds plus one optional
+closed presentation object, while keeping existing bar, line and pie documents valid.
+
+702. [x] Derive stacked-bar scales from per-category totals. Require nonnegative values, zero-based manual bounds and
+containment of every complete stack in automatic and fixed scales.
+
+703. [x] Render area charts from the established finite line-series contract, including negative values, deterministic
+axes, accessible descriptions and hidden source-data tables.
+
+704. [x] Render doughnut charts from exactly one nonnegative series with at least one positive value. Reject axes and
+retain the same verified linked-table and immutable-snapshot rules as pie charts.
+
+705. [x] Add fixed standard, accessible, warm and monochrome palettes; clean, soft and focus styles; and bounded title
+alignment. Keep every option presentation-only and prohibit free CSS, colors, URLs or executable content.
+
+706. [x] Preserve chart-kind conversion and presentation through editing, linked-table recalculation, confirmed
+immutable save and reload while retaining responsive containment and accessible chart structure.
+
+707. [x] Independently validate all new chart kinds, presentation fields, data constraints, scale totals, source
+ranges and linked snapshots on the server. Reject unknown fields and forged browser results so they fail closed.
+
+708. [x] Close the block with focused schema/API tests, six chart-model cases, desktop/mobile browser and visual proof
+and the complete repository quality gate. Add no migration, external chart engine, network source or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 839 / PLANS 700. Strict deterministic chart axes, fixed or automatic
-  scales, bounded number formats, gridlines and responsive legend placement now build on linked table calculations.
-  Continue Office with richer native chart types and advanced presentation as the next coherent loop before deferred CRM onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 847 / PLANS 708. Stacked-bar, area and doughnut charts plus fixed palettes,
+  styles and title alignment now build on strict deterministic axes and linked table calculations. Continue Office
+  with scatter/combo charts and bounded per-series presentation as the next coherent loop before deferred CRM
+  onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

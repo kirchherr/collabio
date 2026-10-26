@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=14" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=15" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -185,10 +185,11 @@
     <dialog class="office-dialog chart-dialog" id="chart-dialog" aria-labelledby="chart-title">
       <form id="chart-form"><header><h2 id="chart-title">Diagramm einfügen</h2><button class="icon-button" id="chart-close" type="button" aria-label="Diagrammdialog schließen">×</button></header>
         <div class="dialog-body">
-          <div class="chart-fields"><label>Diagrammtyp<select id="chart-kind"><option value="bar">Säulen</option><option value="line">Linien</option><option value="pie">Kreis</option></select></label><label>Titel<input id="chart-name" maxlength="120" required /></label></div>
+          <div class="chart-fields"><label>Diagrammtyp<select id="chart-kind"><option value="bar">Säulen</option><option value="stacked-bar">Gestapelte Säulen</option><option value="line">Linien</option><option value="area">Flächen</option><option value="pie">Kreis</option><option value="doughnut">Ring</option></select></label><label>Titel<input id="chart-name" maxlength="120" required /></label></div>
           <label>Alternativtext<textarea id="chart-alt" maxlength="500" rows="3" required></textarea></label>
           <div class="chart-fields"><label class="check-row"><input id="chart-legend" type="checkbox" checked /> Legende anzeigen</label><label>Legendenposition<select id="chart-legend-position"><option value="bottom">Unten</option><option value="top">Oben</option><option value="left">Links</option><option value="right">Rechts</option></select></label></div>
           <label class="check-row"><input id="chart-data-labels" type="checkbox" /> Werte am Diagramm anzeigen</label>
+          <fieldset class="chart-axis-fields"><legend>Darstellung</legend><div class="chart-fields"><label>Farbschema<select id="chart-palette"><option value="standard">Standard</option><option value="accessible">Gut unterscheidbar</option><option value="warm">Warm</option><option value="monochrome">Einfarbig</option></select></label><label>Stil<select id="chart-style"><option value="clean">Klar</option><option value="soft">Weich</option><option value="focus">Hervorgehoben</option></select></label><label>Titelausrichtung<select id="chart-title-alignment"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div><p class="paragraph-help">Farbschema, Stil und Titelausrichtung ändern nur die Darstellung; die kanonischen Werte bleiben unverändert.</p></fieldset>
           <fieldset id="chart-axis-fields" class="chart-axis-fields"><legend>Achsen und Skala</legend>
             <div class="chart-fields"><label>Kategorieachse<input id="chart-category-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Quartal" /></label><label>Wertachse<input id="chart-value-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Umsatz" /></label><label>Zahlenformat<select id="chart-number-format"><option value="general">Allgemein</option><option value="integer">Ganzzahl</option><option value="decimal">Zwei Dezimalstellen</option><option value="percent">Prozent</option><option value="currency-eur">Euro</option></select></label><label>Skalierung<select id="chart-axis-mode"><option value="auto">Automatisch</option><option value="manual">Manuell</option></select></label></div>
             <div class="chart-fields" id="chart-manual-axis-fields" hidden><label>Minimum<input id="chart-axis-minimum" type="number" min="-1000000000" max="1000000000" step="any" value="0" /></label><label>Maximum<input id="chart-axis-maximum" type="number" min="-1000000000" max="1000000000" step="any" value="200" /></label><label>Hauptintervall<input id="chart-axis-major-unit" type="number" min="0.0000000001" max="1000000000" step="any" value="50" /></label></div>
@@ -197,7 +198,7 @@
           <label class="check-row"><input id="chart-linked" type="checkbox" /> Mit einer nummerierten Tabelle verknüpfen</label>
           <div class="chart-fields" id="chart-source-fields" hidden><label>Quelltabelle<select id="chart-source-table"></select></label><label>Datenreihen<select id="chart-source-orientation"><option value="columns">aus Spalten</option><option value="rows">aus Zeilen</option></select></label><label>Zellbereich<input id="chart-source-range" maxlength="12" value="A1:C5" autocomplete="off" placeholder="A1:C5" /></label></div>
           <label>Datentabelle<textarea id="chart-data" rows="7" spellcheck="false" aria-describedby="chart-data-help" required></textarea></label>
-          <p id="chart-data-help" class="paragraph-help">Manuell oder aus dem verknüpften Tabellenbereich: Kategorien und Datenreihen können spalten- oder zeilenweise gelesen werden. Bis zu 12 Kategorien und vier Reihen; Kreisdiagramme verwenden genau eine nichtnegative Reihe. Verknüpfte Werte werden nach Tabellen- und Formeländerungen automatisch aktualisiert.</p>
+          <p id="chart-data-help" class="paragraph-help">Manuell oder aus dem verknüpften Tabellenbereich: Kategorien und Datenreihen können spalten- oder zeilenweise gelesen werden. Bis zu 12 Kategorien und vier Reihen; Kreis- und Ringdiagramme verwenden genau eine nichtnegative Reihe. Verknüpfte Werte werden nach Tabellen- und Formeländerungen automatisch aktualisiert.</p>
           <div class="chart-preview-stage" id="chart-preview" aria-label="Diagrammvorschau"></div>
           <div class="chart-fields"><button class="button secondary" id="chart-previous" type="button" hidden>Diagramm eine Position früher</button><button class="button secondary" id="chart-next" type="button" hidden>Diagramm eine Position später</button><button class="button secondary" id="chart-duplicate" type="button" hidden>Diagramm duplizieren</button><button class="button danger" id="chart-remove" type="button" hidden>Aus Entwurf entfernen</button></div>
           <p class="paragraph-help">Diagramme speichern begrenzte Dezimalzahlen und Klartext. Eine Verknüpfung darf nur auf eine nummerierte Tabelle derselben Dokumentfassung zeigen. Makros, externe Datenquellen und eingebetteter Code sind ausgeschlossen.</p>
@@ -530,6 +531,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=14"></script>
+    <script type="module" src="/office/editor.js?v=15"></script>
   </body>
 </html>

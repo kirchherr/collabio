@@ -864,13 +864,31 @@ def _valid_document_table_formula_results(document: dict[str, Any], definitions:
 
 
 _CHART_COLORS = ("teal", "blue", "orange", "purple")
+_CHART_KINDS = {"bar", "stacked-bar", "line", "area", "pie", "doughnut"}
+_CHART_CIRCULAR_KINDS = {"pie", "doughnut"}
 _CHART_LEGEND_POSITIONS = {"bottom", "top", "left", "right"}
 _CHART_NUMBER_FORMATS = {"general", "integer", "decimal", "percent", "currency-eur"}
 _CHART_RANGE = re.compile(r"([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})")
 _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
 
 
-def _valid_chart_axes(value: Any, series: list[dict[str, Any]]) -> bool:
+def _chart_scale_values(kind: str, series: list[dict[str, Any]]) -> list[int | float]:
+    if kind == "stacked-bar":
+        return [sum(entry["values"][index] for entry in series) for index in range(len(series[0]["values"]))]
+    return [number for entry in series for number in entry["values"]]
+
+
+def _valid_chart_presentation(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"palette", "style", "titleAlignment"}
+        and value.get("palette") in {"standard", "accessible", "warm", "monochrome"}
+        and value.get("style") in {"clean", "soft", "focus"}
+        and value.get("titleAlignment") in {"left", "center", "right"}
+    )
+
+
+def _valid_chart_axes(value: Any, series: list[dict[str, Any]], kind: str) -> bool:
     if not isinstance(value, dict) or set(value) != {
         "mode",
         "categoryTitle",
@@ -914,7 +932,8 @@ def _valid_chart_axes(value: Any, series: list[dict[str, Any]]) -> bool:
     return (
         math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
         and intervals <= 12
-        and all(minimum_value <= number <= maximum_value for entry in series for number in entry["values"])
+        and (kind != "stacked-bar" or minimum_value == 0)
+        and all(minimum_value <= number <= maximum_value for number in _chart_scale_values(kind, series))
     )
 
 
@@ -955,7 +974,7 @@ def _chart_data_from_table(
     if (
         bottom > len(cells)
         or right > len(cells[0])
-        or (kind == "pie" and (right - left != 2 if orientation == "columns" else bottom - top != 2))
+        or (kind in _CHART_CIRCULAR_KINDS and (right - left != 2 if orientation == "columns" else bottom - top != 2))
         or any(
             cell.get("attrs", {}).get("colspan", 1) != 1 or cell.get("attrs", {}).get("rowspan", 1) != 1
             for row in cells
@@ -1363,6 +1382,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("legendPosition")
             if "axes" in attrs:
                 expected_chart_attrs.add("axes")
+            if "presentation" in attrs:
+                expected_chart_attrs.add("presentation")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1371,7 +1392,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or re.fullmatch(r"chart-[a-f0-9]{24}", identifier) is None
                 or identifier in chart_ids
                 or len(chart_ids) >= 20
-                or attrs.get("kind") not in {"bar", "line", "pie"}
+                or attrs.get("kind") not in _CHART_KINDS
                 or type(attrs.get("legend")) is not bool
                 or ("dataLabels" in attrs and type(attrs.get("dataLabels")) is not bool)
                 or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
@@ -1383,8 +1404,9 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or len(set(categories)) != len(categories)
                 or not isinstance(series, list)
                 or not 1 <= len(series) <= 4
-                or (attrs.get("kind") == "pie" and len(series) != 1)
+                or (attrs.get("kind") in _CHART_CIRCULAR_KINDS and len(series) != 1)
                 or (source is not None and _chart_source(source) is None)
+                or ("presentation" in attrs and not _valid_chart_presentation(attrs.get("presentation")))
             ):
                 reject()
             names: set[str] = set()
@@ -1405,14 +1427,17 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                         or not -1_000_000_000 <= number <= 1_000_000_000
                         for number in entry["values"]
                     )
-                    or (attrs.get("kind") != "line" and any(number < 0 for number in entry["values"]))
+                    or (attrs.get("kind") not in {"line", "area"} and any(number < 0 for number in entry["values"]))
                 ):
                     reject()
                 names.add(entry["name"])
                 colors.add(entry["color"])
-            if attrs.get("kind") == "pie" and not any(number > 0 for number in series[0]["values"]):
+            if attrs.get("kind") in _CHART_CIRCULAR_KINDS and not any(number > 0 for number in series[0]["values"]):
                 reject()
-            if "axes" in attrs and (attrs.get("kind") == "pie" or not _valid_chart_axes(attrs["axes"], series)):
+            if "axes" in attrs and (
+                attrs.get("kind") in _CHART_CIRCULAR_KINDS
+                or not _valid_chart_axes(attrs["axes"], series, attrs["kind"])
+            ):
                 reject()
             chart_ids.add(identifier)
             if source is not None:

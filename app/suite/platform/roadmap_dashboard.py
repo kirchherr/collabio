@@ -1011,6 +1011,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-text-date-formulas-responsive.spec.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0202-native-office-chart-axes-and-presentation.md",
                         "e2e/work/tests/office-chart-axis-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0203-native-office-richer-chart-types-and-presentation.md",
+                        "e2e/work/tests/office-chart-types-responsive.spec.mjs",
                     ),
                     api_routes=(
                         "/v1/office/documents",

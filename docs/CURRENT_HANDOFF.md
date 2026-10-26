@@ -1,6 +1,43 @@
 # Current Project Handoff
 
-Updated: 2026-10-14
+Updated: 2026-10-26
+
+Roadmap 840 through 847 / PLANS 701 through 708 are complete under ADR-0203. Native Office now adds stacked-bar, area
+and doughnut charts to bar, line and pie. Stacked scales use per-category totals and require nonnegative data plus a
+zero baseline. Area charts retain finite negative values. Doughnut charts require exactly one nonnegative, nonzero
+series and reject axes.
+
+Charts may use a strict optional presentation object with standard, accessible, warm or monochrome palette; clean,
+soft or focus style; and left, center or right title alignment. Linked-table recalculation, kind conversion, immutable
+save/reload, accessible descriptions and hidden data tables remain intact. The server independently rejects surplus
+fields, invalid kind-specific data, forged linked snapshots, circular-chart axes and stacked scales that omit totals.
+
+Focused Office schema/API tests pass and all six chart-model cases pass. The desktop/mobile saved-version workflow
+passes 2/2 in 20.9 seconds and proves stacked-bar creation, area conversion, doughnut conversion, presentation, save,
+reload and responsive containment. Visual review passed; desktop/mobile screenshot hashes are
+`sha256:879c427d879d72bdaf0ef9a67f9feeb8c65ea5c79c31b42496702437c75c104f` and
+`sha256:053a26b4c2146dd288aaf25607e976e636256e7f712064bf2280368148dd3711`.
+
+The complete quality gate passes Ruff, finds 964 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+The review target is `http://192.168.0.108:42880/office?review=chart-types-adr0203` with asset keys `office.css?v=15`
+and `editor.js?v=15`. Final Work-E2E and review API images are
+`sha256:5ae71db781b38e1984d005b89d4af4825e2902ec8f5bf7511ffedc7f039218bf` and
+`sha256:0db1ac22543a909d8bebbfad807cda9d77a29c773859a5fd2a759f55d22218cb`.
+
+No migration, external chart engine, network source, automatic action or new durable state was added. Scatter/combo
+charts, per-series presentation, secondary and logarithmic axes, free-form styles and external chart data remain
+closed. ADR-0202 is published through commit `d5a70a47`; publication of this ADR-0203 block is pending the repository's
+content-specific approval.
+
+The next separate Office loop is scatter/combo charts and bounded per-series presentation. CRM account onboarding
+remains deferred by the user's Office-first priority.
+
+The exact isolated PostgreSQL test container, ADR-0203 browser-artifact directory and transfer archives are removed.
+No transient quality or browser runner remains. Regular and review APIs both return `ok`; the review stores and image
+decoder remain available, and the unrelated `tricert`, `trijob`, `tripax` and `webcut` projects are unchanged.
 
 Roadmap 832 through 839 / PLANS 693 through 700 are complete under ADR-0202. Native Office bar and line charts now
 support bounded category and value titles, deterministic automatic or manual value scales, optional major gridlines

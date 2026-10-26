@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "axes", "categories", "series", "source"]
+      "axes", "presentation", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -35,7 +35,7 @@ function parseData(text, kind) {
   if (rows.length < 2 || rows.length > 13) throw new Error("chart-data");
   const cells = rows.map((row) => row.split("\t"));
   const width = cells[0].length;
-  if (width < 2 || width > 5 || cells.some((row) => row.length !== width) || (kind === "pie" && width !== 2)) throw new Error("chart-data");
+  if (width < 2 || width > 5 || cells.some((row) => row.length !== width) || (["pie", "doughnut"].includes(kind) && width !== 2)) throw new Error("chart-data");
   const categories = cells.slice(1).map((row) => row[0]);
   const series = cells[0].slice(1).map((name, seriesIndex) => ({ name, color: OFFICE_CHART_COLORS[seriesIndex],
     values: cells.slice(1).map((row) => { if (!/^-?(?:0|[1-9][0-9]{0,9})(?:[.,][0-9]{1,10})?$/.test(row[seriesIndex + 1])) throw new Error("chart-value");
@@ -51,6 +51,7 @@ function serializeData(chart) {
 
 export function installOfficeChartControls({ state, $, sessionCurrent, validate, update, notice, focus }) {
   let action = null;
+  const circular = (kind) => ["pie", "doughnut"].includes(kind);
   const selected = () => state.editor?.state.selection instanceof NodeSelection && state.editor.state.selection.node.type.name === "chart" ? state.editor.state.selection : null;
   const count = () => { let total = 0; state.editor?.state.doc.forEach((node) => { if (node.type.name === "chart") total += 1; }); return total; };
   const allowed = () => Boolean(state.session && sessionCurrent(state.session) && state.editor?.isEditable && !state.session.historical &&
@@ -69,8 +70,8 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   };
   const defaultRange = (tableId, kind, orientation = "columns") => {
     const table = tableNode(tableId); if (!table) return "A1:C5"; const grid = officeTableGrid(table);
-    const columns = Math.min(grid.columns, orientation === "rows" ? 5 : kind === "pie" ? 2 : 3),
-      rows = Math.min(grid.rows, orientation === "rows" ? kind === "pie" ? 2 : 3 : 5);
+    const columns = Math.min(grid.columns, orientation === "rows" ? 5 : circular(kind) ? 2 : 3),
+      rows = Math.min(grid.rows, orientation === "rows" ? circular(kind) ? 2 : 3 : 5);
     return columns >= 2 && rows >= 2 ? `A1:${String.fromCharCode(64 + columns)}${rows}` : "A1:B2";
   };
   const source = () => ({ tableId: $("chart-source-table").value, range: $("chart-source-range").value.trim().toUpperCase(),
@@ -79,15 +80,17 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
     const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
     const mode = $("chart-axis-mode").value;
-    const axes = kind === "pie" ? null : { mode, categoryTitle: $("chart-category-axis-title").value,
+    const axes = circular(kind) ? null : { mode, categoryTitle: $("chart-category-axis-title").value,
       valueTitle: $("chart-value-axis-title").value,
       minimum: mode === "manual" ? Number($("chart-axis-minimum").value) : null,
       maximum: mode === "manual" ? Number($("chart-axis-maximum").value) : null,
       majorUnit: mode === "manual" ? Number($("chart-axis-major-unit").value) : null,
       gridlines: $("chart-gridlines").checked, numberFormat: $("chart-number-format").value };
+    const presentation = { palette: $("chart-palette").value, style: $("chart-style").value,
+      titleAlignment: $("chart-title-alignment").value };
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
       legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
-      dataLabels: $("chart-data-labels").checked, ...data, ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
+      dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
@@ -103,7 +106,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-source-fields").hidden = !linked; $("chart-source-table").disabled = !linked; $("chart-source-range").disabled = !linked;
     $("chart-source-orientation").disabled = !linked;
     $("chart-data").readOnly = linked; };
-  const presentationState = () => { const axes = $("chart-kind").value !== "pie", manual = $("chart-axis-mode").value === "manual";
+  const presentationState = () => { const axes = !circular($("chart-kind").value), manual = $("chart-axis-mode").value === "manual";
     $("chart-axis-fields").disabled = !axes; $("chart-manual-axis-fields").hidden = !axes || !manual;
     $("chart-legend-position").disabled = !$("chart-legend").checked; };
   const preview = () => { sourceState(); presentationState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
@@ -127,6 +130,9 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-alt").value = attrs?.altText || "Vergleich der Werte nach Kategorie."; $("chart-legend").checked = attrs?.legend ?? true;
     $("chart-legend-position").value = attrs?.legendPosition || "bottom";
     $("chart-data-labels").checked = attrs?.dataLabels ?? false;
+    $("chart-palette").value = attrs?.presentation?.palette || "standard";
+    $("chart-style").value = attrs?.presentation?.style || "clean";
+    $("chart-title-alignment").value = attrs?.presentation?.titleAlignment || "center";
     $("chart-category-axis-title").value = attrs?.axes?.categoryTitle || "";
     $("chart-value-axis-title").value = attrs?.axes?.valueTitle || "";
     $("chart-number-format").value = attrs?.axes?.numberFormat || "general";

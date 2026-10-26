@@ -1,9 +1,32 @@
 # Native Office Documents
 
-Status: Roadmap 252–839 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 839 / PLANS 700 chart axes and presentation
-Module: `office_documents` / version 0.9.13
-Decisions: ADR-0079 through ADR-0202; current movement: `ARCHITECTURE_DECISIONS/ADR-0202-native-office-chart-axes-and-presentation.md`
+Status: Roadmap 252–847 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 847 / PLANS 708 richer chart types and presentation
+Module: `office_documents` / version 0.9.14
+Decisions: ADR-0079 through ADR-0203; current movement: `ARCHITECTURE_DECISIONS/ADR-0203-native-office-richer-chart-types-and-presentation.md`
+
+## Richer chart types and presentation (Roadmap 840–847)
+
+Native Office adds stacked-bar, area and doughnut charts to the existing bar, line and pie vocabulary. Stacked bars
+derive scales from category totals and require nonnegative data plus zero-based manual bounds. Area charts retain
+finite positive and negative line values. Doughnut charts require one nonnegative, nonzero series and reject axes.
+
+One optional strict presentation object selects a fixed standard, accessible, warm or monochrome palette, clean, soft
+or focus style and left, center or right title alignment. Browser and server independently validate the exact closed
+schema. Linked-table recalculation, chart-kind conversion, immutable save/reload, accessible descriptions and hidden
+data tables remain intact; old chart documents remain valid.
+
+Focused Office schema/API tests pass, all six chart-model cases pass, and the responsive saved-version workflow passes
+2/2 on desktop and mobile in 20.9 seconds. Desktop/mobile screenshot hashes are
+`sha256:879c427d879d72bdaf0ef9a67f9feeb8c65ea5c79c31b42496702437c75c104f` and
+`sha256:053a26b4c2146dd288aaf25607e976e636256e7f712064bf2280368148dd3711`; visual review passed. The review target is
+`http://192.168.0.108:42880/office?review=chart-types-adr0203` with `office.css?v=15` and `editor.js?v=15`.
+Complete quality passes Ruff, finds 964 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+No migration, external chart engine, network source or new durable state is introduced. Scatter, combo and 3D charts,
+secondary and logarithmic axes, free-form styling, external chart data and automatic actions remain closed.
 
 ## Chart axes and presentation (Roadmap 832–839)
 
