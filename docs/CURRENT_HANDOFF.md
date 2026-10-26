@@ -2,6 +2,28 @@
 
 Updated: 2026-10-26
 
+Roadmap 856 through 863 / PLANS 717 through 724 are complete under ADR-0205. Non-circular native charts now support up
+to four named horizontal reference lines with finite values, fixed palette colors and solid or dashed styles.
+Automatic scales include references; manual scales must contain them. Visible data labels now use a strict content and
+above/below position contract while canonical values and accessible hidden tables remain unchanged.
+
+Focused schema/API tests pass 88/88, all eight chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 19.4 seconds. Visual review passed; screenshot hashes are
+`sha256:e229f52847e7908cd4a05f96fb084904464ed35f6d83f07692f441501bcee4ef` and
+`sha256:1664d02362fff1420989b6caa94485744434c7a8b757dc6956904b63a742df4f`.
+
+Review is `http://192.168.0.108:42880/office?review=chart-analytics-adr0205` with `office.css?v=17` and `editor.js?v=17`.
+Work-E2E and review API images are `sha256:9b80ba648df21e29c9f192b2fc54de380fe6f08c9ce5917ccbb60abaf7c59b39`
+and `sha256:0b30a53e04adbdb0e82def7321f5f599dbefaeacc9d46376c5df8ce369bf9c51`.
+
+Complete quality passes Ruff, finds 966 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. The quality image remains
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`. Exact test resources are removed; regular
+and review APIs return `ok`, and no transient runner remains.
+
+ADR-0204 is published through commit `17057ff8`; ADR-0205 publication awaits fresh content-specific approval. The next
+Office loop is deterministic trendlines and error bars. CRM onboarding remains deferred by the Office-first priority.
+
 Roadmap 848 through 855 / PLANS 709 through 716 are complete under ADR-0204. Native Office now supports scatter charts
 whose first series supplies numeric X coordinates and whose following series supply Y values, plus combo charts with
 at least one nonnegative bar and one line series on a common deterministic value scale.

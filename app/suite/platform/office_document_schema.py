@@ -890,6 +890,36 @@ def _valid_chart_presentation(value: Any) -> bool:
     )
 
 
+def _valid_chart_data_label_presentation(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"content", "position"}
+        and value.get("content") in {"value", "category-value", "series-value", "full"}
+        and value.get("position") in {"below", "top"}
+    )
+
+
+def _valid_chart_reference_lines(value: Any) -> bool:
+    if not isinstance(value, list) or not 1 <= len(value) <= 4:
+        return False
+    labels: set[str] = set()
+    for entry in value:
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {"label", "value", "color", "lineStyle"}
+            or not _valid_literal(entry.get("label"), 1, 60)
+            or entry["label"] in labels
+            or type(entry.get("value")) not in {int, float}
+            or not math.isfinite(entry["value"])
+            or not -1_000_000_000 <= entry["value"] <= 1_000_000_000
+            or entry.get("color") not in {"teal", "blue", "orange", "purple"}
+            or entry.get("lineStyle") not in {"solid", "dashed"}
+        ):
+            return False
+        labels.add(entry["label"])
+    return True
+
+
 def _valid_chart_series_presentation(value: Any, kind: str, series: list[dict[str, Any]]) -> bool:
     expected_count = len(series) - 1 if kind == "scatter" else len(series)
     if not isinstance(value, list) or len(value) != expected_count:
@@ -918,7 +948,9 @@ def _valid_chart_series_presentation(value: Any, kind: str, series: list[dict[st
     return False
 
 
-def _valid_chart_axes(value: Any, series: list[dict[str, Any]], kind: str) -> bool:
+def _valid_chart_axes(
+    value: Any, series: list[dict[str, Any]], kind: str, reference_lines: list[dict[str, Any]] | None = None
+) -> bool:
     if not isinstance(value, dict) or set(value) != {
         "mode",
         "categoryTitle",
@@ -959,11 +991,12 @@ def _valid_chart_axes(value: Any, series: list[dict[str, Any]], kind: str) -> bo
     ):
         return False
     intervals = (maximum_value - minimum_value) / major_unit_value
+    scale_values = _chart_scale_values(kind, series) + [entry["value"] for entry in reference_lines or []]
     return (
         math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
         and intervals <= 12
         and (kind != "stacked-bar" or minimum_value == 0)
-        and all(minimum_value <= number <= maximum_value for number in _chart_scale_values(kind, series))
+        and all(minimum_value <= number <= maximum_value for number in scale_values)
     )
 
 
@@ -1416,6 +1449,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("presentation")
             if "seriesPresentation" in attrs:
                 expected_chart_attrs.add("seriesPresentation")
+            if "dataLabelPresentation" in attrs:
+                expected_chart_attrs.add("dataLabelPresentation")
+            if "referenceLines" in attrs:
+                expected_chart_attrs.add("referenceLines")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1427,6 +1464,11 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or attrs.get("kind") not in _CHART_KINDS
                 or type(attrs.get("legend")) is not bool
                 or ("dataLabels" in attrs and type(attrs.get("dataLabels")) is not bool)
+                or ("dataLabelPresentation" in attrs and attrs.get("dataLabels") is not True)
+                or (
+                    "dataLabelPresentation" in attrs
+                    and not _valid_chart_data_label_presentation(attrs.get("dataLabelPresentation"))
+                )
                 or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
                 or not _valid_literal(attrs.get("title"), 1, 120)
                 or not _valid_literal(attrs.get("altText"), 1, 500)
@@ -1441,6 +1483,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or (attrs.get("kind") in {"scatter", "combo"} and "seriesPresentation" not in attrs)
                 or (source is not None and _chart_source(source) is None)
                 or ("presentation" in attrs and not _valid_chart_presentation(attrs.get("presentation")))
+                or ("referenceLines" in attrs and not _valid_chart_reference_lines(attrs.get("referenceLines")))
+                or ("referenceLines" in attrs and attrs.get("kind") in _CHART_CIRCULAR_KINDS)
             ):
                 reject()
             names: set[str] = set()
@@ -1477,7 +1521,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             if "axes" in attrs and (
                 attrs.get("kind") in _CHART_CIRCULAR_KINDS
-                or not _valid_chart_axes(attrs["axes"], series, attrs["kind"])
+                or not _valid_chart_axes(attrs["axes"], series, attrs["kind"], attrs.get("referenceLines"))
             ):
                 reject()
             chart_ids.add(identifier)
@@ -1489,6 +1533,7 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 + sum(map(len, categories))
                 + sum(len(entry["name"]) for entry in series)
                 + (len(attrs["axes"]["categoryTitle"]) + len(attrs["axes"]["valueTitle"]) if "axes" in attrs else 0)
+                + sum(len(entry["label"]) for entry in attrs.get("referenceLines", []))
             )
             if characters > MAX_DOCUMENT_CHARACTERS:
                 reject()

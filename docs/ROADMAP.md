@@ -677,6 +677,8 @@ Aufgaben:
   responsiver Titelausrichtung (Roadmap 840-847 / PLANS 701-708).
 - [x] Native Streu- und Kombinationsdiagramme mit numerischer X-Achse sowie streng begrenzten Renderern, Markern und
   Linienstilen je Datenreihe (Roadmap 848-855 / PLANS 709-716).
+- [x] Begrenzte analytische Referenzlinien und konfigurierbare, responsive Datenbeschriftungen fuer native Diagramme
+  (Roadmap 856-863 / PLANS 717-724).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

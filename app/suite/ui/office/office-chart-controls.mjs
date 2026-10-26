@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "axes", "presentation", "seriesPresentation", "categories", "series", "source"]
+      "dataLabelPresentation", "referenceLines", "axes", "presentation", "seriesPresentation", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -104,6 +104,32 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     select.replaceChildren(...values.map(([value, label]) => { const option = document.createElement("option");
       option.value = value; option.textContent = label; option.selected = value === selected; return option; })); return select;
   };
+  const renderReferenceLines = (entries = []) => {
+    const rows = entries.map((entry, index) => {
+      const row = document.createElement("div"); row.className = "chart-reference-row";
+      const label = document.createElement("label"), labelInput = document.createElement("input");
+      labelInput.dataset.field = "label"; labelInput.maxLength = 60; labelInput.value = entry.label || `Ziel ${index + 1}`;
+      label.append("Bezeichnung", labelInput);
+      const value = document.createElement("label"), valueInput = document.createElement("input");
+      valueInput.dataset.field = "value"; valueInput.type = "number"; valueInput.step = "any";
+      valueInput.min = "-1000000000"; valueInput.max = "1000000000"; valueInput.value = String(entry.value ?? 0);
+      value.append("Wert", valueInput);
+      const color = document.createElement("label"); color.append("Farbe", seriesSelect("color",
+        [["teal", "Türkis"], ["blue", "Blau"], ["orange", "Orange"], ["purple", "Violett"]], entry.color || "orange"));
+      const line = document.createElement("label"); line.append("Linie", seriesSelect("lineStyle",
+        [["solid", "Durchgezogen"], ["dashed", "Gestrichelt"]], entry.lineStyle || "dashed"));
+      const remove = document.createElement("button"); remove.type = "button"; remove.className = "button secondary";
+      remove.dataset.action = "remove-reference"; remove.textContent = "Entfernen"; row.append(label, value, color, line, remove);
+      return row;
+    });
+    $("chart-reference-lines").replaceChildren(...rows); $("chart-reference-add").disabled = rows.length >= 4;
+  };
+  const referenceLines = () => [...$("chart-reference-lines").querySelectorAll(".chart-reference-row")].map((row) => ({
+    label: row.querySelector('[data-field="label"]').value,
+    value: Number(row.querySelector('[data-field="value"]').value),
+    color: row.querySelector('[data-field="color"]').value,
+    lineStyle: row.querySelector('[data-field="lineStyle"]').value,
+  }));
   const seriesPresentation = (kind, series) => {
     const fieldset = $("chart-series-presentation-fields"), container = $("chart-series-presentation");
     fieldset.hidden = !styled(kind); if (!styled(kind)) { container.replaceChildren(); return null; }
@@ -146,13 +172,18 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     const presentation = { palette: $("chart-palette").value, style: $("chart-style").value,
       titleAlignment: $("chart-title-alignment").value };
     const seriesStyles = seriesPresentation(kind, data.series);
+    const references = circular(kind) ? [] : referenceLines();
+    const labelPresentation = $("chart-data-labels").checked ? { content: $("chart-data-label-content").value,
+      position: $("chart-data-label-position").value } : null;
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
       legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
       dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(seriesStyles ? { seriesPresentation: seriesStyles } : {}),
-      ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
+      ...(labelPresentation ? { dataLabelPresentation: labelPresentation } : {}),
+      ...(references.length ? { referenceLines: references } : {}), ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
-    $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
+    $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-reference-lines").replaceChildren();
+    $("chart-status").textContent = "";
     if (restore && owner?.editor === state.editor) focus(owner.editor); };
   const updateButtons = () => {
     const editing = Boolean(action?.editing); $("chart-duplicate").hidden = !editing; $("chart-remove").hidden = !editing;
@@ -167,6 +198,10 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-data").readOnly = linked; };
   const presentationState = () => { const axes = !circular($("chart-kind").value), manual = $("chart-axis-mode").value === "manual";
     $("chart-axis-fields").disabled = !axes; $("chart-manual-axis-fields").hidden = !axes || !manual;
+    $("chart-reference-fields").hidden = !axes; $("chart-reference-fields").disabled = !axes;
+    $("chart-data-label-fields").hidden = !$("chart-data-labels").checked;
+    $("chart-data-label-content").disabled = !$("chart-data-labels").checked;
+    $("chart-data-label-position").disabled = !$("chart-data-labels").checked;
     $("chart-legend-position").disabled = !$("chart-legend").checked; };
   const preview = () => { sourceState(); presentationState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
       $("chart-preview").replaceChildren(officeChartElement(attrs));
@@ -190,6 +225,8 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-alt").value = attrs?.altText || "Vergleich der Werte nach Kategorie."; $("chart-legend").checked = attrs?.legend ?? true;
     $("chart-legend-position").value = attrs?.legendPosition || "bottom";
     $("chart-data-labels").checked = attrs?.dataLabels ?? false;
+    $("chart-data-label-content").value = attrs?.dataLabelPresentation?.content || "full";
+    $("chart-data-label-position").value = attrs?.dataLabelPresentation?.position || "below";
     $("chart-palette").value = attrs?.presentation?.palette || "standard";
     $("chart-style").value = attrs?.presentation?.style || "clean";
     $("chart-title-alignment").value = attrs?.presentation?.titleAlignment || "center";
@@ -201,6 +238,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-axis-maximum").value = attrs?.axes?.maximum ?? "200";
     $("chart-axis-major-unit").value = attrs?.axes?.majorUnit ?? "50";
     $("chart-gridlines").checked = attrs?.axes?.gridlines ?? true;
+    renderReferenceLines(attrs?.referenceLines || []);
     $("chart-linked").checked = Boolean(attrs?.source); $("chart-linked").disabled = !tables.length && !attrs?.source;
     if (attrs?.source) { $("chart-source-table").value = attrs.source.tableId; $("chart-source-range").value = attrs.source.range;
       $("chart-source-orientation").value = attrs.source.orientation || "columns"; }
@@ -213,6 +251,12 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   const dispatch = (transaction, message) => { validate(transaction.doc); close(); state.editor.view.dispatch(closeHistory(transaction).scrollIntoView());
     state.editor.view.dispatch(closeHistory(state.editor.state.tr)); focus(state.editor); update(); notice(message); };
   $("chart-options").addEventListener("click", open); $("chart-form").addEventListener("input", preview);
+  $("chart-reference-add").addEventListener("click", () => { const entries = referenceLines();
+    if (entries.length < 4) { entries.push({ label: `Ziel ${entries.length + 1}`, value: 0, color: "orange", lineStyle: "dashed" });
+      renderReferenceLines(entries); preview(); } });
+  $("chart-reference-lines").addEventListener("click", (event) => { const button = event.target.closest('[data-action="remove-reference"]');
+    if (!button) return; const rows = [...$("chart-reference-lines").children], index = rows.indexOf(button.closest(".chart-reference-row"));
+    const entries = referenceLines(); entries.splice(index, 1); renderReferenceLines(entries); preview(); });
   $("chart-linked").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
     $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value,
       $("chart-source-orientation").value); } preview(); });

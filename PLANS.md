@@ -2178,14 +2178,37 @@ ranges, linked snapshots and manual Y bounds on the server so unknown and forged
 716. [x] Close the block with 88 focused schema/API tests, seven chart-model cases, desktop/mobile browser and visual
 proof and the complete repository quality gate. Add no migration, external engine, network source or durable state.
 
+717. [x] Add one through four strict named horizontal chart reference lines under ADR-0205 with bounded finite values,
+fixed palette colors and solid or dashed rendering.
+
+718. [x] Include reference values in deterministic automatic scaling and require manual scales to contain all series,
+stack totals and reference values. Reject reference lines on pie and doughnut charts.
+
+719. [x] Add a strict data-label presentation with value, category/value, series/value or complete content and an
+above- or below-chart position while preserving canonical numeric data.
+
+720. [x] Provide accessible add/remove controls for at most four reference lines and enable label controls only when
+visible labels are selected.
+
+721. [x] Render reference labels and styles responsively above the chart visual without changing hidden authoritative
+data tables, linked snapshots or accessible descriptions.
+
+722. [x] Preserve analytics through editing, linked-table recalculation, confirmed immutable save and reload.
+
+723. [x] Independently reject duplicate/unsafe labels, non-finite values, surplus fields, invalid styles, circular
+overlays, disabled-label presentation and out-of-scale manual references on the server.
+
+724. [x] Close the block with 88 focused tests, eight chart-model cases, desktop/mobile browser and visual proof and the
+complete quality gate. Add no migration, external engine, network source, automatic action or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 855 / PLANS 716. Scatter and combination charts plus bounded per-series
-  renderers, markers and line styles now build on strict deterministic axes and linked table calculations. Continue
-  Office with analytical reference lines and richer bounded data labels as the next coherent loop before deferred CRM
+- Native Office is complete through Roadmap 863 / PLANS 724. Bounded reference lines and richer data labels now build
+  on scatter, combination and linked-table charts. Continue Office with deterministic trendlines and error bars as the
+  next coherent loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,

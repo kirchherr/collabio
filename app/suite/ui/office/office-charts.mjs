@@ -11,6 +11,8 @@ export const OFFICE_CHART_TITLE_ALIGNMENTS = ["left", "center", "right"];
 export const OFFICE_CHART_SERIES_RENDERERS = ["bar", "line", "points"];
 export const OFFICE_CHART_MARKERS = ["none", "circle", "square", "diamond"];
 export const OFFICE_CHART_LINE_STYLES = ["none", "solid", "dashed"];
+export const OFFICE_CHART_DATA_LABEL_CONTENTS = ["value", "category-value", "series-value", "full"];
+export const OFFICE_CHART_DATA_LABEL_POSITIONS = ["below", "top"];
 
 const colorPalettes = {
   standard: { teal: "#0f766e", blue: "#2563eb", orange: "#ea580c", purple: "#7e22ce" },
@@ -47,6 +49,25 @@ function officeChartPresentation(value) {
   return { palette: value.palette, style: value.style, titleAlignment: value.titleAlignment };
 }
 
+function officeChartDataLabelPresentation(value) {
+  if (!value || Object.keys(value).sort().join(",") !== "content,position" ||
+      !OFFICE_CHART_DATA_LABEL_CONTENTS.includes(value.content) ||
+      !OFFICE_CHART_DATA_LABEL_POSITIONS.includes(value.position)) throw new Error("chart-data-label-presentation");
+  return { content: value.content, position: value.position };
+}
+
+function officeChartReferenceLines(value) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new Error("chart-reference-lines");
+  const labels = new Set();
+  return value.map((entry) => {
+    if (!entry || Object.keys(entry).sort().join(",") !== "color,label,lineStyle,value" ||
+        !literal(entry.label, 1, 60) || labels.has(entry.label) || typeof entry.value !== "number" ||
+        !Number.isFinite(entry.value) || Math.abs(entry.value) > 1000000000 || !OFFICE_CHART_COLORS.includes(entry.color) ||
+        !["solid", "dashed"].includes(entry.lineStyle)) throw new Error("chart-reference-lines");
+    labels.add(entry.label); return { label: entry.label, value: entry.value, color: entry.color, lineStyle: entry.lineStyle };
+  });
+}
+
 function officeChartSeriesPresentation(value, kind, series) {
   const count = kind === "scatter" ? series.length - 1 : series.length;
   if (!Array.isArray(value) || value.length !== count) throw new Error("chart-series-presentation");
@@ -69,7 +90,7 @@ function officeChartSeriesPresentation(value, kind, series) {
   return result;
 }
 
-function officeChartAxes(value, series, kind) {
+function officeChartAxes(value, series, kind, referenceLines = []) {
   const keys = Object.keys(value || {}).sort().join(",");
   if (!value || keys !== "categoryTitle,gridlines,majorUnit,maximum,minimum,mode,numberFormat,valueTitle" ||
       !["auto", "manual"].includes(value.mode) || typeof value.gridlines !== "boolean" ||
@@ -80,7 +101,8 @@ function officeChartAxes(value, series, kind) {
   if (value.mode === "auto") {
     if (numbers.some((entry) => entry !== null)) throw new Error("chart-axes");
   } else {
-    const intervals = (value.maximum - value.minimum) / value.majorUnit, scaleValues = chartScaleValues(kind, series);
+    const intervals = (value.maximum - value.minimum) / value.majorUnit;
+    const scaleValues = [...chartScaleValues(kind, series), ...referenceLines.map((entry) => entry.value)];
     if (numbers.some((entry) => typeof entry !== "number" || !Number.isFinite(entry) || Math.abs(entry) > 1000000000) ||
         value.minimum >= value.maximum || value.majorUnit <= 0 || value.majorUnit > value.maximum - value.minimum ||
         Math.abs(intervals - Math.round(intervals)) > 1e-9 || intervals > 12 || (kind === "stacked-bar" && value.minimum !== 0) ||
@@ -98,13 +120,17 @@ export function officeChartAttributes(value) {
   const keys = [...baseKeys, ...(value?.source == null ? [] : ["source"]),
     ...(value?.dataLabels == null ? [] : ["dataLabels"]), ...(value?.legendPosition == null ? [] : ["legendPosition"]),
     ...(value?.axes == null ? [] : ["axes"]), ...(value?.presentation == null ? [] : ["presentation"]),
-    ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"])];
+    ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"]),
+    ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
+    ...(value?.referenceLines == null ? [] : ["referenceLines"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
-    !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation"].includes(key) || value[key] != null);
+    !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
+      "referenceLines"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
       !literal(value.title, 1, 120) || !literal(value.altText, 1, 500) || typeof value.legend !== "boolean" ||
       (value.dataLabels != null && typeof value.dataLabels !== "boolean") ||
+      (value.dataLabelPresentation != null && value.dataLabels !== true) ||
       (value.legendPosition != null && !OFFICE_CHART_LEGEND_POSITIONS.includes(value.legendPosition)) ||
       !Array.isArray(value.categories) || value.categories.length < 1 || value.categories.length > 12 ||
       value.categories.some((category) => !literal(category, 1, 60)) || new Set(value.categories).size !== value.categories.length ||
@@ -130,12 +156,20 @@ export function officeChartAttributes(value) {
   if (value.dataLabels != null) result.dataLabels = value.dataLabels;
   if (value.legendPosition != null) result.legendPosition = value.legendPosition;
   if (value.presentation != null) result.presentation = officeChartPresentation(value.presentation);
+  if (value.dataLabelPresentation != null) {
+    result.dataLabelPresentation = officeChartDataLabelPresentation(value.dataLabelPresentation);
+  }
   if (value.seriesPresentation != null) {
     result.seriesPresentation = officeChartSeriesPresentation(value.seriesPresentation, value.kind, series);
   }
+  const referenceLines = value.referenceLines == null ? [] : officeChartReferenceLines(value.referenceLines);
+  if (referenceLines.length) {
+    if (circularKind(value.kind)) throw new Error("chart-reference-lines");
+    result.referenceLines = referenceLines;
+  }
   if (value.axes != null) {
     if (circularKind(value.kind)) throw new Error("chart-axes");
-    result.axes = officeChartAxes(value.axes, series, value.kind);
+    result.axes = officeChartAxes(value.axes, series, value.kind, referenceLines);
   }
   if (value.source != null) result.source = officeChartSource(value.source);
   return result;
@@ -173,7 +207,8 @@ export function officeChartAxisScale(value) {
     ticks.push(axes.maximum);
     return { ...axes, ticks };
   }
-  return { ...axes, ...automaticScale(chartScaleValues(chart.kind, chart.series)) };
+  return { ...axes, ...automaticScale([...chartScaleValues(chart.kind, chart.series),
+    ...(chart.referenceLines || []).map((entry) => entry.value)]) };
 }
 
 function formatChartNumber(value, format = "general") {
@@ -268,7 +303,9 @@ export function validateOfficeChartBindings(document) {
 export function officeChartDescription(value) {
   const chart = officeChartAttributes(value);
   const axes = chart.axes ? ` · Achsen ${chart.axes.categoryTitle || "Kategorien"} / ${chart.axes.valueTitle || "Werte"}` : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  const references = chart.referenceLines?.length ? ` · Referenzlinien ${chart.referenceLines.map((entry) =>
+    `${entry.label}: ${entry.value}`).join(", ")}` : "";
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${references}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
 }
 
 function chartTable(chart, dom) {
@@ -409,7 +446,7 @@ function scatterChart(chart, scale, dom) {
   return svg;
 }
 
-function axisFrame(scale, visual, dom) {
+function axisFrame(chart, scale, visual, dom) {
   const frame = dom.createElement("div"); frame.className = "office-chart-axis-frame";
   const valueTitle = dom.createElement("span"); valueTitle.className = "office-chart-value-axis-title";
   valueTitle.textContent = scale.valueTitle; valueTitle.hidden = !scale.valueTitle;
@@ -419,6 +456,12 @@ function axisFrame(scale, visual, dom) {
   const stage = dom.createElement("div"); stage.className = "office-chart-plot-stage";
   if (scale.gridlines) { const grid = dom.createElement("div"); grid.className = "office-chart-gridlines";
     scale.ticks.forEach(() => grid.append(dom.createElement("i"))); stage.append(grid); }
+  if (chart.referenceLines?.length) { const lines = dom.createElement("div"); lines.className = "office-chart-reference-lines";
+    chart.referenceLines.forEach((entry) => { const line = dom.createElement("span"), label = dom.createElement("b");
+      line.style.setProperty("--reference-position", String((entry.value - scale.minimum) /
+        (scale.maximum - scale.minimum) * 100)); line.style.setProperty("--reference-color", chartColor(chart, entry.color));
+      line.dataset.lineStyle = entry.lineStyle; label.textContent = `${entry.label}: ${formatChartNumber(entry.value, scale.numberFormat)}`;
+      line.append(label); lines.append(line); }); stage.append(lines); }
   stage.append(visual); frame.append(valueTitle, ticks, stage); return frame;
 }
 
@@ -457,18 +500,27 @@ export function officeChartElement(value, dom = document) {
   for (const entry of legendEntries) { const item = dom.createElement("span"), swatch = dom.createElement("i");
     swatch.style.background = chartColor(chart, entry.color); item.append(swatch, entry.name); legend.append(item); }
   const plot = dom.createElement("div"); plot.className = "office-chart-plot";
-  if (scale) plot.append(axisFrame(scale, visual, dom)); else plot.append(visual);
+  if (scale) plot.append(axisFrame(chart, scale, visual, dom)); else plot.append(visual);
   plot.append(labels);
   if (scale?.categoryTitle) { const categoryTitle = dom.createElement("div"); categoryTitle.className = "office-chart-category-axis-title";
     categoryTitle.textContent = scale.categoryTitle; plot.append(categoryTitle); }
   const body = dom.createElement("div"); body.className = "office-chart-body"; body.append(plot, legend);
+  const labelPresentation = chart.dataLabelPresentation || { content: "full", position: "below" };
   const values = dom.createElement("div"); values.className = "office-chart-value-labels"; values.hidden = !chart.dataLabels;
+  values.dataset.position = labelPresentation.position;
   chart.categories.forEach((category, index) => {
     const entries = chart.kind === "scatter" ? chart.series.slice(1) : chart.series;
     entries.forEach((entry) => { const label = dom.createElement("span");
       const xValue = chart.kind === "scatter" ? ` · ${chart.series[0].name}: ${formatChartNumber(chart.series[0].values[index], scale?.numberFormat)}` : "";
-      label.textContent = `${category}${xValue} · ${entry.name}: ${formatChartNumber(entry.values[index], scale?.numberFormat)}`;
+      const number = formatChartNumber(entry.values[index], scale?.numberFormat);
+      const content = labelPresentation.content === "value" ? number :
+        labelPresentation.content === "category-value" ? `${category}: ${number}` :
+          labelPresentation.content === "series-value" ? `${entry.name}: ${number}` :
+            `${category}${xValue} · ${entry.name}: ${number}`;
+      label.textContent = content;
       values.append(label); });
   });
-  figure.append(title, body, values, chartTable(chart, dom)); return figure;
+  if (labelPresentation.position === "top") figure.append(title, values, body, chartTable(chart, dom));
+  else figure.append(title, body, values, chartTable(chart, dom));
+  return figure;
 }

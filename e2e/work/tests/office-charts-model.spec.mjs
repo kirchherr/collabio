@@ -117,6 +117,26 @@ test("Office scatter and combo charts retain strict per-series presentation", ()
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office reference lines and data labels remain bounded and scale-aware", () => {
+  const referenceLines = [
+    { label: "Target", value: 190, color: "orange", lineStyle: "dashed" },
+    { label: "Floor", value: 100, color: "purple", lineStyle: "solid" },
+  ];
+  const labelled = officeChartAttributes({ ...attrs, dataLabels: true,
+    dataLabelPresentation: { content: "series-value", position: "top" }, referenceLines });
+  expect(labelled.referenceLines).toEqual(referenceLines);
+  expect(officeChartAxisScale(labelled).maximum).toBeGreaterThanOrEqual(190);
+  expect(officeChartDescription(labelled)).toContain("Referenzlinien Target: 190, Floor: 100");
+  for (const invalid of [
+    { ...labelled, dataLabels: false },
+    { ...labelled, referenceLines: [...referenceLines, { ...referenceLines[0] }] },
+    { ...labelled, referenceLines: [{ ...referenceLines[0], value: Infinity }] },
+    { ...labelled, kind: "pie", series: [labelled.series[0]] },
+    { ...labelled, axes: { mode: "manual", categoryTitle: "", valueTitle: "", minimum: 0, maximum: 180,
+      majorUnit: 20, gridlines: true, numberFormat: "general" } },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };

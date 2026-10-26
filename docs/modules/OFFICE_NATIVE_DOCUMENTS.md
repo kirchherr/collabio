@@ -1,9 +1,21 @@
 # Native Office Documents
 
-Status: Roadmap 252–855 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 855 / PLANS 716 scatter, combo and series presentation
-Module: `office_documents` / version 0.9.15
-Decisions: ADR-0079 through ADR-0204; current movement: `ARCHITECTURE_DECISIONS/ADR-0204-native-office-scatter-combo-and-series-presentation.md`
+Status: Roadmap 252–863 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 863 / PLANS 724 chart analytics
+Module: `office_documents` / version 0.9.16
+Decisions: ADR-0079 through ADR-0205; current movement: `ARCHITECTURE_DECISIONS/ADR-0205-native-office-chart-reference-lines-and-data-labels.md`
+
+## Reference lines and richer data labels (Roadmap 856–863)
+
+Non-circular charts support up to four named horizontal reference lines with finite values, fixed palette colors and
+solid or dashed styles. Automatic scales include all references; manual scales must contain them. Labels use a closed
+content and above/below position vocabulary without changing canonical values or accessible hidden tables.
+
+Focused schema/API tests pass 88/88, all eight model cases pass and the desktop/mobile workflow passes 2/2 in 19.4
+seconds. Screenshot hashes are `sha256:e229f52847e7908cd4a05f96fb084904464ed35f6d83f07692f441501bcee4ef`
+and `sha256:1664d02362fff1420989b6caa94485744434c7a8b757dc6956904b63a742df4f`. Review is available at
+`http://192.168.0.108:42880/office?review=chart-analytics-adr0205` with asset keys `office.css?v=17` and `editor.js?v=17`.
+Complete quality passes Ruff, 966-file formatting, Mypy over 639 sources and Pytest at 100 percent.
 
 ## Scatter, combo and series presentation (Roadmap 848–855)
 

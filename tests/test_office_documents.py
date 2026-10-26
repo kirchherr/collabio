@@ -765,6 +765,16 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         ],
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": combo}]})
+    labelled = {
+        **attrs,
+        "dataLabels": True,
+        "dataLabelPresentation": {"content": "series-value", "position": "top"},
+        "referenceLines": [
+            {"label": "Target", "value": 190, "color": "orange", "lineStyle": "dashed"},
+            {"label": "Floor", "value": 100, "color": "purple", "lineStyle": "solid"},
+        ],
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": labelled}]})
     invalid = [
         {**attrs, "id": "chart-short"},
         {**attrs, "kind": "script"},
@@ -797,6 +807,12 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
                 {"renderAs": "bar", "marker": "none", "lineStyle": "none"},
             ],
         },
+        {**labelled, "dataLabels": False},
+        {**labelled, "dataLabelPresentation": {"content": "html", "position": "top"}},
+        {**labelled, "referenceLines": labelled["referenceLines"] * 3},
+        {**labelled, "referenceLines": [{**labelled["referenceLines"][0], "value": float("inf")}]},
+        {**pie, "referenceLines": labelled["referenceLines"]},
+        {**labelled, "axes": {**axes, "maximum": 180, "majorUnit": 20}},
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:
