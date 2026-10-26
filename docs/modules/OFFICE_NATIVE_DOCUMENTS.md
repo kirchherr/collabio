@@ -1,9 +1,26 @@
 # Native Office Documents
 
-Status: Roadmap 252–863 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 863 / PLANS 724 chart analytics
-Module: `office_documents` / version 0.9.16
-Decisions: ADR-0079 through ADR-0205; current movement: `ARCHITECTURE_DECISIONS/ADR-0205-native-office-chart-reference-lines-and-data-labels.md`
+Status: Roadmap 252–871 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 871 / PLANS 732 chart analysis overlays
+Module: `office_documents` / version 0.9.17
+Decisions: ADR-0079 through ADR-0206; current movement: `ARCHITECTURE_DECISIONS/ADR-0206-native-office-trendlines-and-error-bars.md`
+
+## Trendlines and fixed error bars (Roadmap 864–871)
+
+Line and area series, scatter Y series and line-rendered combo series may carry one deterministic least-squares
+trendline and one fixed symmetric absolute error-bar definition. Trendlines use ordinal positions except for saved
+scatter X values. Automatic scales include derived endpoints and all error bounds; manual scales must contain them.
+
+The accessible dialog follows kind, series and combo-renderer changes. Browser and server independently reject
+surplus fields, invalid targets, non-finite derivations, nonpositive amounts and out-of-scale overlays. Canonical data,
+hidden tables, linked snapshots and immutable version semantics remain unchanged.
+
+Focused schema/API tests pass 88/88, all nine model cases pass and the desktop/mobile workflow passes 2/2 within an
+11-case focused run. Visual review passed; screenshot hashes are
+`sha256:b3371c23ffe84e31a4504e0431d8a1e5083faf0893a03ab94a759a01266bb4e8` and
+`sha256:e882e68b6706da440a348484d088d4fd4cc64e0e594ec772406872f9dbd485f8`. Review is available at
+`http://192.168.0.108:42880/office?review=trend-error-adr0206` with asset keys `office.css?v=18` and `editor.js?v=18`.
+Complete quality passes Ruff, 967-file formatting, Mypy over 639 sources and Pytest at 100 percent.
 
 ## Reference lines and richer data labels (Roadmap 856–863)
 

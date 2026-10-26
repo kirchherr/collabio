@@ -2,27 +2,30 @@
 
 Updated: 2026-10-26
 
-Roadmap 856 through 863 / PLANS 717 through 724 are complete under ADR-0205. Non-circular native charts now support up
-to four named horizontal reference lines with finite values, fixed palette colors and solid or dashed styles.
-Automatic scales include references; manual scales must contain them. Visible data labels now use a strict content and
-above/below position contract while canonical values and accessible hidden tables remain unchanged.
+Roadmap 864 through 871 / PLANS 725 through 732 are complete under ADR-0206. Line and area series, scatter Y series and
+line-rendered combo series now support one deterministic least-squares trendline and one fixed symmetric absolute
+error-bar definition. Automatic scales include derived trend endpoints and every error bound; manual scales must
+contain the complete analytical extent. Constant-X scatter input uses a deterministic zero-slope fallback.
 
-Focused schema/API tests pass 88/88, all eight chart-model cases pass and the desktop/mobile saved-version workflow
-passes 2/2 in 19.4 seconds. Visual review passed; screenshot hashes are
-`sha256:e229f52847e7908cd4a05f96fb084904464ed35f6d83f07692f441501bcee4ef` and
-`sha256:1664d02362fff1420989b6caa94485744434c7a8b757dc6956904b63a742df4f`.
+The accessible dialog follows chart kind, target series and combo-renderer changes. Browser and server independently
+reject surplus fields, invalid or bar/X targets, nonpositive amounts, non-finite derived values and out-of-range manual
+scales. Canonical values, linked-table snapshots, hidden authoritative tables and immutable save semantics remain
+unchanged. No external calculation engine, dependency, migration, network source, action or new durable state exists.
 
-Review is `http://192.168.0.108:42880/office?review=chart-analytics-adr0205` with `office.css?v=17` and `editor.js?v=17`.
-Work-E2E and review API images are `sha256:9b80ba648df21e29c9f192b2fc54de380fe6f08c9ce5917ccbb60abaf7c59b39`
-and `sha256:0b30a53e04adbdb0e82def7321f5f599dbefaeacc9d46376c5df8ce369bf9c51`.
+Focused schema/API tests pass 88/88. All nine chart-model cases pass, and the desktop/mobile saved-version workflow
+passes 2/2 as part of an 11-case focused browser run in 18.3 seconds. Visual review passed; screenshot hashes are
+`sha256:b3371c23ffe84e31a4504e0431d8a1e5083faf0893a03ab94a759a01266bb4e8` and
+`sha256:e882e68b6706da440a348484d088d4fd4cc64e0e594ec772406872f9dbd485f8`; report hash is
+`sha256:310f34cc666ec1676c8a85ebc08f135d5b426e891fc638d12db0ce3fb6fc1f40`.
 
-Complete quality passes Ruff, finds 966 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
-Pytest with only the known Starlette/AnyIO warning. The quality image remains
-`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`. Exact test resources are removed; regular
-and review APIs return `ok`, and no transient runner remains.
+Review is `http://192.168.0.108:42880/office?review=trend-error-adr0206` with `office.css?v=18` and `editor.js?v=18`.
+Work-E2E and review API images are `sha256:15db17605c0b1e02607d75791dcf77d38206878f8c0d66b4c5342c757c164fac`
+and `sha256:6c37686a9c331c1605eef8f93346ed694d1062c2bd79944e6a8214b564c0f89f`.
 
-ADR-0204 is published through commit `17057ff8`; ADR-0205 publication awaits fresh content-specific approval. The next
-Office loop is deterministic trendlines and error bars. CRM onboarding remains deferred by the Office-first priority.
+Complete quality passes Ruff, finds 967 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. ADR-0205 is published through commit `276c5ca0`; ADR-0206
+publication requires a new content-specific approval. The next Office loop should separately decide secondary or
+logarithmic axes or richer chart accessibility. CRM onboarding remains deferred by the Office-first priority.
 
 Roadmap 848 through 855 / PLANS 709 through 716 are complete under ADR-0204. Native Office now supports scatter charts
 whose first series supplies numeric X coordinates and whose following series supply Y values, plus combo charts with

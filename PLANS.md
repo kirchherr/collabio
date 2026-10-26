@@ -2201,14 +2201,38 @@ overlays, disabled-label presentation and out-of-scale manual references on the 
 724. [x] Close the block with 88 focused tests, eight chart-model cases, desktop/mobile browser and visual proof and the
 complete quality gate. Add no migration, external engine, network source, automatic action or durable state.
 
+725. [x] Add one strict optional analytical overlay under ADR-0206 with at most one deterministic linear trendline and
+one fixed symmetric absolute error-bar definition. Require at least one selected analysis.
+
+726. [x] Limit overlays to line and area series, scatter Y series and line-rendered combo series. Reject circular,
+bar-rendered, X-coordinate and out-of-range series targets.
+
+727. [x] Compute least-squares slope and intercept from canonical finite values with an explicit constant-X fallback.
+Use ordinal X positions outside scatter charts and the saved scatter X series inside scatter charts.
+
+728. [x] Include trend endpoints and every error-bar bound in deterministic automatic scaling. Require manual scales
+to contain the complete analytical extent and reject non-finite or out-of-bound derived values.
+
+729. [x] Add accessible dynamic controls for target series, fixed palette color, trendline style and positive absolute
+error amount. Keep unavailable controls disabled and synchronized with kind and combo-renderer changes.
+
+730. [x] Render responsive SVG trendlines and capped error bars without changing canonical data, hidden authoritative
+tables, linked snapshots or accessible chart semantics. Name selected analyses in the chart description.
+
+731. [x] Independently validate the exact analytical schema, eligibility, derived bounds and manual-scale containment
+on the server before immutable save. Reject surplus fields, booleans, invalid styles and impossible combinations.
+
+732. [x] Close the block with 88 focused tests, nine chart-model cases, desktop/mobile saved-version and visual proof
+and the complete repository quality gate. Add no migration, dependency, external calculation or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 863 / PLANS 724. Bounded reference lines and richer data labels now build
-  on scatter, combination and linked-table charts. Continue Office with deterministic trendlines and error bars as the
-  next coherent loop before deferred CRM
+- Native Office is complete through Roadmap 871 / PLANS 732. Deterministic trendlines and fixed error bars now build
+  on scatter, combination and linked-table charts. Continue Office with a separately decided secondary/logarithmic-axis
+  or chart-accessibility loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,

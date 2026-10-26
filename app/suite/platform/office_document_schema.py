@@ -948,8 +948,106 @@ def _valid_chart_series_presentation(value: Any, kind: str, series: list[dict[st
     return False
 
 
+def _chart_analysis_series(
+    kind: str, series: list[dict[str, Any]], series_presentation: Any, series_index: Any
+) -> tuple[list[int | float], list[int | float]] | None:
+    if (
+        type(series_index) is not int
+        or not 0 <= series_index < len(series)
+        or kind not in {"line", "area", "scatter", "combo"}
+        or (kind == "scatter" and series_index == 0)
+        or (
+            kind == "combo"
+            and (
+                not isinstance(series_presentation, list)
+                or series_index >= len(series_presentation)
+                or series_presentation[series_index].get("renderAs") != "line"
+            )
+        )
+    ):
+        return None
+    x_values = series[0]["values"] if kind == "scatter" else list(range(len(series[series_index]["values"])))
+    return x_values, series[series_index]["values"]
+
+
+def _chart_linear_regression(x_values: list[int | float], y_values: list[int | float]) -> tuple[float, float]:
+    count = len(x_values)
+    x_mean, y_mean = sum(x_values) / count, sum(y_values) / count
+    denominator = sum((value - x_mean) ** 2 for value in x_values)
+    slope = (
+        0.0
+        if denominator == 0
+        else sum((value - x_mean) * (y_values[index] - y_mean) for index, value in enumerate(x_values)) / denominator
+    )
+    return slope, y_mean - slope * x_mean
+
+
+def _chart_analysis_values(
+    kind: str, series: list[dict[str, Any]], series_presentation: Any, analysis: Any
+) -> list[float] | None:
+    if not isinstance(analysis, dict):
+        return []
+    values: list[float] = []
+    trendline = analysis.get("trendline")
+    if isinstance(trendline, dict):
+        selected = _chart_analysis_series(kind, series, series_presentation, trendline.get("seriesIndex"))
+        if selected is None:
+            return None
+        x_values, y_values = selected
+        slope, intercept = _chart_linear_regression(x_values, y_values)
+        values.extend([intercept + slope * min(x_values), intercept + slope * max(x_values)])
+    error_bars = analysis.get("errorBars")
+    if isinstance(error_bars, dict):
+        selected = _chart_analysis_series(kind, series, series_presentation, error_bars.get("seriesIndex"))
+        if selected is None:
+            return None
+        amount = error_bars.get("amount")
+        if not isinstance(amount, (int, float)) or isinstance(amount, bool):
+            return None
+        amount_value = float(amount)
+        values.extend(number + delta for number in selected[1] for delta in (-amount_value, amount_value))
+    if any(not math.isfinite(value) or abs(value) > 1_000_000_000 for value in values):
+        return None
+    return values
+
+
+def _valid_chart_analysis(value: Any, kind: str, series: list[dict[str, Any]], series_presentation: Any) -> bool:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"trendline", "errorBars"}
+        or (value.get("trendline") is None and value.get("errorBars") is None)
+    ):
+        return False
+    trendline = value.get("trendline")
+    if trendline is not None and (
+        not isinstance(trendline, dict)
+        or set(trendline) != {"seriesIndex", "color", "lineStyle"}
+        or trendline.get("color") not in _CHART_COLORS
+        or trendline.get("lineStyle") not in {"solid", "dashed"}
+        or _chart_analysis_series(kind, series, series_presentation, trendline.get("seriesIndex")) is None
+    ):
+        return False
+    error_bars = value.get("errorBars")
+    if error_bars is not None and (
+        not isinstance(error_bars, dict)
+        or set(error_bars) != {"seriesIndex", "amount", "color"}
+        or error_bars.get("color") not in _CHART_COLORS
+        or type(error_bars.get("amount")) not in {int, float}
+        or not math.isfinite(error_bars["amount"])
+        or not 0 < error_bars["amount"] <= 1_000_000_000
+        or _chart_analysis_series(kind, series, series_presentation, error_bars.get("seriesIndex")) is None
+    ):
+        return False
+    return _chart_analysis_values(kind, series, series_presentation, value) is not None
+
+
 def _valid_chart_axes(
-    value: Any, series: list[dict[str, Any]], kind: str, reference_lines: list[dict[str, Any]] | None = None
+    value: Any,
+    series: list[dict[str, Any]],
+    kind: str,
+    reference_lines: list[dict[str, Any]] | None = None,
+    analysis: Any = None,
+    series_presentation: Any = None,
 ) -> bool:
     if not isinstance(value, dict) or set(value) != {
         "mode",
@@ -991,7 +1089,12 @@ def _valid_chart_axes(
     ):
         return False
     intervals = (maximum_value - minimum_value) / major_unit_value
-    scale_values = _chart_scale_values(kind, series) + [entry["value"] for entry in reference_lines or []]
+    analysis_values = _chart_analysis_values(kind, series, series_presentation, analysis)
+    if analysis_values is None:
+        return False
+    scale_values = (
+        _chart_scale_values(kind, series) + [entry["value"] for entry in reference_lines or []] + analysis_values
+    )
     return (
         math.isclose(intervals, round(intervals), rel_tol=0, abs_tol=1e-9)
         and intervals <= 12
@@ -1453,6 +1556,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("dataLabelPresentation")
             if "referenceLines" in attrs:
                 expected_chart_attrs.add("referenceLines")
+            if "analysis" in attrs:
+                expected_chart_attrs.add("analysis")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1519,9 +1624,20 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 attrs["seriesPresentation"], attrs["kind"], series
             ):
                 reject()
+            if "analysis" in attrs and not _valid_chart_analysis(
+                attrs["analysis"], attrs["kind"], series, attrs.get("seriesPresentation")
+            ):
+                reject()
             if "axes" in attrs and (
                 attrs.get("kind") in _CHART_CIRCULAR_KINDS
-                or not _valid_chart_axes(attrs["axes"], series, attrs["kind"], attrs.get("referenceLines"))
+                or not _valid_chart_axes(
+                    attrs["axes"],
+                    series,
+                    attrs["kind"],
+                    attrs.get("referenceLines"),
+                    attrs.get("analysis"),
+                    attrs.get("seriesPresentation"),
+                )
             ):
                 reject()
             chart_ids.add(identifier)

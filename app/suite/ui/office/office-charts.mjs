@@ -90,7 +90,71 @@ function officeChartSeriesPresentation(value, kind, series) {
   return result;
 }
 
-function officeChartAxes(value, series, kind, referenceLines = []) {
+function chartAnalysisSeries(kind, series, seriesPresentation, seriesIndex) {
+  if (!Number.isInteger(seriesIndex) || seriesIndex < 0 || seriesIndex >= series.length ||
+      !["line", "area", "scatter", "combo"].includes(kind) ||
+      (kind === "scatter" && seriesIndex === 0) ||
+      (kind === "combo" && seriesPresentation?.[seriesIndex]?.renderAs !== "line")) {
+    throw new Error("chart-analysis");
+  }
+  return { x: kind === "scatter" ? series[0].values : series[seriesIndex].values.map((_value, index) => index),
+    y: series[seriesIndex].values };
+}
+
+function linearRegression(xValues, yValues) {
+  const count = xValues.length, xMean = xValues.reduce((sum, value) => sum + value, 0) / count;
+  const yMean = yValues.reduce((sum, value) => sum + value, 0) / count;
+  const denominator = xValues.reduce((sum, value) => sum + (value - xMean) ** 2, 0);
+  const slope = denominator === 0 ? 0 : xValues.reduce((sum, value, index) =>
+    sum + (value - xMean) * (yValues[index] - yMean), 0) / denominator;
+  return { slope, intercept: yMean - slope * xMean };
+}
+
+function chartAnalysisValues(kind, series, seriesPresentation, analysis) {
+  if (!analysis) return [];
+  const values = [];
+  if (analysis.trendline) {
+    const { x, y } = chartAnalysisSeries(kind, series, seriesPresentation, analysis.trendline.seriesIndex);
+    const regression = linearRegression(x, y), minimum = Math.min(...x), maximum = Math.max(...x);
+    values.push(regression.intercept + regression.slope * minimum, regression.intercept + regression.slope * maximum);
+  }
+  if (analysis.errorBars) {
+    const { y } = chartAnalysisSeries(kind, series, seriesPresentation, analysis.errorBars.seriesIndex);
+    y.forEach((value) => values.push(value - analysis.errorBars.amount, value + analysis.errorBars.amount));
+  }
+  if (values.some((value) => !Number.isFinite(value) || Math.abs(value) > 1000000000)) throw new Error("chart-analysis");
+  return values;
+}
+
+function officeChartAnalysis(value, kind, series, seriesPresentation) {
+  if (!value || Object.keys(value).sort().join(",") !== "errorBars,trendline" ||
+      (value.trendline == null && value.errorBars == null)) throw new Error("chart-analysis");
+  let trendline = null, errorBars = null;
+  if (value.trendline != null) {
+    const entry = value.trendline;
+    if (!entry || Object.keys(entry).sort().join(",") !== "color,lineStyle,seriesIndex" ||
+        !OFFICE_CHART_COLORS.includes(entry.color) || !["solid", "dashed"].includes(entry.lineStyle)) {
+      throw new Error("chart-analysis");
+    }
+    chartAnalysisSeries(kind, series, seriesPresentation, entry.seriesIndex);
+    trendline = { seriesIndex: entry.seriesIndex, color: entry.color, lineStyle: entry.lineStyle };
+  }
+  if (value.errorBars != null) {
+    const entry = value.errorBars;
+    if (!entry || Object.keys(entry).sort().join(",") !== "amount,color,seriesIndex" ||
+        !OFFICE_CHART_COLORS.includes(entry.color) || typeof entry.amount !== "number" ||
+        !Number.isFinite(entry.amount) || entry.amount <= 0 || entry.amount > 1000000000) {
+      throw new Error("chart-analysis");
+    }
+    chartAnalysisSeries(kind, series, seriesPresentation, entry.seriesIndex);
+    errorBars = { seriesIndex: entry.seriesIndex, amount: entry.amount, color: entry.color };
+  }
+  const result = { trendline, errorBars };
+  chartAnalysisValues(kind, series, seriesPresentation, result);
+  return result;
+}
+
+function officeChartAxes(value, series, kind, referenceLines = [], analysisValues = []) {
   const keys = Object.keys(value || {}).sort().join(",");
   if (!value || keys !== "categoryTitle,gridlines,majorUnit,maximum,minimum,mode,numberFormat,valueTitle" ||
       !["auto", "manual"].includes(value.mode) || typeof value.gridlines !== "boolean" ||
@@ -102,7 +166,7 @@ function officeChartAxes(value, series, kind, referenceLines = []) {
     if (numbers.some((entry) => entry !== null)) throw new Error("chart-axes");
   } else {
     const intervals = (value.maximum - value.minimum) / value.majorUnit;
-    const scaleValues = [...chartScaleValues(kind, series), ...referenceLines.map((entry) => entry.value)];
+    const scaleValues = [...chartScaleValues(kind, series), ...referenceLines.map((entry) => entry.value), ...analysisValues];
     if (numbers.some((entry) => typeof entry !== "number" || !Number.isFinite(entry) || Math.abs(entry) > 1000000000) ||
         value.minimum >= value.maximum || value.majorUnit <= 0 || value.majorUnit > value.maximum - value.minimum ||
         Math.abs(intervals - Math.round(intervals)) > 1e-9 || intervals > 12 || (kind === "stacked-bar" && value.minimum !== 0) ||
@@ -122,10 +186,10 @@ export function officeChartAttributes(value) {
     ...(value?.axes == null ? [] : ["axes"]), ...(value?.presentation == null ? [] : ["presentation"]),
     ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"]),
     ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
-    ...(value?.referenceLines == null ? [] : ["referenceLines"])];
+    ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
     !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
-      "referenceLines"].includes(key) || value[key] != null);
+      "referenceLines", "analysis"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
       !literal(value.title, 1, 120) || !literal(value.altText, 1, 500) || typeof value.legend !== "boolean" ||
@@ -167,9 +231,13 @@ export function officeChartAttributes(value) {
     if (circularKind(value.kind)) throw new Error("chart-reference-lines");
     result.referenceLines = referenceLines;
   }
+  const analysis = value.analysis == null ? null : officeChartAnalysis(value.analysis, value.kind, series,
+    result.seriesPresentation);
+  const analysisValues = chartAnalysisValues(value.kind, series, result.seriesPresentation, analysis);
+  if (analysis) result.analysis = analysis;
   if (value.axes != null) {
     if (circularKind(value.kind)) throw new Error("chart-axes");
-    result.axes = officeChartAxes(value.axes, series, value.kind, referenceLines);
+    result.axes = officeChartAxes(value.axes, series, value.kind, referenceLines, analysisValues);
   }
   if (value.source != null) result.source = officeChartSource(value.source);
   return result;
@@ -208,7 +276,8 @@ export function officeChartAxisScale(value) {
     return { ...axes, ticks };
   }
   return { ...axes, ...automaticScale([...chartScaleValues(chart.kind, chart.series),
-    ...(chart.referenceLines || []).map((entry) => entry.value)]) };
+    ...(chart.referenceLines || []).map((entry) => entry.value),
+    ...chartAnalysisValues(chart.kind, chart.series, chart.seriesPresentation, chart.analysis)]) };
 }
 
 function formatChartNumber(value, format = "general") {
@@ -305,7 +374,9 @@ export function officeChartDescription(value) {
   const axes = chart.axes ? ` · Achsen ${chart.axes.categoryTitle || "Kategorien"} / ${chart.axes.valueTitle || "Werte"}` : "";
   const references = chart.referenceLines?.length ? ` · Referenzlinien ${chart.referenceLines.map((entry) =>
     `${entry.label}: ${entry.value}`).join(", ")}` : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${references}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  const analysis = chart.analysis ? `${chart.analysis.trendline ? ` · Trendlinie ${chart.series[chart.analysis.trendline.seriesIndex].name}` : ""}${chart.analysis.errorBars ?
+    ` · Fehlerbalken ${chart.series[chart.analysis.errorBars.seriesIndex].name}: ±${chart.analysis.errorBars.amount}` : ""}` : "";
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${references}${analysis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
 }
 
 function chartTable(chart, dom) {
@@ -382,6 +453,36 @@ function addChartLine(svg, points, style, color, dom, namespace) {
   svg.append(line);
 }
 
+function addChartAnalysis(svg, chart, scale, xPosition, dom, namespace) {
+  if (!chart.analysis) return;
+  const yPosition = (value) => 280 - (value - scale.minimum) / (scale.maximum - scale.minimum) * 240;
+  if (chart.analysis.trendline) {
+    const analysis = chart.analysis.trendline;
+    const { x, y } = chartAnalysisSeries(chart.kind, chart.series, chart.seriesPresentation, analysis.seriesIndex);
+    const regression = linearRegression(x, y), minimum = Math.min(...x), maximum = Math.max(...x);
+    const line = dom.createElementNS(namespace, "polyline");
+    line.classList.add("office-chart-trendline");
+    line.setAttribute("points", `${xPosition(minimum)},${yPosition(regression.intercept + regression.slope * minimum)} ` +
+      `${xPosition(maximum)},${yPosition(regression.intercept + regression.slope * maximum)}`);
+    line.setAttribute("fill", "none"); line.setAttribute("stroke", chartColor(chart, analysis.color));
+    line.setAttribute("stroke-width", "4");
+    if (analysis.lineStyle === "dashed") line.setAttribute("stroke-dasharray", "14 10");
+    svg.append(line);
+  }
+  if (chart.analysis.errorBars) {
+    const analysis = chart.analysis.errorBars;
+    const { x, y } = chartAnalysisSeries(chart.kind, chart.series, chart.seriesPresentation, analysis.seriesIndex);
+    y.forEach((value, index) => {
+      const center = xPosition(x[index]), top = yPosition(value + analysis.amount), bottom = yPosition(value - analysis.amount);
+      const bar = dom.createElementNS(namespace, "path"); bar.classList.add("office-chart-error-bar");
+      bar.setAttribute("d", `M ${center} ${top} V ${bottom} M ${center - 7} ${top} H ${center + 7} ` +
+        `M ${center - 7} ${bottom} H ${center + 7}`);
+      bar.setAttribute("fill", "none"); bar.setAttribute("stroke", chartColor(chart, analysis.color));
+      bar.setAttribute("stroke-width", "3"); svg.append(bar);
+    });
+  }
+}
+
 function lineChart(chart, scale, dom) {
   const namespace = "http://www.w3.org/2000/svg", svg = dom.createElementNS(namespace, "svg");
   svg.classList.add("office-chart-lines"); svg.setAttribute("viewBox", "0 0 800 320"); svg.setAttribute("aria-hidden", "true");
@@ -396,6 +497,7 @@ function lineChart(chart, scale, dom) {
     entry.values.forEach((number, index) => addChartMarker(svg, 40 + index / denominator * 720,
       280 - (number - scale.minimum) / span * 240, style, color, dom, namespace));
   });
+  addChartAnalysis(svg, chart, scale, (value) => 40 + value / denominator * 720, dom, namespace);
   return svg;
 }
 
@@ -425,6 +527,7 @@ function comboChart(chart, scale, dom) {
         280 - (number - scale.minimum) / span * 240, style, color, dom, namespace));
     }
   });
+  addChartAnalysis(svg, chart, scale, (value) => 40 + value / denominator * 720, dom, namespace);
   return svg;
 }
 
@@ -443,6 +546,7 @@ function scatterChart(chart, scale, dom) {
     addChartLine(svg, coordinates.map((point) => `${point.x},${point.y}`).join(" "), style, color, dom, namespace);
     coordinates.forEach((point) => addChartMarker(svg, point.x, point.y, style, color, dom, namespace));
   });
+  addChartAnalysis(svg, chart, scale, (value) => 40 + (value - xScale.minimum) / xSpan * 720, dom, namespace);
   return svg;
 }
 

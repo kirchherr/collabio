@@ -775,6 +775,25 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         ],
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": labelled}]})
+    analysis = {
+        "trendline": {"seriesIndex": 1, "color": "orange", "lineStyle": "dashed"},
+        "errorBars": {"seriesIndex": 1, "amount": 15, "color": "purple"},
+    }
+    analytical = {**attrs, "kind": "line", "analysis": analysis}
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": analytical}]})
+    analytical_manual = {
+        **analytical,
+        "axes": {
+            **axes,
+            "categoryTitle": "",
+            "valueTitle": "",
+            "minimum": 80,
+            "maximum": 200,
+            "majorUnit": 20,
+            "numberFormat": "general",
+        },
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": analytical_manual}]})
     invalid = [
         {**attrs, "id": "chart-short"},
         {**attrs, "kind": "script"},
@@ -813,6 +832,25 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**labelled, "referenceLines": [{**labelled["referenceLines"][0], "value": float("inf")}]},
         {**pie, "referenceLines": labelled["referenceLines"]},
         {**labelled, "axes": {**axes, "maximum": 180, "majorUnit": 20}},
+        {**analytical, "analysis": {"trendline": None, "errorBars": None}},
+        {**analytical, "analysis": {**analysis, "errorBars": {**analysis["errorBars"], "amount": 0}}},
+        {**analytical, "analysis": {**analysis, "trendline": {**analysis["trendline"], "seriesIndex": 9}}},
+        {**analytical, "axes": {**analytical_manual["axes"], "minimum": 100}},
+        {
+            **combo,
+            "analysis": {
+                "trendline": {**analysis["trendline"], "seriesIndex": 0},
+                "errorBars": None,
+            },
+        },
+        {
+            **scatter,
+            "analysis": {
+                "trendline": {**analysis["trendline"], "seriesIndex": 0},
+                "errorBars": None,
+            },
+        },
+        {**pie, "analysis": analysis},
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:

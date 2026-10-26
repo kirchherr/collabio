@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=17" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=18" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -193,6 +193,13 @@
           <fieldset class="chart-axis-fields"><legend>Darstellung</legend><div class="chart-fields"><label>Farbschema<select id="chart-palette"><option value="standard">Standard</option><option value="accessible">Gut unterscheidbar</option><option value="warm">Warm</option><option value="monochrome">Einfarbig</option></select></label><label>Stil<select id="chart-style"><option value="clean">Klar</option><option value="soft">Weich</option><option value="focus">Hervorgehoben</option></select></label><label>Titelausrichtung<select id="chart-title-alignment"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div><p class="paragraph-help">Farbschema, Stil und Titelausrichtung ändern nur die Darstellung; die kanonischen Werte bleiben unverändert.</p></fieldset>
           <fieldset id="chart-series-presentation-fields" class="chart-axis-fields" hidden><legend>Datenreihen</legend><div id="chart-series-presentation"></div><p class="paragraph-help">Kombinationsdiagramme mischen Säulen und Linien. Streudiagramme verwenden die erste Zahlenreihe als X-Koordinate; Marker und Linien gelten für die folgenden Y-Reihen.</p></fieldset>
           <fieldset id="chart-reference-fields" class="chart-axis-fields"><legend>Analytische Referenzlinien</legend><div id="chart-reference-lines"></div><button class="button secondary" id="chart-reference-add" type="button">Referenzlinie hinzufügen</button><p class="paragraph-help">Bis zu vier benannte horizontale Linien. Feste Skalen müssen alle Referenzwerte einschließen.</p></fieldset>
+          <fieldset id="chart-analysis-fields" class="chart-axis-fields" hidden><legend>Trend und Unsicherheit</legend>
+            <label class="check-row"><input id="chart-trendline-enabled" type="checkbox" /> Lineare Trendlinie anzeigen</label>
+            <div class="chart-analysis-row"><label>Datenreihe<select id="chart-trendline-series"></select></label><label>Farbe<select id="chart-trendline-color"><option value="teal">Türkis</option><option value="blue">Blau</option><option value="orange" selected>Orange</option><option value="purple">Violett</option></select></label><label>Linie<select id="chart-trendline-style"><option value="solid">Durchgezogen</option><option value="dashed" selected>Gestrichelt</option></select></label></div>
+            <label class="check-row"><input id="chart-error-bars-enabled" type="checkbox" /> Feste symmetrische Fehlerbalken anzeigen</label>
+            <div class="chart-analysis-row"><label>Datenreihe<select id="chart-error-bars-series"></select></label><label>Absoluter Betrag<input id="chart-error-bars-amount" type="number" min="0.0000000001" max="1000000000" step="any" value="10" /></label><label>Farbe<select id="chart-error-bars-color"><option value="teal">Türkis</option><option value="blue">Blau</option><option value="orange">Orange</option><option value="purple" selected>Violett</option></select></label></div>
+            <p class="paragraph-help">Die Trendlinie wird deterministisch per linearer Regression berechnet. Fehlerbalken verwenden einen festen absoluten Betrag; automatische und manuelle Skalen schließen beide Analysen vollständig ein.</p>
+          </fieldset>
           <fieldset id="chart-axis-fields" class="chart-axis-fields"><legend>Achsen und Skala</legend>
             <div class="chart-fields"><label>Kategorieachse<input id="chart-category-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Quartal" /></label><label>Wertachse<input id="chart-value-axis-title" maxlength="60" autocomplete="off" placeholder="z. B. Umsatz" /></label><label>Zahlenformat<select id="chart-number-format"><option value="general">Allgemein</option><option value="integer">Ganzzahl</option><option value="decimal">Zwei Dezimalstellen</option><option value="percent">Prozent</option><option value="currency-eur">Euro</option></select></label><label>Skalierung<select id="chart-axis-mode"><option value="auto">Automatisch</option><option value="manual">Manuell</option></select></label></div>
             <div class="chart-fields" id="chart-manual-axis-fields" hidden><label>Minimum<input id="chart-axis-minimum" type="number" min="-1000000000" max="1000000000" step="any" value="0" /></label><label>Maximum<input id="chart-axis-maximum" type="number" min="-1000000000" max="1000000000" step="any" value="200" /></label><label>Hauptintervall<input id="chart-axis-major-unit" type="number" min="0.0000000001" max="1000000000" step="any" value="50" /></label></div>
@@ -534,6 +541,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=17"></script>
+    <script type="module" src="/office/editor.js?v=18"></script>
   </body>
 </html>

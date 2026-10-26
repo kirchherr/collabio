@@ -137,6 +137,33 @@ test("Office reference lines and data labels remain bounded and scale-aware", ()
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office trendlines and fixed error bars are deterministic, bounded, and scale-aware", () => {
+  const analysis = { trendline: { seriesIndex: 1, color: "orange", lineStyle: "dashed" },
+    errorBars: { seriesIndex: 1, amount: 15, color: "purple" } };
+  const chart = officeChartAttributes({ ...attrs, kind: "line", analysis });
+  expect(chart.analysis).toEqual(analysis);
+  expect(officeChartAxisScale(chart)).toMatchObject({ minimum: 0, maximum: 200 });
+  expect(officeChartDescription(chart)).toContain("Trendlinie Actual · Fehlerbalken Actual: ±15");
+  expect(officeChartAttributes({ ...chart, axes: { mode: "manual", categoryTitle: "", valueTitle: "",
+    minimum: 80, maximum: 200, majorUnit: 20, gridlines: true, numberFormat: "general" } }).analysis).toEqual(analysis);
+  const combo = { ...attrs, kind: "combo", seriesPresentation: [
+    { renderAs: "bar", marker: "none", lineStyle: "none" },
+    { renderAs: "line", marker: "circle", lineStyle: "solid" },
+  ] };
+  const scatter = { ...attrs, kind: "scatter",
+    seriesPresentation: [{ renderAs: "points", marker: "circle", lineStyle: "none" }] };
+  for (const invalid of [
+    { ...chart, analysis: { trendline: null, errorBars: null } },
+    { ...chart, analysis: { ...analysis, errorBars: { ...analysis.errorBars, amount: 0 } } },
+    { ...chart, analysis: { ...analysis, trendline: { ...analysis.trendline, seriesIndex: 7 } } },
+    { ...chart, axes: { mode: "manual", categoryTitle: "", valueTitle: "", minimum: 100, maximum: 200,
+      majorUnit: 20, gridlines: true, numberFormat: "general" } },
+    { ...combo, analysis: { trendline: { ...analysis.trendline, seriesIndex: 0 }, errorBars: null } },
+    { ...scatter, analysis: { trendline: { ...analysis.trendline, seriesIndex: 0 }, errorBars: null } },
+    { ...attrs, kind: "pie", series: [attrs.series[0]], analysis },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };
