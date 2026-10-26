@@ -750,6 +750,21 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": pie}]})
     doughnut = {**pie, "kind": "doughnut", "presentation": presentation}
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": doughnut}]})
+    scatter = {
+        **attrs,
+        "kind": "scatter",
+        "seriesPresentation": [{"renderAs": "points", "marker": "diamond", "lineStyle": "dashed"}],
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": scatter}]})
+    combo = {
+        **attrs,
+        "kind": "combo",
+        "seriesPresentation": [
+            {"renderAs": "bar", "marker": "none", "lineStyle": "none"},
+            {"renderAs": "line", "marker": "square", "lineStyle": "dashed"},
+        ],
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": combo}]})
     invalid = [
         {**attrs, "id": "chart-short"},
         {**attrs, "kind": "script"},
@@ -773,6 +788,15 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**pie, "axes": axes},
         {**doughnut, "axes": axes},
         {**rich["content"][0]["attrs"], "axes": {**axes, "minimum": 0, "maximum": 300, "majorUnit": 50}},
+        {**scatter, "seriesPresentation": []},
+        {**scatter, "seriesPresentation": [{"renderAs": "points", "marker": "none", "lineStyle": "none"}]},
+        {
+            **combo,
+            "seriesPresentation": [
+                {"renderAs": "bar", "marker": "none", "lineStyle": "none"},
+                {"renderAs": "bar", "marker": "none", "lineStyle": "none"},
+            ],
+        },
         {**attrs, "onclick": "run()"},
     ]
     for candidate in invalid:

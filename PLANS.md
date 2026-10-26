@@ -2154,14 +2154,38 @@ ranges and linked snapshots on the server. Reject unknown fields and forged brow
 708. [x] Close the block with focused schema/API tests, six chart-model cases, desktop/mobile browser and visual proof
 and the complete repository quality gate. Add no migration, external chart engine, network source or durable state.
 
+709. [x] Add strict native scatter and combo chart kinds under ADR-0204 while keeping every existing chart document
+valid and retaining the same bounded category, series and linked-table limits.
+
+710. [x] Interpret the first scatter series as bounded numeric X coordinates and every following series as Y values for
+the same named points. Derive deterministic zero-inclusive X and Y scales without external calculation.
+
+711. [x] Require combo charts to contain at least one bar and one line series on one common value axis. Keep bar values
+nonnegative and allow finite negative values only for line-rendered series.
+
+712. [x] Add one positional, strict per-series presentation array with fixed bar, line or point renderers; none,
+circle, square or diamond markers; and none, solid or dashed line styles.
+
+713. [x] Build accessible dynamic series controls that follow linked range and chart-kind changes, normalize invalid
+renderer combinations and expose no free colors, CSS, URLs or executable content.
+
+714. [x] Preserve combo/scatter conversion, per-series presentation and linked snapshots through confirmed immutable
+save/reload while retaining accessible descriptions, hidden data tables and responsive containment.
+
+715. [x] Independently validate scatter/combination semantics, series presentation, negative-value rules, source
+ranges, linked snapshots and manual Y bounds on the server so unknown and forged values fail closed.
+
+716. [x] Close the block with 88 focused schema/API tests, seven chart-model cases, desktop/mobile browser and visual
+proof and the complete repository quality gate. Add no migration, external engine, network source or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 847 / PLANS 708. Stacked-bar, area and doughnut charts plus fixed palettes,
-  styles and title alignment now build on strict deterministic axes and linked table calculations. Continue Office
-  with scatter/combo charts and bounded per-series presentation as the next coherent loop before deferred CRM
+- Native Office is complete through Roadmap 855 / PLANS 716. Scatter and combination charts plus bounded per-series
+  renderers, markers and line styles now build on strict deterministic axes and linked table calculations. Continue
+  Office with analytical reference lines and richer bounded data labels as the next coherent loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,

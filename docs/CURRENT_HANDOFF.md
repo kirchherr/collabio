@@ -2,6 +2,41 @@
 
 Updated: 2026-10-26
 
+Roadmap 848 through 855 / PLANS 709 through 716 are complete under ADR-0204. Native Office now supports scatter charts
+whose first series supplies numeric X coordinates and whose following series supply Y values, plus combo charts with
+at least one nonnegative bar and one line series on a common deterministic value scale.
+
+One strict positional series-presentation array permits fixed bar, line or point rendering, none/circle/square/diamond
+markers and none/solid/dashed connections. Dynamic accessible controls follow linked range and kind changes. Browser
+and server independently reject surplus fields, impossible renderer combinations, negative combo bars, invalid source
+ranges and stale or forged linked snapshots.
+
+Focused Office schema/API tests pass 88/88 and all seven chart-model cases pass. The desktop/mobile saved-version
+workflow passes 2/2 in 19.6 seconds and proves linked combo creation, bounded marker/line editing, scatter conversion,
+save/reload and responsive containment. Visual review passed; desktop/mobile screenshot hashes are
+`sha256:65ad41d20789932ab5e2470c5fc836291992cae5dd4543459f6f3cbaee685cdc` and
+`sha256:ce4149303e5f8f498f311a22c079eeaa579d75719041f3f398bee6dcd4830df6`.
+
+The complete quality gate passes Ruff, finds 965 format-conformant files, passes Mypy over 639 sources and reaches
+100 percent Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+The review target is `http://192.168.0.108:42880/office?review=scatter-combo-adr0204` with asset keys `office.css?v=16`
+and `editor.js?v=16`. Final Work-E2E and review API images are
+`sha256:f79b24d54409f1196bc710fc3b61c28ad2551be7e41557add7ccf4c4c8bf8f54` and
+`sha256:45d05bbf8751a13b358aaf9a1f4481b4cdf7f7a3c1842985db216f8baaa7efc9`.
+
+No migration, external chart engine, network source, automatic action or new durable state was added. Secondary and
+logarithmic axes, trendlines, error bars, free-form styles and external chart data remain closed. ADR-0203 is published
+through commit `2ed8b2da`; publication of this ADR-0204 block is pending the repository's content-specific approval.
+
+The next separate Office loop is analytical reference lines and richer bounded data labels. CRM account onboarding
+remains deferred by the user's Office-first priority.
+
+The exact isolated PostgreSQL test container, ADR-0204 browser-artifact directory and transfer archives are removed.
+No transient quality or browser runner remains. Regular and review APIs both return `ok`; review port `42880` is bound
+through the existing review override, and the unrelated `tricert`, `trijob`, `tripax` and `webcut` projects are unchanged.
+
 Roadmap 840 through 847 / PLANS 701 through 708 are complete under ADR-0203. Native Office now adds stacked-bar, area
 and doughnut charts to bar, line and pie. Stacked scales use per-category totals and require nonnegative data plus a
 zero baseline. Area charts retain finite negative values. Doughnut charts require exactly one nonnegative, nonzero
@@ -29,8 +64,7 @@ and `editor.js?v=15`. Final Work-E2E and review API images are
 
 No migration, external chart engine, network source, automatic action or new durable state was added. Scatter/combo
 charts, per-series presentation, secondary and logarithmic axes, free-form styles and external chart data remain
-closed. ADR-0202 is published through commit `d5a70a47`; publication of this ADR-0203 block is pending the repository's
-content-specific approval.
+closed. ADR-0202 is published through commit `d5a70a47`; ADR-0203 is published through commit `2ed8b2da`.
 
 The next separate Office loop is scatter/combo charts and bounded per-series presentation. CRM account onboarding
 remains deferred by the user's Office-first priority.

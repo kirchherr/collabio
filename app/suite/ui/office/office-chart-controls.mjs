@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "axes", "presentation", "categories", "series", "source"]
+      "axes", "presentation", "seriesPresentation", "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
     addNodeView() {
@@ -35,7 +35,10 @@ function parseData(text, kind) {
   if (rows.length < 2 || rows.length > 13) throw new Error("chart-data");
   const cells = rows.map((row) => row.split("\t"));
   const width = cells[0].length;
-  if (width < 2 || width > 5 || cells.some((row) => row.length !== width) || (["pie", "doughnut"].includes(kind) && width !== 2)) throw new Error("chart-data");
+  if (width < 2 || width > 5 || cells.some((row) => row.length !== width) ||
+      (["pie", "doughnut"].includes(kind) && width !== 2) || (["scatter", "combo"].includes(kind) && width < 3)) {
+    throw new Error("chart-data");
+  }
   const categories = cells.slice(1).map((row) => row[0]);
   const series = cells[0].slice(1).map((name, seriesIndex) => ({ name, color: OFFICE_CHART_COLORS[seriesIndex],
     values: cells.slice(1).map((row) => { if (!/^-?(?:0|[1-9][0-9]{0,9})(?:[.,][0-9]{1,10})?$/.test(row[seriesIndex + 1])) throw new Error("chart-value");
@@ -52,6 +55,7 @@ function serializeData(chart) {
 export function installOfficeChartControls({ state, $, sessionCurrent, validate, update, notice, focus }) {
   let action = null;
   const circular = (kind) => ["pie", "doughnut"].includes(kind);
+  const styled = (kind) => ["line", "area", "scatter", "combo"].includes(kind);
   const selected = () => state.editor?.state.selection instanceof NodeSelection && state.editor.state.selection.node.type.name === "chart" ? state.editor.state.selection : null;
   const count = () => { let total = 0; state.editor?.state.doc.forEach((node) => { if (node.type.name === "chart") total += 1; }); return total; };
   const allowed = () => Boolean(state.session && sessionCurrent(state.session) && state.editor?.isEditable && !state.session.historical &&
@@ -76,6 +80,59 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   };
   const source = () => ({ tableId: $("chart-source-table").value, range: $("chart-source-range").value.trim().toUpperCase(),
     orientation: $("chart-source-orientation").value });
+  const defaultSeriesStyle = (kind, index) => kind === "combo" && index === 0 ?
+    { renderAs: "bar", marker: "none", lineStyle: "none" } : kind === "scatter" ?
+      { renderAs: "points", marker: "circle", lineStyle: "none" } :
+      { renderAs: "line", marker: "circle", lineStyle: "solid" };
+  const seriesStyleRows = () => [...$("chart-series-presentation").querySelectorAll(".chart-series-presentation-row")];
+  const readSeriesStyleRows = () => seriesStyleRows().map((row) => ({
+    renderAs: row.querySelector('[data-field="renderAs"]').value,
+    marker: row.querySelector('[data-field="marker"]').value,
+    lineStyle: row.querySelector('[data-field="lineStyle"]').value,
+  }));
+  const normalizeSeriesStyle = (kind, index, value) => {
+    if (kind === "line" || kind === "area") return { renderAs: "line", marker: value?.marker || "circle",
+      lineStyle: ["solid", "dashed"].includes(value?.lineStyle) ? value.lineStyle : "solid" };
+    if (kind === "scatter") return { renderAs: "points", marker: ["circle", "square", "diamond"].includes(value?.marker) ?
+      value.marker : "circle", lineStyle: ["none", "solid", "dashed"].includes(value?.lineStyle) ? value.lineStyle : "none" };
+    const renderAs = ["bar", "line"].includes(value?.renderAs) ? value.renderAs : index === 0 ? "bar" : "line";
+    return renderAs === "bar" ? { renderAs, marker: "none", lineStyle: "none" } :
+      { renderAs, marker: value?.marker || "circle", lineStyle: ["solid", "dashed"].includes(value?.lineStyle) ? value.lineStyle : "solid" };
+  };
+  const seriesSelect = (field, values, selected, disabled = false) => {
+    const select = document.createElement("select"); select.dataset.field = field; select.disabled = disabled;
+    select.replaceChildren(...values.map(([value, label]) => { const option = document.createElement("option");
+      option.value = value; option.textContent = label; option.selected = value === selected; return option; })); return select;
+  };
+  const seriesPresentation = (kind, series) => {
+    const fieldset = $("chart-series-presentation-fields"), container = $("chart-series-presentation");
+    fieldset.hidden = !styled(kind); if (!styled(kind)) { container.replaceChildren(); return null; }
+    const visibleSeries = kind === "scatter" ? series.slice(1) : series;
+    const currentRows = seriesStyleRows(), same = container.dataset.kind === kind && currentRows.length === visibleSeries.length &&
+      currentRows.every((row, index) => row.dataset.seriesName === visibleSeries[index].name);
+    const previous = action?.seriesPresentationSeed || (currentRows.length ? readSeriesStyleRows() : []);
+    if (!same || action?.seriesPresentationSeed) {
+      const rows = visibleSeries.map((entry, index) => {
+        const style = normalizeSeriesStyle(kind, index, previous[index] || defaultSeriesStyle(kind, index));
+        const row = document.createElement("div"); row.className = "chart-series-presentation-row"; row.dataset.seriesName = entry.name;
+        const name = document.createElement("strong"); name.textContent = entry.name;
+        const renderer = document.createElement("label"); renderer.append("Typ", seriesSelect("renderAs",
+          [["bar", "Säule"], ["line", "Linie"], ["points", "Punkte"]], style.renderAs, kind !== "combo"));
+        const marker = document.createElement("label"); marker.append("Marker", seriesSelect("marker",
+          [["none", "Ohne"], ["circle", "Kreis"], ["square", "Quadrat"], ["diamond", "Raute"]], style.marker));
+        const line = document.createElement("label"); line.append("Linie", seriesSelect("lineStyle",
+          [["none", "Ohne"], ["solid", "Durchgezogen"], ["dashed", "Gestrichelt"]], style.lineStyle));
+        row.append(name, renderer, marker, line); return row;
+      });
+      container.replaceChildren(...rows); container.dataset.kind = kind; if (action) action.seriesPresentationSeed = null;
+    }
+    const result = readSeriesStyleRows().map((entry, index) => normalizeSeriesStyle(kind, index, entry));
+    seriesStyleRows().forEach((row, index) => { const style = result[index];
+      row.querySelector('[data-field="renderAs"]').value = style.renderAs;
+      row.querySelector('[data-field="marker"]').value = style.marker;
+      row.querySelector('[data-field="lineStyle"]').value = style.lineStyle; });
+    return result;
+  };
   const read = (id = action?.attrs?.id || action?.id || (action.id = identifier())) => {
     const kind = $("chart-kind").value, linked = $("chart-linked").checked, binding = linked ? source() : null;
     const data = linked ? officeChartDataFromDocument(action.editor.getJSON(), binding, kind) : parseData($("chart-data").value, kind);
@@ -88,9 +145,11 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       gridlines: $("chart-gridlines").checked, numberFormat: $("chart-number-format").value };
     const presentation = { palette: $("chart-palette").value, style: $("chart-style").value,
       titleAlignment: $("chart-title-alignment").value };
+    const seriesStyles = seriesPresentation(kind, data.series);
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
       legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
-      dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
+      dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(seriesStyles ? { seriesPresentation: seriesStyles } : {}),
+      ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-status").textContent = "";
@@ -121,7 +180,8 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     if (!editing && count() >= OFFICE_CHART_LIMIT) return;
     const attrs = editing ? officeChartAttributes(selection.node.attrs) : null;
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
-      editing, position: editing ? selection.from : null, attrs, rootIndex: null };
+      editing, position: editing ? selection.from : null, attrs, rootIndex: null,
+      seriesPresentationSeed: attrs?.seriesPresentation || null };
     if (editing) { let index = 0; state.editor.state.doc.forEach((_node, offset) => { if (offset === action.position) action.rootIndex = index; index += 1; }); }
     const tables = officeTableInventory(state.editor.getJSON()); $("chart-source-table").replaceChildren(...tables.map((entry) => {
       const option = document.createElement("option"); option.value = entry.id; option.textContent = entry.label; return option; }));

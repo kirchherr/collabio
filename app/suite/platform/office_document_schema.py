@@ -864,7 +864,7 @@ def _valid_document_table_formula_results(document: dict[str, Any], definitions:
 
 
 _CHART_COLORS = ("teal", "blue", "orange", "purple")
-_CHART_KINDS = {"bar", "stacked-bar", "line", "area", "pie", "doughnut"}
+_CHART_KINDS = {"bar", "stacked-bar", "line", "area", "pie", "doughnut", "scatter", "combo"}
 _CHART_CIRCULAR_KINDS = {"pie", "doughnut"}
 _CHART_LEGEND_POSITIONS = {"bottom", "top", "left", "right"}
 _CHART_NUMBER_FORMATS = {"general", "integer", "decimal", "percent", "currency-eur"}
@@ -875,6 +875,8 @@ _CHART_NUMBER = re.compile(r"-?(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,10})?")
 def _chart_scale_values(kind: str, series: list[dict[str, Any]]) -> list[int | float]:
     if kind == "stacked-bar":
         return [sum(entry["values"][index] for entry in series) for index in range(len(series[0]["values"]))]
+    if kind == "scatter":
+        return [number for entry in series[1:] for number in entry["values"]]
     return [number for entry in series for number in entry["values"]]
 
 
@@ -886,6 +888,34 @@ def _valid_chart_presentation(value: Any) -> bool:
         and value.get("style") in {"clean", "soft", "focus"}
         and value.get("titleAlignment") in {"left", "center", "right"}
     )
+
+
+def _valid_chart_series_presentation(value: Any, kind: str, series: list[dict[str, Any]]) -> bool:
+    expected_count = len(series) - 1 if kind == "scatter" else len(series)
+    if not isinstance(value, list) or len(value) != expected_count:
+        return False
+    for index, entry in enumerate(value):
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {"renderAs", "marker", "lineStyle"}
+            or entry.get("renderAs") not in {"bar", "line", "points"}
+            or entry.get("marker") not in {"none", "circle", "square", "diamond"}
+            or entry.get("lineStyle") not in {"none", "solid", "dashed"}
+            or (entry["renderAs"] == "bar" and (entry["marker"] != "none" or entry["lineStyle"] != "none"))
+            or (entry["renderAs"] == "line" and entry["lineStyle"] == "none")
+            or (entry["renderAs"] == "points" and entry["marker"] == "none")
+        ):
+            return False
+        if kind == "combo" and entry["renderAs"] == "bar" and any(number < 0 for number in series[index]["values"]):
+            return False
+    if kind in {"line", "area"}:
+        return all(entry["renderAs"] == "line" for entry in value)
+    if kind == "scatter":
+        return all(entry["renderAs"] == "points" for entry in value)
+    if kind == "combo":
+        renderers = {entry["renderAs"] for entry in value}
+        return renderers == {"bar", "line"}
+    return False
 
 
 def _valid_chart_axes(value: Any, series: list[dict[str, Any]], kind: str) -> bool:
@@ -1384,6 +1414,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("axes")
             if "presentation" in attrs:
                 expected_chart_attrs.add("presentation")
+            if "seriesPresentation" in attrs:
+                expected_chart_attrs.add("seriesPresentation")
             if (
                 depth != 1
                 or set(node) != {"type", "attrs"}
@@ -1405,6 +1437,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or not isinstance(series, list)
                 or not 1 <= len(series) <= 4
                 or (attrs.get("kind") in _CHART_CIRCULAR_KINDS and len(series) != 1)
+                or (attrs.get("kind") in {"scatter", "combo"} and len(series) < 2)
+                or (attrs.get("kind") in {"scatter", "combo"} and "seriesPresentation" not in attrs)
                 or (source is not None and _chart_source(source) is None)
                 or ("presentation" in attrs and not _valid_chart_presentation(attrs.get("presentation")))
             ):
@@ -1427,12 +1461,19 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                         or not -1_000_000_000 <= number <= 1_000_000_000
                         for number in entry["values"]
                     )
-                    or (attrs.get("kind") not in {"line", "area"} and any(number < 0 for number in entry["values"]))
+                    or (
+                        attrs.get("kind") not in {"line", "area", "scatter", "combo"}
+                        and any(number < 0 for number in entry["values"])
+                    )
                 ):
                     reject()
                 names.add(entry["name"])
                 colors.add(entry["color"])
             if attrs.get("kind") in _CHART_CIRCULAR_KINDS and not any(number > 0 for number in series[0]["values"]):
+                reject()
+            if "seriesPresentation" in attrs and not _valid_chart_series_presentation(
+                attrs["seriesPresentation"], attrs["kind"], series
+            ):
                 reject()
             if "axes" in attrs and (
                 attrs.get("kind") in _CHART_CIRCULAR_KINDS

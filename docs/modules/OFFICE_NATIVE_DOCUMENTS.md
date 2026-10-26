@@ -1,9 +1,32 @@
 # Native Office Documents
 
-Status: Roadmap 252–847 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 847 / PLANS 708 richer chart types and presentation
-Module: `office_documents` / version 0.9.14
-Decisions: ADR-0079 through ADR-0203; current movement: `ARCHITECTURE_DECISIONS/ADR-0203-native-office-richer-chart-types-and-presentation.md`
+Status: Roadmap 252–855 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 855 / PLANS 716 scatter, combo and series presentation
+Module: `office_documents` / version 0.9.15
+Decisions: ADR-0079 through ADR-0204; current movement: `ARCHITECTURE_DECISIONS/ADR-0204-native-office-scatter-combo-and-series-presentation.md`
+
+## Scatter, combo and series presentation (Roadmap 848–855)
+
+Native Office scatter charts treat the first numeric series as X coordinates and one through three following series as
+Y coordinates for the same named points. Combo charts place at least one nonnegative bar series and at least one line
+series on one common deterministic value scale. Secondary axes are not inferred.
+
+A strict positional series-presentation array permits only fixed bar, line or point rendering, bounded marker shapes
+and solid, dashed or absent connections. Dynamic accessible controls follow source-range and chart-kind changes. The
+browser and server validate the same closed semantics and reject surplus fields, unsafe combinations, negative bars,
+stale linked snapshots and forged values.
+
+Focused Office schema/API tests pass 88/88, all seven chart-model cases pass, and the responsive saved-version workflow
+passes 2/2 on desktop and mobile in 19.6 seconds. Desktop/mobile screenshot hashes are
+`sha256:65ad41d20789932ab5e2470c5fc836291992cae5dd4543459f6f3cbaee685cdc` and
+`sha256:ce4149303e5f8f498f311a22c079eeaa579d75719041f3f398bee6dcd4830df6`; visual review passed. The review target is
+`http://192.168.0.108:42880/office?review=scatter-combo-adr0204` with `office.css?v=16` and `editor.js?v=16`.
+Complete quality passes Ruff, finds 965 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. The final quality image is
+`sha256:ede6d7704db752034656dd8089d6f6769470c2eafb90ab52c2244b55ee82d43c`.
+
+No migration, external chart engine, network source or new durable state is introduced. Secondary/logarithmic axes,
+trendlines, error bars, free-form styling, external chart data and automatic actions remain closed.
 
 ## Richer chart types and presentation (Roadmap 840–847)
 

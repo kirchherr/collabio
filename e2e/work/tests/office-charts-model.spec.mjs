@@ -97,6 +97,26 @@ test("Office richer chart types retain bounded presentation and stacked totals",
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office scatter and combo charts retain strict per-series presentation", () => {
+  const scatter = officeChartAttributes({ ...attrs, kind: "scatter",
+    seriesPresentation: [{ renderAs: "points", marker: "diamond", lineStyle: "dashed" }] });
+  expect(scatter.seriesPresentation[0]).toEqual({ renderAs: "points", marker: "diamond", lineStyle: "dashed" });
+  expect(officeChartAxisScale(scatter)).toMatchObject({ minimum: 0, maximum: 200 });
+  expect(officeChartDescription(scatter)).toContain("Streudiagramm");
+  const combo = officeChartAttributes({ ...attrs, kind: "combo", seriesPresentation: [
+    { renderAs: "bar", marker: "none", lineStyle: "none" },
+    { renderAs: "line", marker: "square", lineStyle: "dashed" },
+  ] });
+  expect(combo.seriesPresentation.map((entry) => entry.renderAs)).toEqual(["bar", "line"]);
+  expect(officeChartDescription(combo)).toContain("Kombinationsdiagramm");
+  for (const invalid of [
+    { ...scatter, seriesPresentation: [] },
+    { ...scatter, seriesPresentation: [{ renderAs: "points", marker: "none", lineStyle: "none" }] },
+    { ...combo, seriesPresentation: combo.seriesPresentation.map(() => ({ renderAs: "bar", marker: "none", lineStyle: "none" })) },
+    { ...combo, seriesPresentation: [{ renderAs: "bar", marker: "circle", lineStyle: "none" }, combo.seriesPresentation[1]] },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };
