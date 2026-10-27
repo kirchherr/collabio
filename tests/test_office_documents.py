@@ -810,6 +810,11 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         "axisOptions": {"primaryScale": "logarithmic", "secondary": secondary_axis},
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": advanced_axes}]})
+    accessible_table = {
+        **advanced_axes,
+        "dataTablePresentation": {"position": "above", "showLegendKeys": True},
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": accessible_table}]})
     advanced_manual = {
         **advanced_axes,
         "axes": {
@@ -851,6 +856,9 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "series": [{"name": "Plan", "color": "teal", "values": [-1, 2, 3, 4]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [0, 0, 0, 0]}]},
         {**pie, "series": [{"name": "Share", "color": "orange", "values": [-1, 2, 3, 4]}]},
+        {**attrs, "dataTablePresentation": {"position": "floating", "showLegendKeys": True}},
+        {**attrs, "dataTablePresentation": {"position": "below", "showLegendKeys": 1}},
+        {**attrs, "dataTablePresentation": {"position": "below", "showLegendKeys": True, "url": "x"}},
         {**attrs, "axes": {**axes, "maximum": 160}},
         {**attrs, "axes": {**axes, "majorUnit": 30}},
         {**pie, "axes": axes},

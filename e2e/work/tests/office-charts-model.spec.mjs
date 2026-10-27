@@ -191,6 +191,18 @@ test("Office logarithmic and secondary axes remain explicit, bounded, and series
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office visible chart data tables retain an exact closed presentation", () => {
+  const dataTablePresentation = { position: "above", showLegendKeys: true };
+  const chart = officeChartAttributes({ ...attrs, dataTablePresentation });
+  expect(chart.dataTablePresentation).toEqual(dataTablePresentation);
+  expect(officeChartDescription(chart)).toContain("sichtbare Datentabelle");
+  for (const invalid of [
+    { ...attrs, dataTablePresentation: { ...dataTablePresentation, position: "floating" } },
+    { ...attrs, dataTablePresentation: { ...dataTablePresentation, showLegendKeys: 1 } },
+    { ...attrs, dataTablePresentation: { ...dataTablePresentation, href: "https://example.invalid" } },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };

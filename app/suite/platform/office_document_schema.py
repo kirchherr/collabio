@@ -902,6 +902,15 @@ def _valid_chart_data_label_presentation(value: Any) -> bool:
     )
 
 
+def _valid_chart_data_table_presentation(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"position", "showLegendKeys"}
+        and value.get("position") in {"above", "below"}
+        and type(value.get("showLegendKeys")) is bool
+    )
+
+
 def _valid_chart_reference_lines(value: Any) -> bool:
     if not isinstance(value, list) or not 1 <= len(value) <= 4:
         return False
@@ -1632,6 +1641,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("seriesPresentation")
             if "dataLabelPresentation" in attrs:
                 expected_chart_attrs.add("dataLabelPresentation")
+            if "dataTablePresentation" in attrs:
+                expected_chart_attrs.add("dataTablePresentation")
             if "referenceLines" in attrs:
                 expected_chart_attrs.add("referenceLines")
             if "analysis" in attrs:
@@ -1653,6 +1664,10 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or (
                     "dataLabelPresentation" in attrs
                     and not _valid_chart_data_label_presentation(attrs.get("dataLabelPresentation"))
+                )
+                or (
+                    "dataTablePresentation" in attrs
+                    and not _valid_chart_data_table_presentation(attrs.get("dataTablePresentation"))
                 )
                 or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
                 or not _valid_literal(attrs.get("title"), 1, 120)

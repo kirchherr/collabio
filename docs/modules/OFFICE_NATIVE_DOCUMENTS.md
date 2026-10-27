@@ -1,9 +1,28 @@
 # Native Office Documents
 
-Status: Roadmap 252–879 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 879 / PLANS 740 advanced chart axes
-Module: `office_documents` / version 0.9.18
-Decisions: ADR-0079 through ADR-0207; current movement: `ARCHITECTURE_DECISIONS/ADR-0207-native-office-logarithmic-and-secondary-chart-axes.md`
+Status: Roadmap 252–887 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 887 / PLANS 748 accessible chart data tables
+Module: `office_documents` / version 0.9.19
+Decisions: ADR-0079 through ADR-0208; current movement: `ARCHITECTURE_DECISIONS/ADR-0208-native-office-visible-accessible-chart-data-tables.md`
+
+## Visible accessible chart data tables (Roadmap 880–887)
+
+Every chart retains one semantic table derived from its canonical categories and series. Authors may make it visible
+above or below the graphic and add fixed decorative series-color keys. The strict presentation stores no duplicate
+values; old documents continue to receive the visually hidden table.
+
+The chart is an accessible group and its graphical plot is decorative to assistive technology. Native captions,
+column and row headers remain authoritative. Visible cells use bounded roving focus with Arrow, Home, End and
+Control-modified boundary navigation, a visible focus ring and a horizontally scrollable narrow-screen container.
+Browser and server independently reject surplus fields, invalid placement and numeric boolean substitutes.
+
+Focused schema/API tests pass 88/88, all eleven chart-model cases pass and the desktop/mobile workflow passes 2/2 in
+17.7 seconds. Visual review confirms complete desktop columns, a fully wrapped mobile instruction and contained
+horizontal mobile scrolling. Screenshot hashes are
+`sha256:81eabebaeabc3139e13352f4e8f835c3e20bbd93aa772c42d0ee6f5893d0f1b1` and
+`sha256:94e021b536798217fecc757609919107961461af8c0bb302ed49ef951fdf2eef`. Review is available at
+`http://192.168.0.108:42880/office?review=chart-data-table-adr0208` with asset keys `office.css?v=20` and
+`editor.js?v=20`. Complete quality passes Ruff, formatting, Mypy and Pytest.
 
 ## Logarithmic and secondary chart axes (Roadmap 872–879)
 

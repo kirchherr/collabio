@@ -61,6 +61,14 @@ function officeChartDataLabelPresentation(value) {
   return { content: value.content, position: value.position };
 }
 
+function officeChartDataTablePresentation(value) {
+  if (!value || Object.keys(value).sort().join(",") !== "position,showLegendKeys" ||
+      !["above", "below"].includes(value.position) || typeof value.showLegendKeys !== "boolean") {
+    throw new Error("chart-data-table-presentation");
+  }
+  return { position: value.position, showLegendKeys: value.showLegendKeys };
+}
+
 function officeChartReferenceLines(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new Error("chart-reference-lines");
   const labels = new Set();
@@ -232,10 +240,12 @@ export function officeChartAttributes(value) {
     ...(value?.axes == null ? [] : ["axes"]), ...(value?.presentation == null ? [] : ["presentation"]),
     ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"]),
     ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
+    ...(value?.dataTablePresentation == null ? [] : ["dataTablePresentation"]),
     ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"]),
     ...(value?.axisOptions == null ? [] : ["axisOptions"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
     !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
+      "dataTablePresentation",
       "referenceLines", "analysis", "axisOptions"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
@@ -269,6 +279,9 @@ export function officeChartAttributes(value) {
   if (value.presentation != null) result.presentation = officeChartPresentation(value.presentation);
   if (value.dataLabelPresentation != null) {
     result.dataLabelPresentation = officeChartDataLabelPresentation(value.dataLabelPresentation);
+  }
+  if (value.dataTablePresentation != null) {
+    result.dataTablePresentation = officeChartDataTablePresentation(value.dataTablePresentation);
   }
   if (value.seriesPresentation != null) {
     result.seriesPresentation = officeChartSeriesPresentation(value.seriesPresentation, value.kind, series);
@@ -461,16 +474,23 @@ export function officeChartDescription(value) {
     `${entry.label}: ${entry.value}`).join(", ")}` : "";
   const analysis = chart.analysis ? `${chart.analysis.trendline ? ` · Trendlinie ${chart.series[chart.analysis.trendline.seriesIndex].name}` : ""}${chart.analysis.errorBars ?
     ` · Fehlerbalken ${chart.series[chart.analysis.errorBars.seriesIndex].name}: ±${chart.analysis.errorBars.amount}` : ""}` : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  const dataTable = chart.dataTablePresentation ? " · sichtbare Datentabelle" : "";
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${dataTable}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
 }
 
 function chartTable(chart, dom) {
-  const table = dom.createElement("table"); table.className = "office-chart-data visually-hidden";
+  const visible = Boolean(chart.dataTablePresentation), table = dom.createElement("table");
+  table.className = `office-chart-data${visible ? " office-chart-data-visible" : " visually-hidden"}`;
   table.id = `${chart.id}-data`;
   const caption = dom.createElement("caption"); caption.textContent = `Datentabelle für ${chart.title}`;
+  if (visible) caption.className = "visually-hidden";
   const head = dom.createElement("thead"), headRow = dom.createElement("tr"), categoryHead = dom.createElement("th");
   categoryHead.scope = "col"; categoryHead.textContent = "Kategorie"; headRow.append(categoryHead);
-  for (const entry of chart.series) { const cell = dom.createElement("th"); cell.scope = "col"; cell.textContent = entry.name; headRow.append(cell); }
+  for (const entry of chart.series) { const cell = dom.createElement("th"); cell.scope = "col";
+    if (chart.dataTablePresentation?.showLegendKeys) { const key = dom.createElement("i");
+      key.className = "office-chart-data-key"; key.style.background = chartColor(chart, entry.color);
+      key.setAttribute("aria-hidden", "true"); cell.append(key); }
+    cell.append(entry.name); headRow.append(cell); }
   head.append(headRow);
   const body = dom.createElement("tbody");
   chart.categories.forEach((category, index) => {
@@ -478,7 +498,30 @@ function chartTable(chart, dom) {
     for (const entry of chart.series) { const cell = dom.createElement("td"); cell.textContent = String(entry.values[index]); row.append(cell); }
     body.append(row);
   });
-  table.append(caption, head, body); return table;
+  table.append(caption, head, body);
+  if (visible) {
+    const cells = [...table.querySelectorAll("th,td")], width = chart.series.length + 1;
+    cells.forEach((cell, index) => { cell.tabIndex = index === 0 ? 0 : -1; });
+    table.addEventListener("keydown", (event) => {
+      const current = cells.indexOf(event.target); if (current < 0) return;
+      const row = Math.floor(current / width), column = current % width, lastRow = chart.categories.length;
+      let target = current;
+      if (event.key === "ArrowLeft") target = row * width + Math.max(0, column - 1);
+      else if (event.key === "ArrowRight") target = row * width + Math.min(width - 1, column + 1);
+      else if (event.key === "ArrowUp") target = Math.max(0, row - 1) * width + column;
+      else if (event.key === "ArrowDown") target = Math.min(lastRow, row + 1) * width + column;
+      else if (event.key === "Home") target = event.ctrlKey ? 0 : row * width;
+      else if (event.key === "End") target = event.ctrlKey ? cells.length - 1 : row * width + width - 1;
+      else return;
+      event.preventDefault(); cells[current].tabIndex = -1; cells[target].tabIndex = 0; cells[target].focus();
+    });
+  }
+  if (!visible) return table;
+  const scroll = dom.createElement("div"); scroll.className = "office-chart-data-scroll";
+  scroll.dataset.position = chart.dataTablePresentation.position;
+  const help = dom.createElement("p"); help.className = "office-chart-data-help";
+  help.textContent = `Datentabelle für ${chart.title}. Mit Pfeiltasten navigieren oder horizontal wischen.`;
+  scroll.append(help, table); return scroll;
 }
 
 function barChart(chart, scale, dom) {
@@ -696,7 +739,7 @@ export function officeChartElement(value, dom = document) {
   figure.dataset.legendPosition = chart.legendPosition || "bottom";
   figure.dataset.chartStyle = chart.presentation?.style || "clean";
   figure.dataset.titleAlignment = chart.presentation?.titleAlignment || "center";
-  figure.setAttribute("role", "img"); figure.setAttribute("aria-label", officeChartDescription(chart));
+  figure.setAttribute("role", "group"); figure.setAttribute("aria-label", officeChartDescription(chart));
   figure.setAttribute("aria-describedby", `${chart.id}-data`);
   const title = dom.createElement("figcaption"); title.className = "office-chart-title"; title.textContent = chart.title;
   const scale = officeChartAxisScale(chart), secondaryScale = officeChartSecondaryAxisScale(chart);
@@ -705,6 +748,7 @@ export function officeChartElement(value, dom = document) {
     chart.kind === "combo" ? comboChart(chart, scale, secondaryScale, dom) :
     chart.kind === "scatter" ? scatterChart(chart, scale, secondaryScale, dom) : pieChart(chart, dom);
   visual.classList.add("office-chart-visual");
+  visual.setAttribute("aria-hidden", "true");
   const labels = dom.createElement("div"); labels.className = "office-chart-categories";
   const labelValues = chart.kind === "scatter" ? automaticScale(chart.series[0].values).ticks.map((tick) =>
     formatChartNumber(tick, scale.numberFormat)) : chart.categories;
@@ -739,7 +783,12 @@ export function officeChartElement(value, dom = document) {
       label.textContent = content;
       values.append(label); });
   });
-  if (labelPresentation.position === "top") figure.append(title, values, body, chartTable(chart, dom));
-  else figure.append(title, body, values, chartTable(chart, dom));
+  const dataTable = chartTable(chart, dom), tableAbove = chart.dataTablePresentation?.position === "above";
+  figure.append(title);
+  if (tableAbove) figure.append(dataTable);
+  if (labelPresentation.position === "top") figure.append(values);
+  figure.append(body);
+  if (labelPresentation.position !== "top") figure.append(values);
+  if (!tableAbove) figure.append(dataTable);
   return figure;
 }

@@ -1,6 +1,31 @@
 # Current Project Handoff
 
-Updated: 2026-10-26
+Updated: 2026-10-27
+
+Roadmap 880 through 887 / PLANS 741 through 748 are complete under ADR-0208. Every native chart still exposes one
+semantic table derived from canonical categories and series; authors may now show it above or below the chart and add
+fixed decorative series-color keys. No second value snapshot is stored, and older charts retain the hidden table.
+
+The chart container is an accessible group and its visual plot is decorative to assistive technology. Native caption,
+row and column headers remain authoritative. Visible table cells support bounded Arrow/Home/End keyboard navigation,
+including Control-modified first/last movement, with an explicit focus ring and responsive horizontal scrolling.
+Browser and server independently reject surplus fields, invalid position values and numeric boolean substitutes.
+
+Focused schema/API tests pass 88/88, all eleven chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 17.7 seconds. Visual review passed after separating the fully wrapped mobile instruction from the
+horizontally scrollable table. Screenshot hashes are
+`sha256:81eabebaeabc3139e13352f4e8f835c3e20bbd93aa772c42d0ee6f5893d0f1b1` and
+`sha256:94e021b536798217fecc757609919107961461af8c0bb302ed49ef951fdf2eef`; report hash is
+`sha256:7a5b50d8d762aeb9c4a37d3b557bd696bb68d323c7f957115e3f0bb754241de2`.
+
+Review is `http://192.168.0.108:42880/office?review=chart-data-table-adr0208` with `office.css?v=20` and
+`editor.js?v=20`. No migration, dependency, external engine, alternate data store, automatic action or tenant
+activation was added. The next Office loop should continue native chart usability before deferred CRM onboarding.
+Final Work-E2E and review API images are `sha256:2b21b70ddd4d35a8bde24b81262672707a5512e2b392c554021bdf12fb69c52d`
+and `sha256:707c2636f0fefaf4929064992e3e37ccb47bb0a253e5c38973bdf06c75b65598`.
+Complete quality passes Ruff, finds 969 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. ADR-0207 is published through commit `af051596`; ADR-0208
+publication requires a new content-specific approval.
 
 Roadmap 872 through 879 / PLANS 733 through 740 are complete under ADR-0207. Line, area, scatter and combo charts now
 support an explicit linear or logarithmic primary scale and one explicitly assigned secondary value series with its
@@ -23,9 +48,9 @@ Work-E2E and review API images are `sha256:0af8c1033dbf2c589b5279537cda4c6fb9e5a
 and `sha256:195c4436bf0ab414cae7407490f58db1a657fd1a38f1cc8c5189ed6a6bee7365`.
 
 Complete quality passes Ruff, finds 968 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
-Pytest with only the known Starlette/AnyIO warning. ADR-0206 is published through commit `c24a9295`; ADR-0207
-publication requires a new content-specific approval. The next Office loop is chart accessibility with a visible data
-table and keyboard-focused data inspection. CRM onboarding remains deferred by the Office-first priority.
+Pytest with only the known Starlette/AnyIO warning. This predecessor block is published through commit `af051596`;
+the following visible accessible data-table loop is now complete under ADR-0208. CRM onboarding remains deferred by
+the Office-first priority.
 
 Roadmap 848 through 855 / PLANS 709 through 716 are complete under ADR-0204. Native Office now supports scatter charts
 whose first series supplies numeric X coordinates and whose following series supply Y values, plus combo charts with

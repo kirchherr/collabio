@@ -2249,14 +2249,39 @@ manual containment on the server. Reject surplus fields, booleans and ambiguous 
 740. [x] Close the block with 88 focused tests, ten chart-model cases, desktop/mobile saved-version and visual proof
 and the complete repository quality gate. Add no migration, dependency, external calculation or durable state.
 
+741. [x] Add one strict optional visible-data-table presentation under ADR-0208 with above or below placement and a
+fixed boolean for decorative series-color keys.
+
+742. [x] Derive the visible table exclusively from canonical saved categories and series. Keep omission
+backward-compatible with the existing visually hidden table and persist no second value snapshot.
+
+743. [x] Use native caption, row-header and column-header semantics, a chart group description and a decorative
+graphical plot so assistive technology can inspect the authoritative table structure.
+
+744. [x] Add bounded roving cell focus with Arrow, Home, End, Control+Home and Control+End navigation plus a visible
+focus ring. Keep navigation inside the finite table.
+
+745. [x] Provide accessible visibility, position and legend-key controls; render responsive horizontal scrolling and
+explicit keyboard/touch guidance without free styles, captions, URLs or markup.
+
+746. [x] Preserve the derived table through linked recalculation, chart editing, duplication, comparison, print and
+confirmed immutable save/reload while retaining exact canonical chart values.
+
+747. [x] Independently validate the exact presentation keys, placement enum and strict boolean on the server. Reject
+surplus fields, invalid values and numeric boolean substitutes.
+
+748. [x] Close the block with 88 focused schema/API tests, eleven chart-model cases, desktop/mobile saved-version and
+visual proof and the complete repository quality gate. Add no migration, dependency, alternate data store or durable
+state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 879 / PLANS 740. Explicit logarithmic and secondary axes now build on
-  deterministic trendlines, scatter, combination and linked-table charts. Continue Office with a coherent chart
-  accessibility and visible-data-table loop before deferred CRM
+- Native Office is complete through Roadmap 887 / PLANS 748. Visible accessible data tables now build on explicit
+  logarithmic and secondary axes, deterministic trendlines, scatter, combination and linked-table charts. Continue
+  Office with the next coherent native chart usability loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,

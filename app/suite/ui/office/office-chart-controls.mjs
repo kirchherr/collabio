@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "dataLabelPresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
+      "dataLabelPresentation", "dataTablePresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
       "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
@@ -234,10 +234,13 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     const references = circular(kind) ? [] : referenceLines();
     const labelPresentation = $("chart-data-labels").checked ? { content: $("chart-data-label-content").value,
       position: $("chart-data-label-position").value } : null;
+    const tablePresentation = $("chart-data-table-visible").checked ? {
+      position: $("chart-data-table-position").value, showLegendKeys: $("chart-data-table-legend-keys").checked } : null;
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
       legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
       dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(seriesStyles ? { seriesPresentation: seriesStyles } : {}),
       ...(labelPresentation ? { dataLabelPresentation: labelPresentation } : {}),
+      ...(tablePresentation ? { dataTablePresentation: tablePresentation } : {}),
       ...(references.length ? { referenceLines: references } : {}), ...(analysis ? { analysis } : {}),
       ...(axisOptions ? { axisOptions } : {}), ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
@@ -262,6 +265,9 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-data-label-fields").hidden = !$("chart-data-labels").checked;
     $("chart-data-label-content").disabled = !$("chart-data-labels").checked;
     $("chart-data-label-position").disabled = !$("chart-data-labels").checked;
+    $("chart-data-table-fields").hidden = !$("chart-data-table-visible").checked;
+    $("chart-data-table-position").disabled = !$("chart-data-table-visible").checked;
+    $("chart-data-table-legend-keys").disabled = !$("chart-data-table-visible").checked;
     $("chart-legend-position").disabled = !$("chart-legend").checked; };
   const preview = () => { sourceState(); presentationState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
       $("chart-preview").replaceChildren(officeChartElement(attrs));
@@ -288,6 +294,9 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-data-labels").checked = attrs?.dataLabels ?? false;
     $("chart-data-label-content").value = attrs?.dataLabelPresentation?.content || "full";
     $("chart-data-label-position").value = attrs?.dataLabelPresentation?.position || "below";
+    $("chart-data-table-visible").checked = Boolean(attrs?.dataTablePresentation);
+    $("chart-data-table-position").value = attrs?.dataTablePresentation?.position || "below";
+    $("chart-data-table-legend-keys").checked = attrs?.dataTablePresentation?.showLegendKeys ?? true;
     $("chart-palette").value = attrs?.presentation?.palette || "standard";
     $("chart-style").value = attrs?.presentation?.style || "clean";
     $("chart-title-alignment").value = attrs?.presentation?.titleAlignment || "center";

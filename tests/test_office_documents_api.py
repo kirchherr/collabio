@@ -851,8 +851,8 @@ def test_office_shell_has_strict_same_origin_csp_and_no_external_editor_assets(o
     assert "unsafe-inline" not in OFFICE_CSP and "unsafe-eval" not in OFFICE_CSP
     assert response.headers["Cache-Control"] == "no-store"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert 'href="/office/assets/office.css?v=19"' in response.text
-    assert 'src="/office/editor.js?v=19"' in response.text
+    assert 'href="/office/assets/office.css?v=20"' in response.text
+    assert 'src="/office/editor.js?v=20"' in response.text
     assert 'src="https://' not in response.text
 
 
