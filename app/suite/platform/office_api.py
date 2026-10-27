@@ -107,6 +107,14 @@ from suite.platform.office_images import (
     store_uploaded_image,
 )
 from suite.platform.office_import_compatibility import OfficeImportCompatibilityResponse
+from suite.platform.office_import_preview import (
+    OfficeImportPreviewCommand,
+    OfficeImportPreviewDenied,
+    OfficeImportPreviewInvalid,
+    OfficeImportPreviewNotFound,
+    OfficeImportPreviewResponse,
+    OfficeImportPreviewService,
+)
 from suite.platform.office_interchange_corpus import OfficeInterchangeCorpusResponse
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse
 from suite.platform.office_parser_worker_plan import OfficeParserWorkerPlanResponse
@@ -145,6 +153,8 @@ from suite.platform.office_suggestions import (
     SuggestionListResponse,
     SuggestionMutationResponse,
 )
+from suite.rag.parser_worker import ParserWorkerError
+from suite.rag.rich_document_parser_socket import RichDocumentParserUnavailable
 from suite.storage.source_object_storage import PgSourceObjectRepository, SourceObjectStorageError
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
@@ -220,7 +230,7 @@ class OfficeRoute(APIRoute):
             except (RequestValidationError, RecursionError):
                 # FastAPI's default errors may echo whole document bodies.
                 return JSONResponse({"detail": "Invalid document request"}, status_code=422)
-            except OfficeDocumentNotFoundError:
+            except (OfficeDocumentNotFoundError, OfficeImportPreviewNotFound):
                 return JSONResponse({"detail": "Document not found"}, status_code=404)
             except OfficeDocumentListRequestError:
                 return JSONResponse({"detail": "Invalid document list request"}, status_code=400)
@@ -230,6 +240,8 @@ class OfficeRoute(APIRoute):
                 return JSONResponse({"detail": "Invalid document share request"}, status_code=400)
             except OfficeDictationRequestError:
                 return JSONResponse({"detail": "Invalid Office dictation request"}, status_code=400)
+            except OfficeImportPreviewDenied:
+                return JSONResponse({"detail": "Source document is not available"}, status_code=403)
             except OfficeDocumentPermissionError:
                 return JSONResponse({"detail": "Document write is not allowed"}, status_code=403)
             except PolicyViolation:
@@ -238,9 +250,19 @@ class OfficeRoute(APIRoute):
                 return JSONResponse(
                     {"detail": "The document has a newer or conflicting saved version"}, status_code=409
                 )
-            except (OfficeDocumentInvalidContentError, OfficeImageInvalid):
+            except (
+                OfficeDocumentInvalidContentError,
+                OfficeImageInvalid,
+                OfficeImportPreviewInvalid,
+                ParserWorkerError,
+            ):
                 return JSONResponse({"detail": "Document validation failed"}, status_code=400)
-            except (SourceObjectStorageError, PsycopgError, OfficeImageUnavailable):
+            except (
+                SourceObjectStorageError,
+                PsycopgError,
+                OfficeImageUnavailable,
+                RichDocumentParserUnavailable,
+            ):
                 return JSONResponse({"detail": "Office storage unavailable"}, status_code=503)
             except (
                 OfficeAISummaryUnavailable,
@@ -274,6 +296,12 @@ def build_office_document_service(
         audit=audit,
         writes_available=False,
     )
+
+
+def build_office_import_preview_service(
+    *, source_repository: SourceObjectRepository, audit: InMemoryAuditLogger
+) -> OfficeImportPreviewService:
+    return OfficeImportPreviewService(source_repository=source_repository, audit=audit)
 
 
 def _write_enabled(request: Request, context: TenantRequestContext) -> bool:
@@ -436,6 +464,17 @@ def register_office_routes(
         return request.app.state.office_document_service.parser_worker_plan(
             user_context=context.user_context,
             read_enabled=True,
+        )
+
+    @router.post("/import-previews", response_model=OfficeImportPreviewResponse)
+    def import_preview(
+        command: OfficeImportPreviewCommand,
+        request: Request,
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_import_preview_service.preview(
+            user_context=context.user_context,
+            command=command,
         )
 
     @router.post("/{object_id}/images", dependencies=[Depends(write_gate)])

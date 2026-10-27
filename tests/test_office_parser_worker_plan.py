@@ -38,5 +38,8 @@ def test_office_parser_worker_compose_profile_is_no_network_non_root_read_only_a
     assert "pids_limit: 64" in service
     assert "cpus: 1" in service
     assert "./app:/workspace/app:ro" in service
-    assert "ports:" not in service and "depends_on:" not in service
+    assert "ports:" not in service
+    assert "depends_on:" in service
+    assert "rich-document-parser-socket-init:" in service
+    assert "condition: service_completed_successfully" in service
     assert "DATABASE_DSN" not in service and "S3_" not in service and "API_KEY" not in service

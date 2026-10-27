@@ -2,6 +2,40 @@
 
 Updated: 2026-10-27
 
+Roadmap 904 through 911 / PLANS 765 through 772 are complete under ADR-0211. Native Office can create a bounded,
+non-persisting text preview from one exact currently readable DOCX source version. Tenant/version identity, current
+authoritative ACL, manifest and content hashes are checked before an isolated parser sees bytes. Non-DOCX,
+active-content, foreign, unreadable or integrity-invalid inputs fail closed.
+
+The parser communicates over a Unix socket and runs without network or credentials as non-root on a read-only root
+filesystem with all capabilities dropped, no-new-privileges and bounded CPU, memory, PIDs and scratch. The API mounts
+the socket read-only and validates parser/source identity, MIME, input/text hashes, lengths and warnings. Audits and
+normal logs contain no source or extracted text bodies.
+
+Flattened lines become a native unsaved document whose strict provenance binds source object, immutable source
+version, content hash, current ACL version, parser profile and parsed-text hash. That server-validated provenance
+survives the editor round trip and is persisted only after the existing explicit save confirmation. Exact-version
+readback proves it remains attached. Productive full import, export, round-trip fidelity, automatic save, indexing,
+tenant activation and production admission remain closed.
+
+Focused parser/import/Office tests pass 105/105 and the final narrowed contract passes 38/38. Desktop/mobile import and
+lifecycle workflows pass 4/4; visual review passed without document-page overflow. Screenshot hashes are
+`sha256:82a25e99f0ef8d55fe7fe721972c0920e5c01383adfa71a0c16979d98427655e` and
+`sha256:880e72c65dc68d15980dbb35fa1686e62ae1965d1679961305c1cf378892e9d8`.
+
+Review is `http://192.168.0.108:42880/office?review=docx-import-preview-adr0211` with `office.css?v=24` and
+`editor.js?v=24`. Complete quality passes Ruff, finds 911 format-conformant files, passes Mypy over 643 sources and
+reaches 100 percent Pytest with only the known Starlette/AnyIO warning. Final Work-E2E, review API and parser image IDs
+are `sha256:5aecf60d57c02f9ae910d8b23595a98324ca5c96174b6ee2d0748b3305dada36`,
+`sha256:9a97b3e116d0b9935d78427275dd89ce7f94d0882cfbf00f15ad3de5530ff6b1` and
+`sha256:2313bd9e73816069388bad3f34f1d7be4b3b197d55aa175afe3577de5434405a`. The isolated test database was removed and
+no transient runner remains. ADR-0210 is published through commit `38664480`; ADR-0211 is committed locally and still
+requires a new content-specific push approval.
+
+The next Office loop should preserve richer DOCX structure and provide governed source discovery while retaining this
+exact-version authorization and provenance boundary. Malicious-corpus admission, productive candidate-version writes,
+export/fidelity and live collaboration remain separate gates. CRM onboarding remains deferred.
+
 Roadmap 896 through 903 / PLANS 757 through 764 are complete under ADR-0210. Native bar, stacked-bar, line, area and
 combo charts now support non-destructive series visibility and display order. Plot, legend, value labels and semantic
 data table share one derived view; canonical series, values, colors, table bindings, formulas and source order remain

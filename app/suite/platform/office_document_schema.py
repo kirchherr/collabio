@@ -1375,8 +1375,37 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         "documentFields",
         "citationSources",
         "tableRanges",
+        "importProvenance",
     }:
         reject()
+    if "importProvenance" in root_attrs:
+        provenance = root_attrs["importProvenance"]
+        if (
+            not isinstance(provenance, dict)
+            or set(provenance)
+            != {
+                "sourceObjectId",
+                "sourceVersionId",
+                "sourceContentHash",
+                "sourceAclVersion",
+                "parserProfileId",
+                "parserTextHash",
+                "importScope",
+            }
+            or not isinstance(provenance["sourceObjectId"], str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}", provenance["sourceObjectId"]) is None
+            or not isinstance(provenance["sourceVersionId"], str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}", provenance["sourceVersionId"]) is None
+            or not isinstance(provenance["sourceContentHash"], str)
+            or re.fullmatch(r"sha256:[a-f0-9]{64}", provenance["sourceContentHash"]) is None
+            or type(provenance["sourceAclVersion"]) is not int
+            or provenance["sourceAclVersion"] < 1
+            or provenance["parserProfileId"] != "rich-document-parser-worker:1"
+            or not isinstance(provenance["parserTextHash"], str)
+            or re.fullmatch(r"sha256:[a-f0-9]{64}", provenance["parserTextHash"]) is None
+            or provenance["importScope"] != "bounded_flattened_text_preview"
+        ):
+            reject()
     table_ranges_value = root_attrs.get("tableRanges", [])
     if not isinstance(table_ranges_value, list) or len(table_ranges_value) > 100:
         reject()
@@ -2282,7 +2311,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                     if not 1900 <= formatted_date.year <= 9999:
                         reject()
         elif kind == "doc":
-            root_attributes = {"styles", "page", "running", "documentFields", "citationSources", "tableRanges"}
+            root_attributes = {
+                "styles",
+                "page",
+                "running",
+                "documentFields",
+                "citationSources",
+                "tableRanges",
+                "importProvenance",
+            }
             if depth != 0 or set(attrs) - root_attributes:
                 reject()
         elif attrs:

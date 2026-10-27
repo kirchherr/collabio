@@ -309,6 +309,7 @@ const OfficeSemantics = Extension.create({
     return [{ types: ["doc"], attributes: {
       documentFields: { default: [], rendered: false }, citationSources: { default: [], rendered: false },
       tableRanges: { default: [], rendered: false },
+      importProvenance: { default: null, rendered: false },
     } }];
   },
   addProseMirrorPlugins() {
@@ -708,7 +709,7 @@ async function loadParserWorkerPlan(session, context) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     if (!parserWorkerPlanMatches(value)) throw new ApiError(502, true);
     $("lifecycle-parser-worker").textContent =
-      "No-Network-, Read-only- und Non-root-Profil geplant; Dispatch und Produktion bleiben geschlossen. Materializer, Ergebnishandoff, Scheduler, Schadkorpus, Fuzzing, Recovery und Image-Zulassung fehlen.";
+      "No-Network-, Read-only- und Non-root-Profil ist für die begrenzte DOCX-Textvorschau aktiv. Allgemeiner und produktiver Dispatch bleiben geschlossen; Schadkorpus, Fuzzing, Recovery und Image-Zulassung sind noch nicht vollständig nachgewiesen.";
   } catch (error) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-parser-worker").textContent = denied(error)
@@ -774,7 +775,7 @@ async function loadImportCompatibility(session, context) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     if (!importCompatibilityMatches(value)) throw new ApiError(502, true);
     $("lifecycle-import-compatibility").textContent =
-      "DOCX, ODT und PDF sind merkmalgenau bewertet: Text kann erhalten oder abgeflacht werden; aktive Inhalte werden blockiert, Hinweise markiert. Import, Export und Round-trip-Fidelity bleiben geschlossen.";
+      "DOCX, ODT und PDF sind merkmalgenau bewertet. Die begrenzte DOCX-Textvorschau ist aktiv; produktiver Import, Export und Round-trip-Fidelity bleiben geschlossen.";
   } catch (error) {
     if (!sessionCurrent(session) || state.context !== context || !$("lifecycle-dialog").open) return;
     $("lifecycle-import-compatibility").textContent = denied(error)
@@ -1029,11 +1030,15 @@ function normalizedDocument(document) {
   if (fields.length) result.attrs = { ...result.attrs, documentFields: fields };
   if (sources.length) result.attrs = { ...result.attrs, citationSources: sources };
   if (tableRanges.length) result.attrs = { ...result.attrs, tableRanges };
+  if (document.attrs?.importProvenance != null) result.attrs = { ...result.attrs, importProvenance: document.attrs.importProvenance };
   return result;
 }
 
 function draftSnapshot() {
   const document = normalizedDocument(state.editor.getJSON());
+  if (state.session?.importProvenance != null) {
+    document.attrs = { ...document.attrs, importProvenance: state.session.importProvenance };
+  }
   validateOfficeChartBindings(document);
   return { title: $("document-title").value.trim(),
     information_classification: officeInformationClassification($("document-classification").value),
@@ -4318,6 +4323,7 @@ function renderDocuments() {
   });
   $("documents-list").scrollTop = scrollTop;
   $("document-new").disabled = !state.canCreate;
+  $("document-import").disabled = !state.canCreate;
   $("welcome-new").disabled = !state.canCreate;
   $("documents-refresh").disabled = state.listLoading;
   $("documents-list").setAttribute("aria-busy", String(state.listLoading));
@@ -4513,7 +4519,7 @@ function settleDiscard(confirmed) {
 function freshSession(objectId = null) {
   return { epoch: state.epoch, objectId, revision: 0, history: freshHistory(), canWrite: false, canShare: false,
     loading: true, saving: false, historical: false, conflict: false, uncertain: false, restoring: false,
-    version: null, metadata: null, baseline: "", attempt: null, versions: [],
+    version: null, metadata: null, baseline: "", attempt: null, versions: [], importProvenance: null,
     leaseStatus: objectId ? "checking" : "not_required", leaseExpiresAt: null, leaseRevision: 0,
     leaseRequest: 0, leasePending: false, leaseTimer: null,
     dictationCapability: null, dictationCapabilityRequest: 0, dictationCapabilityLoading: false,
@@ -4550,6 +4556,7 @@ function acceptContent(result, session) {
   $("history-selected").textContent = ""; $("history-selected").hidden = true;
   session.metadata = result.document;
   session.version = result.version;
+  session.importProvenance = result.content?.attrs?.importProvenance || null;
   session.objectId = result.document.object_id;
   session.canWrite = result.can_write === true;
   session.canShare = result.document.can_share === true;
@@ -4620,6 +4627,83 @@ function templateDocument(template) {
     heading("Erfolgskriterien"), paragraph(),
   ] };
   return { type: "doc", content: [paragraph()] };
+}
+
+function importPreviewMatches(value) {
+  const provenance = value?.document?.attrs?.importProvenance;
+  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_import_preview.v1" &&
+    typeof value.source_object_id === "string" && typeof value.source_version_id === "string" &&
+    typeof value.source_title === "string" && typeof value.source_content_hash === "string" &&
+    Number.isInteger(value.source_acl_version) && value.source_acl_version > 0 &&
+    ["public", "internal", "confidential", "restricted"].includes(value.information_classification) &&
+    value.parser_profile_id === "rich-document-parser-worker:1" && typeof value.parser_text_hash === "string" &&
+    Array.isArray(value.warnings) && value.warnings.every((warning) => typeof warning === "string") &&
+    value.document?.type === "doc" && Array.isArray(value.document.content) &&
+    value.content_persisted === false && value.save_requires_explicit_confirmation === true &&
+    value.fidelity_preserved === false && value.import_scope === "bounded_flattened_text_preview" &&
+    provenance?.sourceObjectId === value.source_object_id && provenance?.sourceVersionId === value.source_version_id &&
+    provenance?.sourceContentHash === value.source_content_hash && provenance?.sourceAclVersion === value.source_acl_version &&
+    provenance?.parserProfileId === value.parser_profile_id && provenance?.parserTextHash === value.parser_text_hash &&
+    provenance?.importScope === value.import_scope && typeof value.audit_event_id === "string";
+}
+
+async function showImportDocument() {
+  const epoch = state.epoch;
+  if (!state.canCreate || !(await confirmDiscard()) || epoch !== state.epoch) return;
+  const form = $("import-document-form");
+  form.reset();
+  $("import-document-status").textContent = "";
+  $("import-document-status").classList.remove("error");
+  $("import-document-dialog").showModal();
+  form.elements.source_object_id.focus();
+}
+
+async function beginImportPreview(event) {
+  event.preventDefault();
+  const form = $("import-document-form"), status = $("import-document-status"), submit = form.querySelector("button[type=submit]");
+  if (!state.canCreate || !form.reportValidity() || submit.disabled) return;
+  const epoch = state.epoch;
+  submit.disabled = true;
+  status.textContent = "Quellversion und aktive Inhalte werden geprüft …";
+  status.classList.remove("error");
+  try {
+    const result = await api("/v1/office/documents/import-previews", {
+      method: "POST",
+      body: {
+        source_object_id: form.elements.source_object_id.value.trim(),
+        source_version_id: form.elements.source_version_id.value.trim(),
+      },
+    });
+    if (!importPreviewMatches(result)) throw new ApiError(502, true);
+    if (epoch !== state.epoch) return;
+    clearWorkspace();
+    const session = freshSession();
+    session.canWrite = true;
+    session.importProvenance = result.document.attrs.importProvenance;
+    state.session = session;
+    $("office-welcome").hidden = true;
+    $("document-workspace").hidden = false;
+    $("document-title").value = result.source_title;
+    setDocumentClassification(result.information_classification);
+    $("document-mode").textContent = "Importvorschau";
+    $("document-version").textContent = `Quelle ${result.source_version_id} · noch nicht gespeichert`;
+    $("history-status").textContent = "Die Quellprovenienz bleibt im Entwurf gebunden. Erst eine bestätigte Speicherung erzeugt eine native Version.";
+    mountEditor(result.document, session);
+    session.loading = false;
+    session.baseline = "";
+    updateEditorState();
+    $("import-document-dialog").close();
+    $("office-shell").classList.remove("documents-open");
+    $("documents-toggle").setAttribute("aria-expanded", "false");
+    notice(result.warnings.length ? "Importvorschau erstellt. Nicht ausführbare Sicherheitsmarker erfordern Prüfung; Formatierungen können abgeflacht sein." : "Importvorschau erstellt. Formatierungen können abgeflacht sein.");
+  } catch (error) {
+    status.textContent = denied(error) ? "Diese Quellversion ist nicht verfügbar oder nicht lesbar." :
+      error instanceof ApiError && error.status === 503 ? "Der isolierte Import-Parser ist derzeit nicht verfügbar." :
+      "Die Quellversion konnte nicht sicher importiert werden.";
+    status.classList.add("error");
+  } finally {
+    submit.disabled = false;
+  }
 }
 
 async function showNewDocument() {
@@ -7267,8 +7351,10 @@ async function revokeShare(entry) {
 }
 
 $("document-new").addEventListener("click", showNewDocument);
+$("document-import").addEventListener("click", showImportDocument);
 $("welcome-new").addEventListener("click", showNewDocument);
 $("new-document-form").addEventListener("submit", beginDraft);
+$("import-document-form").addEventListener("submit", beginImportPreview);
 $("document-save").addEventListener("click", showSave);
 $("save-form").addEventListener("submit", saveDocument);
 $("save-confirm").addEventListener("change", () => { $("save-submit").disabled = !$("save-confirm").checked; });
@@ -7792,6 +7878,7 @@ $("context-form").addEventListener("submit", async (event) => {
   state.epoch += 1;
   clearWorkspace();
   $("new-document-dialog").close();
+  $("import-document-dialog").close();
   state.context = context;
   clearDocumentList(true);
   localStorage.setItem(storageKey, JSON.stringify(context));

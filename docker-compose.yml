@@ -738,11 +738,32 @@ services:
       - ./app:/workspace/app:ro
       - ./docs:/workspace/docs:ro
       - ./backups:/backups:ro
+  rich-document-parser-socket-init:
+    build:
+      context: .
+      target: base
+    command: chown 1000:1000 /run/rich-document-parser
+    network_mode: "none"
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+    volumes:
+      - rich_document_parser_socket:/run/rich-document-parser
+
   rich-document-parser:
     build:
       context: .
       target: dev
-    command: python -m suite.rag.rich_document_parser_service --describe
+    depends_on:
+      rich-document-parser-socket-init:
+        condition: service_completed_successfully
+    command: python -m suite.rag.rich_document_parser_service --serve-socket /run/rich-document-parser/parser.sock
     network_mode: "none"
     user: "1000:1000"
     read_only: true
@@ -759,6 +780,12 @@ services:
       PYTHONPATH: /workspace/app
     volumes:
       - ./app:/workspace/app:ro
+      - rich_document_parser_socket:/run/rich-document-parser
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(socket.AF_UNIX); s.settimeout(2); s.connect('/run/rich-document-parser/parser.sock'); s.close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   legacy-sql-metadata-worker:
     build:
@@ -4064,6 +4091,23 @@ services:
     volumes:
       - work_e2e_image_socket:/run/office-images
 
+  work-e2e-rich-document-parser:
+    extends: rich-document-parser
+    profiles: ["work-e2e"]
+    restart: "no"
+    volumes:
+      - ./app:/workspace/app:ro
+      - work_e2e_rich_document_parser_socket:/run/rich-document-parser
+    depends_on:
+      work-e2e-rich-document-parser-socket-init:
+        condition: service_completed_successfully
+
+  work-e2e-rich-document-parser-socket-init:
+    extends: rich-document-parser-socket-init
+    profiles: ["work-e2e"]
+    volumes:
+      - work_e2e_rich_document_parser_socket:/run/rich-document-parser
+
   api:
     build:
       context: .
@@ -4071,6 +4115,8 @@ services:
     restart: unless-stopped
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
+      rich-document-parser:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       migrate:
@@ -4145,6 +4191,7 @@ services:
     ports:
       - "${SUITE_BIND_ADDRESS:-127.0.0.1}:${SUITE_API_PORT:-8000}:8000"
     volumes:
+      - rich_document_parser_socket:/run/rich-document-parser:ro
       - ./app:/workspace/app
       - ./tests:/workspace/tests
       - ./data:/workspace/data
@@ -4321,6 +4368,8 @@ services:
       target: dev
     command: uvicorn work_e2e_server:app --app-dir /workspace/tests --host 0.0.0.0 --port 8000
     depends_on:
+      work-e2e-rich-document-parser:
+        condition: service_healthy
       work-e2e-image-decoder:
         condition: service_healthy
       work-e2e-seed:
@@ -4370,6 +4419,7 @@ services:
       - ./tests:/workspace/tests:ro
       - ./docs:/workspace/docs:ro
       - work_e2e_image_socket:/run/office-images:ro
+      - work_e2e_rich_document_parser_socket:/run/rich-document-parser:ro
     mem_limit: 1024m
     pids_limit: 256
     cpus: 2
@@ -4742,6 +4792,8 @@ networks:
     internal: false
 
 volumes:
+  rich_document_parser_socket:
+  work_e2e_rich_document_parser_socket:
   office_image_socket:
   work_e2e_image_socket:
   postgres18_data:

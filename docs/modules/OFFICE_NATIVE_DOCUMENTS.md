@@ -1,9 +1,29 @@
 # Native Office Documents
 
-Status: Roadmap 252–903 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 903 / PLANS 764 chart-series management
-Module: `office_documents` / version 0.9.21
-Decisions: ADR-0079 through ADR-0210; current movement: `ARCHITECTURE_DECISIONS/ADR-0210-native-office-chart-series-management.md`
+Status: Roadmap 252–911 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 911 / PLANS 772 ACL-bound DOCX import preview
+Module: `office_documents` / version 0.9.22
+Decisions: ADR-0079 through ADR-0211; current movement: `ARCHITECTURE_DECISIONS/ADR-0211-native-office-acl-bound-docx-import-preview.md`
+
+## ACL-bound DOCX import preview (Roadmap 904–911)
+
+Office can create a bounded unsaved native text preview from one exact DOCX source version. The server revalidates
+the current authoritative object ACL, exact tenant/version identity, manifest and content hashes before dispatching
+bytes to the isolated Unix-socket parser. Non-DOCX, active-content, unreadable, foreign or integrity-invalid inputs
+fail closed. Audit and normal logs contain no document body.
+
+The parser has no network or credentials, runs non-root on a read-only filesystem with dropped capabilities and
+bounded resources, and returns hash-bound evidence. The preview declares flattened formatting and retains source and
+parser provenance through explicit confirmed save and exact-version reload. Productive import, export, round-trip
+fidelity, indexing, automatic actions and tenant/pilot activation remain closed.
+
+Focused parser/import/Office regressions pass 105/105; the final narrowed API contract passes 38/38. Desktop/mobile
+import and lifecycle workflows pass 4/4. Visual review passes without document-page overflow. Screenshot hashes are
+`sha256:82a25e99f0ef8d55fe7fe721972c0920e5c01383adfa71a0c16979d98427655e` and
+`sha256:880e72c65dc68d15980dbb35fa1686e62ae1965d1679961305c1cf378892e9d8`. Review is available at
+`http://192.168.0.108:42880/office?review=docx-import-preview-adr0211` with asset keys `office.css?v=24` and
+`editor.js?v=24`. Complete quality passes Ruff, finds 911 format-conformant files, passes Mypy over 643 sources and
+reaches 100 percent Pytest with only the known Starlette/AnyIO warning.
 
 ## Chart-series management (Roadmap 896–903)
 

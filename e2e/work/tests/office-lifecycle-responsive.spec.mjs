@@ -99,12 +99,12 @@ test("Office lifecycle explains draft, collaboration, saved version and closed r
   await expect(page.locator("#lifecycle-live-collaboration")).toContainText("Runtime und WebSocket bleiben");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("Same-Origin, Subprotocol, Binärframes");
   await expect(page.locator("#lifecycle-websocket-gateway")).toContainText("HTTP-Upgrade, Zugangsticket und Verbindungen bleiben geschlossen");
-  await expect(page.locator("#lifecycle-parser-worker")).toContainText("No-Network-, Read-only- und Non-root-Profil geplant");
-  await expect(page.locator("#lifecycle-parser-worker")).toContainText("Dispatch und Produktion bleiben geschlossen");
+  await expect(page.locator("#lifecycle-parser-worker")).toContainText("begrenzte DOCX-Textvorschau aktiv");
+  await expect(page.locator("#lifecycle-parser-worker")).toContainText("Allgemeiner und produktiver Dispatch bleiben geschlossen");
   await expect(page.locator("#lifecycle-macro-policy")).toContainText("VBA, ActiveX/OLE, ODF-Skripte und PDF-Aktionen werden blockiert");
   await expect(page.locator("#lifecycle-macro-policy")).toContainText("Ausführung und automatisches Entfernen bleiben ausgeschlossen");
   await expect(page.locator("#lifecycle-import-compatibility")).toContainText("DOCX, ODT und PDF sind merkmalgenau bewertet");
-  await expect(page.locator("#lifecycle-import-compatibility")).toContainText("Import, Export und Round-trip-Fidelity bleiben geschlossen");
+  await expect(page.locator("#lifecycle-import-compatibility")).toContainText("produktiver Import, Export und Round-trip-Fidelity bleiben geschlossen");
   await expect(page.locator("#lifecycle-interchange-corpus")).toContainText("Neun reproduzierbare DOCX-, ODT- und PDF-Fixtures");
   await expect(page.locator("#lifecycle-interchange-corpus")).toContainText("Export-Engine und Rundlauf-Treue bleiben geschlossen");
   await expect(page.locator("#lifecycle-saved")).toContainText(saved.version.version_id);

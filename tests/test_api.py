@@ -1228,6 +1228,7 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "/v1/office/documents/macro-policy",
         "/v1/office/documents/import-compatibility-matrix",
         "/v1/office/documents/import-export-test-corpus",
+            "/v1/office/documents/import-previews",
         "/v1/office/documents/{object_id}/content",
         "/v1/office/documents/{object_id}/ai/summaries",
         "/v1/office/documents/{object_id}/ai/rewrites",
@@ -1280,7 +1281,10 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
         "websocket_backpressure_heartbeat_reauth_resume_and_limits_are_explicit",
         "parser_plan_requires_exact_source_metadata_and_acl_revalidation_before_and_after_parse",
         "parser_worker_is_no_network_non_root_read_only_bounded_and_credential_free",
-        "parser_dispatch_and_output_trust_remain_closed_until_separate_evidence",
+        "general_and_productive_parser_dispatch_remain_closed_until_separate_evidence",
+        "docx_import_preview_requires_exact_source_version_current_acl_and_hash_validation",
+        "docx_import_preview_is_nonpersisting_until_explicit_confirmed_native_save",
+        "docx_import_provenance_binds_source_acl_and_parser_hashes",
         "active_content_detected_before_text_extraction_and_never_executed",
         "blocked_active_content_is_not_extracted_or_automatically_removed",
         "nonexecuting_signature_and_external_link_indicators_require_visible_review",
@@ -1342,6 +1346,11 @@ def test_roadmap_dashboard_api_returns_tenant_scoped_foundation_overview_without
     assert "ARCHITECTURE_DECISIONS/ADR-0105-native-office-backlinks.md" in office_native["evidence_refs"]
     assert "table_captions_use_stable_unique_local_ids_and_order_derived_numbers" in office_native["guardrails"]
     assert "ARCHITECTURE_DECISIONS/ADR-0079-native-office-document-workspace.md" in office_native["evidence_refs"]
+    assert (
+        "ARCHITECTURE_DECISIONS/ADR-0211-native-office-acl-bound-docx-import-preview.md"
+        in office_native["evidence_refs"]
+    )
+    assert "/v1/office/documents/import-previews" in office_native["api_routes"]
     assert (
         "ARCHITECTURE_DECISIONS/ADR-0180-bounded-native-office-crdt-service-preflight.md"
         in office_native["evidence_refs"]

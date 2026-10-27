@@ -2322,15 +2322,39 @@ chart kinds and cross-contract compatibility on the server. Reject booleans, sur
 764. [x] Close the block with 88 focused schema/API tests, thirteen chart-model cases, desktop/mobile saved-version
 and visual proof and the complete repository quality gate. Add no migration, dependency, external engine or state.
 
+765. [x] Add an exact-version DOCX import-preview command under ADR-0211. Resolve only tenant-owned source bytes and
+revalidate the current authoritative object ACL before any parser dispatch.
+
+766. [x] Dispatch the authorized bytes through a bounded Unix socket to a no-network, non-root, read-only parser with
+all capabilities dropped, no-new-privileges, resource limits and no storage, database, provider or vector credentials.
+
+767. [x] Reject non-DOCX and active-content inputs before extraction. Independently validate parser identity, MIME,
+source identity, input hash, text hash, byte length, response size and warnings without logging content bodies.
+
+768. [x] Map bounded flattened text to a native unsaved document and bind exact source object, version, content hash,
+current ACL version, parser profile and parser text hash as strict root provenance.
+
+769. [x] Add a responsive secure-import dialog and lifecycle wording that distinguishes the active bounded preview
+from closed productive dispatch. Require the existing explicit save confirmation before creating a native version.
+
+770. [x] Preserve server-validated provenance through the editor round trip and confirmed immutable save/reload.
+Independently reject surplus, malformed or boolean-substituted provenance fields on the server.
+
+771. [x] Prove desktop/mobile preview, confirmation, save, exact-version readback, provenance persistence, lifecycle
+distinction and responsive containment. Keep productive import, export and round-trip fidelity closed.
+
+772. [x] Close the block with parser/socket, import, schema/API and browser regressions plus the complete repository
+quality gate. Add no migration, dependency, external engine, tenant activation or durable business-state schema.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 903 / PLANS 764. Non-destructive series visibility and display order now
-  complete the current native chart usability sequence on top of bounded category axes, accessible data tables,
-  analytical overlays and linked-table charts. Continue Office with the DOCX quick-edit/interchange evidence path and
-  then productive collaboration gates before deferred CRM onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 911 / PLANS 772. An exact-version, ACL-revalidated DOCX source can now
+  produce a bounded non-persisting native text preview through the isolated parser and retain hash-bound provenance
+  through an explicitly confirmed save. Continue with richer structure-preserving DOCX mapping and governed source
+  discovery before productive import/export or collaboration gates and deferred CRM onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

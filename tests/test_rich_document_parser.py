@@ -144,11 +144,19 @@ def test_compose_declares_isolated_rich_document_parser_service() -> None:
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
 
     assert "\n  rich-document-parser:\n" in compose
-    assert "python -m suite.rag.rich_document_parser_service --describe" in compose
+    assert (
+        "python -m suite.rag.rich_document_parser_service --serve-socket "
+        "/run/rich-document-parser/parser.sock" in compose
+    )
     assert 'network_mode: "none"' in compose
     assert "read_only: true" in compose
     assert "no-new-privileges:true" in compose
     assert "./app:/workspace/app:ro" in compose
+    assert "rich_document_parser_socket:/run/rich-document-parser" in compose
+    assert "work_e2e_rich_document_parser_socket:/run/rich-document-parser" in compose
+    assert "rich-document-parser-socket-init:" in compose
+    assert 'user: "1000:1000"' in compose
+    assert "condition: service_completed_successfully" in compose
 
 
 def test_rich_document_parser_extracts_docx_text() -> None:

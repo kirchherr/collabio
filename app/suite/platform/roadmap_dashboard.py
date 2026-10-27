@@ -881,7 +881,8 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "Bestaetigung speichert eine neue Version. PostgreSQL-Metadaten und exakte S3-Quellversionen "
                         "bleiben an aktuelle ACLs "
                         "gebunden. Das Modul office_documents und seine Lese-/Schreibfeatures bleiben fuer normale "
-                        "Mandanten standardmaessig geschlossen; DOCX-Import, Export und Engine-Freigaben sind separat."
+                        "Mandanten standardmaessig geschlossen. Eine begrenzte ACL-gepruefte DOCX-Textvorschau ist "
+                        "verfuegbar; produktiver Import, Export und Engine-Freigaben sind separat."
                     ),
                     status=RoadmapCapabilityStatus.GUARDED,
                     capability_type="office_document_workspace",
@@ -1017,6 +1018,16 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "e2e/work/tests/office-chart-scatter-combo-responsive.spec.mjs",
                         "ARCHITECTURE_DECISIONS/ADR-0205-native-office-chart-reference-lines-and-data-labels.md",
                         "e2e/work/tests/office-chart-analytics-responsive.spec.mjs",
+                        "ARCHITECTURE_DECISIONS/ADR-0206-native-office-chart-trendlines-and-error-bars.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0207-native-office-logarithmic-and-secondary-chart-axes.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0208-native-office-visible-accessible-chart-data-tables.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0209-native-office-category-axis-presentation.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0210-native-office-chart-series-management.md",
+                        "ARCHITECTURE_DECISIONS/ADR-0211-native-office-acl-bound-docx-import-preview.md",
+                        "app/suite/platform/office_import_preview.py",
+                        "tests/test_office_import_preview.py",
+                        "tests/test_rich_document_parser_socket.py",
+                        "e2e/work/tests/office-import-preview-responsive.spec.mjs",
                     ),
                     api_routes=(
                         "/v1/office/documents",
@@ -1024,6 +1035,7 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "/v1/office/documents/macro-policy",
                         "/v1/office/documents/import-compatibility-matrix",
                         "/v1/office/documents/import-export-test-corpus",
+                        "/v1/office/documents/import-previews",
                         "/v1/office/documents/{object_id}/content",
                         "/v1/office/documents/{object_id}/ai/summaries",
                         "/v1/office/documents/{object_id}/ai/rewrites",
@@ -1077,7 +1089,10 @@ def _roadmap_groups() -> tuple[RoadmapCapabilityGroup, ...]:
                         "websocket_backpressure_heartbeat_reauth_resume_and_limits_are_explicit",
                         "parser_plan_requires_exact_source_metadata_and_acl_revalidation_before_and_after_parse",
                         "parser_worker_is_no_network_non_root_read_only_bounded_and_credential_free",
-                        "parser_dispatch_and_output_trust_remain_closed_until_separate_evidence",
+                        "general_and_productive_parser_dispatch_remain_closed_until_separate_evidence",
+                        "docx_import_preview_requires_exact_source_version_current_acl_and_hash_validation",
+                        "docx_import_preview_is_nonpersisting_until_explicit_confirmed_native_save",
+                        "docx_import_provenance_binds_source_acl_and_parser_hashes",
                         "active_content_detected_before_text_extraction_and_never_executed",
                         "blocked_active_content_is_not_extracted_or_automatically_removed",
                         "nonexecuting_signature_and_external_link_indicators_require_visible_review",
