@@ -129,6 +129,21 @@ def structured_docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def formatted_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        "<w:p>"
+        "<w:r><w:rPr><w:b/></w:rPr><w:t>Fett</w:t></w:r>"
+        "<w:r><w:t> und </w:t></w:r>"
+        '<w:r><w:rPr><w:i w:val="true"/><w:u w:val="single"/><w:strike/></w:rPr><w:t>markiert</w:t></w:r>'
+        "</w:p></w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+    return buffer.getvalue()
+
+
 def odt_bytes(*paragraphs: str) -> bytes:
     body = "".join(f"<text:p>{paragraph}</text:p>" for paragraph in paragraphs)
     xml = (
@@ -203,12 +218,60 @@ def test_rich_document_parser_preserves_bounded_docx_heading_list_and_table_stru
     artifact = RichDocumentParserWorker().parse(request)
 
     assert artifact.document_blocks == (
-        {"kind": "heading", "level": 1, "text": "Quartalsbericht"},
-        {"kind": "bullet_list", "items": ["Erster Punkt", "Zweiter Punkt"]},
-        {"kind": "table", "rows": [["Monat", "Umsatz"], ["Januar", "42"]]},
+        {"kind": "heading", "level": 1, "runs": [{"text": "Quartalsbericht", "marks": []}]},
+        {
+            "kind": "bullet_list",
+            "items": [
+                [{"text": "Erster Punkt", "marks": []}],
+                [{"text": "Zweiter Punkt", "marks": []}],
+            ],
+        },
+        {
+            "kind": "table",
+            "rows": [
+                [
+                    [{"text": "Monat", "marks": []}],
+                    [{"text": "Umsatz", "marks": []}],
+                ],
+                [
+                    [{"text": "Januar", "marks": []}],
+                    [{"text": "42", "marks": []}],
+                ],
+            ],
+        },
     )
     assert artifact.text == "Quartalsbericht\nErster Punkt\nZweiter Punkt\nMonat\tUmsatz\nJanuar\t42"
     assert artifact.document_blocks_hash.startswith("sha256:")
+
+
+def test_rich_document_parser_preserves_bounded_docx_inline_marks() -> None:
+    artifact = RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=formatted_docx_bytes()))
+
+    assert artifact.text == "Fett und markiert"
+    assert artifact.document_blocks == (
+        {
+            "kind": "paragraph",
+            "runs": [
+                {"text": "Fett", "marks": ["bold"]},
+                {"text": " und ", "marks": []},
+                {"text": "markiert", "marks": ["italic", "underline", "strike"]},
+            ],
+        },
+    )
+
+
+def test_rich_document_parser_rejects_tracked_docx_revisions() -> None:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        "<w:p><w:del><w:r><w:t>removed</w:t></w:r></w:del></w:p>"
+        "</w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+
+    with pytest.raises(ParserWorkerError, match="tracked revisions"):
+        RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=buffer.getvalue()))
 
 
 def test_rich_document_parser_extracts_odt_text() -> None:

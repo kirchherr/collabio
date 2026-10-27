@@ -2,6 +2,27 @@
 
 Updated: 2026-10-27
 
+Roadmap 920 through 927 / PLANS 781 through 788 are complete under ADR-0213. The isolated DOCX parser now preserves
+direct bold, italic, underline and strike run properties in paragraphs, headings, flat lists and simple table cells.
+The run contract is canonical and bounded; unknown, duplicate, empty, oversized, reordered or surplus values fail
+closed. Themes, styles, fields, URLs and relationships are not resolved, and tracked insertions/deletions/moves are
+rejected instead of silently selecting a revision view.
+
+The API independently derives normalized text from the structured tree and requires equality with the separately
+hash-bound parser text before strict native mapping. Exact source/version, current ACL, content, text and structure
+provenance and explicit confirmed save remain unchanged. Final Ruff/format pass with 913 files, Mypy passes 643
+sources, the focused contract passes 54/54 and full Pytest reaches 100 percent with only the known warning.
+
+Desktop/mobile pass 2/2 in 15.5 seconds. Screenshot hashes are
+`sha256:2e13f1e13a8a32eece4cd6aa494d0233317af26d5404e3b4570aeb75ed391dcf` and
+`sha256:6f1324d3c28e80fc3eb3fce406170ff913d1d0f5b5b58ba5b0d897dfad572864`. Final Work-E2E, review API and parser image
+IDs are `sha256:b85bb81360ecf63a6fa9da9ccf000370a79ea38d6384fe668da30b7a9fd43261`,
+`sha256:d6ec8d059b85c68f9134fa46e923b4ff2313d14cc9b208448ae29955025ece2c` and
+`sha256:5a5d7db9c6a486f09e5d4241762301a478cf7defe3002c4448e813c16b20115a`. Review is
+`http://192.168.0.108:42880/office?review=docx-inline-adr0213`. ADR-0212 is published through `32b2f3b5`; ADR-0213 is
+locally complete and requires a new content-specific push approval. Images, page structures and deeper style fidelity
+remain the next Office lanes; CRM remains deferred.
+
 Roadmap 912 through 919 / PLANS 773 through 780 are complete under ADR-0212. Native Office now discovers only
 current DOCX heads that the authenticated user may read, returns bounded metadata without document content and opens
 the selected exact version as an unsaved structured preview. The isolated parser preserves bounded heading levels,

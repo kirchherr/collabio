@@ -26,6 +26,7 @@ PDF_MIME_TYPE = "application/pdf"
 RICH_DOCUMENT_MIME_TYPES = frozenset({DOCX_MIME_TYPE, ODT_MIME_TYPE, PDF_MIME_TYPE})
 WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{WORD_NS}}}"
+DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
 
 
 @dataclass(frozen=True)
@@ -144,7 +145,7 @@ class RichDocumentParserWorker:
         blocks: list[dict[str, object]] = []
         text_lines: list[str] = []
         list_kind: str | None = None
-        list_items: list[str] = []
+        list_items: list[list[dict[str, object]]] = []
 
         def flush_list() -> None:
             nonlocal list_kind, list_items
@@ -154,7 +155,8 @@ class RichDocumentParserWorker:
 
         for element in body:
             if element.tag == f"{W}p":
-                text = self._docx_paragraph_text(element)
+                runs = self._docx_paragraph_runs(element)
+                text = self._docx_runs_text(runs)
                 if not text.strip():
                     flush_list()
                     continue
@@ -165,34 +167,65 @@ class RichDocumentParserWorker:
                     if list_kind != kind:
                         flush_list()
                         list_kind = kind
-                    list_items.append(text)
+                    list_items.append(runs)
                     continue
                 flush_list()
                 level = self._docx_heading_level(element)
                 if level:
-                    block = {"kind": "heading", "level": level, "text": text}
+                    block = {"kind": "heading", "level": level, "runs": runs}
                 else:
-                    block = {"kind": "paragraph", "text": text}
+                    block = {"kind": "paragraph", "runs": runs}
                 blocks.append(block)
             elif element.tag == f"{W}tbl":
                 flush_list()
                 rows = self._docx_table_rows(element)
                 if rows:
                     blocks.append({"kind": "table", "rows": rows})
-                    text_lines.extend("\t".join(row) for row in rows)
+                    text_lines.extend("\t".join(self._docx_runs_text(cell) for cell in row) for row in rows)
         flush_list()
         return "\n".join(text_lines), tuple(blocks)
 
     def _docx_paragraph_text(self, paragraph: ElementTree.Element) -> str:
-        parts: list[str] = []
-        for node in paragraph.iter():
-            if node.tag == f"{W}t":
-                parts.append(node.text or "")
-            elif node.tag == f"{W}tab":
-                parts.append("\t")
-            elif node.tag in {f"{W}br", f"{W}cr"}:
-                parts.append("\n")
-        return "".join(parts)
+        return self._docx_runs_text(self._docx_paragraph_runs(paragraph))
+
+    def _docx_paragraph_runs(self, paragraph: ElementTree.Element) -> list[dict[str, object]]:
+        revision_tags = {f"{W}del", f"{W}ins", f"{W}moveFrom", f"{W}moveTo"}
+        if any(node.tag in revision_tags for node in paragraph.iter()):
+            raise ParserWorkerError("DOCX tracked revisions are outside the structured preview scope")
+        runs: list[dict[str, object]] = []
+        for run in paragraph.iter(f"{W}r"):
+            parts: list[str] = []
+            for node in run:
+                if node.tag == f"{W}t":
+                    parts.append(node.text or "")
+                elif node.tag == f"{W}tab":
+                    parts.append("\t")
+                elif node.tag in {f"{W}br", f"{W}cr"}:
+                    parts.append("\n")
+            text = "".join(parts)
+            if not text:
+                continue
+            properties = run.find(f"{W}rPr")
+            marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
+            runs.append({"text": text, "marks": marks})
+        if len(runs) > 4_000:
+            raise ParserWorkerError("DOCX paragraph exceeds the structured run limit")
+        return runs
+
+    def _docx_run_mark_enabled(self, properties: ElementTree.Element | None, mark: str) -> bool:
+        if properties is None:
+            return False
+        tag_names = {"bold": ("b",), "italic": ("i",), "underline": ("u",), "strike": ("strike", "dstrike")}
+        for tag_name in tag_names[mark]:
+            value = properties.find(f"{W}{tag_name}")
+            if value is None:
+                continue
+            raw = value.get(f"{W}val", "true").casefold()
+            return raw not in {"0", "false", "off", "no", "none"}
+        return False
+
+    def _docx_runs_text(self, runs: list[dict[str, object]]) -> str:
+        return "".join(str(run["text"]) for run in runs)
 
     def _docx_heading_level(self, paragraph: ElementTree.Element) -> int | None:
         style = paragraph.find(f"{W}pPr/{W}pStyle")
@@ -230,15 +263,22 @@ class RichDocumentParserWorker:
                 result[identifier] = abstract_formats.get(abstract_id, "bullet")
         return result
 
-    def _docx_table_rows(self, table: ElementTree.Element) -> list[list[str]]:
-        rows: list[list[str]] = []
+    def _docx_table_rows(self, table: ElementTree.Element) -> list[list[list[dict[str, object]]]]:
+        rows: list[list[list[dict[str, object]]]] = []
         for row in table.findall(f"{W}tr"):
-            cells: list[str] = []
+            cells: list[list[dict[str, object]]] = []
             for cell in row.findall(f"{W}tc"):
                 if cell.find(f"{W}tcPr/{W}gridSpan") is not None or cell.find(f"{W}tcPr/{W}vMerge") is not None:
                     raise ParserWorkerError("DOCX merged tables are outside the structured preview scope")
-                paragraphs = [self._docx_paragraph_text(value) for value in cell.findall(f"{W}p")]
-                cells.append("\n".join(value for value in paragraphs if value.strip()))
+                cell_runs: list[dict[str, object]] = []
+                for paragraph in cell.findall(f"{W}p"):
+                    paragraph_runs = self._docx_paragraph_runs(paragraph)
+                    if not self._docx_runs_text(paragraph_runs).strip():
+                        continue
+                    if cell_runs:
+                        cell_runs.append({"text": "\n", "marks": []})
+                    cell_runs.extend(paragraph_runs)
+                cells.append(cell_runs)
             if cells:
                 rows.append(cells)
         if not rows:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
@@ -73,15 +75,16 @@ def parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
         {"kind": "bullet_list", "items": ["Zweiter Absatz"]},
         {"kind": "table", "rows": [["A", "B"], ["1", "2"]]},
     )
+    text = "Erster Absatz\nZweiter Absatz\nA\tB\n1\t2"
     return ParsedTextArtifact(
-        text="Erster Absatz\nZweiter Absatz",
+        text=text,
         parser_name="rich-document-parser-worker",
         parser_version="1",
         source_object_type=request.source_object_type,
         mime_type=DOCX_MIME_TYPE,
         input_hash=sha256_bytes(request.content),
-        text_hash=sha256_bytes(b"Erster Absatz\nZweiter Absatz"),
-        text_byte_length=len(b"Erster Absatz\nZweiter Absatz"),
+        text_hash=sha256_bytes(text.encode("utf-8")),
+        text_byte_length=len(text.encode("utf-8")),
         warnings=("non-executable security markers require review",),
         document_blocks=blocks,
         document_blocks_hash=hash_document_blocks(blocks),
@@ -243,3 +246,62 @@ def test_native_schema_keeps_legacy_flattened_import_provenance_readable() -> No
     provenance["importScope"] = "bounded_flattened_text_preview"
 
     assert validate_office_document(document)["attrs"]["importProvenance"] == provenance
+
+
+def test_import_preview_maps_inline_runs_and_rejects_text_structure_drift() -> None:
+    runs = (
+        {
+            "kind": "paragraph",
+            "runs": [
+                {"text": "Fett", "marks": ["bold"]},
+                {"text": " und kursiv", "marks": ["italic", "underline"]},
+            ],
+        },
+    )
+
+    def formatted_parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
+        text = "Fett und kursiv"
+        return ParsedTextArtifact(
+            text=text,
+            parser_name="rich-document-parser-worker",
+            parser_version="1",
+            source_object_type=request.source_object_type,
+            mime_type=request.mime_type,
+            input_hash=sha256_bytes(request.content),
+            text_hash=sha256_bytes(text.encode("utf-8")),
+            text_byte_length=len(text.encode("utf-8")),
+            document_blocks=runs,
+            document_blocks_hash=hash_document_blocks(runs),
+        )
+
+    service = OfficeImportPreviewService(
+        source_repository=InMemorySourceObjectRepository((source_record(),)),
+        audit=InMemoryAuditLogger(),
+        parser_dispatch=formatted_parser,
+    )
+    document = service.preview(user_context=user(), command=command()).document
+    assert document["content"][0]["content"] == [
+        {"type": "text", "text": "Fett", "marks": [{"type": "bold"}]},
+        {
+            "type": "text",
+            "text": " und kursiv",
+            "marks": [{"type": "italic"}, {"type": "underline"}],
+        },
+    ]
+
+    def drifting_parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
+        artifact = formatted_parser(request)
+        return replace(
+            artifact,
+            text="anderer Text",
+            text_hash=sha256_bytes(b"anderer Text"),
+            text_byte_length=len(b"anderer Text"),
+        )
+
+    drift_service = OfficeImportPreviewService(
+        source_repository=InMemorySourceObjectRepository((source_record(),)),
+        audit=InMemoryAuditLogger(),
+        parser_dispatch=drifting_parser,
+    )
+    with pytest.raises(OfficeImportPreviewInvalid, match="text and structured content"):
+        drift_service.preview(user_context=user(), command=command())

@@ -11,7 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import UserContext
 from suite.platform.office_document_schema import MAX_DOCUMENT_CHARACTERS, validate_office_document
-from suite.rag.parser_worker import ParsedTextArtifact, ParserWorkerRequest, hash_document_blocks, sha256_bytes
+from suite.rag.parser_worker import (
+    ParsedTextArtifact,
+    ParserWorkerRequest,
+    hash_document_blocks,
+    normalize_extracted_text,
+    sha256_bytes,
+)
 from suite.rag.repositories import ReadableObjectAclAuthorizer
 from suite.rag.rich_document_parser import DOCX_MIME_TYPE
 from suite.rag.rich_document_parser_socket import parse_rich_document
@@ -25,6 +31,7 @@ from suite.storage.source_objects import (
 OfficeInformationClassification = Literal["public", "internal", "confidential", "restricted"]
 ParserDispatch = Callable[[ParserWorkerRequest], ParsedTextArtifact]
 IMPORT_SOURCE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$")
+DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
 
 
 class OfficeImportSourceRepository(Protocol):
@@ -99,40 +106,74 @@ def _text_content(text: str) -> list[dict[str, str]]:
     return [] if not text else [{"type": "text", "text": text}]
 
 
-def _structured_blocks(values: tuple[dict[str, Any], ...]) -> list[dict[str, Any]]:
+def _run_content(values: Any, *, allow_empty: bool = False) -> tuple[list[dict[str, Any]], str]:
+    if not isinstance(values, list) or len(values) > 4_000 or (not values and not allow_empty):
+        raise OfficeImportPreviewInvalid("parser inline structure is invalid")
+    content: list[dict[str, Any]] = []
+    plain_parts: list[str] = []
+    for value in values:
+        if not isinstance(value, dict) or set(value) != {"text", "marks"}:
+            raise OfficeImportPreviewInvalid("parser inline run is invalid")
+        text = value["text"]
+        marks = value["marks"]
+        if (
+            not isinstance(text, str)
+            or not text
+            or len(text) > MAX_DOCUMENT_CHARACTERS
+            or not isinstance(marks, list)
+            or any(not isinstance(mark, str) for mark in marks)
+            or marks != [mark for mark in DOCX_INLINE_MARKS if mark in marks]
+            or len(set(marks)) != len(marks)
+        ):
+            raise OfficeImportPreviewInvalid("parser inline run is invalid")
+        node: dict[str, Any] = {"type": "text", "text": text}
+        if marks:
+            node["marks"] = [{"type": mark} for mark in marks]
+        content.append(node)
+        plain_parts.append(text)
+    return content, "".join(plain_parts)
+
+
+def _legacy_or_run_content(value: Any, *, allow_empty: bool = False) -> tuple[list[dict[str, Any]], str]:
+    if isinstance(value, str):
+        return _text_content(value), value
+    return _run_content(value, allow_empty=allow_empty)
+
+
+def _structured_blocks(values: tuple[dict[str, Any], ...]) -> tuple[list[dict[str, Any]], str]:
     if len(values) > 2_000:
         raise OfficeImportPreviewInvalid("parsed document exceeds structured preview limits")
     blocks: list[dict[str, Any]] = []
+    text_lines: list[str] = []
     for value in values:
         if not isinstance(value, dict) or not isinstance(value.get("kind"), str):
             raise OfficeImportPreviewInvalid("parser structure is invalid")
         kind = value["kind"]
-        if kind == "paragraph" and set(value) == {"kind", "text"} and isinstance(value["text"], str):
-            blocks.append({"type": "paragraph", "content": _text_content(value["text"])})
+        if kind == "paragraph" and set(value) in ({"kind", "text"}, {"kind", "runs"}):
+            content, plain = _legacy_or_run_content(value.get("runs", value.get("text")))
+            blocks.append({"type": "paragraph", "content": content})
+            text_lines.append(plain)
         elif (
             kind == "heading"
-            and set(value) == {"kind", "level", "text"}
+            and set(value) in ({"kind", "level", "text"}, {"kind", "level", "runs"})
             and type(value["level"]) is int
             and value["level"] in {1, 2, 3}
-            and isinstance(value["text"], str)
         ):
-            blocks.append(
-                {"type": "heading", "attrs": {"level": value["level"]}, "content": _text_content(value["text"])}
-            )
+            content, plain = _legacy_or_run_content(value.get("runs", value.get("text")))
+            blocks.append({"type": "heading", "attrs": {"level": value["level"]}, "content": content})
+            text_lines.append(plain)
         elif kind in {"bullet_list", "ordered_list"} and set(value) == {"kind", "items"}:
             items = value["items"]
-            if (
-                not isinstance(items, list)
-                or not 1 <= len(items) <= 1_000
-                or any(not isinstance(item, str) for item in items)
-            ):
+            if not isinstance(items, list) or not 1 <= len(items) <= 1_000:
                 raise OfficeImportPreviewInvalid("parser list structure is invalid")
+            native_items: list[dict[str, Any]] = []
+            for item in items:
+                content, plain = _legacy_or_run_content(item)
+                native_items.append({"type": "listItem", "content": [{"type": "paragraph", "content": content}]})
+                text_lines.append(plain)
             node: dict[str, Any] = {
                 "type": "bulletList" if kind == "bullet_list" else "orderedList",
-                "content": [
-                    {"type": "listItem", "content": [{"type": "paragraph", "content": _text_content(item)}]}
-                    for item in items
-                ],
+                "content": native_items,
             }
             if kind == "ordered_list":
                 node["attrs"] = {"start": 1}
@@ -145,30 +186,27 @@ def _structured_blocks(values: tuple[dict[str, Any], ...]) -> list[dict[str, Any
                 or not isinstance(rows[0], list)
                 or not 1 <= len(rows[0]) <= 20
                 or any(not isinstance(row, list) or len(row) != len(rows[0]) for row in rows)
-                or any(not isinstance(cell, str) for row in rows for cell in row)
             ):
                 raise OfficeImportPreviewInvalid("parser table structure is invalid")
+            native_rows: list[dict[str, Any]] = []
+            for row in rows:
+                native_cells: list[dict[str, Any]] = []
+                plain_cells: list[str] = []
+                for cell in row:
+                    content, plain = _legacy_or_run_content(cell, allow_empty=True)
+                    native_cells.append({"type": "tableCell", "content": [{"type": "paragraph", "content": content}]})
+                    plain_cells.append(plain)
+                native_rows.append({"type": "tableRow", "content": native_cells})
+                text_lines.append("\t".join(plain_cells))
             blocks.append(
                 {
                     "type": "table",
-                    "content": [
-                        {
-                            "type": "tableRow",
-                            "content": [
-                                {
-                                    "type": "tableCell",
-                                    "content": [{"type": "paragraph", "content": _text_content(cell)}],
-                                }
-                                for cell in row
-                            ],
-                        }
-                        for row in rows
-                    ],
+                    "content": native_rows,
                 }
             )
         else:
             raise OfficeImportPreviewInvalid("parser structure contains an unsupported block")
-    return blocks
+    return blocks, "\n".join(text_lines)
 
 
 def _native_document(
@@ -184,11 +222,12 @@ def _native_document(
 ) -> dict[str, Any]:
     if len(text) > MAX_DOCUMENT_CHARACTERS:
         raise OfficeImportPreviewInvalid("parsed document exceeds native preview limits")
-    blocks = (
-        _structured_blocks(document_blocks)
-        if document_blocks
-        else [{"type": "paragraph", "content": _text_content(line)} for line in text.splitlines()]
-    )
+    if document_blocks:
+        blocks, structured_text = _structured_blocks(document_blocks)
+        if normalize_extracted_text(structured_text) != text:
+            raise OfficeImportPreviewInvalid("parser text and structured content do not match")
+    else:
+        blocks = [{"type": "paragraph", "content": _text_content(line)} for line in text.splitlines()]
     if not blocks:
         blocks.append({"type": "paragraph", "content": []})
     try:

@@ -2370,15 +2370,38 @@ metadata-only discovery, current ACL filtering, exact selection and save/readbac
 780. [x] Close the block with parser/socket, source repository, import/schema/API and responsive browser regressions,
 full Ruff/format/Mypy/Pytest quality and no migration, dependency, external engine or productive DOCX admission.
 
+781. [x] Add a strict ordered inline-run contract under ADR-0213 with only bold, italic, underline and strike marks.
+
+782. [x] Read direct local OOXML run properties without resolving styles, themes, relationships, fields, URLs or any
+external resource. Keep the parser no-network, non-root, read-only and credential-free.
+
+783. [x] Preserve allowed runs in paragraphs, heading levels one through three, flat list items and simple table cells.
+Keep legacy string blocks readable across a rolling parser/API boundary.
+
+784. [x] Reject tracked insertions, deletions and moves instead of silently choosing a revision view. Leave comments,
+field evaluation and revision acceptance for separate user-visible policy decisions.
+
+785. [x] Independently derive normalized text from the structured tree and require equality with the hash-bound parser
+text before native mapping. Retain the dedicated canonical structure hash.
+
+786. [x] Reject unknown or duplicate marks, noncanonical order, empty or oversized runs, surplus fields and excessive
+run counts before translating to the existing strict native marks.
+
+787. [x] Prove inline mark preservation, text/structure mismatch rejection, tracked-revision rejection, explicit save,
+exact provenance readback and responsive desktop/mobile rendering.
+
+788. [x] Close the block with parser/import/schema and browser regressions plus full Ruff/format/Mypy/Pytest quality.
+Add no migration, dependency, external engine, automatic persistence, tenant activation or productive DOCX admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 919 / PLANS 780. A governed picker exposes only currently readable DOCX
+- Native Office is complete through Roadmap 927 / PLANS 788. A governed picker exposes only currently readable DOCX
   metadata, and the exact selected version can produce a bounded non-persisting native preview that preserves headings,
-  flat lists and simple tables through the isolated parser and explicit confirmed save. Continue with richer inline
-  formatting, images and page structures before productive import/export or collaboration gates. Preserve all earlier AI,
+  flat lists, simple tables and bounded bold/italic/underline/strike runs through the isolated parser and explicit
+  confirmed save. Continue with images and page structures before productive import/export or collaboration gates. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

@@ -62,8 +62,8 @@ test("Office creates and saves an ACL-bound non-persisting DOCX import preview",
         parser_structure_hash: HASH_C,
         warnings: ["non-executable security markers require review"],
         document: { type: "doc", attrs: { importProvenance: PROVENANCE }, content: [
-          { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "Sicher importierter Inhalt" }] },
-          { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Struktur bleibt erhalten" }] }] }] },
+          { type: "heading", attrs: { level: 1 }, content: [{ type: "text", text: "Sicher importierter Inhalt", marks: [{ type: "bold" }] }] },
+          { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Struktur bleibt erhalten", marks: [{ type: "italic" }, { type: "underline" }] }] }] }] },
           { type: "table", content: [{ type: "tableRow", content: [
             { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Monat" }] }] },
             { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Umsatz" }] }] },
@@ -91,6 +91,8 @@ test("Office creates and saves an ACL-bound non-persisting DOCX import preview",
   await expect(page.locator("#document-classification")).toHaveValue("confidential");
   await expect(officeEditor(page).locator("h1")).toHaveText("Sicher importierter Inhalt");
   await expect(officeEditor(page).locator("ul")).toContainText("Struktur bleibt erhalten");
+  await expect(officeEditor(page).locator("h1 strong")).toHaveText("Sicher importierter Inhalt");
+  await expect(officeEditor(page).locator("ul em u")).toHaveText("Struktur bleibt erhalten");
   await expect(officeEditor(page).locator("table")).toContainText("Umsatz");
   await expect(page.locator("#document-notice")).toContainText("Strukturierte Importvorschau erstellt");
 

@@ -1,9 +1,29 @@
 # Native Office Documents
 
-Status: Roadmap 252–919 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 919 / PLANS 780 governed structured DOCX preview
-Module: `office_documents` / version 0.9.23
-Decisions: ADR-0079 through ADR-0212; current movement: `ARCHITECTURE_DECISIONS/ADR-0212-governed-structured-native-office-docx-import-preview.md`
+Status: Roadmap 252–927 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 927 / PLANS 788 bounded DOCX inline formatting
+Module: `office_documents` / version 0.9.24
+Decisions: ADR-0079 through ADR-0213; current movement: `ARCHITECTURE_DECISIONS/ADR-0213-bounded-native-office-docx-inline-formatting.md`
+
+## Bounded DOCX inline formatting (Roadmap 920-927)
+
+The isolated parser preserves only direct bold, italic, underline and strike run properties in paragraphs, headings,
+flat lists and simple table cells. Mark order and run shape are canonical; unknown, duplicate, empty, oversized or
+surplus values fail closed. Themes, styles, fonts, colors, fields, URLs and relationships are never resolved.
+
+Tracked insertions, deletions and moves are rejected because revision acceptance needs a separate visible policy. The
+API independently derives normalized text from the structured tree and requires it to equal the separately hash-bound
+parser text before mapping runs to existing native Office marks. Exact source/version, current ACL, content, text and
+structure provenance and explicit confirmed save remain unchanged.
+
+Style fidelity, comments, fields, revision acceptance, images, drawings, headers/footers, sections, merged tables,
+productive DOCX writes, export, external engines, WOPI and indexing remain outside this gate.
+
+Focused parser/socket/import/API tests pass 54/54; Ruff/format pass with 913 files, Mypy passes 643 sources and full
+Pytest reaches 100 percent with only the known warning. Desktop/mobile pass 2/2 in 15.5 seconds. Screenshot hashes are
+`sha256:2e13f1e13a8a32eece4cd6aa494d0233317af26d5404e3b4570aeb75ed391dcf` and
+`sha256:6f1324d3c28e80fc3eb3fce406170ff913d1d0f5b5b58ba5b0d897dfad572864`. Review is available at
+`http://192.168.0.108:42880/office?review=docx-inline-adr0213` with v25 assets.
 
 ## Governed structured DOCX preview (Roadmap 912-919)
 
