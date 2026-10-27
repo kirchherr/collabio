@@ -15,6 +15,7 @@ from suite.rag.parser_worker import (
     ParserWorkerError,
     ParserWorkerRequest,
     UnsupportedParserInputError,
+    hash_document_blocks,
     normalize_extracted_text,
     sha256_bytes,
 )
@@ -23,6 +24,8 @@ DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml
 ODT_MIME_TYPE = "application/vnd.oasis.opendocument.text"
 PDF_MIME_TYPE = "application/pdf"
 RICH_DOCUMENT_MIME_TYPES = frozenset({DOCX_MIME_TYPE, ODT_MIME_TYPE, PDF_MIME_TYPE})
+WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+W = f"{{{WORD_NS}}}"
 
 
 @dataclass(frozen=True)
@@ -93,8 +96,9 @@ class RichDocumentParserWorker:
         warnings: tuple[str, ...] = (
             ("non-executable security markers require review",) if active_content.review_markings else ()
         )
+        document_blocks: tuple[dict[str, object], ...] = ()
         if mime_type == DOCX_MIME_TYPE:
-            text = self._parse_docx(request.content)
+            text, document_blocks = self._parse_docx(request.content)
         elif mime_type == ODT_MIME_TYPE:
             text = self._parse_odt(request.content)
         elif mime_type == PDF_MIME_TYPE:
@@ -119,25 +123,130 @@ class RichDocumentParserWorker:
             text_hash=sha256_bytes(normalized.encode("utf-8")),
             text_byte_length=len(normalized.encode("utf-8")),
             warnings=warnings,
+            document_blocks=document_blocks,
+            document_blocks_hash=hash_document_blocks(document_blocks),
         )
 
-    def _parse_docx(self, content: bytes) -> str:
+    def _parse_docx(self, content: bytes) -> tuple[str, tuple[dict[str, object], ...]]:
         with self._open_zip(content) as archive:
             xml_bytes = self._read_zip_member(archive, "word/document.xml")
+            numbering = self._docx_numbering(archive)
+        if b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
+            raise ParserWorkerError("DOCX document.xml contains forbidden declarations")
         try:
             root = ElementTree.fromstring(xml_bytes)
         except ElementTree.ParseError as exc:
             raise ParserWorkerError("DOCX document.xml is not valid XML") from exc
 
-        paragraphs: list[str] = []
-        for paragraph in root.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}p"):
-            text = "".join(
-                node.text or ""
-                for node in paragraph.iter("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}t")
-            )
-            if text.strip():
-                paragraphs.append(text)
-        return "\n".join(paragraphs)
+        body = root.find(f"{W}body")
+        if body is None:
+            raise ParserWorkerError("DOCX document.xml has no body")
+        blocks: list[dict[str, object]] = []
+        text_lines: list[str] = []
+        list_kind: str | None = None
+        list_items: list[str] = []
+
+        def flush_list() -> None:
+            nonlocal list_kind, list_items
+            if list_kind is not None and list_items:
+                blocks.append({"kind": list_kind, "items": list_items})
+            list_kind, list_items = None, []
+
+        for element in body:
+            if element.tag == f"{W}p":
+                text = self._docx_paragraph_text(element)
+                if not text.strip():
+                    flush_list()
+                    continue
+                text_lines.append(text)
+                number_id = self._docx_number_id(element)
+                if number_id is not None:
+                    kind = "bullet_list" if numbering.get(number_id, "bullet") == "bullet" else "ordered_list"
+                    if list_kind != kind:
+                        flush_list()
+                        list_kind = kind
+                    list_items.append(text)
+                    continue
+                flush_list()
+                level = self._docx_heading_level(element)
+                if level:
+                    block = {"kind": "heading", "level": level, "text": text}
+                else:
+                    block = {"kind": "paragraph", "text": text}
+                blocks.append(block)
+            elif element.tag == f"{W}tbl":
+                flush_list()
+                rows = self._docx_table_rows(element)
+                if rows:
+                    blocks.append({"kind": "table", "rows": rows})
+                    text_lines.extend("\t".join(row) for row in rows)
+        flush_list()
+        return "\n".join(text_lines), tuple(blocks)
+
+    def _docx_paragraph_text(self, paragraph: ElementTree.Element) -> str:
+        parts: list[str] = []
+        for node in paragraph.iter():
+            if node.tag == f"{W}t":
+                parts.append(node.text or "")
+            elif node.tag == f"{W}tab":
+                parts.append("\t")
+            elif node.tag in {f"{W}br", f"{W}cr"}:
+                parts.append("\n")
+        return "".join(parts)
+
+    def _docx_heading_level(self, paragraph: ElementTree.Element) -> int | None:
+        style = paragraph.find(f"{W}pPr/{W}pStyle")
+        value = "" if style is None else style.get(f"{W}val", "")
+        normalized = value.casefold().replace(" ", "")
+        match = re.fullmatch(r"(?:heading|berschrift|ueberschrift)([1-3])", normalized)
+        return int(match.group(1)) if match else None
+
+    def _docx_number_id(self, paragraph: ElementTree.Element) -> str | None:
+        value = paragraph.find(f"{W}pPr/{W}numPr/{W}numId")
+        return None if value is None else value.get(f"{W}val")
+
+    def _docx_numbering(self, archive: ZipFile) -> dict[str, str]:
+        if "word/numbering.xml" not in archive.namelist():
+            return {}
+        xml_bytes = self._read_zip_member(archive, "word/numbering.xml")
+        if b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
+            raise ParserWorkerError("DOCX numbering.xml contains forbidden declarations")
+        try:
+            root = ElementTree.fromstring(xml_bytes)
+        except ElementTree.ParseError as exc:
+            raise ParserWorkerError("DOCX numbering.xml is not valid XML") from exc
+        abstract_formats: dict[str, str] = {}
+        for abstract_number in root.findall(f"{W}abstractNum"):
+            identifier = abstract_number.get(f"{W}abstractNumId")
+            level = abstract_number.find(f"{W}lvl[@{W}ilvl='0']/{W}numFmt")
+            if identifier and level is not None:
+                abstract_formats[identifier] = level.get(f"{W}val", "bullet")
+        result: dict[str, str] = {}
+        for number in root.findall(f"{W}num"):
+            identifier = number.get(f"{W}numId")
+            abstract_reference = number.find(f"{W}abstractNumId")
+            abstract_id = None if abstract_reference is None else abstract_reference.get(f"{W}val")
+            if identifier and abstract_id:
+                result[identifier] = abstract_formats.get(abstract_id, "bullet")
+        return result
+
+    def _docx_table_rows(self, table: ElementTree.Element) -> list[list[str]]:
+        rows: list[list[str]] = []
+        for row in table.findall(f"{W}tr"):
+            cells: list[str] = []
+            for cell in row.findall(f"{W}tc"):
+                if cell.find(f"{W}tcPr/{W}gridSpan") is not None or cell.find(f"{W}tcPr/{W}vMerge") is not None:
+                    raise ParserWorkerError("DOCX merged tables are outside the structured preview scope")
+                paragraphs = [self._docx_paragraph_text(value) for value in cell.findall(f"{W}p")]
+                cells.append("\n".join(value for value in paragraphs if value.strip()))
+            if cells:
+                rows.append(cells)
+        if not rows:
+            return []
+        width = len(rows[0])
+        if not 1 <= width <= 20 or len(rows) > 200 or any(len(row) != width for row in rows):
+            raise ParserWorkerError("DOCX table is outside the structured preview limits")
+        return rows
 
     def _parse_odt(self, content: bytes) -> str:
         with self._open_zip(content) as archive:

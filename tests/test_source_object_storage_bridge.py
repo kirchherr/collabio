@@ -167,6 +167,11 @@ def test_pg_source_object_repository_bridges_metadata_storage_manifest_and_conte
     assert reconciliation_run.evidence_hash == recovery_evidence.evidence_hash
     assert reconciliation_run.recommended_action == SourceObjectContentReconciliationAction.READY_FOR_API_WIRING
     assert reconciliation_run.api_wiring_allowed is True
+    latest_metadata = repository.list_latest_metadata(tenant_id=tenant_id, limit=10)
+    assert [(value.object_id, value.version_id) for value in latest_metadata] == [
+        (record.metadata.object_id, record.metadata.version_id)
+    ]
+    assert all(value.tenant_id == tenant_id for value in latest_metadata)
 
     with pytest.raises(ValueError, match="already exists"):
         repository.add(record)

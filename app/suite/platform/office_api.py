@@ -114,6 +114,7 @@ from suite.platform.office_import_preview import (
     OfficeImportPreviewNotFound,
     OfficeImportPreviewResponse,
     OfficeImportPreviewService,
+    OfficeImportSourceResponse,
 )
 from suite.platform.office_interchange_corpus import OfficeInterchangeCorpusResponse
 from suite.platform.office_macro_policy import OfficeMacroPolicyResponse
@@ -475,6 +476,19 @@ def register_office_routes(
         return request.app.state.office_import_preview_service.preview(
             user_context=context.user_context,
             command=command,
+        )
+
+    @router.get("/import-sources", response_model=OfficeImportSourceResponse)
+    def import_sources(
+        request: Request,
+        query: str = Query(default="", max_length=100),
+        limit: int = Query(default=25, ge=1, le=50),
+        context: TenantRequestContext = Depends(context_dependency),  # noqa: B008
+    ) -> Any:
+        return request.app.state.office_import_preview_service.discover_sources(
+            user_context=context.user_context,
+            query=query,
+            limit=limit,
         )
 
     @router.post("/{object_id}/images", dependencies=[Depends(write_gate)])

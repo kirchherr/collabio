@@ -2346,15 +2346,39 @@ distinction and responsive containment. Keep productive import, export and round
 772. [x] Close the block with parser/socket, import, schema/API and browser regressions plus the complete repository
 quality gate. Add no migration, dependency, external engine, tenant activation or durable business-state schema.
 
+773. [x] Add governed metadata-only DOCX source discovery under ADR-0212. Return only current source heads whose
+authoritative ACL is readable by the current tenant user; never return source or extracted content.
+
+774. [x] Keep discovery and execution separate: bind the selected object/version pair, then repeat tenant, current
+ACL, manifest and content-hash validation before any parser dispatch.
+
+775. [x] Extend the isolated parser artifact with a bounded inert structure contract for paragraphs, heading levels
+one through three, flat bullet/ordered lists and simple rectangular tables.
+
+776. [x] Parse only local OOXML document/numbering parts, forbid DTD/entity declarations and reject malformed,
+merged, non-rectangular or oversized tables. Preserve all ADR-0211 sandbox and active-content boundaries.
+
+777. [x] Bind canonical structure to a dedicated SHA-256 evidence value and independently map it into the strict native
+schema. Reject unknown keys, types, booleans, limits and shapes; keep unsupported formatting non-fidelity-preserving.
+
+778. [x] Add a responsive searchable source picker that displays title, classification and exact version without
+requiring internal IDs. Keep preview unsaved and reuse explicit confirmed native save.
+
+779. [x] Bind saved provenance to `bounded_structured_docx_preview` and prove heading, list and table preservation,
+metadata-only discovery, current ACL filtering, exact selection and save/readback on desktop and mobile.
+
+780. [x] Close the block with parser/socket, source repository, import/schema/API and responsive browser regressions,
+full Ruff/format/Mypy/Pytest quality and no migration, dependency, external engine or productive DOCX admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 911 / PLANS 772. An exact-version, ACL-revalidated DOCX source can now
-  produce a bounded non-persisting native text preview through the isolated parser and retain hash-bound provenance
-  through an explicitly confirmed save. Continue with richer structure-preserving DOCX mapping and governed source
-  discovery before productive import/export or collaboration gates and deferred CRM onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 919 / PLANS 780. A governed picker exposes only currently readable DOCX
+  metadata, and the exact selected version can produce a bounded non-persisting native preview that preserves headings,
+  flat lists and simple tables through the isolated parser and explicit confirmed save. Continue with richer inline
+  formatting, images and page structures before productive import/export or collaboration gates. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

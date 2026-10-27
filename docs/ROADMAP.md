@@ -60,10 +60,11 @@ Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwick
   durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
   CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
-- Native Office ist durch Roadmap 911 / PLANS 772 um dokumentweite Berechnungen, native Diagramme und eine
-  exakte ACL-gepruefte DOCX-Textvorschau mit isoliertem Parser und hash-gebundener Provenienz erweitert. Strukturtreuer
-  Vollimport, Export, externe Arbeitsmappen, volatile Zeitwerte, Makros, produktive DOCX-Schreibpfade und automatische
-  Aktionen bleiben getrennte Freigabeschritte.
+- Native Office ist durch Roadmap 919 / PLANS 780 um dokumentweite Berechnungen, native Diagramme sowie eine
+  berechtigungsgepruefte DOCX-Quellenauswahl und strukturierte Vorschau erweitert. Exakte Version und Provenienz bleiben
+  gebunden; Ueberschriften, flache Listen und einfache Tabellen werden erhalten. Strukturtreuer Vollimport, Export,
+  externe Arbeitsmappen, volatile Zeitwerte, Makros, produktive DOCX-Schreibpfade und automatische Aktionen bleiben
+  getrennte Freigabeschritte.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
 
 ## Globale Definition Of Done
@@ -695,6 +696,9 @@ Aufgaben:
 - [x] Exakte ACL-revalidierte DOCX-Quellversion als begrenzte, nicht persistierende native Textvorschau ueber einen
   No-Network-/Non-root-Parser importieren, Provenienz hash-gebunden erhalten und erst nach expliziter Bestaetigung als
   immutable native Version speichern (Roadmap 904-911 / PLANS 765-772).
+- [x] Governed metadata-only DOCX-Quellenauswahl und begrenzte strukturierte Vorschau fuer Ueberschriften, flache
+  Listen und einfache rechteckige Tabellen mit erneuter ACL-/Hash-Pruefung, strikter nativer Abbildung und explizitem
+  Speichern schliessen (Roadmap 912-919 / PLANS 773-780).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

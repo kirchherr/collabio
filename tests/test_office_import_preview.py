@@ -12,7 +12,7 @@ from suite.platform.office_import_preview import (
     OfficeImportPreviewNotFound,
     OfficeImportPreviewService,
 )
-from suite.rag.parser_worker import ParsedTextArtifact, ParserWorkerRequest, sha256_bytes
+from suite.rag.parser_worker import ParsedTextArtifact, ParserWorkerRequest, hash_document_blocks, sha256_bytes
 from suite.rag.rich_document_parser import DOCX_MIME_TYPE
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
@@ -27,13 +27,17 @@ def source_record(
     content: bytes = b"synthetic-docx-bytes",
     *,
     mime_type: str = DOCX_MIME_TYPE,
+    object_id: str = "source-docx-1",
+    version_id: str = "v7",
+    title: str = "Importierte Notiz",
+    acl_version: int = 4,
 ) -> SourceObjectRecord:
     draft = SourceObjectMetadata(
         tenant_id="tenant-office",
-        object_id="source-docx-1",
+        object_id=object_id,
         object_type=SourceObjectType.DOCUMENT,
-        version_id="v7",
-        title="Importierte Notiz",
+        version_id=version_id,
+        title=title,
         owner_principal_id="editor",
         created_by="editor",
         created_at_utc="2026-10-27T08:00:00Z",
@@ -42,11 +46,11 @@ def source_record(
         retention_policy_id="rp-standard",
         kms_key_ref="kms://tenant-office/internal/v1",
         manifest_hash="sha256:" + "0" * 64,
-        audit_chain_ref="audit:source-docx-1-v7",
+        audit_chain_ref=f"audit:{object_id}-{version_id}",
         source_system="collabio-test",
         mime_type=mime_type,
-        acl_hash="sha256:source-docx-1-acl",
-        acl_version=4,
+        acl_hash=f"sha256:{object_id}-acl",
+        acl_version=acl_version,
         content_hash=sha256_bytes(content),
         content_byte_length=len(content),
     )
@@ -64,6 +68,11 @@ def user(*, readable: bool = True, tenant_id: str = "tenant-office") -> UserCont
 
 
 def parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
+    blocks = (
+        {"kind": "heading", "level": 1, "text": "Erster Absatz"},
+        {"kind": "bullet_list", "items": ["Zweiter Absatz"]},
+        {"kind": "table", "rows": [["A", "B"], ["1", "2"]]},
+    )
     return ParsedTextArtifact(
         text="Erster Absatz\nZweiter Absatz",
         parser_name="rich-document-parser-worker",
@@ -74,6 +83,8 @@ def parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
         text_hash=sha256_bytes(b"Erster Absatz\nZweiter Absatz"),
         text_byte_length=len(b"Erster Absatz\nZweiter Absatz"),
         warnings=("non-executable security markers require review",),
+        document_blocks=blocks,
+        document_blocks_hash=hash_document_blocks(blocks),
     )
 
 
@@ -96,10 +107,9 @@ def test_import_preview_is_acl_checked_non_persisting_and_provenance_bound() -> 
     assert response.save_requires_explicit_confirmation is True
     assert response.fidelity_preserved is False
     assert response.information_classification == "internal"
-    assert [entry["content"][0]["text"] for entry in response.document["content"]] == [
-        "Erster Absatz",
-        "Zweiter Absatz",
-    ]
+    assert [entry["type"] for entry in response.document["content"]] == ["heading", "bulletList", "table"]
+    assert response.document["content"][0]["content"][0]["text"] == "Erster Absatz"
+    assert response.document["content"][1]["content"][0]["content"][0]["content"][0]["text"] == "Zweiter Absatz"
     assert response.document["attrs"]["importProvenance"] == {
         "sourceObjectId": "source-docx-1",
         "sourceVersionId": "v7",
@@ -107,12 +117,42 @@ def test_import_preview_is_acl_checked_non_persisting_and_provenance_bound() -> 
         "sourceAclVersion": 4,
         "parserProfileId": "rich-document-parser-worker:1",
         "parserTextHash": response.parser_text_hash,
-        "importScope": "bounded_flattened_text_preview",
+        "parserStructureHash": response.parser_structure_hash,
+        "importScope": "bounded_structured_docx_preview",
     }
     event = audit.events[-1]
     assert event.source_object_ids == ["source-docx-1"]
     assert "Erster Absatz" not in str(event.metadata)
     assert event.metadata["content_persisted"] is False
+
+
+def test_import_source_discovery_returns_only_current_acl_authorized_docx_metadata() -> None:
+    old = source_record(version_id="v1", title="Alter Stand", acl_version=1)
+    current = source_record(content=b"current", version_id="v2", title="Richtlinie Alpha", acl_version=2)
+    hidden = source_record(content=b"hidden", object_id="source-hidden", title="Verdeckt")
+    pdf = source_record(content=b"pdf", object_id="source-pdf", mime_type="application/pdf")
+    unsafe = source_record(content=b"unsafe", object_id="source-unsafe", title="x" * 201)
+    audit = InMemoryAuditLogger()
+    service = OfficeImportPreviewService(
+        source_repository=InMemorySourceObjectRepository((old, current, hidden, pdf, unsafe)),
+        audit=audit,
+        parser_dispatch=parser,
+    )
+
+    readable_user = user().model_copy(update={"readable_object_ids": {"source-docx-1", "source-unsafe"}})
+    response = service.discover_sources(user_context=readable_user, query="", limit=10)
+
+    assert [(item.source_object_id, item.source_version_id) for item in response.items] == [("source-docx-1", "v2")]
+    assert response.content_returned is False
+    assert response.current_acl_validated is True
+    assert audit.events[-1].metadata == {
+        "module_id": "office_documents",
+        "surface": "api",
+        "result_count": 1,
+        "query_supplied": False,
+        "content_returned": False,
+        "current_acl_validated": True,
+    }
 
 
 def test_import_preview_denies_unreadable_source_before_parser_dispatch() -> None:
@@ -189,3 +229,17 @@ def test_native_schema_rejects_tampered_import_provenance() -> None:
 
     with pytest.raises(OfficeDocumentInvalidContentError):
         validate_office_document(document)
+
+
+def test_native_schema_keeps_legacy_flattened_import_provenance_readable() -> None:
+    service = OfficeImportPreviewService(
+        source_repository=InMemorySourceObjectRepository((source_record(),)),
+        audit=InMemoryAuditLogger(),
+        parser_dispatch=parser,
+    )
+    document = service.preview(user_context=user(), command=command()).document
+    provenance = document["attrs"]["importProvenance"]
+    provenance.pop("parserStructureHash")
+    provenance["importScope"] = "bounded_flattened_text_preview"
+
+    assert validate_office_document(document)["attrs"]["importProvenance"] == provenance

@@ -1,9 +1,23 @@
 # Native Office Documents
 
-Status: Roadmap 252–911 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 911 / PLANS 772 ACL-bound DOCX import preview
-Module: `office_documents` / version 0.9.22
-Decisions: ADR-0079 through ADR-0211; current movement: `ARCHITECTURE_DECISIONS/ADR-0211-native-office-acl-bound-docx-import-preview.md`
+Status: Roadmap 252–919 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 919 / PLANS 780 governed structured DOCX preview
+Module: `office_documents` / version 0.9.23
+Decisions: ADR-0079 through ADR-0212; current movement: `ARCHITECTURE_DECISIONS/ADR-0212-governed-structured-native-office-docx-import-preview.md`
+
+## Governed structured DOCX preview (Roadmap 912-919)
+
+The secure import dialog discovers only current DOCX source metadata readable under the user's current authoritative
+ACL. Selection binds an exact object/version pair; preview execution independently repeats tenant, ACL, manifest and
+content-hash validation before the isolated parser receives bytes. Discovery returns no source or extracted content.
+
+The no-network parser emits a bounded inert structure for paragraphs, heading levels 1-3, flat bullet/ordered lists
+and simple unmerged rectangular tables. The API independently validates and maps it into the native document schema.
+The canonical structure has its own SHA-256 evidence binding. Unsupported formatting is not claimed as faithful. The preview remains local until the existing explicit save
+confirmation, and exact hash-bound import provenance survives save and reload.
+
+Images, drawings, headers/footers, sections, inline style fidelity, fields, comments, tracked changes, merged tables,
+productive DOCX writes, export, round-trip fidelity, external engines, WOPI and indexing remain outside this gate.
 
 ## ACL-bound DOCX import preview (Roadmap 904–911)
 

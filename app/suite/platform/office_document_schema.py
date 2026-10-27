@@ -1380,18 +1380,23 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
         reject()
     if "importProvenance" in root_attrs:
         provenance = root_attrs["importProvenance"]
+        if not isinstance(provenance, dict):
+            reject()
+        scope = provenance.get("importScope")
+        provenance_fields = {
+            "sourceObjectId",
+            "sourceVersionId",
+            "sourceContentHash",
+            "sourceAclVersion",
+            "parserProfileId",
+            "parserTextHash",
+            "importScope",
+        }
+        if scope == "bounded_structured_docx_preview":
+            provenance_fields.add("parserStructureHash")
         if (
-            not isinstance(provenance, dict)
-            or set(provenance)
-            != {
-                "sourceObjectId",
-                "sourceVersionId",
-                "sourceContentHash",
-                "sourceAclVersion",
-                "parserProfileId",
-                "parserTextHash",
-                "importScope",
-            }
+            scope not in {"bounded_flattened_text_preview", "bounded_structured_docx_preview"}
+            or set(provenance) != provenance_fields
             or not isinstance(provenance["sourceObjectId"], str)
             or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}", provenance["sourceObjectId"]) is None
             or not isinstance(provenance["sourceVersionId"], str)
@@ -1403,7 +1408,13 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
             or provenance["parserProfileId"] != "rich-document-parser-worker:1"
             or not isinstance(provenance["parserTextHash"], str)
             or re.fullmatch(r"sha256:[a-f0-9]{64}", provenance["parserTextHash"]) is None
-            or provenance["importScope"] != "bounded_flattened_text_preview"
+            or (
+                scope == "bounded_structured_docx_preview"
+                and (
+                    not isinstance(provenance["parserStructureHash"], str)
+                    or re.fullmatch(r"sha256:[a-f0-9]{64}", provenance["parserStructureHash"]) is None
+                )
+            )
         ):
             reject()
     table_ranges_value = root_attrs.get("tableRanges", [])

@@ -2,6 +2,34 @@
 
 Updated: 2026-10-27
 
+Roadmap 912 through 919 / PLANS 773 through 780 are complete under ADR-0212. Native Office now discovers only
+current DOCX heads that the authenticated user may read, returns bounded metadata without document content and opens
+the selected exact version as an unsaved structured preview. The isolated parser preserves bounded heading levels,
+flat ordered and bullet lists, ordinary paragraphs and simple rectangular tables; malformed, merged, nonrectangular,
+active-content or oversized input still fails closed.
+
+The API independently verifies tenant/object/version identity, current ACL, manifest/content hashes, parser identity,
+text hash and a canonical structured-block hash before creating native nodes. Provenance binds both text and structure
+hashes and survives only an explicit confirmed save. Existing flattened ADR-0211 provenance remains readable, while
+new previews use `office_import_preview.v2` and `bounded_structured_docx_preview`. Source discovery audits only IDs,
+counts and bounded policy metadata; no source or extracted body is logged or returned by discovery.
+
+Final Ruff and formatting pass with 912 conformant files, Mypy passes over 643 sources, the focused contract passes
+52/52 and complete Pytest reaches 100 percent with only the known Starlette/AnyIO warning. The final desktop/mobile
+workflow passes 2/2 in 15.1 seconds; visual review confirms native heading, list and table rendering without page
+overflow. Screenshot hashes are `sha256:8102d6d8626985f8c4c4544f63775f4bf1e20835644c36895a8b66568e7cba9d` and
+`sha256:1b19c503c8adef14b37bd0db09934b460c0f334ee1adfa085c5e7d55900b510e`.
+
+Review is `http://192.168.0.108:42880/office?review=structured-docx-adr0212` with `office.css?v=25` and
+`editor.js?v=25`. Final Work-E2E, review API and parser image IDs are
+`sha256:2632016caa69727f9ed671e9017c86e36a9cae4e5b00e6faa7483274eb4b41a3`,
+`sha256:71cc6a7bb8a64a914a117e0f59b45114b52c645242b9d3d76e7365f57944ed8b` and
+`sha256:7f42ced4a8d4acb15f43dc8f782a3a5bc4104d0549607b60daf716937f4dd4e7`. Productive full-fidelity import/export,
+DrawingML, styles, nested lists, merged tables, automatic persistence, tenant activation and production admission
+remain closed. The next coherent Office loop should deepen DOCX fidelity without weakening exact-version
+authorization, isolated parsing or explicit save semantics. CRM onboarding remains deferred. ADR-0211 is published
+through commit `4d0b55fd`; publication of this ADR-0212 block is authorized by the user.
+
 Roadmap 904 through 911 / PLANS 765 through 772 are complete under ADR-0211. Native Office can create a bounded,
 non-persisting text preview from one exact currently readable DOCX source version. Tenant/version identity, current
 authoritative ACL, manifest and content hashes are checked before an isolated parser sees bytes. Non-DOCX,
@@ -29,8 +57,8 @@ reaches 100 percent Pytest with only the known Starlette/AnyIO warning. Final Wo
 are `sha256:5aecf60d57c02f9ae910d8b23595a98324ca5c96174b6ee2d0748b3305dada36`,
 `sha256:9a97b3e116d0b9935d78427275dd89ce7f94d0882cfbf00f15ad3de5530ff6b1` and
 `sha256:2313bd9e73816069388bad3f34f1d7be4b3b197d55aa175afe3577de5434405a`. The isolated test database was removed and
-no transient runner remains. ADR-0210 is published through commit `38664480`; ADR-0211 is committed locally and still
-requires a new content-specific push approval.
+no transient runner remains. ADR-0210 is published through commit `38664480`; ADR-0211 is published through commit
+`4d0b55fd`.
 
 The next Office loop should preserve richer DOCX structure and provide governed source discovery while retaining this
 exact-version authorization and provenance boundary. Malicious-corpus admission, productive candidate-version writes,

@@ -80,6 +80,8 @@ def test_socket_transport_returns_hash_bound_flattened_text(tmp_path: Path) -> N
     assert artifact.text == "Sicherer Inhalt"
     assert artifact.parser_name == "rich-document-parser-worker"
     assert artifact.source_object_type == "document"
+    assert artifact.document_blocks == ({"kind": "paragraph", "text": "Sicherer Inhalt"},)
+    assert artifact.document_blocks_hash.startswith("sha256:")
 
 
 def test_socket_transport_preserves_active_content_block(tmp_path: Path) -> None:

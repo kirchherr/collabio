@@ -105,6 +105,30 @@ def docx_bytes(*paragraphs: str) -> bytes:
     return buffer.getvalue()
 
 
+def structured_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Quartalsbericht</w:t></w:r></w:p>'
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr></w:pPr>'
+        "<w:r><w:t>Erster Punkt</w:t></w:r></w:p>"
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr></w:pPr>'
+        "<w:r><w:t>Zweiter Punkt</w:t></w:r></w:p>"
+        "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Monat</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Umsatz</w:t></w:r></w:p></w:tc></w:tr>"
+        "<w:tr><w:tc><w:p><w:r><w:t>Januar</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>42</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+        "</w:body></w:document>"
+    )
+    numbering = (
+        '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:abstractNum w:abstractNumId="2"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>'
+        '<w:num w:numId="5"><w:abstractNumId w:val="2"/></w:num></w:numbering>'
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+        archive.writestr("word/numbering.xml", numbering)
+    return buffer.getvalue()
+
+
 def odt_bytes(*paragraphs: str) -> bytes:
     body = "".join(f"<text:p>{paragraph}</text:p>" for paragraph in paragraphs)
     xml = (
@@ -170,7 +194,21 @@ def test_rich_document_parser_extracts_docx_text() -> None:
     assert artifact.mime_type == DOCX_MIME_TYPE
     assert artifact.input_hash.startswith("sha256:")
     assert artifact.text_hash.startswith("sha256:")
+    assert artifact.document_blocks_hash.startswith("sha256:")
     assert artifact.warnings == ()
+
+
+def test_rich_document_parser_preserves_bounded_docx_heading_list_and_table_structure() -> None:
+    request = request_for(mime_type=DOCX_MIME_TYPE, content=structured_docx_bytes())
+    artifact = RichDocumentParserWorker().parse(request)
+
+    assert artifact.document_blocks == (
+        {"kind": "heading", "level": 1, "text": "Quartalsbericht"},
+        {"kind": "bullet_list", "items": ["Erster Punkt", "Zweiter Punkt"]},
+        {"kind": "table", "rows": [["Monat", "Umsatz"], ["Januar", "42"]]},
+    )
+    assert artifact.text == "Quartalsbericht\nErster Punkt\nZweiter Punkt\nMonat\tUmsatz\nJanuar\t42"
+    assert artifact.document_blocks_hash.startswith("sha256:")
 
 
 def test_rich_document_parser_extracts_odt_text() -> None:

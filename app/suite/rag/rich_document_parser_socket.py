@@ -108,6 +108,8 @@ def parse_rich_document(
         "text_hash",
         "text_byte_length",
         "warnings",
+        "document_blocks",
+        "document_blocks_hash",
     }
     try:
         if set(payload) != expected_fields:
@@ -120,6 +122,7 @@ def parse_rich_document(
             "mime_type",
             "input_hash",
             "text_hash",
+            "document_blocks_hash",
         )
         if any(not isinstance(payload[field], str) for field in text_fields):
             raise ValueError
@@ -127,6 +130,10 @@ def parse_rich_document(
             raise ValueError
         if not isinstance(payload["warnings"], list) or any(
             not isinstance(value, str) for value in payload["warnings"]
+        ):
+            raise ValueError
+        if not isinstance(payload["document_blocks"], list) or any(
+            not isinstance(value, dict) for value in payload["document_blocks"]
         ):
             raise ValueError
         return ParsedTextArtifact(
@@ -139,6 +146,8 @@ def parse_rich_document(
             text_hash=payload["text_hash"],
             text_byte_length=payload["text_byte_length"],
             warnings=tuple(payload["warnings"]),
+            document_blocks=tuple(payload["document_blocks"]),
+            document_blocks_hash=payload["document_blocks_hash"],
         )
     except (KeyError, TypeError, ValueError) as exc:
         raise RichDocumentParserUnavailable("rich document parser returned an invalid artifact") from exc

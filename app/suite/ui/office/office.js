@@ -4631,20 +4631,71 @@ function templateDocument(template) {
 
 function importPreviewMatches(value) {
   const provenance = value?.document?.attrs?.importProvenance;
-  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_import_preview.v1" &&
+  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_import_preview.v2" &&
     typeof value.source_object_id === "string" && typeof value.source_version_id === "string" &&
     typeof value.source_title === "string" && typeof value.source_content_hash === "string" &&
     Number.isInteger(value.source_acl_version) && value.source_acl_version > 0 &&
     ["public", "internal", "confidential", "restricted"].includes(value.information_classification) &&
     value.parser_profile_id === "rich-document-parser-worker:1" && typeof value.parser_text_hash === "string" &&
+    typeof value.parser_structure_hash === "string" &&
     Array.isArray(value.warnings) && value.warnings.every((warning) => typeof warning === "string") &&
     value.document?.type === "doc" && Array.isArray(value.document.content) &&
     value.content_persisted === false && value.save_requires_explicit_confirmation === true &&
-    value.fidelity_preserved === false && value.import_scope === "bounded_flattened_text_preview" &&
+    value.fidelity_preserved === false && value.import_scope === "bounded_structured_docx_preview" &&
     provenance?.sourceObjectId === value.source_object_id && provenance?.sourceVersionId === value.source_version_id &&
     provenance?.sourceContentHash === value.source_content_hash && provenance?.sourceAclVersion === value.source_acl_version &&
     provenance?.parserProfileId === value.parser_profile_id && provenance?.parserTextHash === value.parser_text_hash &&
+    provenance?.parserStructureHash === value.parser_structure_hash &&
     provenance?.importScope === value.import_scope && typeof value.audit_event_id === "string";
+}
+
+function importSourcesMatch(value) {
+  return value?.tenant_id === state.context.tenantId && value.schema_version === "office_import_sources.v1" &&
+    value.content_returned === false && value.current_acl_validated === true && Array.isArray(value.items) &&
+    value.items.every((item) => typeof item.source_object_id === "string" && typeof item.source_version_id === "string" &&
+      typeof item.source_title === "string" && typeof item.updated_at_utc === "string" &&
+      ["public", "internal", "confidential", "restricted"].includes(item.information_classification) &&
+      Number.isInteger(item.content_byte_length) && item.content_byte_length > 0) && typeof value.audit_event_id === "string";
+}
+
+function selectImportSource() {
+  const form = $("import-document-form"), selected = $("import-source-select").selectedOptions[0];
+  form.elements.source_object_id.value = selected?.dataset.objectId || "";
+  form.elements.source_version_id.value = selected?.dataset.versionId || "";
+}
+
+async function loadImportSources() {
+  const epoch = state.epoch, select = $("import-source-select"), status = $("import-document-status");
+  const query = $("import-source-query").value.trim();
+  select.disabled = true;
+  status.textContent = "Berechtigte DOCX-Quellen werden geladen …";
+  status.classList.remove("error");
+  try {
+    const value = await api(`/v1/office/documents/import-sources?query=${encodeURIComponent(query)}&limit=50`);
+    if (!importSourcesMatch(value)) throw new ApiError(502, true);
+    if (epoch !== state.epoch || !$("import-document-dialog").open) return;
+    select.replaceChildren();
+    if (!value.items.length) {
+      const option = document.createElement("option");
+      option.value = ""; option.textContent = "Keine lesbare DOCX-Quelle gefunden";
+      select.append(option); status.textContent = "Für diese Suche ist keine aktuell lesbare DOCX-Quelle verfügbar.";
+    } else {
+      for (const item of value.items) {
+        const option = document.createElement("option");
+        option.value = `${item.source_object_id}\u001f${item.source_version_id}`;
+        option.dataset.objectId = item.source_object_id; option.dataset.versionId = item.source_version_id;
+        option.textContent = `${item.source_title} · ${officeClassificationLabels.get(item.information_classification)} · ${item.source_version_id}`;
+        select.append(option);
+      }
+      status.textContent = `${value.items.length} aktuell berechtigte DOCX-${value.items.length === 1 ? "Quelle" : "Quellen"} gefunden.`;
+    }
+    select.disabled = false; selectImportSource();
+  } catch (error) {
+    select.replaceChildren();
+    const option = document.createElement("option"); option.value = ""; option.textContent = "Quellen nicht verfügbar"; select.append(option);
+    status.textContent = denied(error) ? "Quellenauswahl nicht mehr berechtigt." : "Berechtigte DOCX-Quellen konnten nicht geladen werden.";
+    status.classList.add("error");
+  }
 }
 
 async function showImportDocument() {
@@ -4655,7 +4706,8 @@ async function showImportDocument() {
   $("import-document-status").textContent = "";
   $("import-document-status").classList.remove("error");
   $("import-document-dialog").showModal();
-  form.elements.source_object_id.focus();
+  $("import-source-query").focus();
+  await loadImportSources();
 }
 
 async function beginImportPreview(event) {
@@ -4695,7 +4747,7 @@ async function beginImportPreview(event) {
     $("import-document-dialog").close();
     $("office-shell").classList.remove("documents-open");
     $("documents-toggle").setAttribute("aria-expanded", "false");
-    notice(result.warnings.length ? "Importvorschau erstellt. Nicht ausführbare Sicherheitsmarker erfordern Prüfung; Formatierungen können abgeflacht sein." : "Importvorschau erstellt. Formatierungen können abgeflacht sein.");
+    notice(result.warnings.length ? "Strukturierte Importvorschau erstellt. Sicherheitsmarker erfordern Prüfung; nicht unterstützte Formatierungen bleiben abgeflacht." : "Strukturierte Importvorschau mit Überschriften, Listen und einfachen Tabellen erstellt.");
   } catch (error) {
     status.textContent = denied(error) ? "Diese Quellversion ist nicht verfügbar oder nicht lesbar." :
       error instanceof ApiError && error.status === 503 ? "Der isolierte Import-Parser ist derzeit nicht verfügbar." :
@@ -7355,6 +7407,11 @@ $("document-import").addEventListener("click", showImportDocument);
 $("welcome-new").addEventListener("click", showNewDocument);
 $("new-document-form").addEventListener("submit", beginDraft);
 $("import-document-form").addEventListener("submit", beginImportPreview);
+$("import-source-select").addEventListener("change", selectImportSource);
+$("import-source-search").addEventListener("click", loadImportSources);
+$("import-source-query").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); void loadImportSources(); }
+});
 $("document-save").addEventListener("click", showSave);
 $("save-form").addEventListener("submit", saveDocument);
 $("save-confirm").addEventListener("change", () => { $("save-submit").disabled = !$("save-confirm").checked; });

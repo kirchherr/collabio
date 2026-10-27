@@ -462,6 +462,39 @@ class PgSourceObjectRepository:
             raise KeyError("source object not found")
         return self.get(tenant_id=tenant_id, object_id=object_id, version_id=str(row[0]))
 
+    def list_latest_metadata(self, *, tenant_id: str, limit: int = 100) -> tuple[SourceObjectMetadata, ...]:
+        if not 1 <= limit <= 500:
+            raise ValueError("source object metadata limit must be between 1 and 500")
+        with psycopg.connect(self.database_dsn) as connection:
+            self._set_tenant(connection, tenant_id)
+            rows = connection.execute(
+                """
+                SELECT * FROM (
+                    SELECT DISTINCT ON (object_id)
+                        tenant_id, object_id, object_type, version_id, title,
+                        owner_principal_id, created_by, created_at_utc, updated_at_utc,
+                        classification, retention_policy_id, legal_hold_state,
+                        kms_key_ref, manifest_hash, audit_chain_ref, source_system,
+                        source_schema_version, mime_type, acl_hash, acl_version,
+                        content_hash, content_byte_length, lifecycle_state,
+                        parent_object_id, thread_id, parser_profile_id
+                    FROM collabio.source_object_metadata
+                    WHERE tenant_id = %s
+                    ORDER BY object_id, persisted_at_utc DESC, version_id DESC
+                ) AS latest
+                ORDER BY updated_at_utc DESC, object_id DESC
+                LIMIT %s
+                """,
+                (tenant_id, limit),
+            ).fetchall()
+        return tuple(
+            sorted(
+                (self._metadata_from_row(row) for row in rows),
+                key=lambda value: (value.updated_at_utc, value.object_id),
+                reverse=True,
+            )
+        )
+
     def build_content_recovery_evidence(
         self,
         *,

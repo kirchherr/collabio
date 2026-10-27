@@ -755,6 +755,16 @@ class InMemorySourceObjectRepository:
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord:
         return self._records[self._latest_keys[(tenant_id, object_id)]]
 
+    def list_latest_metadata(self, *, tenant_id: str, limit: int = 100) -> tuple[SourceObjectMetadata, ...]:
+        if not 1 <= limit <= 500:
+            raise ValueError("source object metadata limit must be between 1 and 500")
+        values = [
+            self._records[key].metadata
+            for (record_tenant_id, _), key in self._latest_keys.items()
+            if record_tenant_id == tenant_id
+        ]
+        return tuple(sorted(values, key=lambda value: (value.updated_at_utc, value.object_id), reverse=True)[:limit])
+
 
 class SourceObjectResolver:
     def __init__(self, repository: SourceObjectRepository) -> None:
