@@ -146,6 +146,7 @@ class RichDocumentParserWorker:
         text_lines: list[str] = []
         list_kind: str | None = None
         list_items: list[list[dict[str, object]]] = []
+        page_breaks = 0
 
         def flush_list() -> None:
             nonlocal list_kind, list_items
@@ -155,13 +156,30 @@ class RichDocumentParserWorker:
 
         for element in body:
             if element.tag == f"{W}p":
-                runs = self._docx_paragraph_runs(element)
+                segments = self._docx_paragraph_segments(element)
+                has_page_break = any(segment is None for segment in segments)
+                number_id = self._docx_number_id(element)
+                level = self._docx_heading_level(element)
+                if has_page_break and (number_id is not None or level is not None):
+                    raise ParserWorkerError("DOCX page breaks inside headings or lists are outside preview scope")
+                if has_page_break:
+                    flush_list()
+                    for segment in segments:
+                        if segment is None:
+                            page_breaks += 1
+                            if page_breaks > 100:
+                                raise ParserWorkerError("DOCX page-break count exceeds the structured preview limit")
+                            blocks.append({"kind": "page_break"})
+                        elif self._docx_runs_text(segment).strip():
+                            blocks.append({"kind": "paragraph", "runs": segment})
+                            text_lines.append(self._docx_runs_text(segment))
+                    continue
+                runs = next((segment for segment in segments if segment is not None), [])
                 text = self._docx_runs_text(runs)
                 if not text.strip():
                     flush_list()
                     continue
                 text_lines.append(text)
-                number_id = self._docx_number_id(element)
                 if number_id is not None:
                     kind = "bullet_list" if numbering.get(number_id, "bullet") == "bullet" else "ordered_list"
                     if list_kind != kind:
@@ -170,11 +188,13 @@ class RichDocumentParserWorker:
                     list_items.append(runs)
                     continue
                 flush_list()
-                level = self._docx_heading_level(element)
+                page_break_before = self._docx_page_break_before(element)
                 if level:
                     block = {"kind": "heading", "level": level, "runs": runs}
                 else:
                     block = {"kind": "paragraph", "runs": runs}
+                if page_break_before:
+                    block["page_break_before"] = True
                 blocks.append(block)
             elif element.tag == f"{W}tbl":
                 flush_list()
@@ -189,28 +209,52 @@ class RichDocumentParserWorker:
         return self._docx_runs_text(self._docx_paragraph_runs(paragraph))
 
     def _docx_paragraph_runs(self, paragraph: ElementTree.Element) -> list[dict[str, object]]:
+        segments = self._docx_paragraph_segments(paragraph)
+        if any(segment is None for segment in segments):
+            raise ParserWorkerError("DOCX page breaks inside table cells are outside preview scope")
+        return next((segment for segment in segments if segment is not None), [])
+
+    def _docx_paragraph_segments(self, paragraph: ElementTree.Element) -> list[list[dict[str, object]] | None]:
         revision_tags = {f"{W}del", f"{W}ins", f"{W}moveFrom", f"{W}moveTo"}
         if any(node.tag in revision_tags for node in paragraph.iter()):
             raise ParserWorkerError("DOCX tracked revisions are outside the structured preview scope")
-        runs: list[dict[str, object]] = []
+        segments: list[list[dict[str, object]] | None] = [[]]
         for run in paragraph.iter(f"{W}r"):
+            properties = run.find(f"{W}rPr")
+            marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
             parts: list[str] = []
             for node in run:
                 if node.tag == f"{W}t":
                     parts.append(node.text or "")
                 elif node.tag == f"{W}tab":
                     parts.append("\t")
+                elif (
+                    node.tag == f"{W}br" and node.get(f"{W}type", "textWrapping") == "page"
+                ) or node.tag == f"{W}lastRenderedPageBreak":
+                    self._append_docx_run_segment(segments, parts, marks)
+                    segments.extend([None, []])
                 elif node.tag in {f"{W}br", f"{W}cr"}:
                     parts.append("\n")
-            text = "".join(parts)
-            if not text:
-                continue
-            properties = run.find(f"{W}rPr")
-            marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
-            runs.append({"text": text, "marks": marks})
-        if len(runs) > 4_000:
+            self._append_docx_run_segment(segments, parts, marks)
+        run_count = sum(len(segment) for segment in segments if segment is not None)
+        if run_count > 4_000:
             raise ParserWorkerError("DOCX paragraph exceeds the structured run limit")
-        return runs
+        return segments
+
+    def _append_docx_run_segment(
+        self,
+        segments: list[list[dict[str, object]] | None],
+        parts: list[str],
+        marks: list[str],
+    ) -> None:
+        if not parts:
+            return
+        current = segments[-1]
+        if current is None:
+            current = []
+            segments.append(current)
+        current.append({"text": "".join(parts), "marks": marks})
+        parts.clear()
 
     def _docx_run_mark_enabled(self, properties: ElementTree.Element | None, mark: str) -> bool:
         if properties is None:
@@ -237,6 +281,12 @@ class RichDocumentParserWorker:
     def _docx_number_id(self, paragraph: ElementTree.Element) -> str | None:
         value = paragraph.find(f"{W}pPr/{W}numPr/{W}numId")
         return None if value is None else value.get(f"{W}val")
+
+    def _docx_page_break_before(self, paragraph: ElementTree.Element) -> bool:
+        value = paragraph.find(f"{W}pPr/{W}pageBreakBefore")
+        if value is None:
+            return False
+        return value.get(f"{W}val", "true").casefold() not in {"0", "false", "off", "no"}
 
     def _docx_numbering(self, archive: ZipFile) -> dict[str, str]:
         if "word/numbering.xml" not in archive.namelist():

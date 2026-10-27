@@ -305,3 +305,40 @@ def test_import_preview_maps_inline_runs_and_rejects_text_structure_drift() -> N
     )
     with pytest.raises(OfficeImportPreviewInvalid, match="text and structured content"):
         drift_service.preview(user_context=user(), command=command())
+
+
+def test_import_preview_maps_bounded_page_structure() -> None:
+    blocks = (
+        {"kind": "paragraph", "runs": [{"text": "Seite eins", "marks": []}]},
+        {"kind": "page_break"},
+        {
+            "kind": "heading",
+            "level": 2,
+            "runs": [{"text": "Seite zwei", "marks": []}],
+            "page_break_before": True,
+        },
+    )
+
+    def page_parser(request: ParserWorkerRequest) -> ParsedTextArtifact:
+        text = "Seite eins\nSeite zwei"
+        return ParsedTextArtifact(
+            text=text,
+            parser_name="rich-document-parser-worker",
+            parser_version="1",
+            source_object_type=request.source_object_type,
+            mime_type=request.mime_type,
+            input_hash=sha256_bytes(request.content),
+            text_hash=sha256_bytes(text.encode("utf-8")),
+            text_byte_length=len(text.encode("utf-8")),
+            document_blocks=blocks,
+            document_blocks_hash=hash_document_blocks(blocks),
+        )
+
+    service = OfficeImportPreviewService(
+        source_repository=InMemorySourceObjectRepository((source_record(),)),
+        audit=InMemoryAuditLogger(),
+        parser_dispatch=page_parser,
+    )
+    document = service.preview(user_context=user(), command=command()).document
+    assert [node["type"] for node in document["content"]] == ["paragraph", "pageBreak", "heading"]
+    assert document["content"][2]["attrs"] == {"level": 2, "pageBreakBefore": True}

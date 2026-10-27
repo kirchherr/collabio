@@ -2,6 +2,23 @@
 
 Updated: 2026-10-27
 
+Roadmap 928 through 935 / PLANS 789 through 796 are complete under ADR-0214. The bounded DOCX preview preserves
+explicit hard and last-rendered page breaks plus enabled paragraph page-break-before state. Ordinary runs split around
+hard breaks; at most 100 native page-break nodes are admitted. Breaks inside headings, lists and table cells fail
+closed instead of guessing structure. Canonical structure evidence includes every break while independent normalized
+text equality excludes nontext nodes.
+
+Ruff/format pass with 914 files, Mypy passes 643 sources, the focused contract passes 57/57 and full Pytest reaches
+100 percent with only the known warning. Desktop/mobile pass 2/2 in 15.5 seconds; visual review confirms the explicit
+page-transition marker and responsive containment. Screenshot hashes are
+`sha256:e76d1937847d65094bc0196e8f94dad6790729196babf366bc5f0f9495d54b81` and
+`sha256:ac7cf574e49eff793a139a99ef0c11df8002d2b36cbc1b70734ace432cec04ad`. Final Work-E2E, review API and parser image
+IDs are `sha256:927c086310a382ba128e3d1f71acdfafb8332bfcd638c18a639cd1a0f9d37bfb`,
+`sha256:3517e46ece96467e1e77c16bbbcb92b24d0db6623f8ee7f7629485518bc88190` and
+`sha256:1906c7936d9cd070a6db039de35f4fe1b8a1739702a2236c4ac3889d33e208a2`. Review is
+`http://192.168.0.108:42880/office?review=docx-pages-adr0214`. ADR-0213 is published through `9abb2ad3`; ADR-0214 is
+locally complete and requires a new content-specific push approval. Embedded images are the next separate Office lane.
+
 Roadmap 920 through 927 / PLANS 781 through 788 are complete under ADR-0213. The isolated DOCX parser now preserves
 direct bold, italic, underline and strike run properties in paragraphs, headings, flat lists and simple table cells.
 The run contract is canonical and bounded; unknown, duplicate, empty, oversized, reordered or surplus values fail
@@ -20,7 +37,7 @@ IDs are `sha256:b85bb81360ecf63a6fa9da9ccf000370a79ea38d6384fe668da30b7a9fd43261
 `sha256:d6ec8d059b85c68f9134fa46e923b4ff2313d14cc9b208448ae29955025ece2c` and
 `sha256:5a5d7db9c6a486f09e5d4241762301a478cf7defe3002c4448e813c16b20115a`. Review is
 `http://192.168.0.108:42880/office?review=docx-inline-adr0213`. ADR-0212 is published through `32b2f3b5`; ADR-0213 is
-locally complete and requires a new content-specific push approval. Images, page structures and deeper style fidelity
+published through `9abb2ad3`. Images, page structures and deeper style fidelity
 remain the next Office lanes; CRM remains deferred.
 
 Roadmap 912 through 919 / PLANS 773 through 780 are complete under ADR-0212. Native Office now discovers only

@@ -2393,15 +2393,38 @@ exact provenance readback and responsive desktop/mobile rendering.
 788. [x] Close the block with parser/import/schema and browser regressions plus full Ruff/format/Mypy/Pytest quality.
 Add no migration, dependency, external engine, automatic persistence, tenant activation or productive DOCX admission.
 
+789. [x] Add bounded explicit DOCX page-break preservation under ADR-0214 without invoking an external layout engine.
+
+790. [x] Recognize only hard page breaks, last-rendered page breaks and enabled paragraph page-break-before properties
+from the already authorized local document part.
+
+791. [x] Split ordinary paragraph runs around hard breaks, emit at most 100 native page-break blocks and preserve the
+strict paragraph boolean without changing extracted text.
+
+792. [x] Reject hard breaks inside headings, list paragraphs and table cells rather than guessing cross-break
+structure. Preserve tracked-revision and active-content rejection.
+
+793. [x] Include every break and paragraph flag in canonical structure evidence while excluding nontext break nodes
+from independent normalized text equality.
+
+794. [x] Reuse existing native page-break validation, editor rendering, print semantics, explicit confirmed save and
+exact source/parser provenance readback.
+
+795. [x] Prove hard and paragraph page breaks, limits, ambiguous-context rejection and desktop/mobile rendering.
+
+796. [x] Close the block with parser/import/schema and browser regressions plus full quality. Add no migration,
+dependency, external engine, inferred pagination, tenant activation or productive DOCX admission.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 927 / PLANS 788. A governed picker exposes only currently readable DOCX
+- Native Office is complete through Roadmap 935 / PLANS 796. A governed picker exposes only currently readable DOCX
   metadata, and the exact selected version can produce a bounded non-persisting native preview that preserves headings,
   flat lists, simple tables and bounded bold/italic/underline/strike runs through the isolated parser and explicit
-  confirmed save. Continue with images and page structures before productive import/export or collaboration gates. Preserve all earlier AI,
+  confirmed save. Explicit hard and paragraph page breaks also survive the bounded preview. Continue with embedded
+  images and richer section/page profiles before productive import/export or collaboration gates. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

@@ -1,9 +1,25 @@
 # Native Office Documents
 
-Status: Roadmap 252–927 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 927 / PLANS 788 bounded DOCX inline formatting
-Module: `office_documents` / version 0.9.24
-Decisions: ADR-0079 through ADR-0213; current movement: `ARCHITECTURE_DECISIONS/ADR-0213-bounded-native-office-docx-inline-formatting.md`
+Status: Roadmap 252–935 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 935 / PLANS 796 bounded DOCX page breaks
+Module: `office_documents` / version 0.9.25
+Decisions: ADR-0079 through ADR-0214; current movement: `ARCHITECTURE_DECISIONS/ADR-0214-bounded-native-office-docx-page-breaks.md`
+
+## Bounded DOCX page breaks (Roadmap 928-935)
+
+The isolated parser preserves explicit hard and last-rendered DOCX page breaks plus enabled paragraph
+`pageBreakBefore`. Ordinary runs are split around hard breaks and at most 100 native page-break blocks are admitted.
+Hard breaks in headings, lists and table cells fail closed instead of guessing document structure.
+
+Breaks remain part of canonical structure evidence but contribute no text to the independent normalized text match.
+The existing native editor/print representation, explicit save confirmation and exact provenance round trip are
+reused. Section profiles, page geometry, automatic pagination, headers/footers and exact Word layout remain closed.
+
+Focused parser/socket/import/API tests pass 57/57; Ruff/format pass with 914 files, Mypy passes 643 sources and full
+Pytest reaches 100 percent. Desktop/mobile pass 2/2 in 15.5 seconds. Screenshot hashes are
+`sha256:e76d1937847d65094bc0196e8f94dad6790729196babf366bc5f0f9495d54b81` and
+`sha256:ac7cf574e49eff793a139a99ef0c11df8002d2b36cbc1b70734ace432cec04ad`. Review is available at
+`http://192.168.0.108:42880/office?review=docx-pages-adr0214`.
 
 ## Bounded DOCX inline formatting (Roadmap 920-927)
 

@@ -149,18 +149,39 @@ def _structured_blocks(values: tuple[dict[str, Any], ...]) -> tuple[list[dict[st
         if not isinstance(value, dict) or not isinstance(value.get("kind"), str):
             raise OfficeImportPreviewInvalid("parser structure is invalid")
         kind = value["kind"]
-        if kind == "paragraph" and set(value) in ({"kind", "text"}, {"kind", "runs"}):
+        if kind == "page_break" and set(value) == {"kind"}:
+            blocks.append({"type": "pageBreak"})
+        elif kind == "paragraph" and set(value) in (
+            {"kind", "text"},
+            {"kind", "runs"},
+            {"kind", "runs", "page_break_before"},
+        ):
             content, plain = _legacy_or_run_content(value.get("runs", value.get("text")))
-            blocks.append({"type": "paragraph", "content": content})
+            paragraph_attrs: dict[str, Any] = (
+                {"pageBreakBefore": True} if value.get("page_break_before") is True else {}
+            )
+            if "page_break_before" in value and type(value["page_break_before"]) is not bool:
+                raise OfficeImportPreviewInvalid("parser paragraph page-break structure is invalid")
+            blocks.append({"type": "paragraph", "attrs": paragraph_attrs, "content": content})
             text_lines.append(plain)
         elif (
             kind == "heading"
-            and set(value) in ({"kind", "level", "text"}, {"kind", "level", "runs"})
+            and set(value)
+            in (
+                {"kind", "level", "text"},
+                {"kind", "level", "runs"},
+                {"kind", "level", "runs", "page_break_before"},
+            )
             and type(value["level"]) is int
             and value["level"] in {1, 2, 3}
         ):
             content, plain = _legacy_or_run_content(value.get("runs", value.get("text")))
-            blocks.append({"type": "heading", "attrs": {"level": value["level"]}, "content": content})
+            if "page_break_before" in value and type(value["page_break_before"]) is not bool:
+                raise OfficeImportPreviewInvalid("parser heading page-break structure is invalid")
+            heading_attrs: dict[str, Any] = {"level": value["level"]}
+            if value.get("page_break_before") is True:
+                heading_attrs["pageBreakBefore"] = True
+            blocks.append({"type": "heading", "attrs": heading_attrs, "content": content})
             text_lines.append(plain)
         elif kind in {"bullet_list", "ordered_list"} and set(value) == {"kind", "items"}:
             items = value["items"]

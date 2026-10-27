@@ -144,6 +144,19 @@ def formatted_docx_bytes() -> bytes:
     return buffer.getvalue()
 
 
+def paginated_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        '<w:p><w:r><w:t>Seite eins</w:t><w:br w:type="page"/><w:t>Seite zwei</w:t></w:r></w:p>'
+        "<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>Neuer Abschnitt</w:t></w:r></w:p>"
+        "</w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+    return buffer.getvalue()
+
+
 def odt_bytes(*paragraphs: str) -> bytes:
     body = "".join(f"<text:p>{paragraph}</text:p>" for paragraph in paragraphs)
     xml = (
@@ -272,6 +285,39 @@ def test_rich_document_parser_rejects_tracked_docx_revisions() -> None:
 
     with pytest.raises(ParserWorkerError, match="tracked revisions"):
         RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=buffer.getvalue()))
+
+
+def test_rich_document_parser_preserves_hard_and_paragraph_docx_page_breaks() -> None:
+    artifact = RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=paginated_docx_bytes()))
+
+    assert artifact.text == "Seite eins\nSeite zwei\nNeuer Abschnitt"
+    assert artifact.document_blocks == (
+        {"kind": "paragraph", "runs": [{"text": "Seite eins", "marks": []}]},
+        {"kind": "page_break"},
+        {"kind": "paragraph", "runs": [{"text": "Seite zwei", "marks": []}]},
+        {
+            "kind": "paragraph",
+            "runs": [{"text": "Neuer Abschnitt", "marks": []}],
+            "page_break_before": True,
+        },
+    )
+
+
+def test_rich_document_parser_rejects_ambiguous_or_excessive_docx_page_breaks() -> None:
+    namespace = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    heading_xml = (
+        f'<w:document {namespace}><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+        '<w:r><w:t>A</w:t><w:br w:type="page"/><w:t>B</w:t></w:r></w:p></w:body></w:document>'
+    )
+    excessive_breaks = '<w:br w:type="page"/>'.join("<w:t>x</w:t>" for _ in range(102))
+    excessive_xml = f"<w:document {namespace}><w:body><w:p><w:r>{excessive_breaks}</w:r></w:p></w:body></w:document>"
+
+    for xml, message in ((heading_xml, "headings or lists"), (excessive_xml, "page-break count")):
+        buffer = BytesIO()
+        with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+            archive.writestr("word/document.xml", xml)
+        with pytest.raises(ParserWorkerError, match=message):
+            RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=buffer.getvalue()))
 
 
 def test_rich_document_parser_extracts_odt_text() -> None:

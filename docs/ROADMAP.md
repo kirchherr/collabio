@@ -60,10 +60,10 @@ Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwick
   durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
   CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
-- Native Office ist durch Roadmap 927 / PLANS 788 um dokumentweite Berechnungen, native Diagramme sowie eine
+- Native Office ist durch Roadmap 935 / PLANS 796 um dokumentweite Berechnungen, native Diagramme sowie eine
   berechtigungsgepruefte DOCX-Quellenauswahl und strukturierte Vorschau erweitert. Exakte Version und Provenienz bleiben
   gebunden; Ueberschriften, flache Listen, einfache Tabellen und begrenzte Fett-/Kursiv-/Unterstrichen-/Durchgestrichen-
-  Auszeichnungen werden erhalten. Strukturtreuer Vollimport, Export,
+  Auszeichnungen und explizite Seitenumbrueche werden erhalten. Strukturtreuer Vollimport, Export,
   externe Arbeitsmappen, volatile Zeitwerte, Makros, produktive DOCX-Schreibpfade und automatische Aktionen bleiben
   getrennte Freigabeschritte.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
@@ -703,6 +703,9 @@ Aufgaben:
 - [x] Begrenzte DOCX-Inline-Auszeichnungen fuer Fett, Kursiv, Unterstrichen und Durchgestrichen mit kanonischen Runs,
   unabhaengiger Text-/Struktur-Konsistenzpruefung und fail-closed Behandlung nachverfolgter Aenderungen erhalten
   (Roadmap 920-927 / PLANS 781-788).
+- [x] Explizite harte und absatzgebundene DOCX-Seitenumbrueche begrenzt erhalten, in Strukturbelege binden und in
+  mehrdeutigen Listen-, Ueberschriften- oder Tabellenkontexten fail closed behandeln
+  (Roadmap 928-935 / PLANS 789-796).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).
