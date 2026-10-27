@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "dataLabelPresentation", "dataTablePresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
+      "dataLabelPresentation", "dataTablePresentation", "categoryAxisPresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
       "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
@@ -236,11 +236,18 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       position: $("chart-data-label-position").value } : null;
     const tablePresentation = $("chart-data-table-visible").checked ? {
       position: $("chart-data-table-position").value, showLegendKeys: $("chart-data-table-legend-keys").checked } : null;
+    const categoryAxisSupported = ["bar", "stacked-bar", "line", "area", "combo"].includes(kind);
+    const categoryAxisPresentation = categoryAxisSupported && ($("chart-category-direction").value !== "forward" ||
+      $("chart-category-label-rotation").value !== "horizontal" || $("chart-category-label-interval").value !== "1") ? {
+        direction: $("chart-category-direction").value,
+        labelRotation: $("chart-category-label-rotation").value,
+        labelInterval: Number($("chart-category-label-interval").value) } : null;
     return officeChartAttributes({ id, kind, title: $("chart-name").value, altText: $("chart-alt").value,
       legend: $("chart-legend").checked, legendPosition: $("chart-legend-position").value,
       dataLabels: $("chart-data-labels").checked, presentation, ...data, ...(seriesStyles ? { seriesPresentation: seriesStyles } : {}),
       ...(labelPresentation ? { dataLabelPresentation: labelPresentation } : {}),
       ...(tablePresentation ? { dataTablePresentation: tablePresentation } : {}),
+      ...(categoryAxisPresentation ? { categoryAxisPresentation } : {}),
       ...(references.length ? { referenceLines: references } : {}), ...(analysis ? { analysis } : {}),
       ...(axisOptions ? { axisOptions } : {}), ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
@@ -260,6 +267,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-source-orientation").disabled = !linked;
     $("chart-data").readOnly = linked; };
   const presentationState = () => { const axes = !circular($("chart-kind").value), manual = $("chart-axis-mode").value === "manual";
+    const categoryAxis = ["bar", "stacked-bar", "line", "area", "combo"].includes($("chart-kind").value);
     $("chart-axis-fields").disabled = !axes; $("chart-manual-axis-fields").hidden = !axes || !manual;
     $("chart-reference-fields").hidden = !axes; $("chart-reference-fields").disabled = !axes;
     $("chart-data-label-fields").hidden = !$("chart-data-labels").checked;
@@ -268,6 +276,8 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-data-table-fields").hidden = !$("chart-data-table-visible").checked;
     $("chart-data-table-position").disabled = !$("chart-data-table-visible").checked;
     $("chart-data-table-legend-keys").disabled = !$("chart-data-table-visible").checked;
+    $("chart-category-presentation-fields").hidden = !categoryAxis;
+    $("chart-category-presentation-fields").disabled = !categoryAxis;
     $("chart-legend-position").disabled = !$("chart-legend").checked; };
   const preview = () => { sourceState(); presentationState(); try { const attrs = read(); if (attrs.source) $("chart-data").value = serializeData(attrs);
       $("chart-preview").replaceChildren(officeChartElement(attrs));
@@ -297,6 +307,9 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     $("chart-data-table-visible").checked = Boolean(attrs?.dataTablePresentation);
     $("chart-data-table-position").value = attrs?.dataTablePresentation?.position || "below";
     $("chart-data-table-legend-keys").checked = attrs?.dataTablePresentation?.showLegendKeys ?? true;
+    $("chart-category-direction").value = attrs?.categoryAxisPresentation?.direction || "forward";
+    $("chart-category-label-rotation").value = attrs?.categoryAxisPresentation?.labelRotation || "horizontal";
+    $("chart-category-label-interval").value = String(attrs?.categoryAxisPresentation?.labelInterval || 1);
     $("chart-palette").value = attrs?.presentation?.palette || "standard";
     $("chart-style").value = attrs?.presentation?.style || "clean";
     $("chart-title-alignment").value = attrs?.presentation?.titleAlignment || "center";

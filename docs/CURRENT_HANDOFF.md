@@ -2,6 +2,31 @@
 
 Updated: 2026-10-27
 
+Roadmap 888 through 895 / PLANS 749 through 756 are complete under ADR-0209. Native bar, stacked-bar, line, area and
+combo charts now support forward or reversed category presentation, horizontal, diagonal or vertical graphical
+labels and a fixed label interval from one through three. The derived view reverses every series in lockstep but does
+not change canonical categories, values, table bindings, formula results or semantic chart tables.
+
+Browser and server independently require the exact closed presentation object and reject surplus fields, booleans,
+unsupported chart kinds and out-of-range values. The accessible description names non-default choices, while label
+rotation and suppression remain graphical-only. Omission retains the prior forward, every-label, horizontal default.
+
+Focused schema/API tests pass 88/88, all twelve chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 17.4 seconds. Visual review passed without page overflow. Screenshot hashes are
+`sha256:b08daee62dab3e417df03d52b8de6cacdea79d197e69e5eae8d249dcfa24b875` and
+`sha256:82823ddcfe44ef16fa67e01d10103f7631eb63defc98f02fb0dab982973fea24`; report hash is
+`sha256:0c9063c90a2cd370a29fa8fd297a8a1eb52da79c310e83d43ce88f884622b3a5`.
+
+Review is `http://192.168.0.108:42880/office?review=category-axis-adr0209` with `office.css?v=21` and
+`editor.js?v=21`. No migration, dependency, external engine, alternate data store, automatic action or tenant
+activation was added. The next Office loop should continue native chart usability before deferred CRM onboarding.
+Complete quality passes Ruff, finds 970 format-conformant files, passes Mypy over 639 sources and reaches 100 percent
+Pytest with only the known Starlette/AnyIO warning. Final Work-E2E and review API images are
+`sha256:8e1b638d2061b3f6b404e7008e9d8ebc7e071a155349f1463aed9be1e906dba3` and
+`sha256:d82c32865f0e5d4620122b79509de613415b0a0677d6c0f06d8913a14595d46d`. The isolated test database was removed;
+no transient runner remains. ADR-0208 is published through commit `5f4d2932`; publication of ADR-0209 requires a new
+content-specific approval.
+
 Roadmap 880 through 887 / PLANS 741 through 748 are complete under ADR-0208. Every native chart still exposes one
 semantic table derived from canonical categories and series; authors may now show it above or below the chart and add
 fixed decorative series-color keys. No second value snapshot is stored, and older charts retain the hidden table.

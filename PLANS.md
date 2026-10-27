@@ -2274,13 +2274,38 @@ surplus fields, invalid values and numeric boolean substitutes.
 visual proof and the complete repository quality gate. Add no migration, dependency, alternate data store or durable
 state.
 
+749. [x] Add one strict optional category-axis presentation under ADR-0209 with forward or reverse direction,
+horizontal, diagonal or vertical labels and an integer label interval from one through three.
+
+750. [x] Restrict the presentation to bar, stacked-bar, line, area and combo charts. Reject pie, doughnut and scatter
+charts because they do not expose the same categorical horizontal-axis contract.
+
+751. [x] Derive reversed categories and every positional series in lockstep for graphical rendering only. Preserve
+canonical categories, values, linked-table references, formula results and immutable saved source order.
+
+752. [x] Suppress only graphical tick labels for the selected interval. Keep every category and value in visible or
+hidden semantic data tables and name non-default presentation choices in the accessible chart description.
+
+753. [x] Add responsive direction, label-angle and interval controls that follow chart-kind changes, restore saved
+values and keep horizontal, diagonal and vertical tick text inside the document page.
+
+754. [x] Preserve category-axis presentation through linked recalculation, chart editing, duplication, comparison,
+print and confirmed immutable save/reload without creating a second data snapshot.
+
+755. [x] Independently validate exact keys, supported chart kinds, closed enums and integer bounds on the server.
+Reject surplus fields, booleans and unsupported combinations.
+
+756. [x] Close the block with 88 focused schema/API tests, twelve chart-model cases, desktop/mobile saved-version and
+visual proof and the complete repository quality gate. Add no migration, dependency, external engine or durable state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 887 / PLANS 748. Visible accessible data tables now build on explicit
-  logarithmic and secondary axes, deterministic trendlines, scatter, combination and linked-table charts. Continue
+- Native Office is complete through Roadmap 895 / PLANS 756. Bounded category direction, graphical label angle and
+  label intervals now build on visible accessible data tables, explicit logarithmic and secondary axes, deterministic
+  trendlines, scatter, combination and linked-table charts. Continue
   Office with the next coherent native chart usability loop before deferred CRM
   onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,

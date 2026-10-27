@@ -1,9 +1,26 @@
 # Native Office Documents
 
-Status: Roadmap 252–887 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 887 / PLANS 748 accessible chart data tables
-Module: `office_documents` / version 0.9.19
-Decisions: ADR-0079 through ADR-0208; current movement: `ARCHITECTURE_DECISIONS/ADR-0208-native-office-visible-accessible-chart-data-tables.md`
+Status: Roadmap 252–895 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 895 / PLANS 756 category-axis presentation
+Module: `office_documents` / version 0.9.20
+Decisions: ADR-0079 through ADR-0209; current movement: `ARCHITECTURE_DECISIONS/ADR-0209-native-office-category-axis-presentation.md`
+
+## Category-axis presentation (Roadmap 888–895)
+
+Bar, stacked-bar, line, area and combo charts support normal or reversed category direction, horizontal, diagonal or
+vertical graphical labels and a bounded interval of one through three. Reversal derives a presentation view and moves
+every series in lockstep; canonical categories, values, table bindings and semantic data tables retain source order.
+
+The editor follows chart-kind changes and restores saved settings. Browser and server independently reject surplus
+fields, unsupported chart kinds, booleans and values outside the closed enums and integer range. Accessible chart
+descriptions name non-default choices, while label suppression and rotation affect only the decorative graphical axis.
+
+Focused schema/API tests pass 88/88, all twelve chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 17.4 seconds. Visual review passed without page overflow; screenshot hashes are
+`sha256:b08daee62dab3e417df03d52b8de6cacdea79d197e69e5eae8d249dcfa24b875` and
+`sha256:82823ddcfe44ef16fa67e01d10103f7631eb63defc98f02fb0dab982973fea24`. Review is available at
+`http://192.168.0.108:42880/office?review=category-axis-adr0209` with asset keys `office.css?v=21` and
+`editor.js?v=21`. Complete quality passes Ruff, formatting, Mypy and Pytest.
 
 ## Visible accessible chart data tables (Roadmap 880–887)
 

@@ -815,6 +815,11 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         "dataTablePresentation": {"position": "above", "showLegendKeys": True},
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": accessible_table}]})
+    category_axis = {
+        **advanced_axes,
+        "categoryAxisPresentation": {"direction": "reverse", "labelRotation": "diagonal", "labelInterval": 2},
+    }
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": category_axis}]})
     advanced_manual = {
         **advanced_axes,
         "axes": {
@@ -859,6 +864,18 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         {**attrs, "dataTablePresentation": {"position": "floating", "showLegendKeys": True}},
         {**attrs, "dataTablePresentation": {"position": "below", "showLegendKeys": 1}},
         {**attrs, "dataTablePresentation": {"position": "below", "showLegendKeys": True, "url": "x"}},
+        {
+            **attrs,
+            "categoryAxisPresentation": {"direction": "reverse", "labelRotation": "diagonal", "labelInterval": True},
+        },
+        {
+            **attrs,
+            "categoryAxisPresentation": {"direction": "sideways", "labelRotation": "diagonal", "labelInterval": 2},
+        },
+        {
+            **scatter,
+            "categoryAxisPresentation": {"direction": "reverse", "labelRotation": "vertical", "labelInterval": 2},
+        },
         {**attrs, "axes": {**axes, "maximum": 160}},
         {**attrs, "axes": {**axes, "majorUnit": 30}},
         {**pie, "axes": axes},

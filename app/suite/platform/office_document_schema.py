@@ -911,6 +911,18 @@ def _valid_chart_data_table_presentation(value: Any) -> bool:
     )
 
 
+def _valid_chart_category_axis_presentation(value: Any, kind: str) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"direction", "labelRotation", "labelInterval"}
+        and kind in {"bar", "stacked-bar", "line", "area", "combo"}
+        and value.get("direction") in {"forward", "reverse"}
+        and value.get("labelRotation") in {"horizontal", "diagonal", "vertical"}
+        and type(value.get("labelInterval")) is int
+        and 1 <= value["labelInterval"] <= 3
+    )
+
+
 def _valid_chart_reference_lines(value: Any) -> bool:
     if not isinstance(value, list) or not 1 <= len(value) <= 4:
         return False
@@ -1643,6 +1655,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("dataLabelPresentation")
             if "dataTablePresentation" in attrs:
                 expected_chart_attrs.add("dataTablePresentation")
+            if "categoryAxisPresentation" in attrs:
+                expected_chart_attrs.add("categoryAxisPresentation")
             if "referenceLines" in attrs:
                 expected_chart_attrs.add("referenceLines")
             if "analysis" in attrs:
@@ -1668,6 +1682,12 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 or (
                     "dataTablePresentation" in attrs
                     and not _valid_chart_data_table_presentation(attrs.get("dataTablePresentation"))
+                )
+                or (
+                    "categoryAxisPresentation" in attrs
+                    and not _valid_chart_category_axis_presentation(
+                        attrs.get("categoryAxisPresentation"), attrs.get("kind")
+                    )
                 )
                 or ("legendPosition" in attrs and attrs.get("legendPosition") not in _CHART_LEGEND_POSITIONS)
                 or not _valid_literal(attrs.get("title"), 1, 120)

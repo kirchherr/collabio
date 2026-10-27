@@ -69,6 +69,17 @@ function officeChartDataTablePresentation(value) {
   return { position: value.position, showLegendKeys: value.showLegendKeys };
 }
 
+function officeChartCategoryAxisPresentation(value, kind) {
+  if (!value || Object.keys(value).sort().join(",") !== "direction,labelInterval,labelRotation" ||
+      !["bar", "stacked-bar", "line", "area", "combo"].includes(kind) ||
+      !["forward", "reverse"].includes(value.direction) ||
+      !["horizontal", "diagonal", "vertical"].includes(value.labelRotation) ||
+      !Number.isInteger(value.labelInterval) || value.labelInterval < 1 || value.labelInterval > 3) {
+    throw new Error("chart-category-axis-presentation");
+  }
+  return { direction: value.direction, labelRotation: value.labelRotation, labelInterval: value.labelInterval };
+}
+
 function officeChartReferenceLines(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new Error("chart-reference-lines");
   const labels = new Set();
@@ -241,11 +252,12 @@ export function officeChartAttributes(value) {
     ...(value?.seriesPresentation == null ? [] : ["seriesPresentation"]),
     ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
     ...(value?.dataTablePresentation == null ? [] : ["dataTablePresentation"]),
+    ...(value?.categoryAxisPresentation == null ? [] : ["categoryAxisPresentation"]),
     ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"]),
     ...(value?.axisOptions == null ? [] : ["axisOptions"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
     !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
-      "dataTablePresentation",
+      "dataTablePresentation", "categoryAxisPresentation",
       "referenceLines", "analysis", "axisOptions"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
@@ -282,6 +294,9 @@ export function officeChartAttributes(value) {
   }
   if (value.dataTablePresentation != null) {
     result.dataTablePresentation = officeChartDataTablePresentation(value.dataTablePresentation);
+  }
+  if (value.categoryAxisPresentation != null) {
+    result.categoryAxisPresentation = officeChartCategoryAxisPresentation(value.categoryAxisPresentation, value.kind);
   }
   if (value.seriesPresentation != null) {
     result.seriesPresentation = officeChartSeriesPresentation(value.seriesPresentation, value.kind, series);
@@ -475,7 +490,19 @@ export function officeChartDescription(value) {
   const analysis = chart.analysis ? `${chart.analysis.trendline ? ` · Trendlinie ${chart.series[chart.analysis.trendline.seriesIndex].name}` : ""}${chart.analysis.errorBars ?
     ` · Fehlerbalken ${chart.series[chart.analysis.errorBars.seriesIndex].name}: ±${chart.analysis.errorBars.amount}` : ""}` : "";
   const dataTable = chart.dataTablePresentation ? " · sichtbare Datentabelle" : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${dataTable}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  const categoryAxis = chart.categoryAxisPresentation ? ` · Kategorien ${chart.categoryAxisPresentation.direction === "reverse" ?
+    "umgekehrt" : "normal"}, Beschriftung ${chart.categoryAxisPresentation.labelRotation}, Intervall ${chart.categoryAxisPresentation.labelInterval}` : "";
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${dataTable}${categoryAxis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+}
+
+function chartPresentationView(chart) {
+  if (chart.categoryAxisPresentation?.direction !== "reverse") return chart;
+  return { ...chart, categories: [...chart.categories].reverse(),
+    series: chart.series.map((entry) => ({ ...entry, values: [...entry.values].reverse() })) };
+}
+
+function chartCategoryLabel(chart, category, index) {
+  return index % (chart.categoryAxisPresentation?.labelInterval || 1) === 0 ? category : "";
 }
 
 function chartTable(chart, dom) {
@@ -547,7 +574,8 @@ function barChart(chart, scale, dom) {
         bar.title = `${category} · ${entry.name}: ${entry.values[categoryIndex]}`; bars.append(bar);
       }
     }
-    const label = dom.createElement("span"); label.className = "office-chart-category"; label.textContent = category;
+    const label = dom.createElement("span"); label.className = "office-chart-category";
+    label.textContent = chartCategoryLabel(chart, category, categoryIndex);
     group.append(bars, label); visual.append(group);
   });
   return visual;
@@ -734,12 +762,13 @@ function pieChart(chart, dom) {
 }
 
 export function officeChartElement(value, dom = document) {
-  const chart = officeChartAttributes(value), figure = dom.createElement("figure");
+  const savedChart = officeChartAttributes(value), chart = chartPresentationView(savedChart), figure = dom.createElement("figure");
   figure.className = "office-chart"; figure.dataset.officeChart = chart.id; figure.dataset.chartKind = chart.kind;
   figure.dataset.legendPosition = chart.legendPosition || "bottom";
   figure.dataset.chartStyle = chart.presentation?.style || "clean";
   figure.dataset.titleAlignment = chart.presentation?.titleAlignment || "center";
-  figure.setAttribute("role", "group"); figure.setAttribute("aria-label", officeChartDescription(chart));
+  figure.dataset.categoryLabelRotation = chart.categoryAxisPresentation?.labelRotation || "horizontal";
+  figure.setAttribute("role", "group"); figure.setAttribute("aria-label", officeChartDescription(savedChart));
   figure.setAttribute("aria-describedby", `${chart.id}-data`);
   const title = dom.createElement("figcaption"); title.className = "office-chart-title"; title.textContent = chart.title;
   const scale = officeChartAxisScale(chart), secondaryScale = officeChartSecondaryAxisScale(chart);
@@ -752,9 +781,9 @@ export function officeChartElement(value, dom = document) {
   const labels = dom.createElement("div"); labels.className = "office-chart-categories";
   const labelValues = chart.kind === "scatter" ? automaticScale(chart.series[0].values).ticks.map((tick) =>
     formatChartNumber(tick, scale.numberFormat)) : chart.categories;
-  if (!["bar", "stacked-bar"].includes(chart.kind)) for (const category of labelValues) {
-    const label = dom.createElement("span"); label.textContent = category; labels.append(label);
-  }
+  if (!["bar", "stacked-bar"].includes(chart.kind)) labelValues.forEach((category, index) => {
+    const label = dom.createElement("span"); label.textContent = chartCategoryLabel(chart, category, index); labels.append(label);
+  });
   const legend = dom.createElement("div"); legend.className = "office-chart-legend"; legend.hidden = !chart.legend;
   const legendEntries = circularKind(chart.kind) ? chart.categories.map((name, index) =>
     ({ name, color: OFFICE_CHART_COLORS[index % 4] })) : chart.kind === "scatter" ? chart.series.slice(1) : chart.series;
@@ -783,7 +812,7 @@ export function officeChartElement(value, dom = document) {
       label.textContent = content;
       values.append(label); });
   });
-  const dataTable = chartTable(chart, dom), tableAbove = chart.dataTablePresentation?.position === "above";
+  const dataTable = chartTable(savedChart, dom), tableAbove = chart.dataTablePresentation?.position === "above";
   figure.append(title);
   if (tableAbove) figure.append(dataTable);
   if (labelPresentation.position === "top") figure.append(values);

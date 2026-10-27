@@ -203,6 +203,21 @@ test("Office visible chart data tables retain an exact closed presentation", () 
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office category-axis presentation remains strict and preserves canonical data", () => {
+  const categoryAxisPresentation = { direction: "reverse", labelRotation: "diagonal", labelInterval: 2 };
+  const chart = officeChartAttributes({ ...attrs, categoryAxisPresentation });
+  expect(chart.categoryAxisPresentation).toEqual(categoryAxisPresentation);
+  expect(chart.categories).toEqual(attrs.categories);
+  expect(chart.series).toEqual(attrs.series);
+  expect(officeChartDescription(chart)).toContain("Kategorien umgekehrt, Beschriftung diagonal, Intervall 2");
+  for (const invalid of [
+    { ...attrs, categoryAxisPresentation: { ...categoryAxisPresentation, labelInterval: true } },
+    { ...attrs, categoryAxisPresentation: { ...categoryAxisPresentation, labelRotation: "free" } },
+    { ...attrs, kind: "scatter", seriesPresentation: [{ renderAs: "points", marker: "circle", lineStyle: "none" }],
+      categoryAxisPresentation },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };
