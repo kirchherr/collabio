@@ -1318,3 +1318,20 @@ Every future lifecycle operation records the UTC timestamp, commit, exact Compos
 | --- | --- | --- | --- |
 | 2026-10-27, Roadmap 928-935 acceptance | Preserve explicit hard, last-rendered and paragraph DOCX page breaks under ADR-0214 | Canonical structure includes bounded break nodes and paragraph flags while normalized text equality excludes nontext nodes. Ambiguous heading/list/table breaks fail closed. Focused tests pass 57/57; Ruff/format 914, Mypy 643 and full Pytest are green. | Locks and explicit Compose project `collabio` were used. No migration, external engine, inferred pagination, tenant activation or productive DOCX admission was added. |
 | 2026-10-27, Roadmap 928-935 browser and cleanup | Prove responsive page-transition rendering and remove exact test resources | Desktop/mobile pass 2/2 in 15.5 seconds. Screenshot hashes are `sha256:e76d1937847d65094bc0196e8f94dad6790729196babf366bc5f0f9495d54b81` and `sha256:ac7cf574e49eff793a139a99ef0c11df8002d2b36cbc1b70734ace432cec04ad`; visual review passed. The exact PostgreSQL test container was removed. | Final Work-E2E/API/parser images are `sha256:927c086310a382ba128e3d1f71acdfafb8332bfcd638c18a639cd1a0f9d37bfb`, `sha256:3517e46ece96467e1e77c16bbbcb92b24d0db6623f8ee7f7629485518bc88190` and `sha256:1906c7936d9cd070a6db039de35f4fe1b8a1739702a2236c4ac3889d33e208a2`. Main stores and foreign projects were untouched. |
+
+## 2026-10-27 Publication and fresh-chat documentation closeout
+
+The operator explicitly approved publication and documentation. Commit `0102f4ba` was pushed successfully to
+`origin/kirchherr/kb-write-unit-of-work`, following published `9abb2ad3` and `32b2f3b5`. Handoff now has one current
+restart state, corrected continuation/bootstrap sections, a copyable German prompt and the existing acceptance hashes.
+No new runtime acceptance is claimed by this documentation-only closeout.
+
+Read-only inspection found Compose project `collabio` running ten persistent containers; review API and parser were
+healthy and review `/health` returned `ok`. No test PostgreSQL or transient runner was present. The remote Git HEAD
+remains `add05b4` with synchronized later sources; no reset, pull, rebuild, migration or service restart was performed.
+The next chat must compare target content before syncing. User-owned untracked `.tmp/`, `erp_modul.md` and `review.md`
+remain excluded from publication.
+
+The handoff explicitly records the browser proof's mocked discovery/preview boundary and the missing unmocked
+stored-DOCX integration lane. Cached last-rendered page breaks do not establish exact current pagination. These
+clarifications qualify the existing evidence without changing runtime behavior.

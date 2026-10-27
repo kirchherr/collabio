@@ -2,6 +2,37 @@
 
 Updated: 2026-10-27
 
+## Authoritative restart state
+
+The current completed scope is Roadmap 935 / PLANS 796, module documentation version 0.9.25 and ADR-0214.
+Implementation is published on `kirchherr/kb-write-unit-of-work` through commit `0102f4ba`. The operator explicitly
+approved that push and this documentation closeout. Historical blocks below retain their original evidence; use this
+section and the current continuation/bootstrap sections for new work, not an older block's next-step statement.
+
+Published DOCX sequence: ADR-0211 `4d0b55fd` (exact-version preview), ADR-0212 `32b2f3b5` (governed discovery and
+structure), ADR-0213 `9abb2ad3` (bounded inline marks), ADR-0214 `0102f4ba` (bounded page breaks).
+
+Local workspace is `C:\Users\tkirchherr\Documents\suite`. Preserve untracked `.tmp/`, `erp_modul.md` and `review.md`;
+they are user-owned and excluded from publication. No implementation work is pending after this closeout.
+
+On dev001, `/home/extern/collabio` is a source-synchronized working copy, not a clean checkout at the published local
+commit. Its observed Git HEAD is `add05b4`; accumulated tracked changes contain later implementation. Never reset,
+clean, blindly pull or replace that tree. Compare exact target hashes and synchronize only scoped files under
+`/home/extern/.codex-coordination/git.lock`. Run builds/tests/lifecycle there using project `collabio`; read
+`/home/extern/AGENTS.md`, inspect projects/containers/ports and acquire `build.lock` before `docker.lock` when both apply.
+Use `C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001` for `extern@192.168.0.108` with `HostKeyAlias=dev001`.
+
+Review uses `docker-compose.yml` plus `tmp/roadmap-310-review.override.yml`, profile `work-e2e`, services
+`work-e2e-api` and `work-e2e-rich-document-parser`, and existing port 42880. Preserve that override when recreating.
+Both review containers are healthy; review `/health` returns `ok`. No test PostgreSQL or transient runner remains.
+The regular API was not rolled out for this preview work. No tenant, pilot, indexing or production admission occurred.
+
+Evidence boundary: parser/socket/API tests use synthetic DOCX inputs. The responsive browser import test intercepts
+source discovery and preview responses, then exercises the real editor and native save/readback. Its 2/2 result is
+not an end-to-end proof of real source storage through the socket parser into the browser. Before claiming that full
+path, add an authorized synthetic stored DOCX fixture and an unmocked browser workflow. `w:lastRenderedPageBreak`
+reflects cached layout from the producing application; its preservation is not proof of current Word pagination.
+
 Roadmap 928 through 935 / PLANS 789 through 796 are complete under ADR-0214. The bounded DOCX preview preserves
 explicit hard and last-rendered page breaks plus enabled paragraph page-break-before state. Ordinary runs split around
 hard breaks; at most 100 native page-break nodes are admitted. Breaks inside headings, lists and table cells fail
@@ -17,7 +48,7 @@ IDs are `sha256:927c086310a382ba128e3d1f71acdfafb8332bfcd638c18a639cd1a0f9d37bfb
 `sha256:3517e46ece96467e1e77c16bbbcb92b24d0db6623f8ee7f7629485518bc88190` and
 `sha256:1906c7936d9cd070a6db039de35f4fe1b8a1739702a2236c4ac3889d33e208a2`. Review is
 `http://192.168.0.108:42880/office?review=docx-pages-adr0214`. ADR-0213 is published through `9abb2ad3`; ADR-0214 is
-locally complete and requires a new content-specific push approval. Embedded images are the next separate Office lane.
+published through `0102f4ba`. Embedded images are the next separate Office lane.
 
 Roadmap 920 through 927 / PLANS 781 through 788 are complete under ADR-0213. The isolated DOCX parser now preserves
 direct bold, italic, underline and strike run properties in paragraphs, headings, flat lists and simple table cells.
@@ -5555,16 +5586,18 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Roadmap 504 through 510 / PLANS 365 through 371 are complete. Preserve canonical alignment omission, bounded
-center/end values, bounded distribution extent, deterministic effective gaps, arbitrary-angle member bounds,
-responsive compact layout and exact uniform/per-edge connection behavior. Keep the complete shape, comparison,
-print and full Python quality matrices green.
+Continue after Roadmap 935 / PLANS 796 / ADR-0214. Office remains ahead of CRM. The next product slice is bounded
+embedded DOCX image import. First inspect existing Office image normalization, isolated decoder, asset authorization
+and immutable save contracts. Define an ADR for package-local media relationships, bounded byte/pixel counts,
+alpha preservation, deterministic source order, safe metadata and unsupported-content handling before implementation.
+Keep exact source/version authorization, text/structure consistency, tenant classification and explicit save intact.
 
-Continue native Office before CRM with native multi-selection as the next coherent authoring loop. Freely routed
-endpoints, freehand paths, arbitrary polygons, nested groups, continuous editor pagination and DOCX DrawingML
-interchange require separate decisions. Full workbook semantics, cross-table
-references, relative formula rewriting, formula-driven charts, transitive references, content-wide reference search,
-persistent backlink indexing, continuous tracked changes and live collaboration also remain separate.
+Start with an unmocked synthetic stored-DOCX browser proof for the existing import path; the responsive proof currently
+mocks discovery/preview responses. Then carry embedded images through the established normalization and asset path.
+Do not silently fetch remote relationships or decode untrusted media inside the API process. Rich section profiles,
+headers/footers, exact Word pagination, full workbook semantics, live collaboration, productive DOCX export and WOPI
+remain separate scopes. Native multi-selection, cross-table calculations and linked charts already have completed
+historical slices; do not restart those older continuation tasks.
 
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic
@@ -5597,15 +5630,29 @@ Verify health, ports and other projects, then append the complete operation to t
 
 ## New chat bootstrap
 
-Roadmap 363 through 370 / PLANS 224 through 231 are complete; product implementation is published through `d9e22846`.
-Preserve safe Word/Excel clipboard translation, bounded server-verified local table formulas, merged table grids,
-semantic row/column headers, protected row/column duplication, inert native
-charts, independent image-group duplication, atomic image-group removal, direct standalone-shape and group ordering,
-atomic shape-group removal, direct group and member duplication, bounded typography, accessible member ordering,
-bounded connections, ordered flow-only membership and the existing Office authorization/version/recovery contracts,
-including the fresh Roadmap-309 PostgreSQL/S3 proof.
-Continue with the next coherent native Office authoring loop; do not activate tenants, indexing or document engines.
+Copyable prompt for the next chat:
 
-Read AGENTS.md and this document completely; inspect local/remote Git and dev001 rules/state before acting.
-Continue the same branch from its verified current HEAD, preserve the user's untracked files and the closed pilot,
-and follow the user's next product instruction without inferring permission to activate a tenant.
+```text
+Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
+docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0214.
+
+Stand: Roadmap 935 / PLANS 796 abgeschlossen, ADR-0214-Implementierung 0102f4ba ist gepusht.
+Bleibe auf kirchherr/kb-write-unit-of-work und prüfe den aktuellen HEAD einschließlich Dokumentationsabschluss.
+Office hat Vorrang vor CRM. Nächster Block: abgesicherter Import eingebetteter DOCX-Bilder.
+Beginne mit einem ungemockten Browsernachweis über eine synthetische gespeicherte DOCX-Quelle,
+da der vorhandene responsive Importtest discovery/preview abfängt. Verwende bestehende Bildnormalisierung,
+isolierten Decoder und autorisierte Assets; erhalte Alpha, Quellen-/Versionsbindung, Klassifikation,
+Strukturbelege und explizites Speichern. Lege Grenzen und Relationship-Verarbeitung vorab im ADR fest.
+
+Builds, Tests und Dienstaktionen ausschließlich auf dev001:/home/extern/collabio via Compose-Projekt collabio.
+Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordinationslocks beachten.
+SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
+Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
+Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
+Review: http://192.168.0.108:42880/office?review=docx-pages-adr0214
+
+.tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
+Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,
+PLANS, ADR, Moduldokumentation, Betriebslog und Handoff mit überprüften Belegen.
+```

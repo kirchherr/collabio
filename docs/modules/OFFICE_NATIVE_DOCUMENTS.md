@@ -5,6 +5,14 @@ Roadmap: 252 / PLANS 113 foundation through 935 / PLANS 796 bounded DOCX page br
 Module: `office_documents` / version 0.9.25
 Decisions: ADR-0079 through ADR-0214; current movement: `ARCHITECTURE_DECISIONS/ADR-0214-bounded-native-office-docx-page-breaks.md`
 
+Publication: implementation is published through `0102f4ba` on `kirchherr/kb-write-unit-of-work`.
+The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+Validation scope: parser/socket/API checks cover synthetic DOCX input. The responsive import browser test mocks the
+source-discovery and preview responses, then exercises real native editing/save/readback. A stored-source-to-parser
+browser integration proof remains open and should precede the embedded-image slice. Preserved last-rendered page
+breaks are cached source-layout markers, not a current pagination or round-trip fidelity guarantee.
+
 ## Bounded DOCX page breaks (Roadmap 928-935)
 
 The isolated parser preserves explicit hard and last-rendered DOCX page breaks plus enabled paragraph

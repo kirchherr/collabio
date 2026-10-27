@@ -1,6 +1,6 @@
 # Master Roadmap
 
-Stand: 2026-09-18
+Stand: 2026-10-27
 
 Diese Roadmap merged:
 
@@ -67,6 +67,11 @@ Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwick
   externe Arbeitsmappen, volatile Zeitwerte, Makros, produktive DOCX-Schreibpfade und automatische Aktionen bleiben
   getrennte Freigabeschritte.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
+
+Aktueller Abschluss: Roadmap 935 / PLANS 796 / ADR-0214, Implementierung veroeffentlicht als `0102f4ba`.
+Naechster Office-Block: eingebettete DOCX-Bilder ueber bestehende Normalisierung und isolierten Decoder. Zuerst den
+ungemockten Browsernachweis fuer eine synthetische gespeicherte DOCX-Quelle schliessen; der bisherige responsive
+Importtest verwendet synthetische Discovery-/Preview-Antworten. Aktuelle Uebergabe: `docs/CURRENT_HANDOFF.md`.
 
 ## Globale Definition Of Done
 

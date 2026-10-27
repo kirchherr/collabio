@@ -2419,6 +2419,10 @@ dependency, external engine, inferred pagination, tenant activation or productiv
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
+Publication closeout: Roadmap 935 / PLANS 796 / ADR-0214 implementation is published as `0102f4ba`.
+Before adding embedded DOCX images, close the unmocked stored-source-to-parser browser proof; the current responsive
+import test intercepts discovery and preview responses. Use the authoritative restart state in `docs/CURRENT_HANDOFF.md`.
+
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
 - Native Office is complete through Roadmap 935 / PLANS 796. A governed picker exposes only currently readable DOCX
   metadata, and the exact selected version can produce a bounded non-persisting native preview that preserves headings,
