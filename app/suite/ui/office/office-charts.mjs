@@ -80,6 +80,25 @@ function officeChartCategoryAxisPresentation(value, kind) {
   return { direction: value.direction, labelRotation: value.labelRotation, labelInterval: value.labelInterval };
 }
 
+function officeChartSeriesManagement(value, kind, series, seriesPresentation) {
+  const supported = ["bar", "stacked-bar", "line", "area", "combo"].includes(kind), count = series.length;
+  if (!value || Object.keys(value).sort().join(",") !== "hidden,order" || !supported || count < 2 ||
+      !Array.isArray(value.order) || value.order.length !== count ||
+      value.order.some((index) => !Number.isInteger(index) || index < 0 || index >= count) ||
+      new Set(value.order).size !== count || !Array.isArray(value.hidden) || value.hidden.length >= count ||
+      value.hidden.some((index) => !Number.isInteger(index) || index < 0 || index >= count) ||
+      new Set(value.hidden).size !== value.hidden.length ||
+      value.hidden.some((index, position) => index !== [...value.hidden].sort((left, right) => left - right)[position])) {
+    throw new Error("chart-series-management");
+  }
+  const hidden = new Set(value.hidden), visible = value.order.filter((index) => !hidden.has(index));
+  if (kind === "combo") {
+    const renderers = new Set(visible.map((index) => seriesPresentation?.[index]?.renderAs));
+    if (!renderers.has("bar") || !renderers.has("line")) throw new Error("chart-series-management");
+  }
+  return { order: [...value.order], hidden: [...value.hidden] };
+}
+
 function officeChartReferenceLines(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new Error("chart-reference-lines");
   const labels = new Set();
@@ -253,11 +272,12 @@ export function officeChartAttributes(value) {
     ...(value?.dataLabelPresentation == null ? [] : ["dataLabelPresentation"]),
     ...(value?.dataTablePresentation == null ? [] : ["dataTablePresentation"]),
     ...(value?.categoryAxisPresentation == null ? [] : ["categoryAxisPresentation"]),
+    ...(value?.seriesManagement == null ? [] : ["seriesManagement"]),
     ...(value?.referenceLines == null ? [] : ["referenceLines"]), ...(value?.analysis == null ? [] : ["analysis"]),
     ...(value?.axisOptions == null ? [] : ["axisOptions"])];
   const actualKeys = Object.keys(value || {}).filter((key) =>
     !["source", "dataLabels", "legendPosition", "axes", "presentation", "seriesPresentation", "dataLabelPresentation",
-      "dataTablePresentation", "categoryAxisPresentation",
+      "dataTablePresentation", "categoryAxisPresentation", "seriesManagement",
       "referenceLines", "analysis", "axisOptions"].includes(key) || value[key] != null);
   if (!value || actualKeys.sort().join(",") !== keys.sort().join(",") ||
       !/^chart-[a-f0-9]{24}$/.test(value.id) || !OFFICE_CHART_KINDS.includes(value.kind) ||
@@ -301,6 +321,9 @@ export function officeChartAttributes(value) {
   if (value.seriesPresentation != null) {
     result.seriesPresentation = officeChartSeriesPresentation(value.seriesPresentation, value.kind, series);
   }
+  const seriesManagement = value.seriesManagement == null ? null : officeChartSeriesManagement(
+    value.seriesManagement, value.kind, series, result.seriesPresentation);
+  if (seriesManagement) result.seriesManagement = seriesManagement;
   const referenceLines = value.referenceLines == null ? [] : officeChartReferenceLines(value.referenceLines);
   if (referenceLines.length) {
     if (circularKind(value.kind)) throw new Error("chart-reference-lines");
@@ -308,9 +331,15 @@ export function officeChartAttributes(value) {
   }
   const analysis = value.analysis == null ? null : officeChartAnalysis(value.analysis, value.kind, series,
     result.seriesPresentation);
+  const hiddenSeries = new Set(seriesManagement?.hidden || []);
+  if (analysis && [analysis.trendline?.seriesIndex, analysis.errorBars?.seriesIndex].some((index) =>
+    index != null && hiddenSeries.has(index))) throw new Error("chart-series-management");
   if (analysis) result.analysis = analysis;
   const axisOptions = value.axisOptions == null ? null : officeChartAxisOptions(value.axisOptions, value.kind, series,
     result.seriesPresentation, analysis, referenceLines);
+  if (axisOptions?.secondary && hiddenSeries.has(axisOptions.secondary.seriesIndex)) {
+    throw new Error("chart-series-management");
+  }
   if (axisOptions) result.axisOptions = axisOptions;
   if (value.axes != null) {
     if (circularKind(value.kind)) throw new Error("chart-axes");
@@ -370,7 +399,7 @@ function scaleFromSettings(settings, scaleType, values) {
 }
 
 export function officeChartAxisScale(value) {
-  const chart = officeChartAttributes(value);
+  const chart = chartSeriesView(officeChartAttributes(value));
   if (circularKind(chart.kind)) return null;
   const axes = chart.axes || { mode: "auto", categoryTitle: "", valueTitle: "", minimum: null, maximum: null,
     majorUnit: null, gridlines: true, numberFormat: "general" };
@@ -383,7 +412,7 @@ export function officeChartAxisScale(value) {
 }
 
 export function officeChartSecondaryAxisScale(value) {
-  const chart = officeChartAttributes(value), secondary = chart.axisOptions?.secondary;
+  const chart = chartSeriesView(officeChartAttributes(value)), secondary = chart.axisOptions?.secondary;
   if (!secondary) return null;
   const values = [...chartScaleValues(chart.kind, chart.series, [secondary.seriesIndex]),
     ...chartAnalysisValues(chart.kind, chart.series, chart.seriesPresentation, chart.analysis, [secondary.seriesIndex])];
@@ -492,13 +521,36 @@ export function officeChartDescription(value) {
   const dataTable = chart.dataTablePresentation ? " · sichtbare Datentabelle" : "";
   const categoryAxis = chart.categoryAxisPresentation ? ` · Kategorien ${chart.categoryAxisPresentation.direction === "reverse" ?
     "umgekehrt" : "normal"}, Beschriftung ${chart.categoryAxisPresentation.labelRotation}, Intervall ${chart.categoryAxisPresentation.labelInterval}` : "";
-  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${dataTable}${categoryAxis}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+  const managedSeries = chart.seriesManagement ? chart.seriesManagement.order.filter((index) =>
+    !chart.seriesManagement.hidden.includes(index)) : [];
+  const seriesManagement = chart.seriesManagement ? ` · ${managedSeries.length} von ${chart.series.length} Datenreihen sichtbar, Reihenfolge ${managedSeries.map((index) => chart.series[index].name).join(", ")}` : "";
+  return `${kindLabels[chart.kind]} · ${chart.title} · ${chart.categories.length} Kategorien · ${chart.series.length} ${chart.series.length === 1 ? "Datenreihe" : "Datenreihen"}${axes}${axisOptions}${references}${analysis}${dataTable}${categoryAxis}${seriesManagement}${chart.source ? ` · verknüpft mit ${chart.source.range}` : ""} · ${chart.altText}`;
+}
+
+function chartSeriesView(chart) {
+  if (!chart.seriesManagement) return chart;
+  const { seriesManagement, ...base } = chart, hidden = new Set(seriesManagement.hidden);
+  const indices = seriesManagement.order.filter((index) => !hidden.has(index));
+  const remap = new Map(indices.map((index, position) => [index, position]));
+  const analysis = chart.analysis ? {
+    trendline: chart.analysis.trendline ? { ...chart.analysis.trendline,
+      seriesIndex: remap.get(chart.analysis.trendline.seriesIndex) } : null,
+    errorBars: chart.analysis.errorBars ? { ...chart.analysis.errorBars,
+      seriesIndex: remap.get(chart.analysis.errorBars.seriesIndex) } : null,
+  } : null;
+  const axisOptions = chart.axisOptions ? { ...chart.axisOptions,
+    secondary: chart.axisOptions.secondary ? { ...chart.axisOptions.secondary,
+      seriesIndex: remap.get(chart.axisOptions.secondary.seriesIndex) } : null } : null;
+  return { ...base, series: indices.map((index) => chart.series[index]),
+    ...(chart.seriesPresentation ? { seriesPresentation: indices.map((index) => chart.seriesPresentation[index]) } : {}),
+    ...(analysis ? { analysis } : {}), ...(axisOptions ? { axisOptions } : {}) };
 }
 
 function chartPresentationView(chart) {
-  if (chart.categoryAxisPresentation?.direction !== "reverse") return chart;
-  return { ...chart, categories: [...chart.categories].reverse(),
-    series: chart.series.map((entry) => ({ ...entry, values: [...entry.values].reverse() })) };
+  const seriesView = chartSeriesView(chart);
+  if (seriesView.categoryAxisPresentation?.direction !== "reverse") return seriesView;
+  return { ...seriesView, categories: [...seriesView.categories].reverse(),
+    series: seriesView.series.map((entry) => ({ ...entry, values: [...entry.values].reverse() })) };
 }
 
 function chartCategoryLabel(chart, category, index) {
@@ -768,6 +820,7 @@ export function officeChartElement(value, dom = document) {
   figure.dataset.chartStyle = chart.presentation?.style || "clean";
   figure.dataset.titleAlignment = chart.presentation?.titleAlignment || "center";
   figure.dataset.categoryLabelRotation = chart.categoryAxisPresentation?.labelRotation || "horizontal";
+  figure.dataset.visibleSeries = String(chart.series.length);
   figure.setAttribute("role", "group"); figure.setAttribute("aria-label", officeChartDescription(savedChart));
   figure.setAttribute("aria-describedby", `${chart.id}-data`);
   const title = dom.createElement("figcaption"); title.className = "office-chart-title"; title.textContent = chart.title;
@@ -812,7 +865,7 @@ export function officeChartElement(value, dom = document) {
       label.textContent = content;
       values.append(label); });
   });
-  const dataTable = chartTable(savedChart, dom), tableAbove = chart.dataTablePresentation?.position === "above";
+  const dataTable = chartTable(chartSeriesView(savedChart), dom), tableAbove = chart.dataTablePresentation?.position === "above";
   figure.append(title);
   if (tableAbove) figure.append(dataTable);
   if (labelPresentation.position === "top") figure.append(values);

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Office · Collabio</title>
-    <link rel="stylesheet" href="/office/assets/office.css?v=21" />
+    <link rel="stylesheet" href="/office/assets/office.css?v=22" />
   </head>
   <body>
     <a class="skip-link" href="#office-main">Zum Dokument</a>
@@ -194,6 +194,7 @@
           <div class="chart-fields" id="chart-data-table-fields" hidden><label>Tabellenposition<select id="chart-data-table-position"><option value="below">Unter dem Diagramm</option><option value="above">Über dem Diagramm</option></select></label><label class="check-row"><input id="chart-data-table-legend-keys" type="checkbox" checked /> Farbschlüssel in Spaltenköpfen anzeigen</label></div>
           <p class="paragraph-help">Die sichtbare Tabelle wird direkt aus denselben Diagrammwerten erzeugt. Ihre Zellen sind mit Tabulator und Pfeiltasten prüfbar.</p>
           <fieldset class="chart-axis-fields"><legend>Darstellung</legend><div class="chart-fields"><label>Farbschema<select id="chart-palette"><option value="standard">Standard</option><option value="accessible">Gut unterscheidbar</option><option value="warm">Warm</option><option value="monochrome">Einfarbig</option></select></label><label>Stil<select id="chart-style"><option value="clean">Klar</option><option value="soft">Weich</option><option value="focus">Hervorgehoben</option></select></label><label>Titelausrichtung<select id="chart-title-alignment"><option value="left">Links</option><option value="center">Mittig</option><option value="right">Rechts</option></select></label></div><p class="paragraph-help">Farbschema, Stil und Titelausrichtung ändern nur die Darstellung; die kanonischen Werte bleiben unverändert.</p></fieldset>
+          <fieldset id="chart-series-management-fields" class="chart-axis-fields" hidden><legend>Datenreihen verwalten</legend><div id="chart-series-management"></div><p class="paragraph-help">Ausblenden und Reihenfolge gelten für Diagramm, Legende, Wertbeschriftungen und zugängliche Datentabelle. Die kanonischen Daten und Tabellenbindung bleiben vollständig erhalten.</p></fieldset>
           <fieldset id="chart-series-presentation-fields" class="chart-axis-fields" hidden><legend>Datenreihen</legend><div id="chart-series-presentation"></div><p class="paragraph-help">Kombinationsdiagramme mischen Säulen und Linien. Streudiagramme verwenden die erste Zahlenreihe als X-Koordinate; Marker und Linien gelten für die folgenden Y-Reihen.</p></fieldset>
           <fieldset id="chart-reference-fields" class="chart-axis-fields"><legend>Analytische Referenzlinien</legend><div id="chart-reference-lines"></div><button class="button secondary" id="chart-reference-add" type="button">Referenzlinie hinzufügen</button><p class="paragraph-help">Bis zu vier benannte horizontale Linien. Feste Skalen müssen alle Referenzwerte einschließen.</p></fieldset>
           <fieldset id="chart-analysis-fields" class="chart-axis-fields" hidden><legend>Trend und Unsicherheit</legend>
@@ -555,6 +556,6 @@
     </dialog>
     <div id="office-print-root"></div>
     <p id="office-print-guidance">Öffnen Sie in Collabio Office eine gespeicherte Fassung und wählen Sie „Drucken / PDF“. Der Arbeitsbereich wird nicht gedruckt.</p>
-    <script type="module" src="/office/editor.js?v=21"></script>
+    <script type="module" src="/office/editor.js?v=22"></script>
   </body>
 </html>

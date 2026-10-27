@@ -1,9 +1,28 @@
 # Native Office Documents
 
-Status: Roadmap 252–895 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 895 / PLANS 756 category-axis presentation
-Module: `office_documents` / version 0.9.20
-Decisions: ADR-0079 through ADR-0209; current movement: `ARCHITECTURE_DECISIONS/ADR-0209-native-office-category-axis-presentation.md`
+Status: Roadmap 252–903 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 903 / PLANS 764 chart-series management
+Module: `office_documents` / version 0.9.21
+Decisions: ADR-0079 through ADR-0210; current movement: `ARCHITECTURE_DECISIONS/ADR-0210-native-office-chart-series-management.md`
+
+## Chart-series management (Roadmap 896–903)
+
+Bar, stacked-bar, line, area and combo charts support a non-destructive visible-series selection and display order.
+The plot, legend, value labels and semantic table use the same derived view. Canonical series, values, colors,
+linked-table references and formula results remain complete and in source order.
+
+The editor provides named checkboxes and accessible earlier/later actions and keeps at least one series visible.
+Visible combo charts retain a bar and a line. A trendline, error bar or secondary-axis series cannot be hidden; its
+canonical index is remapped only while rendering. Browser and server independently reject malformed permutations,
+booleans, duplicates, unsorted hidden indices, stale references and unsupported chart kinds.
+
+Focused schema/API tests pass 88/88, all thirteen chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 18.2 seconds. Visual review passed without page overflow; screenshot hashes are
+`sha256:c2f8f5ba557d854dce8eb41a8e2469bc4c224b2d4e14cee5af7ad5849f5c58f4` and
+`sha256:e7702dfe4e688318221a9290d33c4f86e856dc70f9677cfc8418ea4ce49af30b`. Review is available at
+`http://192.168.0.108:42880/office?review=series-manager-adr0210` with asset keys `office.css?v=22` and
+`editor.js?v=22`. Complete quality passes Ruff, finds 971 format-conformant files, passes Mypy over 639 sources and
+reaches 100 percent Pytest with only the known Starlette/AnyIO warning.
 
 ## Category-axis presentation (Roadmap 888–895)
 

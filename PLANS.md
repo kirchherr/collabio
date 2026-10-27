@@ -2298,16 +2298,39 @@ Reject surplus fields, booleans and unsupported combinations.
 756. [x] Close the block with 88 focused schema/API tests, twelve chart-model cases, desktop/mobile saved-version and
 visual proof and the complete repository quality gate. Add no migration, dependency, external engine or durable state.
 
+757. [x] Add one strict optional series-management contract under ADR-0210 with a full canonical-index permutation
+and a sorted unique list of hidden canonical series indices.
+
+758. [x] Restrict management to bar, stacked-bar, line, area and combo charts with at least two series. Keep at least
+one series visible and require a visible combo view to retain at least one bar and one line.
+
+759. [x] Derive visible series and display order without rewriting canonical series, values, colors, linked-table
+references, formulas, analysis targets or secondary-axis assignments.
+
+760. [x] Apply the derived series view consistently to plot, legend, value labels and semantic data table. Keep
+category-axis presentation independent and preserve canonical category order in the table.
+
+761. [x] Add named visibility checkboxes and accessible earlier/later controls, restore saved management state and
+prevent the final visible series from being hidden.
+
+762. [x] Remap analytical and secondary-axis indices only in the derived view. Reject hiding a series used by a
+trendline, error bar or secondary axis and preserve strict combo renderer rules.
+
+763. [x] Independently validate exact keys, complete integer permutation, sorted unique hidden indices, supported
+chart kinds and cross-contract compatibility on the server. Reject booleans, surplus fields and stale indices.
+
+764. [x] Close the block with 88 focused schema/API tests, thirteen chart-model cases, desktop/mobile saved-version
+and visual proof and the complete repository quality gate. Add no migration, dependency, external engine or state.
+
 ## Next Engineering Step
 
 Close the next coherent product loop instead of extending preparation-only boundaries:
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 895 / PLANS 756. Bounded category direction, graphical label angle and
-  label intervals now build on visible accessible data tables, explicit logarithmic and secondary axes, deterministic
-  trendlines, scatter, combination and linked-table charts. Continue
-  Office with the next coherent native chart usability loop before deferred CRM
-  onboarding. Preserve all earlier AI,
+- Native Office is complete through Roadmap 903 / PLANS 764. Non-destructive series visibility and display order now
+  complete the current native chart usability sequence on top of bounded category axes, accessible data tables,
+  analytical overlays and linked-table charts. Continue Office with the DOCX quick-edit/interchange evidence path and
+  then productive collaboration gates before deferred CRM onboarding. Preserve all earlier AI,
   voice, interchange, collaboration,
   object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,

@@ -8,7 +8,7 @@ export function officeChartExtension(onEdit) {
   return Node.create({
     name: "chart", group: "block", atom: true, selectable: true, draggable: false,
     addAttributes: () => Object.fromEntries(["id", "kind", "title", "altText", "legend", "legendPosition", "dataLabels",
-      "dataLabelPresentation", "dataTablePresentation", "categoryAxisPresentation", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
+      "dataLabelPresentation", "dataTablePresentation", "categoryAxisPresentation", "seriesManagement", "referenceLines", "analysis", "axisOptions", "axes", "presentation", "seriesPresentation",
       "categories", "series", "source"]
       .map((key) => [key, { default: null, rendered: false }])),
     parseHTML: () => [], renderHTML: ({ node }) => ["figure", { class: "office-chart" }, node.attrs.title || "Diagramm"],
@@ -104,6 +104,47 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     const select = document.createElement("select"); select.dataset.field = field; select.disabled = disabled;
     select.replaceChildren(...values.map(([value, label]) => { const option = document.createElement("option");
       option.value = value; option.textContent = label; option.selected = value === selected; return option; })); return select;
+  };
+  const seriesManagementRows = () => [...$("chart-series-management").querySelectorAll(".chart-series-management-row")];
+  const updateSeriesManagementButtons = () => {
+    const rows = seriesManagementRows(), visible = rows.filter((row) => row.querySelector('[data-field="visible"]').checked);
+    rows.forEach((row, index) => {
+      row.querySelector('[data-action="series-earlier"]').disabled = index === 0;
+      row.querySelector('[data-action="series-later"]').disabled = index === rows.length - 1;
+      const checkbox = row.querySelector('[data-field="visible"]'); checkbox.disabled = visible.length === 1 && checkbox.checked;
+    });
+  };
+  const seriesManagement = (kind, series) => {
+    const supported = ["bar", "stacked-bar", "line", "area", "combo"].includes(kind) && series.length > 1;
+    const fieldset = $("chart-series-management-fields"), container = $("chart-series-management");
+    fieldset.hidden = !supported; fieldset.disabled = !supported;
+    if (!supported) { container.replaceChildren(); return null; }
+    const currentRows = seriesManagementRows(), same = container.dataset.kind === kind && currentRows.length === series.length &&
+      currentRows.every((row) => Number(row.dataset.seriesIndex) === series.findIndex((entry) => entry.name === row.dataset.seriesName));
+    if (!same || action?.seriesManagementSeed) {
+      const seed = action?.seriesManagementSeed, identity = series.map((_entry, index) => index);
+      const order = seed?.order?.length === series.length && new Set(seed.order).size === series.length ? seed.order : identity;
+      const hidden = new Set(seed?.hidden || []);
+      const rows = order.map((seriesIndex) => {
+        const entry = series[seriesIndex], row = document.createElement("div"); row.className = "chart-series-management-row";
+        row.dataset.seriesIndex = String(seriesIndex); row.dataset.seriesName = entry.name;
+        const visibility = document.createElement("label"); visibility.className = "check-row";
+        const checkbox = document.createElement("input"); checkbox.type = "checkbox"; checkbox.dataset.field = "visible";
+        checkbox.checked = !hidden.has(seriesIndex); visibility.append(checkbox, `${entry.name} anzeigen`);
+        const earlier = document.createElement("button"); earlier.type = "button"; earlier.className = "button secondary";
+        earlier.dataset.action = "series-earlier"; earlier.textContent = "Früher"; earlier.setAttribute("aria-label", `${entry.name} früher darstellen`);
+        const later = document.createElement("button"); later.type = "button"; later.className = "button secondary";
+        later.dataset.action = "series-later"; later.textContent = "Später"; later.setAttribute("aria-label", `${entry.name} später darstellen`);
+        row.append(visibility, earlier, later); return row;
+      });
+      container.replaceChildren(...rows); container.dataset.kind = kind; if (action) action.seriesManagementSeed = null;
+    }
+    updateSeriesManagementButtons();
+    const rows = seriesManagementRows(), order = rows.map((row) => Number(row.dataset.seriesIndex));
+    const hidden = rows.filter((row) => !row.querySelector('[data-field="visible"]').checked)
+      .map((row) => Number(row.dataset.seriesIndex)).sort((left, right) => left - right);
+    const identity = order.every((index, position) => index === position);
+    return identity && hidden.length === 0 ? null : { order, hidden };
   };
   const renderReferenceLines = (entries = []) => {
     const rows = entries.map((entry, index) => {
@@ -228,6 +269,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       gridlines: $("chart-gridlines").checked, numberFormat: $("chart-number-format").value };
     const presentation = { palette: $("chart-palette").value, style: $("chart-style").value,
       titleAlignment: $("chart-title-alignment").value };
+    const managedSeries = seriesManagement(kind, data.series);
     const seriesStyles = seriesPresentation(kind, data.series);
     const analysis = chartAnalysis(kind, data.series, seriesStyles);
     const axisOptions = chartAxisOptions(kind, data.series);
@@ -248,11 +290,13 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
       ...(labelPresentation ? { dataLabelPresentation: labelPresentation } : {}),
       ...(tablePresentation ? { dataTablePresentation: tablePresentation } : {}),
       ...(categoryAxisPresentation ? { categoryAxisPresentation } : {}),
+      ...(managedSeries ? { seriesManagement: managedSeries } : {}),
       ...(references.length ? { referenceLines: references } : {}), ...(analysis ? { analysis } : {}),
       ...(axisOptions ? { axisOptions } : {}), ...(axes ? { axes } : {}), ...(binding ? { source: binding } : {}) });
   };
   const close = (restore = false) => { const owner = action; action = null; if ($("chart-dialog").open) $("chart-dialog").close();
     $("chart-form").reset(); $("chart-preview").replaceChildren(); $("chart-reference-lines").replaceChildren();
+    $("chart-series-management").replaceChildren(); $("chart-series-management").dataset.kind = "";
     $("chart-status").textContent = "";
     if (restore && owner?.editor === state.editor) focus(owner.editor); };
   const updateButtons = () => {
@@ -293,7 +337,7 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
     action = { session: state.session, context: state.context, revision: state.session.revision, editor: state.editor,
       editing, position: editing ? selection.from : null, attrs, rootIndex: null,
       seriesPresentationSeed: attrs?.seriesPresentation || null, analysisSeed: attrs?.analysis || null,
-      axisOptionsSeed: attrs?.axisOptions || null };
+      axisOptionsSeed: attrs?.axisOptions || null, seriesManagementSeed: attrs?.seriesManagement || null };
     if (editing) { let index = 0; state.editor.state.doc.forEach((_node, offset) => { if (offset === action.position) action.rootIndex = index; index += 1; }); }
     const tables = officeTableInventory(state.editor.getJSON()); $("chart-source-table").replaceChildren(...tables.map((entry) => {
       const option = document.createElement("option"); option.value = entry.id; option.textContent = entry.label; return option; }));
@@ -355,6 +399,16 @@ export function installOfficeChartControls({ state, $, sessionCurrent, validate,
   $("chart-reference-lines").addEventListener("click", (event) => { const button = event.target.closest('[data-action="remove-reference"]');
     if (!button) return; const rows = [...$("chart-reference-lines").children], index = rows.indexOf(button.closest(".chart-reference-row"));
     const entries = referenceLines(); entries.splice(index, 1); renderReferenceLines(entries); preview(); });
+  $("chart-series-management").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action]");
+    if (!button || !["series-earlier", "series-later"].includes(button.dataset.action)) return;
+    const row = button.closest(".chart-series-management-row"), sibling = button.dataset.action === "series-earlier" ?
+      row.previousElementSibling : row.nextElementSibling;
+    if (!sibling) return;
+    if (button.dataset.action === "series-earlier") row.parentElement.insertBefore(row, sibling);
+    else row.parentElement.insertBefore(sibling, row);
+    preview();
+  });
   $("chart-linked").addEventListener("change", () => { if ($("chart-linked").checked && $("chart-source-table").value) {
     $("chart-source-range").value = defaultRange($("chart-source-table").value, $("chart-kind").value,
       $("chart-source-orientation").value); } preview(); });

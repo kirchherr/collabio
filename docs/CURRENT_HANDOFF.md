@@ -2,6 +2,33 @@
 
 Updated: 2026-10-27
 
+Roadmap 896 through 903 / PLANS 757 through 764 are complete under ADR-0210. Native bar, stacked-bar, line, area and
+combo charts now support non-destructive series visibility and display order. Plot, legend, value labels and semantic
+data table share one derived view; canonical series, values, colors, table bindings, formulas and source order remain
+unchanged.
+
+The editor exposes named visibility checkboxes and accessible earlier/later actions and keeps one series visible.
+Visible combo charts retain a bar and a line. Trendline, error-bar and secondary-axis targets cannot be hidden and
+their canonical indices are remapped only during rendering. Browser and server independently reject surplus fields,
+booleans, incomplete permutations, duplicate or unsorted hidden indices, stale references and unsupported kinds.
+
+Focused schema/API tests pass 88/88, all thirteen chart-model cases pass and the desktop/mobile saved-version workflow
+passes 2/2 in 18.2 seconds. Visual review passed without page overflow. Screenshot hashes are
+`sha256:c2f8f5ba557d854dce8eb41a8e2469bc4c224b2d4e14cee5af7ad5849f5c58f4` and
+`sha256:e7702dfe4e688318221a9290d33c4f86e856dc70f9677cfc8418ea4ce49af30b`; report hash is
+`sha256:c2084602c4fea5853f07cafd4f8701aa01d202f860d3d790ddc988a6088f6c3d`.
+
+Review is `http://192.168.0.108:42880/office?review=series-manager-adr0210` with `office.css?v=22` and
+`editor.js?v=22`. No migration, dependency, external engine, alternate data store, automatic action or tenant
+activation was added. The current native chart-usability sequence is closed; the next Office priority is the existing
+DOCX quick-edit/interchange evidence path followed by productive collaboration gates. Complete quality passes Ruff,
+finds 971 format-conformant files, passes Mypy over 639 sources and reaches 100 percent Pytest with only the known
+Starlette/AnyIO warning. Final Work-E2E and review API images are
+`sha256:6a1ec49370b47f4bade1e64bfd104f907d57e0fac9cff96bc2b119ef5d1e6bc2` and
+`sha256:986081abee548189587306045c802c11be45e2a3c127152ab96ab15e73146bb4`. The isolated test database was removed; no
+transient runner remains. ADR-0209 is published through commit `1c0b9141`; ADR-0210 publication is authorized by the
+user for this block.
+
 Roadmap 888 through 895 / PLANS 749 through 756 are complete under ADR-0209. Native bar, stacked-bar, line, area and
 combo charts now support forward or reversed category presentation, horizontal, diagonal or vertical graphical
 labels and a fixed label interval from one through three. The derived view reverses every series in lockstep but does

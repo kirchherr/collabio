@@ -218,6 +218,21 @@ test("Office category-axis presentation remains strict and preserves canonical d
   ]) expect(() => officeChartAttributes(invalid)).toThrow();
 });
 
+test("Office series management reorders and hides only the derived chart view", () => {
+  const seriesManagement = { order: [1, 0], hidden: [0] };
+  const chart = officeChartAttributes({ ...attrs, seriesManagement });
+  expect(chart.seriesManagement).toEqual(seriesManagement);
+  expect(chart.series).toEqual(attrs.series);
+  expect(officeChartDescription(chart)).toContain("1 von 2 Datenreihen sichtbar, Reihenfolge Actual");
+  expect(officeChartAxisScale(chart)).toMatchObject({ minimum: 0, maximum: 200, majorUnit: 50 });
+  for (const invalid of [
+    { ...attrs, seriesManagement: { order: [1, true], hidden: [] } },
+    { ...attrs, seriesManagement: { order: [1, 1], hidden: [] } },
+    { ...attrs, seriesManagement: { order: [1, 0], hidden: [0, 1] } },
+    { ...attrs, kind: "pie", series: [attrs.series[0]], seriesManagement: { order: [0], hidden: [] } },
+  ]) expect(() => officeChartAttributes(invalid)).toThrow();
+});
+
 test("Office chart descriptions and comparisons expose exact data changes", () => {
   expect(officeChartDescription(attrs)).toContain("Säulendiagramm · Quarterly plan · 4 Kategorien · 2 Datenreihen");
   const before = { type: "doc", content: [{ type: "chart", attrs }] };

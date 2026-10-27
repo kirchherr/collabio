@@ -820,6 +820,8 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
         "categoryAxisPresentation": {"direction": "reverse", "labelRotation": "diagonal", "labelInterval": 2},
     }
     assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": category_axis}]})
+    managed_series = {**attrs, "seriesManagement": {"order": [1, 0], "hidden": [0]}}
+    assert validate_office_document({"type": "doc", "content": [{"type": "chart", "attrs": managed_series}]})
     advanced_manual = {
         **advanced_axes,
         "axes": {
@@ -876,6 +878,13 @@ def test_native_charts_are_bounded_inert_unique_top_level_objects() -> None:
             **scatter,
             "categoryAxisPresentation": {"direction": "reverse", "labelRotation": "vertical", "labelInterval": 2},
         },
+        {**attrs, "seriesManagement": {"order": [1, True], "hidden": []}},
+        {**attrs, "seriesManagement": {"order": [1, 1], "hidden": []}},
+        {**attrs, "seriesManagement": {"order": [1, 0], "hidden": [0, 1]}},
+        {**pie, "seriesManagement": {"order": [0], "hidden": []}},
+        {**analytical, "seriesManagement": {"order": [1, 0], "hidden": [1]}},
+        {**advanced_axes, "seriesManagement": {"order": [1, 0], "hidden": [1]}},
+        {**combo, "seriesManagement": {"order": [1, 0], "hidden": [0]}},
         {**attrs, "axes": {**axes, "maximum": 160}},
         {**attrs, "axes": {**axes, "majorUnit": 30}},
         {**pie, "axes": axes},

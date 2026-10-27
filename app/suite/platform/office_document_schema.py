@@ -923,6 +923,47 @@ def _valid_chart_category_axis_presentation(value: Any, kind: str) -> bool:
     )
 
 
+def _valid_chart_series_management(
+    value: Any,
+    kind: str,
+    series: list[dict[str, Any]],
+    series_presentation: Any,
+    analysis: Any,
+    axis_options: Any,
+) -> bool:
+    count = len(series)
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"order", "hidden"}
+        or kind not in {"bar", "stacked-bar", "line", "area", "combo"}
+        or count < 2
+        or not isinstance(value.get("order"), list)
+        or len(value["order"]) != count
+        or any(type(index) is not int or not 0 <= index < count for index in value["order"])
+        or len(set(value["order"])) != count
+        or not isinstance(value.get("hidden"), list)
+        or len(value["hidden"]) >= count
+        or any(type(index) is not int or not 0 <= index < count for index in value["hidden"])
+        or len(set(value["hidden"])) != len(value["hidden"])
+        or value["hidden"] != sorted(value["hidden"])
+    ):
+        return False
+    hidden = set(value["hidden"])
+    visible = [index for index in value["order"] if index not in hidden]
+    if kind == "combo" and (
+        not isinstance(series_presentation, list)
+        or {series_presentation[index].get("renderAs") for index in visible} != {"bar", "line"}
+    ):
+        return False
+    if isinstance(analysis, dict) and any(
+        isinstance(entry, dict) and entry.get("seriesIndex") in hidden
+        for entry in (analysis.get("trendline"), analysis.get("errorBars"))
+    ):
+        return False
+    secondary = axis_options.get("secondary") if isinstance(axis_options, dict) else None
+    return not isinstance(secondary, dict) or secondary.get("seriesIndex") not in hidden
+
+
 def _valid_chart_reference_lines(value: Any) -> bool:
     if not isinstance(value, list) or not 1 <= len(value) <= 4:
         return False
@@ -1657,6 +1698,8 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 expected_chart_attrs.add("dataTablePresentation")
             if "categoryAxisPresentation" in attrs:
                 expected_chart_attrs.add("categoryAxisPresentation")
+            if "seriesManagement" in attrs:
+                expected_chart_attrs.add("seriesManagement")
             if "referenceLines" in attrs:
                 expected_chart_attrs.add("referenceLines")
             if "analysis" in attrs:
@@ -1737,6 +1780,15 @@ def validate_office_document(document: dict[str, Any]) -> dict[str, Any]:
                 reject()
             if "seriesPresentation" in attrs and not _valid_chart_series_presentation(
                 attrs["seriesPresentation"], attrs["kind"], series
+            ):
+                reject()
+            if "seriesManagement" in attrs and not _valid_chart_series_management(
+                attrs["seriesManagement"],
+                attrs["kind"],
+                series,
+                attrs.get("seriesPresentation"),
+                attrs.get("analysis"),
+                attrs.get("axisOptions"),
             ):
                 reject()
             if "analysis" in attrs and not _valid_chart_analysis(
