@@ -1,0 +1,9 @@
+{
+  "name": "collabio-genoffice-npm-verification",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Isolated npm signature and provenance verification fixture for emf-converter 2.0.2",
+  "dependencies": {
+    "emf-converter": "2.0.2"
+  }
+}

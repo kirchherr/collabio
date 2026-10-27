@@ -17,6 +17,7 @@ crm_erp.erp.invoices
 crm_erp.legacy_import.sqlserver
 crm_erp.gobd_export
 crm_erp.legal_hold
+crm_erp.search.keyword
 crm_erp.rag_indexing
 crm_erp.ai_assist
 ```
@@ -24,7 +25,7 @@ crm_erp.ai_assist
 ## Regeln
 
 - Normale CRM/ERP Features koennen default-enabled sein, laufen aber trotzdem nur, wenn der Tenant-Modulstatus normale Nutzung erlaubt.
-- SQL-Server-Legacy-Import, GoBD-Export, RAG-Indexing und AI Assist bleiben default-off.
+- SQL-Server-Legacy-Import, GoBD-Export, RAG-Indexing und AI Assist bleiben default-off; klassische Keyword-Suche ist nur metadata-only und ACL-first und deckt Suppliers sowie Order-/Invoice-Items als eigene autorisierte Objekte ab.
 - Legal Hold ist als Compliance-Faehigkeit sichtbar, aber konkrete Hold-Aktionen brauchen Approval und Audit Evidence.
 - Jedes Subfeature deklariert Objektklassen, Data Classes, Retention Policies und Worker/API-Surfaces.
 - Mapping-Manifeste duerfen nur Feature IDs, Objektklassen, Data Classes und Retention Policies referenzieren, die von der Registry gedeckt sind.
@@ -33,7 +34,8 @@ crm_erp.ai_assist
 ## Implementierung
 
 - Code: `app/suite/platform/crm_erp_subfeatures.py`
-- Tests: `tests/test_crm_erp_subfeatures.py`
+- Search Readiness: `app/suite/platform/crm_erp_search_readiness.py`, `GET /v1/platform/search/crm-erp/readiness` und `GET /v1/platform/search/crm-erp/rag-readiness`, `POST /v1/platform/search/crm-erp/source-resolver-acl-trace`, `POST /v1/platform/search/crm-erp/source-citation-contract`, `POST /v1/platform/search/crm-erp/prompt-audit-contract`, `POST /v1/platform/search/crm-erp/redaction-contract`, `POST /v1/platform/search/crm-erp/authorized-context-contract`, `POST /v1/platform/search/crm-erp/inference-execution-boundary`
+- Tests: `tests/test_crm_erp_subfeatures.py`, `tests/test_crm_erp_search.py`
 - Mapping-Anbindung: `CrmErpSubfeatureRegistryManifest.validate_mapping_manifest(...)`
 - Modul-Defaults: `default_module_registry()` nutzt `default_crm_erp_subfeature_enabled_features()`
 - Objektregel-Anbindung: `app/suite/platform/crm_erp_object_rules.py`

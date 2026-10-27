@@ -1,0 +1,12 @@
+services:
+  office-native-recovery-proof:
+    environment:
+      SUITE_POSTGRES_RESTORE_TARGET_DSN: postgresql://collabio_owner:collabio_owner@postgres-restore:5432/collabio_work_e2e_279_restore
+      SUITE_OFFICE_RECOVERY_TARGET_DSN: postgresql://collabio_app:collabio_app@postgres-restore:5432/collabio_work_e2e_279_restore
+    volumes:
+      - type: bind
+        source: /home/extern/collabio/e2e/work/artifacts/office-279-recovery-backup
+        target: /proof-backup
+        read_only: true
+        bind:
+          create_host_path: false

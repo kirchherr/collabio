@@ -71,18 +71,19 @@ How do tests, CI, docs, or operations prove this decision is honored?
 
 ## Phase 2 ADRs
 
-- [x] ADR-0024: S3-compatible object storage and MinIO/AWS compatibility target.
+- [x] ADR-0024: S3-compatible object storage and self-hosted Ceph/OpenBao production target.
 - [x] ADR-0025: Retention policy engine.
 - [x] ADR-0026: Legal hold semantics.
 - [ ] ADR-0027: Envelope encryption implementation.
 - [ ] ADR-0028: Dev KMS and enterprise KMS adapter strategy.
+- [x] ADR-0077: Asymmetric KMS-signed audit checkpoints and verified exact-version WORM snapshots.
 - [ ] ADR-0029: Text extraction and parser sandbox model.
 - [ ] ADR-0030: Embedding metadata schema.
 - [x] ADR-0031: pgvector vs. Qdrant first vector backend.
 
 ## Phase 3 ADRs
 
-- [ ] ADR-0032: Text editor foundation: ProseMirror direct vs. Tiptap.
+- [x] ADR-0032 topic resolved by ADR-0079: native Office editor using open-source Tiptap over ProseMirror; DOCX fidelity and collaboration retain separate gates.
 - [ ] ADR-0033: CRDT strategy: Yjs and persistence model.
 - [ ] ADR-0034: Document record commit semantics.
 - [ ] ADR-0035: OOXML/ODF import/export scope.
@@ -118,6 +119,7 @@ How do tests, CI, docs, or operations prove this decision is honored?
 - [ ] ADR-0056: High availability and multi-region strategy.
 - [ ] ADR-0057: Enterprise audit evidence pack.
 - [x] ADR-0058: Platform Module System and optional business modules.
+- [x] ADR-0078: Self-hosted compliance provider stack.
 
 ## Immediate ADR Priority
 

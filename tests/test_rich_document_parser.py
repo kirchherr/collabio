@@ -105,6 +105,58 @@ def docx_bytes(*paragraphs: str) -> bytes:
     return buffer.getvalue()
 
 
+def structured_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Quartalsbericht</w:t></w:r></w:p>'
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr></w:pPr>'
+        "<w:r><w:t>Erster Punkt</w:t></w:r></w:p>"
+        '<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="5"/></w:numPr></w:pPr>'
+        "<w:r><w:t>Zweiter Punkt</w:t></w:r></w:p>"
+        "<w:tbl><w:tr><w:tc><w:p><w:r><w:t>Monat</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>Umsatz</w:t></w:r></w:p></w:tc></w:tr>"
+        "<w:tr><w:tc><w:p><w:r><w:t>Januar</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>42</w:t></w:r></w:p></w:tc></w:tr></w:tbl>"
+        "</w:body></w:document>"
+    )
+    numbering = (
+        '<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+        '<w:abstractNum w:abstractNumId="2"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/></w:lvl></w:abstractNum>'
+        '<w:num w:numId="5"><w:abstractNumId w:val="2"/></w:num></w:numbering>'
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+        archive.writestr("word/numbering.xml", numbering)
+    return buffer.getvalue()
+
+
+def formatted_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        "<w:p>"
+        "<w:r><w:rPr><w:b/></w:rPr><w:t>Fett</w:t></w:r>"
+        "<w:r><w:t> und </w:t></w:r>"
+        '<w:r><w:rPr><w:i w:val="true"/><w:u w:val="single"/><w:strike/></w:rPr><w:t>markiert</w:t></w:r>'
+        "</w:p></w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+    return buffer.getvalue()
+
+
+def paginated_docx_bytes() -> bytes:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        '<w:p><w:r><w:t>Seite eins</w:t><w:br w:type="page"/><w:t>Seite zwei</w:t></w:r></w:p>'
+        "<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>Neuer Abschnitt</w:t></w:r></w:p>"
+        "</w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+    return buffer.getvalue()
+
+
 def odt_bytes(*paragraphs: str) -> bytes:
     body = "".join(f"<text:p>{paragraph}</text:p>" for paragraph in paragraphs)
     xml = (
@@ -144,11 +196,19 @@ def test_compose_declares_isolated_rich_document_parser_service() -> None:
     compose = COMPOSE_PATH.read_text(encoding="utf-8")
 
     assert "\n  rich-document-parser:\n" in compose
-    assert "python -m suite.rag.rich_document_parser_service --describe" in compose
+    assert (
+        "python -m suite.rag.rich_document_parser_service --serve-socket "
+        "/run/rich-document-parser/parser.sock" in compose
+    )
     assert 'network_mode: "none"' in compose
     assert "read_only: true" in compose
     assert "no-new-privileges:true" in compose
     assert "./app:/workspace/app:ro" in compose
+    assert "rich_document_parser_socket:/run/rich-document-parser" in compose
+    assert "work_e2e_rich_document_parser_socket:/run/rich-document-parser" in compose
+    assert "rich-document-parser-socket-init:" in compose
+    assert 'user: "1000:1000"' in compose
+    assert "condition: service_completed_successfully" in compose
 
 
 def test_rich_document_parser_extracts_docx_text() -> None:
@@ -162,7 +222,102 @@ def test_rich_document_parser_extracts_docx_text() -> None:
     assert artifact.mime_type == DOCX_MIME_TYPE
     assert artifact.input_hash.startswith("sha256:")
     assert artifact.text_hash.startswith("sha256:")
+    assert artifact.document_blocks_hash.startswith("sha256:")
     assert artifact.warnings == ()
+
+
+def test_rich_document_parser_preserves_bounded_docx_heading_list_and_table_structure() -> None:
+    request = request_for(mime_type=DOCX_MIME_TYPE, content=structured_docx_bytes())
+    artifact = RichDocumentParserWorker().parse(request)
+
+    assert artifact.document_blocks == (
+        {"kind": "heading", "level": 1, "runs": [{"text": "Quartalsbericht", "marks": []}]},
+        {
+            "kind": "bullet_list",
+            "items": [
+                [{"text": "Erster Punkt", "marks": []}],
+                [{"text": "Zweiter Punkt", "marks": []}],
+            ],
+        },
+        {
+            "kind": "table",
+            "rows": [
+                [
+                    [{"text": "Monat", "marks": []}],
+                    [{"text": "Umsatz", "marks": []}],
+                ],
+                [
+                    [{"text": "Januar", "marks": []}],
+                    [{"text": "42", "marks": []}],
+                ],
+            ],
+        },
+    )
+    assert artifact.text == "Quartalsbericht\nErster Punkt\nZweiter Punkt\nMonat\tUmsatz\nJanuar\t42"
+    assert artifact.document_blocks_hash.startswith("sha256:")
+
+
+def test_rich_document_parser_preserves_bounded_docx_inline_marks() -> None:
+    artifact = RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=formatted_docx_bytes()))
+
+    assert artifact.text == "Fett und markiert"
+    assert artifact.document_blocks == (
+        {
+            "kind": "paragraph",
+            "runs": [
+                {"text": "Fett", "marks": ["bold"]},
+                {"text": " und ", "marks": []},
+                {"text": "markiert", "marks": ["italic", "underline", "strike"]},
+            ],
+        },
+    )
+
+
+def test_rich_document_parser_rejects_tracked_docx_revisions() -> None:
+    xml = (
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+        "<w:p><w:del><w:r><w:t>removed</w:t></w:r></w:del></w:p>"
+        "</w:body></w:document>"
+    )
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        archive.writestr("word/document.xml", xml)
+
+    with pytest.raises(ParserWorkerError, match="tracked revisions"):
+        RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=buffer.getvalue()))
+
+
+def test_rich_document_parser_preserves_hard_and_paragraph_docx_page_breaks() -> None:
+    artifact = RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=paginated_docx_bytes()))
+
+    assert artifact.text == "Seite eins\nSeite zwei\nNeuer Abschnitt"
+    assert artifact.document_blocks == (
+        {"kind": "paragraph", "runs": [{"text": "Seite eins", "marks": []}]},
+        {"kind": "page_break"},
+        {"kind": "paragraph", "runs": [{"text": "Seite zwei", "marks": []}]},
+        {
+            "kind": "paragraph",
+            "runs": [{"text": "Neuer Abschnitt", "marks": []}],
+            "page_break_before": True,
+        },
+    )
+
+
+def test_rich_document_parser_rejects_ambiguous_or_excessive_docx_page_breaks() -> None:
+    namespace = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    heading_xml = (
+        f'<w:document {namespace}><w:body><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+        '<w:r><w:t>A</w:t><w:br w:type="page"/><w:t>B</w:t></w:r></w:p></w:body></w:document>'
+    )
+    excessive_breaks = '<w:br w:type="page"/>'.join("<w:t>x</w:t>" for _ in range(102))
+    excessive_xml = f"<w:document {namespace}><w:body><w:p><w:r>{excessive_breaks}</w:r></w:p></w:body></w:document>"
+
+    for xml, message in ((heading_xml, "headings or lists"), (excessive_xml, "page-break count")):
+        buffer = BytesIO()
+        with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+            archive.writestr("word/document.xml", xml)
+        with pytest.raises(ParserWorkerError, match=message):
+            RichDocumentParserWorker().parse(request_for(mime_type=DOCX_MIME_TYPE, content=buffer.getvalue()))
 
 
 def test_rich_document_parser_extracts_odt_text() -> None:

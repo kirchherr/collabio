@@ -1,5 +1,8 @@
+import base64
 import os
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from hashlib import sha256
 from typing import Any
 from uuid import uuid4
 
@@ -8,7 +11,10 @@ import pytest
 
 from suite.ai_control_plane.audit import GENESIS_HASH, PgAuditLogger
 from suite.ai_control_plane.models import UserContext
+from suite.kms.signing import AuditCheckpointSignature, AuditSigningAlgorithm
+from suite.operations.audit_worm_snapshot import AuditWormSnapshotService, PgAuditWormSnapshotRepository
 from suite.persistence.migrator import apply_migrations
+from suite.storage.audit_worm_store import AuditWormObjectReceipt, AuditWormObjectWriteRequest
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,66 @@ def set_tenant(connection: psycopg.Connection[Any], tenant_id: str) -> None:
 
 def demo_user(*, tenant_id: str, user_id: str = "user-audit") -> UserContext:
     return UserContext(user_id=user_id, tenant_id=tenant_id, role_ids={"security-admin"})
+
+
+class LiveTestAuditSigner:
+    def sign_digest(
+        self,
+        *,
+        tenant_id: str,
+        digest: bytes,
+        signed_at_utc: str,
+    ) -> AuditCheckpointSignature:
+        signature = b"live-test-kms-signature"
+        return AuditCheckpointSignature(
+            tenant_id=tenant_id,
+            signed_digest="sha256:" + digest.hex(),
+            signing_algorithm=AuditSigningAlgorithm.ECDSA_SHA_256,
+            kms_key_ref=f"kms-sign://{tenant_id}/audit/v1",
+            kms_key_version=1,
+            provider_profile="live-test-kms",
+            provider_key_id="test-provider-signing-key",
+            public_key_der_base64=base64.b64encode(b"live-test-public-key-der").decode("ascii"),
+            public_key_sha256="sha256:" + sha256(b"live-test-public-key-der").hexdigest(),
+            signature_base64=base64.b64encode(signature).decode("ascii"),
+            signature_sha256="sha256:" + sha256(signature).hexdigest(),
+            signed_at_utc=signed_at_utc,
+            provider_sign_request_id="live-test-sign-request",
+            provider_verify_request_id="live-test-verify-request",
+            provider_verified=True,
+        )
+
+
+class LiveTestAuditWormStore:
+    def put_verified(
+        self,
+        *,
+        request: AuditWormObjectWriteRequest,
+        body: bytes,
+    ) -> AuditWormObjectReceipt:
+        assert "sensitive" not in body.decode("utf-8")
+        return AuditWormObjectReceipt(
+            tenant_id=request.tenant_id,
+            checkpoint_id=request.checkpoint_id,
+            storage_provider="live-test-s3",
+            bucket_id=request.bucket_id,
+            object_key=request.object_key,
+            object_version_id="live-test-object-version",
+            storage_uri=f"s3://{request.bucket_id}/{request.object_key}?versionId=live-test-object-version",
+            bundle_hash=request.bundle_hash,
+            object_lock_mode="compliance",
+            object_lock_retain_until_utc=request.retain_until_utc,
+            legal_hold_enabled=request.legal_hold_enabled,
+            server_side_encryption="aws:kms",
+            storage_kms_key_ref=request.storage_kms_key_ref,
+            provider_storage_key_id="live-test-storage-key",
+            put_request_id="live-test-put-request",
+            get_request_id="live-test-get-request",
+            head_request_id="live-test-head-request",
+            readback_verified=True,
+            object_lock_verified=True,
+            encryption_verified=True,
+        )
 
 
 def test_pg_audit_logger_records_hash_chain_without_plaintext_payloads(live_database: LiveAuditDatabase) -> None:
@@ -225,3 +291,88 @@ def test_pg_audit_logger_creates_hmac_checkpoint_and_worm_export_evidence(
         export.export_manifest_hash,
         "compliance",
     )
+
+
+def test_pg_audit_worm_snapshot_v2_persists_tenant_scoped_append_only_receipts(
+    live_database: LiveAuditDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-audit-worm-v2-{suffix}"
+    logger = PgAuditLogger(database_dsn=live_database.audit_dsn)
+    logger.record(
+        user_context=demo_user(tenant_id=tenant_id),
+        event_type="audit.snapshot.first",
+        input_text="sensitive input",
+    )
+    logger.record(
+        user_context=demo_user(tenant_id=tenant_id),
+        event_type="audit.snapshot.second",
+        output_text="sensitive output",
+    )
+    repository = PgAuditWormSnapshotRepository(database_dsn=live_database.audit_dsn)
+    service = AuditWormSnapshotService(
+        repository=repository,
+        signer=LiveTestAuditSigner(),
+        object_store=LiveTestAuditWormStore(),
+        storage_kms_key_ref=f"kms://{tenant_id}/confidential/v1",
+        clock=lambda: datetime(2026, 8, 17, 10, 0, 0, tzinfo=UTC),
+    )
+
+    result = service.create_for_tenant(tenant_id=tenant_id, created_by="security-admin")
+    reused = service.create_for_tenant(tenant_id=tenant_id, created_by="security-admin")
+
+    assert result.event_count == 2
+    assert result.through_sequence_number == 2
+    assert reused.model_copy(update={"reused_existing": False}) == result
+    assert reused.reused_existing is True
+
+    with psycopg.connect(live_database.audit_dsn) as audit_connection:
+        set_tenant(audit_connection, tenant_id)
+        checkpoint_rows = audit_connection.execute(
+            """
+            SELECT signature_algorithm, signing_message_type, provider_verified, octet_length(signature)
+            FROM collabio.audit_snapshot_checkpoints_v2
+            WHERE tenant_id = %s
+            """,
+            (tenant_id,),
+        ).fetchall()
+        receipt_rows = audit_connection.execute(
+            """
+            SELECT object_version_id, object_lock_mode, readback_verified, object_lock_verified,
+                   encryption_verified
+            FROM collabio.audit_worm_snapshot_receipts_v2
+            WHERE tenant_id = %s
+            """,
+            (tenant_id,),
+        ).fetchall()
+
+    assert checkpoint_rows == [("ecdsa-sha256", "DIGEST", True, len(b"live-test-kms-signature"))]
+    assert receipt_rows == [("live-test-object-version", "compliance", True, True, True)]
+
+    with psycopg.connect(live_database.audit_dsn) as audit_connection:
+        set_tenant(audit_connection, f"other-{tenant_id}")
+        assert audit_connection.execute(
+            "SELECT count(*) FROM collabio.audit_snapshot_checkpoints_v2 WHERE tenant_id = %s",
+            (tenant_id,),
+        ).fetchone() == (0,)
+
+    with (
+        psycopg.connect(live_database.migration_dsn) as owner_connection,
+        pytest.raises(psycopg.errors.RaiseException, match="append-only"),
+    ):
+        owner_connection.execute(
+            """
+            UPDATE collabio.audit_snapshot_checkpoints_v2
+            SET created_by = 'changed'
+            WHERE tenant_id = %s
+            """,
+            (tenant_id,),
+        )
+
+    with psycopg.connect(live_database.app_dsn) as app_connection:
+        set_tenant(app_connection, tenant_id)
+        with pytest.raises(psycopg.errors.InsufficientPrivilege, match="permission denied"):
+            app_connection.execute(
+                "SELECT checkpoint_id FROM collabio.audit_snapshot_checkpoints_v2 WHERE tenant_id = %s",
+                (tenant_id,),
+            )

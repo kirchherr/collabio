@@ -1,0 +1,425 @@
+import { expect } from "@playwright/test";
+
+import { BASE_URL, TENANT_ID } from "./support.mjs";
+import { OFFICE_HEADERS, OFFICE_PATH, captureOfficeResponse, officeEditor } from "./office-support.mjs";
+
+export const suggestionsPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/suggestions`;
+export const summaryPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/summaries`;
+export const rewritePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rewrites`;
+export const translationPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/translations`;
+export const outlinePath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/outlines`;
+export const policyComparisonPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/policy-comparisons`;
+export const riskMarkingPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/risk-markings`;
+export const sourceSearchPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/source-searches`;
+export const ragAnswerPath = (objectId) => `${OFFICE_PATH}/${encodeURIComponent(objectId)}/ai/rag-answers`;
+export const suggestionPath = (objectId, suggestionId) => `${suggestionsPath(objectId)}/${encodeURIComponent(suggestionId)}`;
+export const suggestionCard = (page, suggestionId) => page.locator(`article[data-suggestion-id="${suggestionId}"]`);
+
+export function collectSuggestionWrites(page) {
+  const writes = [];
+  page.on("request", (request) => {
+    const path = new URL(request.url()).pathname;
+    if (request.method() === "POST" && path.includes("/suggestions")) writes.push({ path, body: request.postDataJSON() });
+  });
+  return writes;
+}
+
+export async function openSuggestions(page, objectId) {
+  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === suggestionsPath(objectId) && response.request().method() === "GET")
+    .then(async (response) => ({ response, result: await response.json() }));
+  await page.locator("#suggestions-toggle").click();
+  const { response, result } = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  await expect(page.locator("#suggestions-panel")).toBeVisible();
+  await expect(page.locator("#suggestions-refresh")).toBeEnabled();
+  return result;
+}
+
+export async function openSuggestion(page, objectId, suggestionId) {
+  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === suggestionPath(objectId, suggestionId))
+    .then(async (response) => ({ response, result: await response.json() }));
+  await suggestionCard(page, suggestionId).locator('[data-suggestion-action="open"]').click();
+  const { response, result } = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  await expect(page.locator("#suggestion-detail")).toBeVisible();
+  await expect(page.locator("#suggestions-refresh")).toBeEnabled();
+  return result;
+}
+
+export async function prepareSuggestion(page, selectedText, replacement) {
+  await selectSuggestionText(page, selectedText);
+  await expect(page.locator("#suggestion-new")).toBeEnabled();
+  await page.locator("#suggestion-new").click();
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await page.locator("#suggestion-replacement").fill(replacement);
+  await page.locator("#suggestion-prepare").click();
+  await expect(page.locator("#suggestion-confirm-dialog")).toBeVisible();
+  await expect(page.locator("#suggestion-confirm-submit")).toBeDisabled();
+}
+
+export async function summarizeSuggestion(page, objectId, selectedText) {
+  await selectSuggestionText(page, selectedText);
+  await expect(page.locator("#suggestion-summary")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === summaryPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-summary").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.summary);
+  return result;
+}
+
+export async function rewriteSuggestion(page, objectId, selectedText, { operation = "rewrite", tone = null } = {}) {
+  await selectSuggestionText(page, selectedText);
+  const button = operation === "tone" ? "#suggestion-tone" : "#suggestion-rewrite";
+  if (tone) await page.locator("#suggestion-tone-select").selectOption(tone);
+  await expect(page.locator(button)).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === rewritePath(objectId) && response.request().method() === "POST");
+  await page.locator(button).click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.operation).toBe(operation);
+  expect(result.tone).toBe(tone);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.replacement_text);
+  return result;
+}
+
+export async function translateSuggestion(page, objectId, selectedText, targetLanguage = "de") {
+  await selectSuggestionText(page, selectedText);
+  await page.locator("#suggestion-translation-select").selectOption(targetLanguage);
+  await expect(page.locator("#suggestion-translate")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === translationPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-translate").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.target_language).toBe(targetLanguage);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.translation);
+  return result;
+}
+
+export async function outlineSuggestion(page, objectId, selectedText, detail = "concise") {
+  await selectSuggestionText(page, selectedText);
+  await page.locator("#suggestion-outline-detail").selectOption(detail);
+  await expect(page.locator("#suggestion-outline")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === outlinePath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-outline").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.detail).toBe(detail);
+  expect(result.outline_line_count).toBeGreaterThanOrEqual(2);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.requires_explicit_suggestion_confirmation).toBe(true);
+  await expect(page.locator("#suggestion-composer")).toBeVisible();
+  await expect(page.locator("#suggestion-ai-label")).toBeVisible();
+  await expect(page.locator("#suggestion-before")).toHaveText(selectedText);
+  await expect(page.locator("#suggestion-replacement")).toHaveValue(result.outline);
+  return result;
+}
+
+export async function compareDocumentWithPolicy(page, objectId, policy) {
+  await page.locator("#suggestion-policy-document").selectOption(policy.document.object_id);
+  await expect(page.locator("#suggestion-policy-compare")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === policyComparisonPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-policy-compare").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.policy_citation.object_id).toBe(policy.document.object_id);
+  expect(result.policy_citation.version_id).toBe(policy.version.version_id);
+  expect(result.policy_citation.authoritative_acl_validated).toBe(true);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  await expect(page.locator("#suggestion-policy-report")).toBeVisible();
+  await expect(page.locator("#suggestion-policy-title")).toHaveText("AI-Vergleich · ungeprüft");
+  await expect(page.locator("#suggestion-policy-body")).toContainText("FINDING:");
+  await expect(page.locator("#suggestion-policy-citation")).toContainText(policy.version.version_id);
+  return result;
+}
+
+export async function markDocumentRisks(page, objectId) {
+  await expect(page.locator("#suggestion-risk-mark")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === riskMarkingPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-risk-mark").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.status).toBe("risks");
+  expect(result.risk_count).toBeGreaterThan(0);
+  expect(result.risks).toHaveLength(result.risk_count);
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  expect(result.compliance_decision_allowed).toBe(false);
+  await expect(page.locator("#suggestion-risk-report")).toBeVisible();
+  await expect(page.locator("#suggestion-risk-title")).toHaveText("AI-Risikoprüfung · ungeprüft");
+  await expect(page.locator(".ai-risk-item")).toHaveCount(result.risk_count);
+  await page.locator(".ai-risk-item .quiet-button").first().click();
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(result.risks[0].source_excerpt);
+  return result;
+}
+
+export async function searchDocumentSources(page, objectId, query, expectedSource) {
+  await page.locator("#suggestion-source-query").fill(query);
+  await expect(page.locator("#suggestion-source-search")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === sourceSearchPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-source-search").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.source_object_id).toBe(objectId);
+  expect(result.search_policy_id).toBe("office_current_version_keyword_acl_v1");
+  expect(result.result_contract).toBe("current_version_content_acl_revalidated");
+  expect(result.ai_used).toBe(false);
+  expect(result.vector_search_used).toBe(false);
+  expect(result.rag_context_created).toBe(false);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  const source = result.results.find((item) => item.object_id === expectedSource.document.object_id);
+  expect(source).toBeTruthy();
+  expect(source.version_id).toBe(expectedSource.version.version_id);
+  expect(source.authoritative_acl_validated).toBe(true);
+  expect(source.current_version_validated).toBe(true);
+  await expect(page.locator("#suggestion-source-report")).toBeVisible();
+  const card = page.locator(".ai-source-item").filter({ hasText: expectedSource.version.version_id });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText(expectedSource.document.title);
+  expect(await page.locator("#suggestion-source-report").evaluate((report) => report.scrollWidth <= report.clientWidth)).toBe(true);
+  expect(await page.locator("#suggestions-panel").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);
+  return result;
+}
+
+export async function answerDocumentQuestion(page, objectId, question, expectedSource) {
+  await page.locator("#suggestion-rag-question").fill(question);
+  await expect(page.locator("#suggestion-rag-answer")).toBeEnabled();
+  const pending = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === ragAnswerPath(objectId) && response.request().method() === "POST");
+  await page.locator("#suggestion-rag-answer").click();
+  const response = await pending;
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const result = await response.json();
+  expect(result.object_id).toBe(objectId);
+  expect(result.answer_supported).toBe(true);
+  expect(result.confidence).toBe("source_grounded_unverified");
+  expect(result.retrieval_policy_id).toBe("office_current_version_keyword_rag_v1");
+  expect(result.output_trust).toBe("untrusted");
+  expect(result.requires_human_review).toBe(true);
+  expect(result.persisted).toBe(false);
+  expect(result.document_changed).toBe(false);
+  expect(result.automatic_action_allowed).toBe(false);
+  const source = result.citations.find((item) => item.object_id === expectedSource.document.object_id);
+  expect(source).toBeTruthy();
+  expect(source.version_id).toBe(expectedSource.version.version_id);
+  expect(source.authoritative_acl_validated).toBe(true);
+  expect(source.exact_current_version_validated).toBe(true);
+  await expect(page.locator("#suggestion-rag-report")).toBeVisible();
+  await expect(page.locator("#suggestion-rag-title")).toHaveText("AI-Antwort · Quellen prüfen");
+  await expect(page.locator("#suggestion-rag-body")).not.toBeEmpty();
+  const card = page.locator("#suggestion-rag-citations .ai-source-item").filter({ hasText: expectedSource.version.version_id });
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText(expectedSource.document.title);
+  expect(await page.locator("#suggestion-rag-report").evaluate((report) => report.scrollWidth <= report.clientWidth)).toBe(true);
+  expect(await page.locator("#suggestions-panel").evaluate((panel) => panel.scrollWidth <= panel.clientWidth)).toBe(true);
+  return result;
+}
+
+export async function prepareSuggestionDecision(page, suggestionId, operation) {
+  await suggestionCard(page, suggestionId).locator(`[data-suggestion-action="${operation}"]`).click();
+  await expect(page.locator("#suggestion-confirm-dialog")).toBeVisible();
+  await expect(page.locator("#suggestion-confirm-submit")).toBeDisabled();
+}
+
+export async function confirmSuggestion(page, objectId, { suggestionId = null, status = 200, extraHeaders = {} } = {}) {
+  const path = suggestionId ? `${suggestionPath(objectId, suggestionId)}/decisions` : suggestionsPath(objectId);
+  const captured = await captureOfficeResponse(page, (url) => url.pathname === path, { method: "POST", extraHeaders });
+  await page.locator("#suggestion-confirm-checkbox").check();
+  const pending = page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === "POST");
+  await page.locator("#suggestion-confirm-submit").click();
+  const response = await pending;
+  const upstream = await captured.received;
+  expect(response.status()).toBe(status);
+  expect(upstream.status).toBe(status);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  expect(upstream.headers["cache-control"]).toContain("no-store");
+  await expect(page.locator("#suggestion-confirm-dialog")).toBeHidden();
+  const result = upstream.json;
+  if (status === 200) {
+    expect(result.tenant_id).toBe(TENANT_ID);
+    expect(result.object_id).toBe(objectId);
+    expect(result.suggestion.suggestion_id).toBeTruthy();
+    expect(result.applied_revision).toBe(result.suggestion.revision);
+    expect(result.rag_indexing_allowed).toBe(false);
+    expect(result.search_indexing_allowed).toBe(false);
+    expect(result.audit_event_id).toBeTruthy();
+    await expect(page.locator("#suggestions-refresh")).toBeEnabled();
+  } else {
+    const details = {
+      400: "Document validation failed", 403: "Document write is not allowed",
+      404: "Document not found", 409: "The document has a newer or conflicting saved version",
+      503: "Office storage unavailable",
+    };
+    // Feature dependencies may use their existing generic denial detail.
+    if (status !== 403) expect(result.detail).toBe(details[status]);
+  }
+  return result;
+}
+
+export async function createSuggestion(page, objectId, selectedText, replacement) {
+  await prepareSuggestion(page, selectedText, replacement);
+  return confirmSuggestion(page, objectId);
+}
+
+export async function refreshSuggestions(page, objectId, status = 200) {
+  const captured = await captureOfficeResponse(page, (url) => url.pathname === suggestionsPath(objectId));
+  await page.locator("#suggestions-refresh").click();
+  const response = await captured.received;
+  expect(response.status).toBe(status);
+  expect(response.headers["cache-control"]).toContain("no-store");
+  if (status === 200) await expect(page.locator("#suggestions-refresh")).toBeEnabled();
+  return response.json;
+}
+
+export async function readSuggestion(page, objectId, suggestionId, { baseUrl = BASE_URL, headers = OFFICE_HEADERS } = {}) {
+  const response = await page.request.get(`${baseUrl}${suggestionPath(objectId, suggestionId)}`, { headers });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  return response.json();
+}
+
+export async function readSuggestions(page, objectId, { versionId = null } = {}) {
+  const response = await page.request.get(`${BASE_URL}${suggestionsPath(objectId)}${versionId ? `?anchor_version_id=${versionId}` : ""}`, { headers: OFFICE_HEADERS });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  return response.json();
+}
+
+export async function selectSuggestionText(page, text) {
+  await officeEditor(page).evaluate((editor, selectedText) => {
+    for (const block of editor.querySelectorAll("p,h1,h2,h3")) {
+      const offset = block.textContent.indexOf(selectedText);
+      if (offset < 0) continue;
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      let node;
+      let position = 0;
+      let start = null;
+      let end = null;
+      while ((node = walker.nextNode())) {
+        const next = position + node.textContent.length;
+        if (!start && offset >= position && offset < next) start = { node, offset: offset - position };
+        if (offset + selectedText.length > position && offset + selectedText.length <= next) {
+          end = { node, offset: offset + selectedText.length - position };
+          break;
+        }
+        position = next;
+      }
+      if (!start || !end) throw new Error("Synthetic selection boundaries are missing");
+      editor.focus();
+      const range = document.createRange();
+      range.setStart(start.node, start.offset);
+      range.setEnd(end.node, end.offset);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+      return;
+    }
+    throw new Error("Synthetic proposal text was not found in the editor");
+  }, text);
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe(text);
+}
+
+export async function holdSuggestionRead(page, objectId, suggestionId) {
+  let release;
+  let started;
+  let delivered;
+  let settled;
+  let interrupted = false;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const ready = new Promise((resolve) => { started = resolve; });
+  const delivery = new Promise((resolve) => { delivered = resolve; });
+  const network = new Promise((resolve) => { settled = resolve; });
+  const matches = (url) => url.pathname === suggestionPath(objectId, suggestionId);
+  const failed = (request) => { if (matches(new URL(request.url()))) { interrupted = true; settled(); } };
+  const responded = (response) => { if (matches(new URL(response.url()))) response.finished().then(settled); };
+  page.on("requestfailed", failed);
+  page.on("response", responded);
+  await page.route(matches, async (route) => {
+    const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    started();
+    await gate;
+    try { await route.fulfill({ response }); }
+    catch (error) { if (!interrupted) throw error; }
+    finally { delivered(); }
+  }, { times: 1 });
+  return { ready, release, async complete() {
+    release();
+    await Promise.all([delivery, network]);
+    page.off("requestfailed", failed);
+    page.off("response", responded);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  } };
+}
+
+export async function observeStaleSuggestion(page, text) {
+  await page.evaluate((protectedText) => {
+    window.staleOfficeSuggestion = false;
+    new MutationObserver(() => {
+      window.staleOfficeSuggestion ||= document.querySelector("#suggestions-panel").textContent.includes(protectedText);
+    }).observe(document.querySelector("#suggestions-panel"), { subtree: true, childList: true, characterData: true });
+  }, text);
+}

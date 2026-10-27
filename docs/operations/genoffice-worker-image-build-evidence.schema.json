@@ -1,0 +1,261 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "archive_config_binding_verified": {
+      "const": true,
+      "default": true,
+      "title": "Archive Config Binding Verified",
+      "type": "boolean"
+    },
+    "build_a_completed": {
+      "const": true,
+      "default": true,
+      "title": "Build A Completed",
+      "type": "boolean"
+    },
+    "build_a_inspect_sha256": {
+      "title": "Build A Inspect Sha256",
+      "type": "string"
+    },
+    "build_b_completed": {
+      "const": true,
+      "default": true,
+      "title": "Build B Completed",
+      "type": "boolean"
+    },
+    "build_b_inspect_sha256": {
+      "title": "Build B Inspect Sha256",
+      "type": "string"
+    },
+    "build_base_image_ref": {
+      "const": "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d",
+      "default": "node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d",
+      "title": "Build Base Image Ref",
+      "type": "string"
+    },
+    "build_network_mode": {
+      "const": "none",
+      "default": "none",
+      "title": "Build Network Mode",
+      "type": "string"
+    },
+    "build_node_version": {
+      "const": "24.18.0",
+      "default": "24.18.0",
+      "title": "Build Node Version",
+      "type": "string"
+    },
+    "build_npm_version": {
+      "const": "11.16.0",
+      "default": "11.16.0",
+      "title": "Build Npm Version",
+      "type": "string"
+    },
+    "credentials_used": {
+      "const": false,
+      "default": false,
+      "title": "Credentials Used",
+      "type": "boolean"
+    },
+    "dependency_archive_count": {
+      "title": "Dependency Archive Count",
+      "type": "integer"
+    },
+    "development_authorization_report_hash": {
+      "title": "Development Authorization Report Hash",
+      "type": "string"
+    },
+    "development_build_context_report_hash": {
+      "title": "Development Build Context Report Hash",
+      "type": "string"
+    },
+    "development_build_context_tar_sha256": {
+      "title": "Development Build Context Tar Sha256",
+      "type": "string"
+    },
+    "dockerfile_sha256": {
+      "title": "Dockerfile Sha256",
+      "type": "string"
+    },
+    "image_archive_sha256": {
+      "title": "Image Archive Sha256",
+      "type": "string"
+    },
+    "image_archive_size_bytes": {
+      "title": "Image Archive Size Bytes",
+      "type": "integer"
+    },
+    "image_config_digest": {
+      "title": "Image Config Digest",
+      "type": "string"
+    },
+    "image_name": {
+      "const": "collabio/genoffice-docx-worker",
+      "default": "collabio/genoffice-docx-worker",
+      "title": "Image Name",
+      "type": "string"
+    },
+    "image_platform": {
+      "const": "linux/amd64",
+      "default": "linux/amd64",
+      "title": "Image Platform",
+      "type": "string"
+    },
+    "image_ref_a": {
+      "title": "Image Ref A",
+      "type": "string"
+    },
+    "image_ref_b": {
+      "title": "Image Ref B",
+      "type": "string"
+    },
+    "image_size_bytes": {
+      "title": "Image Size Bytes",
+      "type": "integer"
+    },
+    "license_material_collection_report_hash": {
+      "title": "License Material Collection Report Hash",
+      "type": "string"
+    },
+    "lifecycle_scripts_executed": {
+      "const": false,
+      "default": false,
+      "title": "Lifecycle Scripts Executed",
+      "type": "boolean"
+    },
+    "observed_at_utc": {
+      "format": "date-time",
+      "title": "Observed At Utc",
+      "type": "string"
+    },
+    "package_install_mode": {
+      "const": "offline_reviewed_tarball_cache",
+      "default": "offline_reviewed_tarball_cache",
+      "title": "Package Install Mode",
+      "type": "string"
+    },
+    "production_use_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Production Use Allowed",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "reproducible_image_config_verified": {
+      "const": true,
+      "default": true,
+      "title": "Reproducible Image Config Verified",
+      "type": "boolean"
+    },
+    "rootfs_layer_digests": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rootfs Layer Digests",
+      "type": "array"
+    },
+    "runtime_base_image_ref": {
+      "const": "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a",
+      "default": "node:24-alpine3.23@sha256:5098ee834c9345ddd7fc2828a01dc90aa6de0e9ed6804a09a959b19a1fded97a",
+      "title": "Runtime Base Image Ref",
+      "type": "string"
+    },
+    "runtime_inventory_verified": {
+      "const": true,
+      "default": true,
+      "title": "Runtime Inventory Verified",
+      "type": "boolean"
+    },
+    "runtime_node_version": {
+      "const": "24.19.0",
+      "default": "24.19.0",
+      "title": "Runtime Node Version",
+      "type": "string"
+    },
+    "runtime_package_count": {
+      "title": "Runtime Package Count",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "genoffice_worker_image_build_evidence.v1",
+      "default": "genoffice_worker_image_build_evidence.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signer_policy_hash": {
+      "title": "Signer Policy Hash",
+      "type": "string"
+    },
+    "source_archive_sha256": {
+      "title": "Source Archive Sha256",
+      "type": "string"
+    },
+    "source_date_epoch": {
+      "title": "Source Date Epoch",
+      "type": "integer"
+    },
+    "source_import_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Source Import Allowed",
+      "type": "boolean"
+    },
+    "source_manifest_hash": {
+      "title": "Source Manifest Hash",
+      "type": "string"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "upstream_code_executed": {
+      "const": false,
+      "default": false,
+      "title": "Upstream Code Executed",
+      "type": "boolean"
+    },
+    "worker_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Worker Execution Allowed",
+      "type": "boolean"
+    },
+    "worker_image_built": {
+      "const": true,
+      "default": true,
+      "title": "Worker Image Built",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "observed_at_utc",
+    "image_ref_a",
+    "image_ref_b",
+    "image_config_digest",
+    "image_size_bytes",
+    "image_archive_size_bytes",
+    "image_archive_sha256",
+    "rootfs_layer_digests",
+    "build_a_inspect_sha256",
+    "build_b_inspect_sha256",
+    "dockerfile_sha256",
+    "development_build_context_report_hash",
+    "development_build_context_tar_sha256",
+    "source_archive_sha256",
+    "source_manifest_hash",
+    "development_authorization_report_hash",
+    "signer_policy_hash",
+    "license_material_collection_report_hash",
+    "dependency_archive_count",
+    "runtime_package_count",
+    "source_date_epoch",
+    "report_hash"
+  ],
+  "title": "GenOfficeWorkerImageBuildEvidence",
+  "type": "object"
+}

@@ -1,0 +1,10 @@
+misconfigurations:
+  - id: AVD-DS-0002
+    paths:
+      - "infra/self-hosted/development/k3s-storage-node.Dockerfile"
+    expired_at: 2026-12-03
+    statement: >-
+      The k3d K3s node image is a nested development host that must run K3s,
+      kubelet, udev, LVM, cryptsetup, and block-device setup as root. It is
+      restricted to dev001, digest-pinned, and never used as an application
+      workload or production image.

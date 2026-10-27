@@ -1,0 +1,201 @@
+{
+  "$defs": {
+    "GenOfficeDocxSemanticFeatureCount": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 0,
+          "title": "Count",
+          "type": "integer"
+        },
+        "feature_id": {
+          "title": "Feature Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature_id",
+        "count"
+      ],
+      "title": "GenOfficeDocxSemanticFeatureCount",
+      "type": "object"
+    },
+    "GenOfficeDocxStructuralFingerprintReport": {
+      "additionalProperties": false,
+      "properties": {
+        "archive_extracted_to_filesystem": {
+          "const": false,
+          "default": false,
+          "title": "Archive Extracted To Filesystem",
+          "type": "boolean"
+        },
+        "content_type_inventory_hash": {
+          "title": "Content Type Inventory Hash",
+          "type": "string"
+        },
+        "document_text_included": {
+          "const": false,
+          "default": false,
+          "title": "Document Text Included",
+          "type": "boolean"
+        },
+        "engine_executed": {
+          "const": false,
+          "default": false,
+          "title": "Engine Executed",
+          "type": "boolean"
+        },
+        "external_network_used": {
+          "const": false,
+          "default": false,
+          "title": "External Network Used",
+          "type": "boolean"
+        },
+        "fixture_id": {
+          "title": "Fixture Id",
+          "type": "string"
+        },
+        "input_sha256": {
+          "title": "Input Sha256",
+          "type": "string"
+        },
+        "input_size_bytes": {
+          "minimum": 1,
+          "title": "Input Size Bytes",
+          "type": "integer"
+        },
+        "package_content_included": {
+          "const": false,
+          "default": false,
+          "title": "Package Content Included",
+          "type": "boolean"
+        },
+        "part_count": {
+          "minimum": 1,
+          "title": "Part Count",
+          "type": "integer"
+        },
+        "part_name_inventory_hash": {
+          "title": "Part Name Inventory Hash",
+          "type": "string"
+        },
+        "preflight_report_hash": {
+          "title": "Preflight Report Hash",
+          "type": "string"
+        },
+        "relationship_count": {
+          "minimum": 0,
+          "title": "Relationship Count",
+          "type": "integer"
+        },
+        "relationship_inventory_hash": {
+          "title": "Relationship Inventory Hash",
+          "type": "string"
+        },
+        "report_hash": {
+          "title": "Report Hash",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "genoffice_docx_structural_fingerprint_report.v1",
+          "default": "genoffice_docx_structural_fingerprint_report.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "semantic_features": {
+          "items": {
+            "$ref": "#/$defs/GenOfficeDocxSemanticFeatureCount"
+          },
+          "title": "Semantic Features",
+          "type": "array"
+        },
+        "xml_part_count": {
+          "minimum": 1,
+          "title": "Xml Part Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fixture_id",
+        "input_sha256",
+        "input_size_bytes",
+        "preflight_report_hash",
+        "part_count",
+        "xml_part_count",
+        "relationship_count",
+        "part_name_inventory_hash",
+        "content_type_inventory_hash",
+        "relationship_inventory_hash",
+        "semantic_features",
+        "report_hash"
+      ],
+      "title": "GenOfficeDocxStructuralFingerprintReport",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "engine_executed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Executed",
+      "type": "boolean"
+    },
+    "engine_output_included": {
+      "const": false,
+      "default": false,
+      "title": "Engine Output Included",
+      "type": "boolean"
+    },
+    "fixture_count": {
+      "const": 3,
+      "default": 3,
+      "title": "Fixture Count",
+      "type": "integer"
+    },
+    "fixture_fingerprints": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDocxStructuralFingerprintReport"
+      },
+      "title": "Fixture Fingerprints",
+      "type": "array"
+    },
+    "preflight_policy_hash": {
+      "title": "Preflight Policy Hash",
+      "type": "string"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_fidelity_baseline_report.v1",
+      "default": "genoffice_docx_fidelity_baseline_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "study_plan_hash": {
+      "title": "Study Plan Hash",
+      "type": "string"
+    },
+    "tenant_content_included": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Included",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "study_plan_hash",
+    "preflight_policy_hash",
+    "corpus_manifest_hash",
+    "fixture_fingerprints",
+    "report_hash"
+  ],
+  "title": "GenOfficeDocxFidelityBaselineReport",
+  "type": "object"
+}
