@@ -27,6 +27,12 @@ export function expectPdfStructure(pdf, tags) {
   for (const tag of tags) expect(structure, `PDF semantic structure ${tag}`).toMatch(new RegExp(`/S\\s*/${tag}\\b`));
 }
 
+export async function waitForOfficePrintPdf(prints) {
+  // The authorized read finishes before Chromium completes the PDF artifact.
+  await expect.poll(() => prints[0]?.pdf || null, { timeout: 30_000 }).not.toBeNull();
+  return prints[0].pdf;
+}
+
 export function collectOfficePrintRequests(page) {
   const requests = [];
   page.on("request", (request) => {
@@ -56,6 +62,10 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
           fontSizes: [...root.querySelectorAll("[data-office-font-size]")].map((element) => ({
             points: Number(element.getAttribute("data-office-font-size")),
             pixels: parseFloat(getComputedStyle(element).fontSize),
+          })),
+          textColors: [...root.querySelectorAll("[data-office-text-color]")].map((element) => ({
+            color: element.getAttribute("data-office-text-color"),
+            rgb: getComputedStyle(element).color,
           })),
           paragraphPagination: [...root.querySelectorAll("[data-office-keep-with-next],[data-office-keep-lines]")].map((element) => ({
             text: element.textContent,
@@ -92,10 +102,21 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
   return calls;
 }
 
+async function captureOfficePrintResponse(page, matches, { status, extraHeaders }) {
+  if (status !== 200 || Object.keys(extraHeaders).length) {
+    return captureOfficeResponse(page, matches, { extraHeaders });
+  }
+  // Successful reads need observation only. Keep the browser's following
+  // reference/image requests outside response interception.
+  const received = page.waitForResponse((response) => response.request().method() === "GET" && matches(new URL(response.url())))
+    .then(async (response) => ({ status: response.status(), headers: response.headers(), json: await response.json() }));
+  return { received };
+}
+
 export async function openPrintPreview(page, objectId, versionId, {
   keyboard = null, status = 200, extraHeaders = {}, readinessTimeout = 8000,
 } = {}) {
-  const captured = await captureOfficeResponse(page, exactPrintRead(objectId, versionId), { extraHeaders });
+  const captured = await captureOfficePrintResponse(page, exactPrintRead(objectId, versionId), { status, extraHeaders });
   if (keyboard) await page.keyboard.press(keyboard);
   else await page.locator("#document-print").click();
   const response = await captured.received;
@@ -115,7 +136,7 @@ export async function openPrintPreview(page, objectId, versionId, {
 }
 
 export async function submitOfficePrint(page, objectId, versionId, { status = 200, extraHeaders = {} } = {}) {
-  const captured = await captureOfficeResponse(page, exactPrintRead(objectId, versionId), { extraHeaders });
+  const captured = await captureOfficePrintResponse(page, exactPrintRead(objectId, versionId), { status, extraHeaders });
   await page.locator("#print-submit").click();
   const response = await captured.received;
   expect(response.status).toBe(status);
@@ -127,7 +148,7 @@ export async function submitOfficePrint(page, objectId, versionId, { status = 20
 }
 
 export async function refreshPrintPreview(page, objectId, versionId) {
-  const captured = await captureOfficeResponse(page, exactPrintRead(objectId, versionId));
+  const captured = await captureOfficePrintResponse(page, exactPrintRead(objectId, versionId), { status: 200, extraHeaders: {} });
   await page.locator("#print-refresh").click();
   const response = await captured.received;
   expect(response.status).toBe(200);

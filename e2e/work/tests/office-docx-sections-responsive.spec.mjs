@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-sections";
 const sourceVersion = "stored-docx-sections-v1";
@@ -68,7 +68,7 @@ test("Office imports and prints the ordered profiles of a real stored DOCX", asy
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await expect(page.locator('#print-preview .office-print-content[data-office-columns="two"]')).toHaveCount(1);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   const pdf = prints[0].pdf.toString("latin1");
   const boxes = [...pdf.matchAll(/\/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)\s*\]/g)]
     .map((match) => [Number(match[1]), Number(match[2])]);

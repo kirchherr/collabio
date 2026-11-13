@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-lists";
 const sourceVersion = "stored-docx-lists-v1";
@@ -55,5 +55,5 @@ test("Office imports stored DOCX list levels and numbering continuity", async ({
   expect(await printLists.evaluateAll(values)).toEqual([4, 6, 9, 7]);
   expect(await printLists.first().locator("ul ol").evaluateAll(values)).toEqual([3, 3]);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
 });

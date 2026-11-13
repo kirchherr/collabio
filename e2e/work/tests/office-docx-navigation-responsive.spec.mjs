@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-navigation";
 const sourceVersion = "stored-docx-navigation-v1";
@@ -80,7 +80,7 @@ test("Office imports stored DOCX bookmarks and jumps only inside the saved docum
   expect(hrefs.length).toBeGreaterThan(0);
   expect(new Set(hrefs)).toEqual(new Set([`#${fragment}`]));
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   const pdf = prints[0].pdf.toString("latin1");
   expect(pdf).toContain("/Subtype /Link");
   expect(pdf).toContain(`/Dest /${fragment}`);

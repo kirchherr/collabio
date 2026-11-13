@@ -741,6 +741,8 @@ Aufgaben:
   Seitenaufteilung mit gespeicherter Quelle im Chromium-PDF nachweisen (Roadmap 1016-1023 / PLANS 877-884).
 - [x] Direkte DOCX-Schriftgroessen in Textlaeufen auf native Stufen abbilden. Gemischte Zeichenformatierung,
   Tabellen und Druck mit gespeicherter Quelle nachweisen (Roadmap 1024-1031 / PLANS 885-892).
+- [x] Direkte DOCX-Textfarben exakt auf die bestehende native Palette abbilden, ohne automatische oder
+  Theme-Farben anzunaehern. Gemischte Formatierung und Druck nachweisen (Roadmap 1032-1039 / PLANS 893-900).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

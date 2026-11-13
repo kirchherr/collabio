@@ -33,6 +33,16 @@ WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{WORD_NS}}}"
 DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
 DOCX_RUN_FONT_SIZES = {str(size * 2): size for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)}
+DOCX_RUN_TEXT_COLORS = {
+    "111827": "black",
+    "475569": "slate",
+    "B91C1C": "red",
+    "9A3412": "orange",
+    "166534": "green",
+    "115E59": "teal",
+    "1D4ED8": "blue",
+    "7E22CE": "purple",
+}
 DOCX_PARAGRAPH_ALIGNMENTS = {"left": "left", "center": "center", "right": "right", "both": "justify"}
 DOCX_PARAGRAPH_SPACING = {"0": 0, "120": 6, "240": 12, "360": 18, "480": 24}
 DOCX_LINE_SPACING = {"240": "1", "276": "1.15", "360": "1.5", "480": "2"}
@@ -331,7 +341,7 @@ class RichDocumentParserWorker:
                 continue
             properties = run.find(f"{W}rPr")
             marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
-            size_attrs = self._docx_run_font_size(run)
+            style_attrs = {**self._docx_run_font_size(run), **self._docx_run_text_color(run)}
             parts: list[str] = []
             for node in run:
                 if node.tag == f"{W}t":
@@ -341,11 +351,11 @@ class RichDocumentParserWorker:
                 elif (
                     node.tag == f"{W}br" and node.get(f"{W}type", "textWrapping") == "page"
                 ) or node.tag == f"{W}lastRenderedPageBreak":
-                    self._append_docx_run_segment(segments, parts, marks, size_attrs)
+                    self._append_docx_run_segment(segments, parts, marks, style_attrs)
                     segments.extend([None, []])
                 elif node.tag in {f"{W}br", f"{W}cr"}:
                     parts.append("\n")
-            self._append_docx_run_segment(segments, parts, marks, size_attrs)
+            self._append_docx_run_segment(segments, parts, marks, style_attrs)
             if navigation is not None and run in navigation.links:
                 current = segments[-1]
                 if current:
@@ -360,7 +370,7 @@ class RichDocumentParserWorker:
         segments: list[list[dict[str, object]] | None],
         parts: list[str],
         marks: list[str],
-        size_attrs: dict[str, object],
+        style_attrs: dict[str, object],
     ) -> None:
         if not parts:
             return
@@ -368,7 +378,7 @@ class RichDocumentParserWorker:
         if current is None:
             current = []
             segments.append(current)
-        current.append({"text": "".join(parts), "marks": marks, **size_attrs})
+        current.append({"text": "".join(parts), "marks": marks, **style_attrs})
         parts.clear()
 
     def _docx_run_font_size(self, run: ElementTree.Element) -> dict[str, object]:
@@ -399,6 +409,21 @@ class RichDocumentParserWorker:
         if size not in DOCX_RUN_FONT_SIZES:
             return unsupported
         return {"font_size": DOCX_RUN_FONT_SIZES[size]}
+
+    def _docx_run_text_color(self, run: ElementTree.Element) -> dict[str, object]:
+        markers = run.findall(f"{W}rPr/{W}color")
+        misplaced = run.find(f"{W}color") is not None
+        if not markers and not misplaced:
+            return {}
+        unsupported: dict[str, object] = {"unsupported_text_color": True}
+        if len(markers) != 1 or len(run.findall(f"{W}rPr")) != 1 or misplaced:
+            return unsupported
+        marker = markers[0]
+        raw = marker.get(f"{W}val", "")
+        if len(marker) or (marker.text or "").strip() or set(marker.attrib) != {f"{W}val"} or len(raw) != 6:
+            return unsupported
+        color = DOCX_RUN_TEXT_COLORS.get(raw.upper())
+        return unsupported if color is None else {"text_color": color}
 
     def _docx_run_mark_enabled(self, properties: ElementTree.Element | None, mark: str) -> bool:
         if properties is None:

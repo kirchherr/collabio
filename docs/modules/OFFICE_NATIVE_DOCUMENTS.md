@@ -1,14 +1,34 @@
 # Native Office Documents
 
-Status: Roadmap 252–1031 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 1031 / PLANS 892 bounded DOCX run font sizes
-Module: `office_documents` / version 0.9.37
-Decisions: ADR-0079 through ADR-0226; current decision: `ARCHITECTURE_DECISIONS/ADR-0226-bounded-native-office-docx-run-font-sizes.md`
+Status: Roadmap 252–1039 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 1039 / PLANS 900 bounded DOCX run text colors
+Module: `office_documents` / version 0.9.38
+Decisions: ADR-0079 through ADR-0227; current decision: `ARCHITECTURE_DECISIONS/ADR-0227-bounded-native-office-docx-run-text-colors.md`
 
-Publication: the implementation through ADR-0226 is published as `ee5278f1` on
+Publication: the previous implementation through ADR-0226 is published as `ee5278f1` on
 `kirchherr/kb-write-unit-of-work`, above the previous published commit `95fdd0dd`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX run text colors (Roadmap 1032–1039)
+
+Direct run colors map exactly from explicit RGB values to the eight existing native palette names. RGB case is
+canonicalized and missing color preserves the old run shape. The native black value is 111827. No nearest-color
+conversion is performed. Automatic colors, theme attributes and out-of-palette or malformed values refuse Office
+preview while extracted text stays available. Style inheritance remains outside this profile.
+
+The API independently validates native color names and combines size and color in one text-style mark. Shared
+run conversion covers existing marks, admitted internal links, lists, headings, tables and page-break segments.
+The stored synthetic source covers all eight colors, mixed sizes, bold/italic text and a table header through
+authorization, source provenance, classification, confirmed save, reopening and native print.
+
+Focused tests passed 498/498; the final targeted check passed 6/6 plus three native print contracts. The
+final selected matrix passed 41/41 in 5.6 minutes with retries disabled (36 browser cases and five native
+model checks). Print helpers use direct observation for successful reads and a shared bounded PDF-artifact wait.
+Poppler ties all eight colors to labeled PDF text, while decoded fill operands round to exact native eight-bit
+channels. Both full pages passed visual review. Final quality passed at 19:25 UTC with Ruff, 1028
+format-conformant files, Mypy over 676 sources and Pytest at 100 percent. Evidence and the retained diagnostic
+runs are recorded in the current handoff.
 
 ## Bounded DOCX run font sizes (Roadmap 1024–1031)
 

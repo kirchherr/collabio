@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { expectPdfStructure, installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { expectPdfStructure, installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-table-spans";
 const sourceVersion = "stored-docx-table-spans-v1";
@@ -57,6 +57,6 @@ test("Office imports both merged cell directions from a stored DOCX", async ({ p
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await verifyTable(page.locator("#print-preview table"));
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expectPdfStructure(prints[0].pdf, ["Table", "TR", "TD"]);
 });

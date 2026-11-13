@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { expectPdfStructure, installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { expectPdfStructure, installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-paragraph-pagination";
 const sourceVersion = "stored-docx-paragraph-pagination-v1";
@@ -59,7 +59,7 @@ test("Office imports paragraph keeping controls from a stored DOCX", async ({ pa
   await verifyPagination(print);
   await print.locator('h2[data-office-keep-with-next="true"]').screenshot({ path: `${ARTIFACT_DIR}/office-docx-paragraph-pagination-${testInfo.project.name}.png` });
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expectPdfStructure(prints[0].pdf, ["H1", "H2", "P"]);
   expect(prints[0].layout.paragraphPagination).toHaveLength(5);
   for (const node of prints[0].layout.paragraphPagination) {

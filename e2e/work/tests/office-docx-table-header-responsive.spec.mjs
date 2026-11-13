@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { expectPdfStructure, installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { expectPdfStructure, installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-table-header";
 const sourceVersion = "stored-docx-table-header-v1";
@@ -50,6 +50,6 @@ test("Office imports the repeating first row from a stored DOCX", async ({ page 
   await expect(page.locator('#print-preview table thead th[scope="col"]')).toHaveText(["KOPFBELEG", "Bezeichnung"]);
   await expect(page.locator("#print-preview table tbody tr")).toHaveCount(54);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expectPdfStructure(prints[0].pdf, ["Table", "TR", "TH", "TD"]);
 });

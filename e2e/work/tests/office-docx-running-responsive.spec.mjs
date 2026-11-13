@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-running";
 const sourceVersion = "stored-docx-running-v1";
@@ -65,6 +65,6 @@ test("Office imports stored DOCX running text and prints inherited and cleared d
   const prints = await installPrintProbe(page, { pdfName: `office-docx-running-${testInfo.project.name}.pdf` });
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expect([...prints[0].pdf.toString("latin1").matchAll(/\/Type\s*\/Page\b/g)]).toHaveLength(3);
 });

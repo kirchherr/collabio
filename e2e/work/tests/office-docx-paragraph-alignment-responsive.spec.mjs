@@ -3,7 +3,7 @@ import { ARTIFACT_DIR, BASE_URL } from "./support.mjs";
 import {
   OFFICE_READER_HEADERS, officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice,
 } from "./office-support.mjs";
-import { expectPdfStructure, installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { expectPdfStructure, installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 const sourceId = "work-e2e-stored-docx-paragraph-alignment";
 const sourceVersion = "stored-docx-paragraph-alignment-v1";
@@ -58,6 +58,6 @@ test("Office imports direct paragraph alignment from a stored DOCX", async ({ pa
   await openPrintPreview(page, saved.document.object_id, saved.version.version_id);
   await verifyAlignment(page.locator("#print-preview"));
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
-  await expect.poll(() => prints[0]?.pdf || null).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expectPdfStructure(prints[0].pdf, ["H1", "P"]);
 });

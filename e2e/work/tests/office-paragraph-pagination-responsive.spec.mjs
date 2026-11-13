@@ -5,7 +5,7 @@ import { officeContent, officeEditor, openOffice, openOfficeDocument, saveOffice
 import {
   applyParagraphFormat, createParagraphFixture, expectParagraphStyle, paragraph, paragraphBlocks, selectParagraphBlocks,
 } from "./paragraph-helper.mjs";
-import { installPrintProbe, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
+import { installPrintProbe, waitForOfficePrintPdf, openPrintPreview, submitOfficePrint } from "./office-print-support.mjs";
 
 test("Office paragraph pagination remains exact through undo save reload and print", async ({ page }, testInfo) => {
   const verifyBrowser = monitorPage(page, { baseUrls: [BASE_URL] });
@@ -46,7 +46,7 @@ test("Office paragraph pagination remains exact through undo save reload and pri
   await page.screenshot({ path: `${ARTIFACT_DIR}/office-paragraph-pagination-${testInfo.project.name}.png`, fullPage: true });
   await submitOfficePrint(page, saved.document.object_id, saved.version.version_id);
   await expect.poll(() => prints.length).toBe(1);
-  await expect.poll(() => prints[0].pdf).not.toBeNull();
+  await waitForOfficePrintPdf(prints);
   expect([...prints[0].pdf.toString("latin1").matchAll(/\/Type\s*\/Page\b/g)].length).toBeGreaterThanOrEqual(2);
   verifyBrowser();
 });

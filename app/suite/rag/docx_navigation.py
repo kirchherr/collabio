@@ -71,7 +71,7 @@ def _plain_runs(link: Element) -> list[Element]:
         children = list(run)
         if children and children[0].tag == f"{W}rPr":
             properties = children.pop(0)
-            allowed = {f"{W}{tag}" for tag in ("b", "i", "u", "strike", "dstrike", "rStyle", "sz", "szCs")}
+            allowed = {f"{W}{tag}" for tag in ("b", "i", "u", "strike", "dstrike", "rStyle", "sz", "szCs", "color")}
             if (
                 properties.attrib
                 or (properties.text or "").strip()

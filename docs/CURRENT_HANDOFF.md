@@ -4,6 +4,64 @@ Updated: 2026-11-13
 
 ## Authoritative restart state
 
+Roadmap 1039 / PLANS 900 / ADR-0227 adds bounded DOCX run text colors. The Office module documentation is at 0.9.38.
+The previous published closeout is `55afa4dc` on `kirchherr/kb-write-unit-of-work`. The text-color block and its
+closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+
+The isolated parser admits exact direct RGB values for the existing eight-color native palette. RGB case is
+canonicalized; absent color preserves the prior run shape. Native black is specifically 111827. Automatic,
+theme-based, malformed and out-of-palette colors refuse Office preview while text stays available. No nearest
+color conversion or style inheritance is introduced. The API independently validates native color names and
+combines size and color in one text-style mark. Lists, headings, tables, admitted links and page-break segments
+reuse shared conversion.
+
+Standard Work E2E seeds `work-e2e-stored-docx-text-color/stored-docx-text-color-v1` as a confidential stored source.
+The synthetic review is `http://192.168.0.108:42880/office?review=docx-text-color-adr0227`.
+
+Focused tests passed 498/498. The final targeted desktop/mobile check passed 6/6, and three additional native
+print contracts passed. The final selected matrix passed
+41/41 in 5.6 minutes with retries explicitly disabled: 36 browser cases and five native model checks.
+It covers source denial, exact provenance, classification, confirmed save, readback, reopening, mixed formatting
+and all eight actual print-media colors.
+
+The initial matrix had one mobile PDF-artifact timeout in an eight-second harness poll; its retry passed.
+The no-retry follow-up exposed the same eight-second guard in the existing table-header case. A shared bounded
+PDF-artifact waiter now explicitly allows 30 seconds across the 13 relevant print cases. Initial reports and
+failure traces remain under `roadmap-1039-initial`, `roadmap-1039-wait-recheck` and the corresponding temporary
+logs. A further readiness diagnostic is retained under `roadmap-1039-shared-wait`: its content read returned 200,
+while the subsequent reference request did not reach the API. Successful print reads now directly observe the
+real browser response; explicit-header/error probes retain upstream capture. The final no-retry matrix supersedes
+these diagnostic runs. No product change was needed for the harness corrections.
+
+Independent Poppler inspection matches all eight labeled text colors in both one-page PDFs. Its XML output
+truncates float RGB by at most one byte-channel unit, so the check also decodes PDF fill operands and requires
+them to round to the exact native eight-bit channels. Visual review of both complete pages confirms the colors,
+mixed formatting and table are unclipped. Preview screenshots capture the visible part of the scrolling preview;
+the complete PDFs cover all eight runs.
+
+Final full quality passed at 19:25 UTC with Ruff, 1028 format-conformant files, Mypy over 676 sources
+and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test
+container. Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+All 21 source hashes and eight evidence hashes matched after transfer to the operator workstation.
+
+| Evidence under `e2e/work/artifacts/roadmap-1039/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `5ddf8d9e4782a5cb8c3c4872400a40c733f0646ba39ba429e232b867598b10c0` |
+| `office-docx-text-color-desktop-chromium.png` | `fe3f7b125963c112bb7855b3864c96e0e77aa84df311d23ddc82e82363801a02` |
+| `office-docx-text-color-desktop-chromium.pdf` | `28e298c60f6c345f0fc2eb279acb5a0138c9ce5b3d6fa7e2e545ac86f07e2670` |
+| `office-docx-text-color-mobile-chromium.png` | `ca7a8de8ec98771d0920ab6c60e6607a66fec8bcab162b2ac4d79165fa5e253a` |
+| `office-docx-text-color-mobile-chromium.pdf` | `98f6bd8575299eb68ecb4bc260fd28abca420079fcf54bdf4670b716b522d24e` |
+| `office0227-sources.sha256` | `d37a89a55bd58e7d157f7aaad09aa18446be4dc96ea4763f56947168b291397e` |
+| `office0227-quality.log` | `48bd7715e00377764f5b21dc1dded7e1a7900f32468fc6ae3e478a8461aa826a` |
+| `office0227-pdf.log` | `775436f6e44ed8639065fd7fb8ebddf038eaaa3baa0304183085b9fdebbdb2a8` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare scoped baselines under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the protected local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1031 restart state (2026-11-13)
+
 Roadmap 1031 / PLANS 892 / ADR-0226 adds bounded DOCX run font sizes. The Office module documentation is at 0.9.37.
 The verified implementation on `kirchherr/kb-write-unit-of-work` is published through `ee5278f1`, including
 ADR-0215 through ADR-0226 and their closeout above the previous published commit `95fdd0dd`.
@@ -6100,7 +6158,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Resume from Roadmap 1031 / PLANS 892 / ADR-0226 and the operator's next scope. Office remains ahead of CRM under the
+Resume from Roadmap 1039 / PLANS 900 / ADR-0227 and the operator's next scope. Office remains ahead of CRM under the
 existing priority decision. Preserve exact source/version authorization, text/structure consistency,
 classification and confirmed save. External destinations, fields, exact Word pagination, live collaboration,
 productive DOCX export and WOPI retain separate gates.
@@ -6141,9 +6199,9 @@ Copyable prompt for the next chat:
 ```text
 Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
 docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
-docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0226.
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0227.
 
-Stand: Roadmap 1031 / PLANS 892 / ADR-0226, begrenzter Import direkter DOCX-Schriftgroessen in Textlaeufen.
+Stand: Roadmap 1039 / PLANS 900 / ADR-0227, begrenzter Import direkter DOCX-Textfarben der nativen Palette.
 Die Implementierung einschließlich ADR-0215 bis ADR-0226 ist bis ee5278f1 auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
@@ -6155,7 +6213,7 @@ Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordi
 SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
 Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
 Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
-Review: http://192.168.0.108:42880/office?review=docx-font-size-adr0226
+Review: http://192.168.0.108:42880/office?review=docx-text-color-adr0227
 
 .tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
 Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,

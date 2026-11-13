@@ -1755,3 +1755,57 @@ Documentation contract checks use explicit Compose project `collabio`, preflight
 are unchanged. The separately synchronized remote Git HEAD stays `add05b4`; no pull or reset is used.
 Protected `.tmp/`, `erp_modul.md` and `review.md` remain outside publication. No service lifecycle or port change
 is part of publication.
+
+## 2026-11-13 Native Office DOCX run text colors
+
+ADR-0227 maps explicit direct run RGB colors exactly to the eight existing native palette names. RGB case is
+canonicalized; missing color preserves the prior run shape. Automatic, theme-based, malformed and out-of-palette
+colors refuse Office preview while text extraction stays available. The API independently validates color names
+and combines size and color in one text-style mark.
+
+The run used `/home/extern/collabio` and explicit Compose project `collabio`. Ten scoped baseline hashes matched
+under `git.lock` before synchronizing the nine source/ADR files. Builds, tests and lifecycle work used preflight
+and `build.lock` before `docker.lock`. The standard seed reused the synthetic tenant and added the confidential
+stored text-color source. The review API and parser were recreated; stores and the image decoder were reused.
+The existing review override retained port 42880.
+
+Focused tests passed 498/498, including exact CSS-palette agreement, RGB case normalization, combined sizes and
+colors, list/table/link/page-break conversion, malformed input and forged parser evidence.
+
+The exact desktop/mobile check passed 2/2. The initial 41-case matrix had 40 direct passes and one flaky mobile
+color case: an eight-second harness poll expired while waiting for the PDF artifact, after the content, save,
+reopening and computed-color checks had passed. Its retry passed. The PDF artifact poll is aligned to the
+explicit 30-second artifact poll, with a complete no-retry matrix scheduled for the corrected harness. Initial reports,
+failure traces and artifacts are retained separately under `roadmap-1039-initial` and `tmp/office0227-initial-*`.
+
+Independent PDF color inspection matches each labeled text run through Poppler, allowing its one-byte-channel
+truncation, and additionally decodes the PDF fill operands back to the exact native eight-bit RGB channels.
+
+The shared-wait follow-up exposed an earlier readiness boundary in the running-text case. The content read
+returned HTTP 200, but the subsequent outbound-reference request remained pending in the browser trace and did
+not appear in the API access log. Successful print reads now observe the real browser response directly;
+error/explicit-header probes retain their existing upstream capture. This covers preview, final print and refresh.
+The diagnostic run is retained under `roadmap-1039-shared-wait`. Targeted print contracts additionally exercise
+fresh rendering, storage failure/recovery and discarding late responses on close/context changes.
+
+
+The final targeted check passed 6/6 plus three native print contracts, followed by the complete 41/41 matrix in 5.6 minutes with retries
+explicitly disabled (36 browser cases and five native model checks). The intermediate no-retry run exposed the
+same eight-second PDF poll in the existing table-header test. A shared 30-second PDF-artifact waiter now covers
+the 13 relevant cases. Its diagnostic run is retained under roadmap-1039-wait-recheck. Only the E2E runner was
+rebuilt after these harness corrections. Both final PDF pages passed full visual review; all eight colors and
+the table are unclipped. The initial report SHA-256 is a4ba1ca8dbd468780c11c2dd576b3ffebfb49ed6215c4e6a2f536aead91a2f9f.
+
+Final full quality completed at 19:25 UTC: Ruff, 1028 format-conformant files, Mypy over 676 sources
+and Pytest at 100 percent with the known Starlette/AnyIO warning. Twenty-one source hashes and eight evidence hashes
+matched after transfer. Final manifests are tmp/office0227-sources.sha256 and tmp/office0227-evidence.sha256.
+
+| Image | Image ID |
+| --- | --- |
+| `collabio-work-e2e:latest` | `sha256:177c7a6e3f9c3f2ea4cb7e6445ebe0c5a1b793aec17f6b9d5edd63591c61a6bd` |
+| `collabio-work-e2e-api:latest` | `sha256:9efd34507f05851da28ba858d4f52a13bd556ce0d20dcaa072d741ba70780f9d` |
+| `collabio-work-e2e-rich-document-parser:latest` | `sha256:e8962388a5005ea1de131e2b6dff219e5662d235a983e18eaa90e943676c8336` |
+| `collabio-quality:latest` | `sha256:ef1db911f148170235c71b69e2c2e82ab1f66694f0caa58071ebf22c9bacb93b` |
+
+Cleanup removed collabio-postgres-test-1. Both health endpoints returned ok; review API and parser remain healthy.
+The separate remote Git tree remains at add05b4. Protected operator files remain excluded.
