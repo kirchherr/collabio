@@ -5,8 +5,8 @@ Updated: 2026-11-13
 ## Authoritative restart state
 
 Roadmap 1039 / PLANS 900 / ADR-0227 adds bounded DOCX run text colors. The Office module documentation is at 0.9.38.
-The previous published closeout is `55afa4dc` on `kirchherr/kb-write-unit-of-work`. The text-color block and its
-closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+The implementation through ADR-0227 is published as `d99a61f7` on `kirchherr/kb-write-unit-of-work`, above the
+previous closeout `55afa4dc`. Publication documentation follows on the same branch. Office remains ahead of CRM.
 
 The isolated parser admits exact direct RGB values for the existing eight-color native palette. RGB case is
 canonicalized; absent color preserves the prior run shape. Native black is specifically 111827. Automatic,
@@ -6202,7 +6202,7 @@ docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschni
 docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0227.
 
 Stand: Roadmap 1039 / PLANS 900 / ADR-0227, begrenzter Import direkter DOCX-Textfarben der nativen Palette.
-Die Implementierung einschließlich ADR-0215 bis ADR-0226 ist bis ee5278f1 auf
+Die Implementierung einschließlich ADR-0215 bis ADR-0227 ist bis d99a61f7 auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
 Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.

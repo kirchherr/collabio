@@ -5,8 +5,8 @@ Roadmap: 252 / PLANS 113 foundation through 1039 / PLANS 900 bounded DOCX run te
 Module: `office_documents` / version 0.9.38
 Decisions: ADR-0079 through ADR-0227; current decision: `ARCHITECTURE_DECISIONS/ADR-0227-bounded-native-office-docx-run-text-colors.md`
 
-Publication: the previous implementation through ADR-0226 is published as `ee5278f1` on
-`kirchherr/kb-write-unit-of-work`, above the previous published commit `95fdd0dd`.
+Publication: the implementation through ADR-0227 is published as `d99a61f7` on
+`kirchherr/kb-write-unit-of-work`, above the previous closeout `55afa4dc`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
