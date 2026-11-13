@@ -53,6 +53,17 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
           dialogVisible: getComputedStyle(document.querySelector("#print-dialog")).display !== "none",
           guidanceVisible: getComputedStyle(document.querySelector("#office-print-guidance")).display !== "none",
           overflow: [...root.querySelectorAll("table,pre")].map((element) => element.scrollWidth > element.clientWidth + 1),
+          fontSizes: [...root.querySelectorAll("[data-office-font-size]")].map((element) => ({
+            points: Number(element.getAttribute("data-office-font-size")),
+            pixels: parseFloat(getComputedStyle(element).fontSize),
+          })),
+          paragraphPagination: [...root.querySelectorAll("[data-office-keep-with-next],[data-office-keep-lines]")].map((element) => ({
+            text: element.textContent,
+            keepWithNext: element.getAttribute("data-office-keep-with-next"),
+            keepLines: element.getAttribute("data-office-keep-lines"),
+            breakAfter: getComputedStyle(element).breakAfter,
+            breakInside: getComputedStyle(element).breakInside,
+          })),
         };
       });
       expect(call.layout.pageName).toBe("office-document");

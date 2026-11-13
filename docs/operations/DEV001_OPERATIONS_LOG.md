@@ -1335,3 +1335,409 @@ remain excluded from publication.
 The handoff explicitly records the browser proof's mocked discovery/preview boundary and the missing unmocked
 stored-DOCX integration lane. Cached last-rendered page breaks do not establish exact current pagination. These
 clarifications qualify the existing evidence without changing runtime behavior.
+
+## 2026-11-06 Native Office embedded DOCX images
+
+Before implementing images, the stored-text DOCX proof passed 2/2 on desktop and mobile. It exercised the synthetic
+source through PostgreSQL ACLs, exact-version MinIO storage, the isolated parser and explicit native save/readback
+without browser response interception. Its report SHA-256 is
+`32fe0135a2451f142764c919e667d29ff74c895a9f17f5f1c074075bae69f9b1`.
+
+The final ADR-0215 run used Compose project `collabio` in `/home/extern/collabio`. It inspected projects, containers and
+ports and acquired `build.lock` before `docker.lock`. It checked the source archive hash before scoped synchronization
+under `git.lock`. Only the review API and rich-document parser services were recreated with the existing review
+override. The standard Work E2E seed reused the isolated synthetic tenant and ensured both stored DOCX fixtures.
+The regular API, persistent stores and foreign projects were outside the rollout scope.
+
+The focused parser, API, image and PostgreSQL regression passed 263/263. The final source-ACL check uses the
+existing read-only permissions query. A draft test for expiry of a generic source grant was removed because the
+schema limits that expiry field to native Office grants. The real PostgreSQL revocation tests cover access loss
+before and during confirmed create without expanding database grants.
+
+Chromium passed 26/26 on desktop and mobile in 4.1 minutes. The final report and six screenshots are under
+`e2e/work/artifacts/roadmap-943/`. Report SHA-256 is
+`91ffa4cb30a8ddfe3bc6c267f22a3ffcb6b4609e49c7da0535ebea8d6cb46723`. Visual inspection covered the saved figure
+and caption at both widths, with pixel alpha independently asserted by the browser test.
+
+Full quality completed at 10:10 UTC. Ruff passed, all 986 files were format-conformant, Mypy passed 649 sources and
+Pytest reached 100 percent with the known Starlette/AnyIO deprecation warning. The acceptance archive binds all 17
+formatted code/test files and the evidence manifest `tmp/office0215-accepted-evidence.sha256`. Image IDs:
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:7f0f83a2c6b3ba48a3a18503f66b9208edc55578686d61f57b358e8571de267e` |
+| Review API | `sha256:15174c132817ae4aa4f19a0744be1a5b8a14f0f9343e1b430c70a1b0899014ae` |
+| Review parser | `sha256:5cbe47feb7a2bff0e49ca902623f078f310d5489129a42880853c92b7176b0b6` |
+| Quality | `sha256:34a2fad3adb1924d85f1a1070d85d62a0e0849cd9317edd5140b540af232c5ab` |
+
+Cleanup under the same lock order removed only the isolated `collabio-postgres-test-1` container. The review API
+and parser are healthy, both regular and review health endpoints returned `ok`, and ten persistent Collabio
+containers remained. The reviewed feature stays in the synthetic development preview.
+
+## 2026-11-06 Native Office DOCX section profiles
+
+ADR-0216 extends the isolated DOCX parser and existing native preview without a socket schema change. The
+standard synthetic Work E2E seed adds the immutable sections fixture through the existing PostgreSQL and MinIO
+path. It contains A4 portrait first and Letter landscape with two columns second.
+
+The dev001 run used `/home/extern/collabio` and Compose project `collabio`. It checked exact file hashes
+before synchronization under `git.lock` and took `build.lock` before `docker.lock`. The review override
+retains port 42880. The isolated review stores were stopped at preflight. After ending the waiting one-off seed,
+the run started only `work-e2e-postgres` and `work-e2e-minio`, applied the existing schema to that fresh test
+database with `work-e2e-migrate`, and completed the standard fresh seed with 240 synthetic Office documents.
+The review workers and API use those stores. The regular API and stores were outside this rollout.
+
+The focused regression passed 185/185. The targeted Chromium matrix passed 12/12 in 1.6 minutes, including
+the stored sections source and the existing text, image and native section workflows. The two PDF MediaBoxes
+are A4 portrait then Letter landscape on both devices. The browser report SHA-256 is
+`43483dd65f8d963600202155bf798e733bfe3807462f47a108c10d7d5cadc12d`.
+
+Full quality completed at 11:30 UTC with Ruff, 989 format-conformant files, Mypy over 651 sources and Pytest
+at 100 percent. The known Starlette/AnyIO warning remains. The accepted code and test files are bound by
+`tmp/office0216-sources.sha256`, and artifacts and logs by `tmp/office0216-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:17e6b20228ef1990c27de9e9545223e62fb2a23bab20e854453b9bb5e1916efd` |
+| Review API | `sha256:ea83f92669d6c7eb5124dc22c86a22350798a1b3c037f2a809951cb538cb3a99` |
+| Review parser | `sha256:e77038089cdc031d02295c802f2ad9c65373d122050edd0575c17e29fcae4aa9` |
+| Quality | `sha256:890dbd5750a6f9c112c86bb818df9f559678e33e270d31671ff5f5e65b94426a` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Review API, parser and decoder remained
+healthy, and both regular and review health endpoints returned `ok`. Review stores stay available on the existing
+isolated network, with the existing Review API binding at 42880. The review contains synthetic data only.
+
+## 2026-11-06 Native Office DOCX default running text
+
+ADR-0217 resolves bounded package-local literal headers and footers through the isolated DOCX parser.
+The standard Work E2E seed adds a stored confidential three-section fixture with inherited and explicitly
+cleared defaults. Preview and confirmed save use existing native running profiles and exact-source controls.
+
+The run used Compose project `collabio` at `/home/extern/collabio`. The scoped transfer checked the preceding
+source hashes under `git.lock`, and build and lifecycle work took `build.lock` before `docker.lock`.
+The existing review override retains port 42880.
+
+The standard seed reused the isolated test tenant and installed the new immutable DOCX fixture. Review startup
+recreated only `work-e2e-api` and `work-e2e-rich-document-parser`. The running review stores and decoder were
+reused. The first matrix stopped after a connection reset during an existing history test. The repeat ran with
+the ephemeral internal `work-e2e-blocked-api` needed by the access-denial regression and passed all 36 cases
+in 4.5 minutes. No source change was required for the repeat.
+
+Focused tests passed 212/212. Independent per-page PDF text extraction verified that both three-page outputs
+contain the expected default header/footer, inherited header and replacement footer, then cleared header and
+inherited footer. Browser report SHA-256 is
+`e14e169330d8664c06dfb33f075d131da3a61188c20ea3be2ab6d05223da9497`.
+
+Full quality completed at 12:12 UTC with Ruff, 993 format-conformant files, Mypy over 654 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source hashes and the evidence manifest are
+`tmp/office0217-sources.sha256` and `tmp/office0217-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:5b5f63f73c99dc1db68ae49905fb45b91d082b88a92448d0621bd0d58cbe66f1` |
+| Review API | `sha256:d0951803944c0af3c8b7a41489f66d36a04e3d1bea02804b33fd76d541dbd085` |
+| Review parser | `sha256:13b539f0b760ffb861059d4cd97c072aa34425a2d161a33a241688ba679612ce` |
+| Quality | `sha256:fd36867021bbcefcf8a6023abcf1fbd195625d40825a2b9c6a484e4e19f0f6e0` |
+
+Cleanup removed only the temporary `collabio-postgres-test-1` and `collabio-work-e2e-blocked-api-1` containers.
+Both regular and review health endpoints returned `ok`. The review API and parser remain healthy on the
+existing isolated synthetic stack with the review API on port 42880. Regular services stayed outside the rollout.
+
+## 2026-11-06 Native Office DOCX bookmarks and internal links
+
+ADR-0218 resolves bounded document-local bookmark points and explicit links in the isolated parser. The standard
+Work E2E seed adds an immutable confidential source with a forward link, a heading target, a point target and an
+inert external relationship. The rollout used `/home/extern/collabio` and Compose project `collabio`. Scoped
+transfers checked exact hashes under `git.lock`, with `build.lock` before `docker.lock` for build and lifecycle work.
+The existing review override retains port 42880.
+
+The focused regression passed 235/235. The parser retains the earlier body text run limit independently of the
+new bookmark points. Ordinary and ambiguous navigation fixtures cover text extraction and strict API target checks.
+
+Initial Chromium output contained internal link annotations, but Poppler found no matching destination in the
+PDF catalog. The print routine now detaches the screen preview during printing so its duplicate IDs cannot
+shadow the fresh print surface. It restores the preview afterwards. The new browser regression requires the
+destination table, and the independent Poppler check requires the exact named target. The mobile selection
+probe waits until the editor is writable before focusing its linked text.
+
+The standard seed reused the isolated synthetic tenant. Review API and parser were recreated first, followed by
+an API-only recreation for the print bundle. Review stores and decoder were reused. The first matrix completed
+with one existing section-test focus retry. The corrected exact print check passed 2/2, and the final matrix
+passed 21/21 in 2.7 minutes with no retries. Poppler resolved `office-bookmark-docx-bookmark-7` on page 1 of
+both PDFs. Browser report SHA-256 is
+`ec2278423041455b66391c6300e5f0d09612473e665a83761fe25c817f899484`.
+
+Full quality completed at 15:17 UTC with Ruff, 997 format-conformant files, Mypy over 657 sources and Pytest at
+100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0218-sources.sha256` and `tmp/office0218-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:8692dc3bda1eaaa7f39f95de38c915aa1ac8678f01398d2c54e9b1665578ff2a` |
+| Review API | `sha256:f80282cf3db0701211f1b008e3fb79088973eadc911c090f8fa442083ca51f07` |
+| Review parser | `sha256:1ece8edc4bf6f39fb907ca8c3fdf01aeb94ecc9bd1eb33da1783d7d9b1926905` |
+| Quality | `sha256:95584e98e9d45dc58ef3c1ef52971156a5be664d89549012a4d7ceb9aaa23ccf` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-06 Native Office DOCX list nesting and numbering
+
+ADR-0219 resolves direct numbering instances and up to three levels in the isolated parser. The standard Work E2E
+seed adds a confidential stored source with nested decimal and bullet lists, descendant reset, a separate instance
+with a start override, and continuation after an intervening paragraph.
+
+The run used `/home/extern/collabio` and Compose project `collabio`. Scoped synchronization checked the previous
+source hashes under `git.lock`. Build and lifecycle work acquired `build.lock` before `docker.lock`. The existing
+review override retains port 42880. Focused checks passed 253/253, including parser evidence, rejection boundaries
+and native schema/API regression.
+
+The standard seed reused the synthetic tenant. Only the existing review API and rich-document parser were
+recreated. Review storage and the image decoder were reused. Chromium passed 16/16 in 2.1 minutes, and Poppler
+verified the root and nested decimal markers in both PDFs. Browser report SHA-256 is
+`761fe898d51fee0a300c650fc21a047ca990afbb5525733437b5cba85c29d808`.
+
+Full quality completed at 16:51 UTC with Ruff, 1,001 format-conformant files, Mypy over 660 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0219-sources.sha256` and `tmp/office0219-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:8c20caadf617ee2d73fa884961d9f41bb4319053d522139c5327663b138210ea` |
+| Review API | `sha256:9e8ef84d38a5e5de3064c3d5f1c9fc31f4d3a214c99a8cc1e9712ebdf082e853` |
+| Review parser | `sha256:c2115fef53156c12471fc56601f5a41496f8c5fe05c57b33e0ffe9d0b61c8bfc` |
+| Quality | `sha256:d690e6e2bcb9e59ef06b30542d8eb1315660d69971513de95a6f1cc79c14e7fe` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-06 Native Office DOCX table spans
+
+ADR-0220 preserves explicit horizontal and vertical merge evidence in the isolated parser. The standard Work E2E
+seed adds a confidential stored table with a two-column, two-row anchor and a separate horizontal span. The API
+reconstructs and validates the native grid, with source-order text equality.
+
+The run used `/home/extern/collabio` and Compose project `collabio`. Scoped synchronization checked source hashes
+under `git.lock`. Build and lifecycle work acquired `build.lock` before `docker.lock`. The existing review override
+retains port 42880. Focused checks passed 267/267, including parser rejection and independent API grid validation.
+
+The standard seed reused the synthetic tenant. The review API and rich-document parser were recreated, with
+review storage and the image decoder reused. The first browser run exposed that native save adds explicit 1×1
+defaults to ordinary cells. The assertion now compares effective geometry between preview and save, and exact
+JSON between save and readback. The exact desktop/mobile check passed 2/2 and the full selected Chromium
+regression passed 18/18 in 2.7 minutes without retries. Poppler verified all five cell texts, and both tagged
+PDFs contain the expected `/RowSpan 2` and `/ColSpan 2` entries. The browser report SHA-256 is
+`f5914cdfbf147e094040bf252ba0ba6b8dc46c13ed62930ea32f82f9115f150d`.
+
+Full quality completed at 17:29 UTC with Ruff, 1,004 format-conformant files, Mypy over 662 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0220-sources.sha256` and `tmp/office0220-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:8e5ee7786deeae46958f9f3f3bc779501e1090585924f5b814117811009b6bd7` |
+| Review API | `sha256:5eb6ccddb061248c777fae482cf2e30849bd8031cdbce37b75e4150f79594ed8` |
+| Review parser | `sha256:016dcb60249554f86da4cf0836d1fd842adda89a75d74440372780834bb32437` |
+| Quality | `sha256:50cc62dcb45b9f301482e52e1bd8c57259bf6ebd6f43ab20fba8a3b71aa8e3f7` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-06 Native Office DOCX table header
+
+ADR-0221 binds an explicit first-row marker to the parser evidence. The API maps it to native header cells
+and refuses a vertical span into the body. The standard seed reused the synthetic tenant and added the
+confidential stored DOCX with 54 data rows.
+
+The run used `/home/extern/collabio` with explicit project `collabio`. Source synchronization used scoped hash
+checks under `git.lock`. Build and lifecycle work acquired `build.lock` before `docker.lock` after preflight.
+The existing review API and rich-document parser were recreated, with review storage and the image decoder
+reused. The review override retained port 42880.
+
+Focused tests passed 287/287. Desktop/mobile Chromium passed 20/20 in 3.0 minutes without retries.
+Poppler independently confirmed both PDFs repeat the header on all three pages and contain all 54 body rows
+in order. The browser report SHA-256 is `2e36db86bb23e73f520f773a90e16d34e86749ded8ddaf0ba90ef8401802ed55`.
+
+Full quality completed at 21:39 UTC with Ruff, 1,007 format-conformant files, Mypy over 664 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0221-sources.sha256` and `tmp/office0221-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:6d00960884637d82c66ce1b126320bfd0502571cbc2e421008580815b80f28c4` |
+| Review API | `sha256:a318a6108d57652eae1006000c33c85219c2f2388e5e6956ca99abd00b3b90da` |
+| Review parser | `sha256:c1e289c378bb005fdb6778bca66e94106c0d204a5dec87e0a508678c4a012810` |
+| Quality | `sha256:3ad1ebcffb0710c6644f14a2e1b7104cb4e1c9439a3b544e560ee594aac12381` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-09 Native Office DOCX paragraph alignment
+
+ADR-0222 binds direct paragraph and heading alignment to the parser evidence. The API validates the native
+enum independently. The standard seed reused the synthetic tenant and added the confidential stored DOCX.
+
+The run used `/home/extern/collabio` and explicit Compose project `collabio`. Source synchronization used
+scoped hash checks under `git.lock`. Builds and lifecycle work acquired `build.lock` before `docker.lock`
+after preflight. The existing review API and rich-document parser were recreated, with review storage and
+the image decoder reused. The review override retained port 42880.
+
+Focused tests passed 302/302 and Chromium passed 22/22 on desktop and mobile in 3.3 minutes without retries.
+Poppler independently measured the left, centered, right and justified text positions and the centered heading
+in both PDFs. The browser report SHA-256 is `91b37f8935dd421bb686e4f542271a78e863187b37b4e048e1966a968915b770`.
+
+Full quality completed at 16:50 UTC with Ruff, 1,010 format-conformant files, Mypy over 666 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0222-sources.sha256` and `tmp/office0222-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:121e77bb9664eae24ab3aa9dc846376503fd252f86b50ad9d8baa7ab6190ab57` |
+| Review API | `sha256:5e5688b27035f4a5885d84bb12799ea779e1366d33991856f4a8d34b62e2564c` |
+| Review parser | `sha256:3bac9b723c2f1cae3757a9314c9216fb33ae1867811814d919274b1d17f91f0d` |
+| Quality | `sha256:235e870ee33e4aa73b4e74459526761dffa92cac135d076a0f26f16982bb41bc` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-11 Native Office DOCX paragraph spacing
+
+ADR-0223 maps direct paragraph and automatic line spacing to native enums and binds them to parser evidence.
+The standard seed reused the synthetic tenant and added the confidential stored DOCX. Source synchronization
+used exact scoped hashes under `git.lock` in `/home/extern/collabio`. Build, test and lifecycle work used
+Compose project `collabio`, preflight and `build.lock` before `docker.lock`. The existing review API and parser
+were recreated. Review storage and the image decoder were reused, with the review override retaining port 42880.
+
+The initial browser assertion incorrectly expected concatenated text across line breaks. Its correction kept
+the real line breaks and computed-spacing checks. The next full regression found source discovery saturation.
+The diagnostic found 510 current synthetic objects, zero DOCX in the first 500 and ten current DOCX overall.
+The metadata repositories now filter normalized MIME after current-version selection and before the bound.
+Regression tests cover tenant scope, ACL refusal, saturation and refusal to resurrect an older DOCX.
+
+The final focused suite passed 348/348 and desktop/mobile Chromium passed 24/24 in 3.7 minutes without retries.
+Poppler measured the single, double and 1.5 line heights and 6/12/24-point paragraph spacing in both tagged PDFs.
+The browser report SHA-256 is `a44ddbb6f9dd97f4559e02055dbf8e8a282af4543ce56e804ef1839c7019d5eb`.
+
+Full quality completed at 17:44 UTC with Ruff, 1,013 format-conformant files, Mypy over 668 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0223-sources.sha256` and `tmp/office0223-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:6956ebe313b66fb077ce0e14d924419407e28bc428308cfccbd96c67f778f1ba` |
+| Review API | `sha256:1c2f78c011b1ee8f97ea07006ea497af89b132f1881304038f66fa1a94da0f7f` |
+| Review parser | `sha256:edace8cf6372e28e491ce1d54eb0671621f7c120ed078bc53308aed937a7da16` |
+| Quality | `sha256:aabb014ef688619eefea6a909300a395cd504adc09bc702924c6b7ab56841d3f` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-12 Native Office DOCX paragraph indentation
+
+ADR-0224 maps direct left/right and first-line/hanging indents to existing native enums. Hanging indentation
+accounts for native padding so the source's first-line and continuation positions are preserved. The standard
+seed reused the synthetic tenant and added the confidential stored source.
+
+The run used `/home/extern/collabio` and explicit project `collabio`. Synchronization checked exact scoped
+hashes under `git.lock`; build, test and lifecycle work acquired `build.lock` before `docker.lock` after preflight.
+The existing review API and parser were recreated. Review storage and the image decoder were reused, and the
+review override retained port 42880.
+
+Focused tests passed 381/381. The exact desktop/mobile check passed 2/2. The selected Chromium regression passed
+26/26 in 4.0 minutes without retries. Poppler independently verified left/right, first-line and hanging positions
+in both tagged PDFs. The browser report SHA-256 is `e1b4cbbebe93755ada17df355b4f3157dff87c254d4b2873e59d067a37c1fb71`.
+
+Full quality completed at 17:18 UTC with Ruff, 1,016 format-conformant files, Mypy over 670 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0224-sources.sha256` and `tmp/office0224-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:3fdf482c0f823a4fa97e25b9593a2aac6107a3d0e33967614d68f0ed17c27910` |
+| Review API | `sha256:36365954242349afbabddd83f68b3084453b47ad6cb4bbda7339d278913dd905` |
+| Review parser | `sha256:ebf05419378dbb45250c22bd07d04c540ddf6f01fac64494f1006bd9af7a3194` |
+| Quality | `sha256:20a83d1b497e498a50773259b9940ccd2ecd53fce9e427b02bce352a7b6c9c29` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-12 Native Office DOCX paragraph keeping controls
+
+ADR-0225 maps direct keep-with-next and keep-lines booleans to native attributes, preserving explicit false.
+The standard seed reused the synthetic tenant and added the confidential stored source. Synchronization
+checked scoped hashes under `git.lock` in `/home/extern/collabio`. Builds, tests and lifecycle work used explicit
+project `collabio`, preflight and `build.lock` before `docker.lock`. The initial review API/parser were recreated;
+the CSS correction subsequently recreated only the review API. Review stores and the image decoder were reused,
+and the review override retained port 42880.
+
+The exact first browser check caught the stronger default print selector overriding explicit false on headings.
+The corrected false selectors include the print root and passed both actual print-media CSS checks. Final focused
+tests passed 419/419. The exact browser check passed 2/2, followed by 31/31 selected Chromium checks in 4.5 minutes
+without retries, comprising 30 browser cases and one native model check.
+
+Poppler independently confirmed five-page PDFs: control lines 1–5 remain on page 2 and 6–8 continue on page 3;
+the kept heading and all eight body lines move together to page 5. Visual review of pages 2–5 from both PDFs
+confirmed the result. The browser report SHA-256 is `c2301a20c3a6c4754b49b02112341f26336a5b5925066b5f01e9f19cfd30e247`.
+
+Full quality completed at 17:47 UTC with Ruff, 1,019 format-conformant files, Mypy over 672 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0225-sources.sha256` and `tmp/office0225-evidence.sha256`.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:47829aeb425bf21e4e9bdb561194c30544b50408d540ce6c4de5dfea3044a3e7` |
+| Review API | `sha256:b351cf18f05bf805a478d007cafc35a1d76198fcf53cbc29864ee2a825a84f7c` |
+| Review parser | `sha256:98787487042e3926f1169017c108689caf49a303d4b9615cdb91be401416d7cd` |
+| Quality | `sha256:11df4817c39c77bf08b769f80e662108f474fb0aee35c59627b07537bdd5cf4c` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-13 Native Office DOCX run font sizes
+
+ADR-0226 maps direct run half-point values exactly to the existing native point-size enum. Missing size keeps
+the old run shape. Conflicting, malformed and unsupported sizes refuse Office preview while plain text remains
+available. Native text-style marks preserve existing formatting and admitted internal links. The standard seed
+reused the synthetic tenant and added the confidential stored font-size source.
+
+The run used `/home/extern/collabio` and explicit project `collabio`. Scoped source synchronization checked exact
+baseline hashes under `git.lock`. Builds, tests and lifecycle work used preflight and `build.lock` before
+`docker.lock`. The existing review API and parser were recreated; review stores and the image decoder were reused.
+The review override retained port 42880.
+
+The first focused run found that the internal-link structural allowlist excluded size markers. Adding `sz` and
+`szCs` there leaves size semantics in the shared run parser; two negative link-size cases verify that boundary.
+The corrected focused suite passed 458/458. The exact browser check passed 2/2, followed by 39/39 selected Chromium
+checks in 5.4 minutes without retries: 34 browser cases and five native model checks.
+
+Actual print-media CSS verifies all seven fixture sizes. Poppler independently verifies the 8/24/48-point text
+ratios and 10-point table body in each one-page PDF. Visual review of both full PDF pages confirms the heading,
+mixed sizes and table are unclipped. The screenshots show the visible part of the scrolling print preview;
+the complete PDFs cover all seven runs.
+
+The browser report SHA-256 is `fcefe6381428308a54f790069fa19bdf9027d1abcea9aa773891c4a989bc806d`.
+Full quality completed at 10:11 UTC with Ruff, 1,022 format-conformant files, Mypy over 674 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Source and evidence hashes are in
+`tmp/office0226-sources.sha256` and `tmp/office0226-evidence.sha256`; all 17 scoped hashes matched after transfer.
+
+| Image | Image ID |
+| --- | --- |
+| Work E2E runner | `sha256:58fd973dd54ee2781894b91f6fefb4b937fe7761e333ae46f218cd179abd4332` |
+| Review API | `sha256:9737eb4cc03d9d356dc381f0f5315edf484db3d90306a3f0a99541bdaf3ec6c7` |
+| Review parser | `sha256:aaa8ed5c462c18cd2142f2bb8773147538e9e9d4301c1a1e90a90da2b0b41aee` |
+| Quality | `sha256:536a992dfccde520012511231cd18e88b02ba154d73e0af9d3873c2de45997c5` |
+
+Cleanup removed the temporary `collabio-postgres-test-1` container. Both health endpoints returned `ok`, and
+the synthetic review API and parser remained healthy. The regular API and stores were outside the rollout.
+
+## 2026-11-13 Native Office bounded DOCX import closeout
+
+The bounded import is complete through Roadmap 1031 / PLANS 892 / ADR-0226. The local closeout selects exactly
+76 implementation, test and documentation files above published commit `95fdd0dd`. All 76 SHA-256 values matched
+the verified dev001 tree under `git.lock` before the final documentation update. Protected `.tmp/`, `erp_modul.md`
+and `review.md` are excluded. Final documentation synchronizes under the same exact-baseline guard.
+
+This closeout adds no product behavior. Wider fidelity, productive DOCX interchange, live collaboration and
+tenant/pilot/production admission remain separately scoped. The local Git commit records the completed work;
+external publication is pending explicit push authorization. Remote Git HEAD and its separately synchronized
+working tree are preserved. No service lifecycle or port change is part of this closeout.

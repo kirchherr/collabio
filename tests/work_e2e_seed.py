@@ -20,6 +20,7 @@ from work_e2e_controls import (
 from work_e2e_crm import seed_synthetic_crm_records
 from work_e2e_discovery import DISCOVERY_EDITOR_ID, DISCOVERY_READER_ID, seed_synthetic_office_discovery
 from work_e2e_document_references import seed_synthetic_office_document_references
+from work_e2e_docx import seed_stored_docx_sources
 from work_e2e_figures import seed_synthetic_office_figures
 from work_e2e_history import HISTORY_EDITOR_ID, HISTORY_READER_ID, seed_synthetic_office_history
 from work_e2e_links import seed_synthetic_office_links
@@ -66,6 +67,7 @@ def main() -> int:
             (WORK_E2E_TENANT_ID,),
         ).fetchone()
         if completed and completed[0] is True:
+            seed_stored_docx_sources()
             print(
                 json.dumps(
                     {
@@ -192,6 +194,7 @@ def main() -> int:
     semantic_document_count, semantic_version_count = seed_synthetic_office_semantics(
         environment=os.environ, client=client
     )
+    seed_stored_docx_sources()
     reference_document_count, reference_version_count = seed_synthetic_office_document_references(
         environment=os.environ, client=client
     )

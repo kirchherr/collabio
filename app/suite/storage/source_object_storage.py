@@ -462,9 +462,13 @@ class PgSourceObjectRepository:
             raise KeyError("source object not found")
         return self.get(tenant_id=tenant_id, object_id=object_id, version_id=str(row[0]))
 
-    def list_latest_metadata(self, *, tenant_id: str, limit: int = 100) -> tuple[SourceObjectMetadata, ...]:
+    def list_latest_metadata(
+        self, *, tenant_id: str, limit: int = 100, mime_type: str | None = None
+    ) -> tuple[SourceObjectMetadata, ...]:
         if not 1 <= limit <= 500:
             raise ValueError("source object metadata limit must be between 1 and 500")
+        if mime_type is not None:
+            mime_type = mime_type.partition(";")[0].strip().lower()
         with psycopg.connect(self.database_dsn) as connection:
             self._set_tenant(connection, tenant_id)
             rows = connection.execute(
@@ -482,10 +486,11 @@ class PgSourceObjectRepository:
                     WHERE tenant_id = %s
                     ORDER BY object_id, persisted_at_utc DESC, version_id DESC
                 ) AS latest
+                WHERE (%s::text IS NULL OR lower(btrim(split_part(mime_type, ';', 1))) = %s)
                 ORDER BY updated_at_utc DESC, object_id DESC
                 LIMIT %s
                 """,
-                (tenant_id, limit),
+                (tenant_id, mime_type, mime_type, limit),
             ).fetchall()
         return tuple(
             sorted(

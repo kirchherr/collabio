@@ -177,7 +177,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     $("image-down").disabled = !valid() || action?.busy || !action?.selected || !imageContext ||
       imageContext.rootIndex === imageContext.root.childCount - 1;
     $("image-duplicate").textContent = grouped ? "Bild in Gruppe duplizieren" : "Bild duplizieren";
-    $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || imageCount(action?.document) >= 40 ||
+    $("image-duplicate").disabled = !valid() || action?.busy || !action?.selected || !state.session?.objectId || imageCount(action?.document) >= 40 ||
       (grouped && action.imageContext.group.childCount >= OFFICE_IMAGE_GROUP_MEMBER_LIMIT);
     $("image-position-layer").disabled = grouped;
     $("image-wrap").disabled = grouped || positioned;
@@ -190,7 +190,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
       action.imageContext.imageIndex === action.imageContext.group.childCount - 1;
     $("image-group-extract-before").disabled = !valid() || action?.busy || !grouped;
     $("image-group-extract-after").disabled = !valid() || action?.busy || !grouped;
-    $("image-group-duplicate").disabled = !valid() || action?.busy || !grouped ||
+    $("image-group-duplicate").disabled = !valid() || action?.busy || !grouped || !state.session?.objectId ||
       groupCount(action?.document) >= OFFICE_IMAGE_GROUP_LIMIT || imageCount(action?.document) + (action?.imageContext?.group?.childCount ?? 0) > 40;
     $("image-group-ungroup").disabled = !valid() || action?.busy || !grouped;
     $("image-group-remove").disabled = !valid() || action?.busy || !grouped;
@@ -216,7 +216,7 @@ export function installOfficeImageControls({ state, allowed, current, validate, 
     update();
   };
   const preview = async (owner) => {
-    const url = await fetchOfficeImage(owner.attrs, owner.context, owner.controller.signal);
+    const url = await fetchOfficeImage(owner.attrs, { ...owner.context, importImages: owner.session.importImages }, owner.controller.signal);
     if (action !== owner || !valid()) { URL.revokeObjectURL(url); return; }
     if (owner.url) URL.revokeObjectURL(owner.url); owner.url = url;
     cropControls.source(owner);

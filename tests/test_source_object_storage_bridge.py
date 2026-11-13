@@ -172,6 +172,20 @@ def test_pg_source_object_repository_bridges_metadata_storage_manifest_and_conte
         (record.metadata.object_id, record.metadata.version_id)
     ]
     assert all(value.tenant_id == tenant_id for value in latest_metadata)
+    assert repository.list_latest_metadata(tenant_id=tenant_id, mime_type="text/plain") == latest_metadata
+    assert repository.list_latest_metadata(tenant_id=tenant_id, mime_type="application/pdf") == ()
+    assert repository.list_latest_metadata(tenant_id=f"tenant-other-{suffix}", mime_type="text/plain") == ()
+
+    newer = source_record_for_storage_bridge(
+        tenant_id=tenant_id, object_id=record.metadata.object_id, version_id="v2", text="New current source"
+    )
+    draft = newer.metadata.model_copy(update={"mime_type": "application/pdf"})
+    newer = newer.model_copy(
+        update={"metadata": draft.model_copy(update={"manifest_hash": build_source_object_manifest_hash(draft)})}
+    )
+    repository.add(newer)
+    assert repository.list_latest_metadata(tenant_id=tenant_id, mime_type="text/plain") == ()
+    assert repository.list_latest_metadata(tenant_id=tenant_id, mime_type="application/pdf") == (newer.metadata,)
 
     with pytest.raises(ValueError, match="already exists"):
         repository.add(record)

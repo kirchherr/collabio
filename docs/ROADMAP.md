@@ -60,18 +60,21 @@ Nutzerentscheidung vom 2026-09-18 nach Abschluss von Punkt 251: **Office-Entwick
   durch diese Priorisierung ersetzt. DOCX-Save und WOPI folgen als getrennte, spaetere Freigabeschritte.
 - CRM-Kontoanlage in `/work` und weitere CRM-Mutationen hinter die Office-Entwicklung stellen. Die abgeschlossenen
   CRM-Kontodetails aus Punkt 251 und ihre Rechte-/Regressionstests bleiben erhalten.
-- Native Office ist durch Roadmap 935 / PLANS 796 um dokumentweite Berechnungen, native Diagramme sowie eine
+- Native Office ist durch Roadmap 983 / PLANS 844 um dokumentweite Berechnungen, native Diagramme sowie eine
   berechtigungsgepruefte DOCX-Quellenauswahl und strukturierte Vorschau erweitert. Exakte Version und Provenienz bleiben
   gebunden; Ueberschriften, flache Listen, einfache Tabellen und begrenzte Fett-/Kursiv-/Unterstrichen-/Durchgestrichen-
-  Auszeichnungen und explizite Seitenumbrueche werden erhalten. Strukturtreuer Vollimport, Export,
+  Auszeichnungen, explizite Seitenumbrueche, einzeln eingebettete PNG-/JPEG-Bilder, begrenzte Abschnittsprofile und
+  rein textuelle Standard-Kopf-/Fusszeilen, Textmarken, interne Links, begrenzte verschachtelte Listen und
+  rechteckige Zellspannen werden erhalten. Dokumenteigene
+  Bild-Assets entstehen nach expliziter Speicherbestaetigung.
+  Strukturtreuer Vollimport, Export,
   externe Arbeitsmappen, volatile Zeitwerte, Makros, produktive DOCX-Schreibpfade und automatische Aktionen bleiben
   getrennte Freigabeschritte.
 - Keine weiteren Word-, Konto- oder Firewall-Eingriffe auf der urspruenglichen Operator-Workstation.
 
-Aktueller Abschluss: Roadmap 935 / PLANS 796 / ADR-0214, Implementierung veroeffentlicht als `0102f4ba`.
-Naechster Office-Block: eingebettete DOCX-Bilder ueber bestehende Normalisierung und isolierten Decoder. Zuerst den
-ungemockten Browsernachweis fuer eine synthetische gespeicherte DOCX-Quelle schliessen; der bisherige responsive
-Importtest verwendet synthetische Discovery-/Preview-Antworten. Aktuelle Uebergabe: `docs/CURRENT_HANDOFF.md`.
+Roadmap 983 / PLANS 844 / ADR-0220 erweitert den begrenzten DOCX-Import um horizontale und vertikale
+Zellspannen. Der gespeicherte Quellpfad belegt Vorschau, Speichern, Wiedereroeffnen und Chromium-PDF.
+Die Uebergabe steht in `docs/CURRENT_HANDOFF.md`.
 
 ## Globale Definition Of Done
 
@@ -711,6 +714,33 @@ Aufgaben:
 - [x] Explizite harte und absatzgebundene DOCX-Seitenumbrueche begrenzt erhalten, in Strukturbelege binden und in
   mehrdeutigen Listen-, Ueberschriften- oder Tabellenkontexten fail closed behandeln
   (Roadmap 928-935 / PLANS 789-796).
+- [x] Gespeicherte synthetische DOCX-Quellen ungemockt im Browser nachweisen und einzelne eingebettete PNG-/JPEG-Bilder
+  ueber den isolierten Decoder mit Alpha erhalten. Quellversion und Klassifikation binden, Bild-Assets erst nach
+  erneuter Rechtepruefung und ausdruecklicher Speicherbestaetigung anlegen (Roadmap 936-943 / PLANS 797-804).
+- [x] Explizite DOCX-Seitenprofile fuer A4 und Letter mit Hoch-/Querformat, vier begrenzten Raendern und bis zu
+  drei gleich breiten Spalten abbilden. Folgeabschnitte beginnen auf einer neuen Seite und sind in Vorschau,
+  gespeicherter Fassung und Browser-PDF belegt (Roadmap 944-951 / PLANS 805-812).
+- [x] Rein textuelle DOCX-Standard-Kopf- und Fusszeilen aus typisierten paketlokalen Teilen aufloesen,
+  getrennt vererben oder ausdruecklich leeren. Kanonische Struktur, explizites Speichern und das dreiseitige
+  Chromium-PDF mit gespeicherter synthetischer Quelle belegen (Roadmap 952-959 / PLANS 813-820).
+- [x] Begrenzte DOCX-Textmarken als native Sprungziele und aufgeloeste interne Links als Querverweise uebernehmen.
+  Quellbelege, Speichern, lokale Navigation und PDF-Link nachweisen (Roadmap 960-967 / PLANS 821-828).
+- [x] Begrenzte DOCX-Listen mit bis zu drei Ebenen, Dezimalstarts, getrennten Instanzen, Neustart und
+  Fortsetzung in nativen Listen und Chromium-Druck erhalten (Roadmap 968-975 / PLANS 829-836).
+- [x] Horizontale und vertikale DOCX-Zellspannen mit rechteckigem Raster und leeren vertikalen Fortsetzungen
+  in native Tabellen abbilden und bis zum PDF nachweisen (Roadmap 976-983 / PLANS 837-844).
+- [x] Eine explizite erste DOCX-Tabellenkopfzeile als native Kopfzellen uebernehmen und ihre Wiederholung
+  im mehrseitigen Chromium-PDF nachweisen (Roadmap 984-991 / PLANS 845-852).
+- [x] Direkt linksbuendige, zentrierte, rechtsbuendige und als Blocksatz gesetzte DOCX-Absaetze und Ueberschriften
+  nativ uebernehmen und im Chromium-PDF nachweisen (Roadmap 992-999 / PLANS 853-860).
+- [x] Direkte DOCX-Absatzabstaende und automatische Zeilenabstaende auf native Werte abbilden und durch
+  Textpositionen im Chromium-PDF belegen (Roadmap 1000-1007 / PLANS 861-868).
+- [x] Direkte linke und rechte DOCX-Einzuege sowie Erstzeilen- und haengende Einzuege nativ uebernehmen.
+  Erste und folgende Zeilen sowie den rechten Textrand im PDF nachweisen (Roadmap 1008-1015 / PLANS 869-876).
+- [x] Direkten DOCX-Absatzzusammenhalt und Zeilenzusammenhalt mit expliziten Ja-/Nein-Werten uebernehmen.
+  Seitenaufteilung mit gespeicherter Quelle im Chromium-PDF nachweisen (Roadmap 1016-1023 / PLANS 877-884).
+- [x] Direkte DOCX-Schriftgroessen in Textlaeufen auf native Stufen abbilden. Gemischte Zeichenformatierung,
+  Tabellen und Druck mit gespeicherter Quelle nachweisen (Roadmap 1024-1031 / PLANS 885-892).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

@@ -7,6 +7,11 @@ from io import BytesIO
 from xml.etree import ElementTree
 from zipfile import BadZipFile, ZipFile
 
+from suite.rag.docx_images import extract_docx_images
+from suite.rag.docx_lists import DocxListBuilder, DocxNumbering, UnsupportedDocxList, docx_list_reference
+from suite.rag.docx_navigation import DocxNavigation, UnsupportedDocxNavigation, docx_navigation
+from suite.rag.docx_running_text import UnsupportedDocxRunningText
+from suite.rag.docx_sections import UnsupportedDocxSection, docx_section_layout
 from suite.rag.office_active_content import DOCM_MIME_TYPE, enforce_office_active_content_policy
 from suite.rag.parser_worker import (
     ParsedTextArtifact,
@@ -27,6 +32,27 @@ RICH_DOCUMENT_MIME_TYPES = frozenset({DOCX_MIME_TYPE, ODT_MIME_TYPE, PDF_MIME_TY
 WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{WORD_NS}}}"
 DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
+DOCX_RUN_FONT_SIZES = {str(size * 2): size for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)}
+DOCX_PARAGRAPH_ALIGNMENTS = {"left": "left", "center": "center", "right": "right", "both": "justify"}
+DOCX_PARAGRAPH_SPACING = {"0": 0, "120": 6, "240": 12, "360": 18, "480": 24}
+DOCX_LINE_SPACING = {"240": "1", "276": "1.15", "360": "1.5", "480": "2"}
+DOCX_PARAGRAPH_INDENTS = {"0": 0, "360": 18, "720": 36, "1080": 54, "1440": 72}
+
+
+class UnsupportedDocxParagraphAlignment(ValueError):
+    pass
+
+
+class UnsupportedDocxParagraphSpacing(ValueError):
+    pass
+
+
+class UnsupportedDocxParagraphIndentation(ValueError):
+    pass
+
+
+class UnsupportedDocxParagraphPagination(ValueError):
+    pass
 
 
 @dataclass(frozen=True)
@@ -132,38 +158,100 @@ class RichDocumentParserWorker:
         with self._open_zip(content) as archive:
             xml_bytes = self._read_zip_member(archive, "word/document.xml")
             numbering = self._docx_numbering(archive)
-        if b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
-            raise ParserWorkerError("DOCX document.xml contains forbidden declarations")
+            declarations = xml_bytes.replace(b"\x00", b"").upper()
+            if b"<!DOCTYPE" in declarations or b"<!ENTITY" in declarations:
+                raise ParserWorkerError("DOCX document.xml contains forbidden declarations")
+            try:
+                root = ElementTree.fromstring(xml_bytes)
+            except ElementTree.ParseError as exc:
+                raise ParserWorkerError("DOCX document.xml is not valid XML") from exc
+
+            body = root.find(f"{W}body")
+            if body is None:
+                raise ParserWorkerError("DOCX document.xml has no body")
+            blocks: list[dict[str, object]] = []
+            following_profiles: dict[int, dict[str, object]] = {}
+            try:
+                first_profile, following_profiles = docx_section_layout(archive, root, body)
+            except (UnsupportedDocxSection, UnsupportedDocxRunningText):
+                # Text-only callers still receive the same extracted text. Office rejects this structure.
+                blocks.append({"kind": "unsupported_section_layout"})
+            else:
+                if first_profile is not None:
+                    blocks.append({"kind": "page_profile", **first_profile})
+        images = extract_docx_images(content, root)
+        navigation = None
         try:
-            root = ElementTree.fromstring(xml_bytes)
-        except ElementTree.ParseError as exc:
-            raise ParserWorkerError("DOCX document.xml is not valid XML") from exc
-
-        body = root.find(f"{W}body")
-        if body is None:
-            raise ParserWorkerError("DOCX document.xml has no body")
-        blocks: list[dict[str, object]] = []
+            navigation = docx_navigation(root, body)
+        except UnsupportedDocxNavigation:
+            blocks.insert(0, {"kind": "unsupported_navigation"})
         text_lines: list[str] = []
-        list_kind: str | None = None
-        list_items: list[list[dict[str, object]]] = []
+        lists = DocxListBuilder(numbering, blocks)
         page_breaks = 0
+        unsupported_alignment = False
+        unsupported_spacing = False
+        unsupported_indentation = False
+        unsupported_pagination = False
 
-        def flush_list() -> None:
-            nonlocal list_kind, list_items
-            if list_kind is not None and list_items:
-                blocks.append({"kind": list_kind, "items": list_items})
-            list_kind, list_items = None, []
-
-        for element in body:
+        for index, element in enumerate(body):
+            if index in following_profiles:
+                lists.flush()
+                blocks.append({"kind": "section_break", **following_profiles[index]})
+            if element in images:
+                lists.flush()
+                if self._docx_page_break_before(element):
+                    page_breaks += 1
+                    if page_breaks > 100:
+                        raise ParserWorkerError("DOCX page-break count exceeds the structured preview limit")
+                    blocks.append({"kind": "page_break"})
+                blocks.append(images[element])
+                continue
             if element.tag == f"{W}p":
-                segments = self._docx_paragraph_segments(element)
+                segments = self._docx_paragraph_segments(element, navigation)
                 has_page_break = any(segment is None for segment in segments)
-                number_id = self._docx_number_id(element)
+                try:
+                    list_reference = docx_list_reference(element)
+                except UnsupportedDocxList:
+                    lists.unsupported = True
+                    list_reference = None
                 level = self._docx_heading_level(element)
-                if has_page_break and (number_id is not None or level is not None):
+                paragraph_format: dict[str, object] = {}
+                if list_reference is None:
+                    try:
+                        alignment = self._docx_paragraph_alignment(element)
+                    except UnsupportedDocxParagraphAlignment:
+                        unsupported_alignment = True
+                    else:
+                        if alignment is not None:
+                            paragraph_format["text_align"] = alignment
+                    try:
+                        spacing = self._docx_paragraph_spacing(element)
+                        if spacing and has_page_break:
+                            raise UnsupportedDocxParagraphSpacing
+                    except UnsupportedDocxParagraphSpacing:
+                        unsupported_spacing = True
+                    else:
+                        paragraph_format.update(spacing)
+                    try:
+                        indentation = self._docx_paragraph_indentation(element)
+                        if indentation and has_page_break:
+                            raise UnsupportedDocxParagraphIndentation
+                    except UnsupportedDocxParagraphIndentation:
+                        unsupported_indentation = True
+                    else:
+                        paragraph_format.update(indentation)
+                    try:
+                        pagination = self._docx_paragraph_pagination(element)
+                        if pagination and has_page_break:
+                            raise UnsupportedDocxParagraphPagination
+                    except UnsupportedDocxParagraphPagination:
+                        unsupported_pagination = True
+                    else:
+                        paragraph_format.update(pagination)
+                if has_page_break and (list_reference is not None or level is not None):
                     raise ParserWorkerError("DOCX page breaks inside headings or lists are outside preview scope")
                 if has_page_break:
-                    flush_list()
+                    lists.flush()
                     for segment in segments:
                         if segment is None:
                             page_breaks += 1
@@ -171,38 +259,51 @@ class RichDocumentParserWorker:
                                 raise ParserWorkerError("DOCX page-break count exceeds the structured preview limit")
                             blocks.append({"kind": "page_break"})
                         elif self._docx_runs_text(segment).strip():
-                            blocks.append({"kind": "paragraph", "runs": segment})
+                            blocks.append({"kind": "paragraph", "runs": segment, **paragraph_format})
                             text_lines.append(self._docx_runs_text(segment))
                     continue
                 runs = next((segment for segment in segments if segment is not None), [])
                 text = self._docx_runs_text(runs)
-                if not text.strip():
-                    flush_list()
+                if not text.strip() and not any("bookmark" in run for run in runs):
+                    if list_reference is not None:
+                        lists.unsupported = True
+                    lists.flush()
                     continue
-                text_lines.append(text)
-                if number_id is not None:
-                    kind = "bullet_list" if numbering.get(number_id, "bullet") == "bullet" else "ordered_list"
-                    if list_kind != kind:
-                        flush_list()
-                        list_kind = kind
-                    list_items.append(runs)
-                    continue
-                flush_list()
+                if text.strip():
+                    text_lines.append(text)
                 page_break_before = self._docx_page_break_before(element)
+                if list_reference is not None:
+                    if level is not None or page_break_before:
+                        lists.unsupported = True
+                    lists.append(list_reference, runs)
+                    continue
+                lists.flush()
                 if level:
-                    block = {"kind": "heading", "level": level, "runs": runs}
+                    block = {"kind": "heading", "level": level, "runs": runs, **paragraph_format}
                 else:
-                    block = {"kind": "paragraph", "runs": runs}
+                    block = {"kind": "paragraph", "runs": runs, **paragraph_format}
                 if page_break_before:
                     block["page_break_before"] = True
                 blocks.append(block)
             elif element.tag == f"{W}tbl":
-                flush_list()
-                rows = self._docx_table_rows(element)
-                if rows:
-                    blocks.append({"kind": "table", "rows": rows})
-                    text_lines.extend("\t".join(self._docx_runs_text(cell) for cell in row) for row in rows)
-        flush_list()
+                lists.flush()
+                table, lines = self._docx_table(element)
+                if table is not None:
+                    blocks.append(table)
+                    text_lines.extend(lines)
+            else:
+                lists.flush()
+        lists.flush()
+        if lists.unsupported:
+            blocks.insert(0, {"kind": "unsupported_list_layout"})
+        if unsupported_alignment:
+            blocks.insert(0, {"kind": "unsupported_paragraph_alignment"})
+        if unsupported_spacing:
+            blocks.insert(0, {"kind": "unsupported_paragraph_spacing"})
+        if unsupported_indentation:
+            blocks.insert(0, {"kind": "unsupported_paragraph_indentation"})
+        if unsupported_pagination:
+            blocks.insert(0, {"kind": "unsupported_paragraph_pagination"})
         return "\n".join(text_lines), tuple(blocks)
 
     def _docx_paragraph_text(self, paragraph: ElementTree.Element) -> str:
@@ -214,14 +315,23 @@ class RichDocumentParserWorker:
             raise ParserWorkerError("DOCX page breaks inside table cells are outside preview scope")
         return next((segment for segment in segments if segment is not None), [])
 
-    def _docx_paragraph_segments(self, paragraph: ElementTree.Element) -> list[list[dict[str, object]] | None]:
+    def _docx_paragraph_segments(
+        self, paragraph: ElementTree.Element, navigation: DocxNavigation | None = None
+    ) -> list[list[dict[str, object]] | None]:
         revision_tags = {f"{W}del", f"{W}ins", f"{W}moveFrom", f"{W}moveTo"}
         if any(node.tag in revision_tags for node in paragraph.iter()):
             raise ParserWorkerError("DOCX tracked revisions are outside the structured preview scope")
         segments: list[list[dict[str, object]] | None] = [[]]
-        for run in paragraph.iter(f"{W}r"):
+        for run in paragraph.iter():
+            if navigation is not None and run in navigation.bookmarks:
+                current = segments[-1]
+                if current is not None:
+                    current.append({"bookmark": navigation.bookmarks[run]})
+            if run.tag != f"{W}r":
+                continue
             properties = run.find(f"{W}rPr")
             marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
+            size_attrs = self._docx_run_font_size(run)
             parts: list[str] = []
             for node in run:
                 if node.tag == f"{W}t":
@@ -231,12 +341,16 @@ class RichDocumentParserWorker:
                 elif (
                     node.tag == f"{W}br" and node.get(f"{W}type", "textWrapping") == "page"
                 ) or node.tag == f"{W}lastRenderedPageBreak":
-                    self._append_docx_run_segment(segments, parts, marks)
+                    self._append_docx_run_segment(segments, parts, marks, size_attrs)
                     segments.extend([None, []])
                 elif node.tag in {f"{W}br", f"{W}cr"}:
                     parts.append("\n")
-            self._append_docx_run_segment(segments, parts, marks)
-        run_count = sum(len(segment) for segment in segments if segment is not None)
+            self._append_docx_run_segment(segments, parts, marks, size_attrs)
+            if navigation is not None and run in navigation.links:
+                current = segments[-1]
+                if current:
+                    current[-1]["target"] = navigation.links[run]
+        run_count = sum("text" in run for segment in segments if segment is not None for run in segment)
         if run_count > 4_000:
             raise ParserWorkerError("DOCX paragraph exceeds the structured run limit")
         return segments
@@ -246,6 +360,7 @@ class RichDocumentParserWorker:
         segments: list[list[dict[str, object]] | None],
         parts: list[str],
         marks: list[str],
+        size_attrs: dict[str, object],
     ) -> None:
         if not parts:
             return
@@ -253,8 +368,37 @@ class RichDocumentParserWorker:
         if current is None:
             current = []
             segments.append(current)
-        current.append({"text": "".join(parts), "marks": marks})
+        current.append({"text": "".join(parts), "marks": marks, **size_attrs})
         parts.clear()
+
+    def _docx_run_font_size(self, run: ElementTree.Element) -> dict[str, object]:
+        markers = run.findall(f"{W}rPr/{W}sz")
+        complex_markers = run.findall(f"{W}rPr/{W}szCs")
+        if not markers and not complex_markers and run.find(f"{W}sz") is None and run.find(f"{W}szCs") is None:
+            return {}
+        unsupported: dict[str, object] = {"unsupported_font_size": True}
+        if (
+            len(markers) != 1
+            or len(complex_markers) > 1
+            or len(run.findall(f"{W}rPr")) != 1
+            or run.find(f"{W}sz") is not None
+            or run.find(f"{W}szCs") is not None
+            or run.find(f"{W}rPr/{W}cs") is not None
+            or run.find(f"{W}rPr/{W}rtl") is not None
+        ):
+            return unsupported
+        size = markers[0].get(f"{W}val", "")
+        for marker in markers + complex_markers:
+            if (
+                len(marker)
+                or (marker.text or "").strip()
+                or set(marker.attrib) != {f"{W}val"}
+                or marker.get(f"{W}val") != size
+            ):
+                return unsupported
+        if size not in DOCX_RUN_FONT_SIZES:
+            return unsupported
+        return {"font_size": DOCX_RUN_FONT_SIZES[size]}
 
     def _docx_run_mark_enabled(self, properties: ElementTree.Element | None, mark: str) -> bool:
         if properties is None:
@@ -269,7 +413,7 @@ class RichDocumentParserWorker:
         return False
 
     def _docx_runs_text(self, runs: list[dict[str, object]]) -> str:
-        return "".join(str(run["text"]) for run in runs)
+        return "".join(str(run.get("text", "")) for run in runs)
 
     def _docx_heading_level(self, paragraph: ElementTree.Element) -> int | None:
         style = paragraph.find(f"{W}pPr/{W}pStyle")
@@ -278,48 +422,168 @@ class RichDocumentParserWorker:
         match = re.fullmatch(r"(?:heading|berschrift|ueberschrift)([1-3])", normalized)
         return int(match.group(1)) if match else None
 
-    def _docx_number_id(self, paragraph: ElementTree.Element) -> str | None:
-        value = paragraph.find(f"{W}pPr/{W}numPr/{W}numId")
-        return None if value is None else value.get(f"{W}val")
-
     def _docx_page_break_before(self, paragraph: ElementTree.Element) -> bool:
         value = paragraph.find(f"{W}pPr/{W}pageBreakBefore")
         if value is None:
             return False
         return value.get(f"{W}val", "true").casefold() not in {"0", "false", "off", "no"}
 
-    def _docx_numbering(self, archive: ZipFile) -> dict[str, str]:
-        if "word/numbering.xml" not in archive.namelist():
+    def _docx_paragraph_alignment(self, paragraph: ElementTree.Element) -> str | None:
+        markers = paragraph.findall(f"{W}pPr/{W}jc")
+        if paragraph.find(f"{W}jc") is not None:
+            raise UnsupportedDocxParagraphAlignment
+        if not markers:
+            return None
+        if len(markers) != 1 or len(paragraph.findall(f"{W}pPr")) != 1:
+            raise UnsupportedDocxParagraphAlignment
+        marker = markers[0]
+        alignment = DOCX_PARAGRAPH_ALIGNMENTS.get(marker.get(f"{W}val", ""))
+        if alignment is None or len(marker) or (marker.text or "").strip() or set(marker.attrib) != {f"{W}val"}:
+            raise UnsupportedDocxParagraphAlignment
+        return alignment
+
+    def _docx_paragraph_spacing(self, paragraph: ElementTree.Element) -> dict[str, object]:
+        markers = paragraph.findall(f"{W}pPr/{W}spacing")
+        if paragraph.find(f"{W}spacing") is not None:
+            raise UnsupportedDocxParagraphSpacing
+        if not markers:
             return {}
+        if len(markers) != 1 or len(paragraph.findall(f"{W}pPr")) != 1:
+            raise UnsupportedDocxParagraphSpacing
+        marker = markers[0]
+        if (
+            len(marker)
+            or (marker.text or "").strip()
+            or set(marker.attrib) - {f"{W}{name}" for name in ("before", "after", "line", "lineRule")}
+        ):
+            raise UnsupportedDocxParagraphSpacing
+        result: dict[str, object] = {}
+        for name in ("before", "after"):
+            value = marker.get(f"{W}{name}")
+            if value is not None:
+                if value not in DOCX_PARAGRAPH_SPACING:
+                    raise UnsupportedDocxParagraphSpacing
+                result[f"spacing_{name}"] = DOCX_PARAGRAPH_SPACING[value]
+        line = marker.get(f"{W}line")
+        rule = marker.get(f"{W}lineRule")
+        if line is not None:
+            if line not in DOCX_LINE_SPACING or rule not in {None, "auto"}:
+                raise UnsupportedDocxParagraphSpacing
+            result["line_spacing"] = DOCX_LINE_SPACING[line]
+        elif rule is not None:
+            raise UnsupportedDocxParagraphSpacing
+        return result
+
+    def _docx_paragraph_indentation(self, paragraph: ElementTree.Element) -> dict[str, object]:
+        markers = paragraph.findall(f"{W}pPr/{W}ind")
+        if paragraph.find(f"{W}ind") is not None:
+            raise UnsupportedDocxParagraphIndentation
+        if not markers:
+            return {}
+        if len(markers) != 1 or len(paragraph.findall(f"{W}pPr")) != 1:
+            raise UnsupportedDocxParagraphIndentation
+        marker = markers[0]
+        if (
+            len(marker)
+            or (marker.text or "").strip()
+            or set(marker.attrib) - {f"{W}{name}" for name in ("left", "right", "firstLine", "hanging")}
+            or paragraph.find(f"{W}pPr/{W}bidi") is not None
+            or paragraph.find(f"{W}pPr/{W}mirrorIndents") is not None
+        ):
+            raise UnsupportedDocxParagraphIndentation
+        result: dict[str, object] = {}
+        for name in ("left", "right"):
+            value = marker.get(f"{W}{name}")
+            if value is not None:
+                if value not in DOCX_PARAGRAPH_INDENTS:
+                    raise UnsupportedDocxParagraphIndentation
+                result[f"indent_{name}"] = DOCX_PARAGRAPH_INDENTS[value]
+        first, hanging = marker.get(f"{W}firstLine"), marker.get(f"{W}hanging")
+        if first is not None and hanging is not None:
+            raise UnsupportedDocxParagraphIndentation
+        special = first if first is not None else hanging
+        if special is not None:
+            if special not in {"0", "360", "720"}:
+                raise UnsupportedDocxParagraphIndentation
+            points = DOCX_PARAGRAPH_INDENTS[special]
+            result["special_indent"] = "none" if points == 0 else f"firstLine{points}"
+            if hanging is not None and points:
+                left = marker.get(f"{W}left")
+                if left is None or DOCX_PARAGRAPH_INDENTS[left] < points:
+                    raise UnsupportedDocxParagraphIndentation
+                # Native hanging indents add padding before shifting the first line back.
+                result["indent_left"] = DOCX_PARAGRAPH_INDENTS[left] - points
+                result["special_indent"] = f"hanging{points}"
+        return result
+
+    def _docx_paragraph_pagination(self, paragraph: ElementTree.Element) -> dict[str, object]:
+        result: dict[str, object] = {}
+        for name, field in (("keepNext", "keep_with_next"), ("keepLines", "keep_lines")):
+            markers = paragraph.findall(f"{W}pPr/{W}{name}")
+            if paragraph.find(f"{W}{name}") is not None:
+                raise UnsupportedDocxParagraphPagination
+            if not markers:
+                continue
+            if len(markers) != 1 or len(paragraph.findall(f"{W}pPr")) != 1:
+                raise UnsupportedDocxParagraphPagination
+            marker = markers[0]
+            value = marker.get(f"{W}val", "true")
+            if (
+                len(marker)
+                or (marker.text or "").strip()
+                or set(marker.attrib) - {f"{W}val"}
+                or value not in {"true", "1", "on", "false", "0", "off"}
+            ):
+                raise UnsupportedDocxParagraphPagination
+            result[field] = value in {"true", "1", "on"}
+        return result
+
+    def _docx_numbering(self, archive: ZipFile) -> DocxNumbering:
+        if "word/numbering.xml" not in archive.namelist():
+            return DocxNumbering(None)
         xml_bytes = self._read_zip_member(archive, "word/numbering.xml")
-        if b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
+        declarations = xml_bytes.replace(b"\x00", b"").upper()
+        if b"<!DOCTYPE" in declarations or b"<!ENTITY" in declarations:
             raise ParserWorkerError("DOCX numbering.xml contains forbidden declarations")
         try:
             root = ElementTree.fromstring(xml_bytes)
         except ElementTree.ParseError as exc:
             raise ParserWorkerError("DOCX numbering.xml is not valid XML") from exc
-        abstract_formats: dict[str, str] = {}
-        for abstract_number in root.findall(f"{W}abstractNum"):
-            identifier = abstract_number.get(f"{W}abstractNumId")
-            level = abstract_number.find(f"{W}lvl[@{W}ilvl='0']/{W}numFmt")
-            if identifier and level is not None:
-                abstract_formats[identifier] = level.get(f"{W}val", "bullet")
-        result: dict[str, str] = {}
-        for number in root.findall(f"{W}num"):
-            identifier = number.get(f"{W}numId")
-            abstract_reference = number.find(f"{W}abstractNumId")
-            abstract_id = None if abstract_reference is None else abstract_reference.get(f"{W}val")
-            if identifier and abstract_id:
-                result[identifier] = abstract_formats.get(abstract_id, "bullet")
-        return result
+        return DocxNumbering(root)
 
-    def _docx_table_rows(self, table: ElementTree.Element) -> list[list[list[dict[str, object]]]]:
-        rows: list[list[list[dict[str, object]]]] = []
-        for row in table.findall(f"{W}tr"):
-            cells: list[list[dict[str, object]]] = []
+    def _docx_table(self, table: ElementTree.Element) -> tuple[dict[str, object] | None, list[str]]:
+        span_tags = {f"{W}gridSpan", f"{W}vMerge", f"{W}hMerge"}
+        spans = {node for node in table.iter() if node.tag in span_tags}
+        found_spans: set[ElementTree.Element] = set()
+        physical_rows = table.findall(f"{W}tr")
+        if len(physical_rows) > 200:
+            raise ParserWorkerError("DOCX table is outside the structured preview limits")
+        header_row = self._docx_table_header(table, physical_rows)
+        explicit_layout = bool(spans or header_row)
+        if explicit_layout and (
+            sum(1 for _ in table.iter(f"{W}tbl")) != 1
+            or any(node.tag in {f"{W}gridBefore", f"{W}gridAfter", f"{W}hMerge"} for node in table.iter())
+        ):
+            raise ParserWorkerError("DOCX explicit table layout is unsupported")
+        rows: list[list[dict[str, object]]] = []
+        simple_rows: list[list[list[dict[str, object]]]] = []
+        text_lines: list[str] = []
+        width: int | None = None
+        for row in physical_rows:
+            cells: list[dict[str, object]] = []
+            simple_cells: list[list[dict[str, object]]] = []
+            row_width = 0
             for cell in row.findall(f"{W}tc"):
-                if cell.find(f"{W}tcPr/{W}gridSpan") is not None or cell.find(f"{W}tcPr/{W}vMerge") is not None:
-                    raise ParserWorkerError("DOCX merged tables are outside the structured preview scope")
+                colspan, merge = 1, "none"
+                if spans:
+                    properties = cell.findall(f"{W}tcPr")
+                    if len(properties) > 1:
+                        raise ParserWorkerError("DOCX merged table cell properties are ambiguous")
+                    if properties:
+                        colspan, merge = self._docx_cell_span(properties[0], found_spans)
+                row_width += colspan
+                if row_width > 20:
+                    raise ParserWorkerError("DOCX table is outside the structured preview limits")
                 cell_runs: list[dict[str, object]] = []
                 for paragraph in cell.findall(f"{W}p"):
                     paragraph_runs = self._docx_paragraph_runs(paragraph)
@@ -328,15 +592,88 @@ class RichDocumentParserWorker:
                     if cell_runs:
                         cell_runs.append({"text": "\n", "marks": []})
                     cell_runs.extend(paragraph_runs)
-                cells.append(cell_runs)
+                if merge == "continue" and cell_runs:
+                    raise ParserWorkerError("DOCX vertical merge continuation contains text")
+                cells.append({"runs": cell_runs, "colspan": colspan, "merge": merge})
+                simple_cells.append(cell_runs)
             if cells:
+                if width is None:
+                    width = row_width
+                if row_width != width:
+                    raise ParserWorkerError("DOCX table is outside the structured preview limits")
                 rows.append(cells)
+                simple_rows.append(simple_cells)
+                text_lines.append("\t".join(self._docx_runs_text(cell) for cell in simple_cells))
+            elif explicit_layout:
+                raise ParserWorkerError("DOCX explicit table layout has an empty physical row")
         if not rows:
-            return []
-        width = len(rows[0])
-        if not 1 <= width <= 20 or len(rows) > 200 or any(len(row) != width for row in rows):
-            raise ParserWorkerError("DOCX table is outside the structured preview limits")
-        return rows
+            if spans:
+                raise ParserWorkerError("DOCX merged table has no physical rows")
+            return None, []
+        if explicit_layout:
+            grids = table.findall(f"{W}tblGrid")
+            if (
+                spans != found_spans
+                or len(grids) > 1
+                or (grids and (len(grids[0]) != width or any(child.tag != f"{W}gridCol" for child in grids[0])))
+            ):
+                raise ParserWorkerError("DOCX explicit table grid does not match its physical cells")
+        block: dict[str, object] = (
+            {"kind": "merged_table", "rows": rows} if spans else {"kind": "table", "rows": simple_rows}
+        )
+        if header_row:
+            block["header_row"] = True
+        return block, text_lines
+
+    def _docx_table_header(self, table: ElementTree.Element, rows: list[ElementTree.Element]) -> bool:
+        tag = f"{W}tblHeader"
+        markers = set(table.iter(tag))
+        if not markers:
+            return False
+        found: set[ElementTree.Element] = set()
+        header = False
+        for index, row in enumerate(rows):
+            direct = row.findall(f"{W}trPr/{tag}")
+            if not direct:
+                continue
+            if len(direct) != 1 or len(row.findall(f"{W}trPr")) != 1:
+                raise ParserWorkerError("DOCX table header properties are ambiguous")
+            marker = direct[0]
+            if len(marker) or (marker.text or "").strip() or set(marker.attrib) - {f"{W}val"}:
+                raise ParserWorkerError("DOCX table header marker is invalid")
+            found.add(marker)
+            value = marker.get(f"{W}val", "true")
+            if value in {"0", "false", "off"}:
+                continue
+            if value not in {"1", "true", "on"}:
+                raise ParserWorkerError("DOCX table header marker is invalid")
+            if index != 0:
+                raise ParserWorkerError("DOCX table header must be the first physical row")
+            header = True
+        if markers != found:
+            raise ParserWorkerError("DOCX table header marker is outside physical row properties")
+        return header
+
+    def _docx_cell_span(self, properties: ElementTree.Element, found: set[ElementTree.Element]) -> tuple[int, str]:
+        colspan, merge = 1, "none"
+        horizontal = properties.findall(f"{W}gridSpan")
+        vertical = properties.findall(f"{W}vMerge")
+        if len(horizontal) > 1 or len(vertical) > 1:
+            raise ParserWorkerError("DOCX merged table cell properties are ambiguous")
+        for node in horizontal + vertical:
+            if len(node) or (node.text or "").strip() or set(node.attrib) - {f"{W}val"}:
+                raise ParserWorkerError("DOCX table span is invalid")
+            found.add(node)
+        if horizontal:
+            value = horizontal[0].get(f"{W}val", "")
+            if re.fullmatch(r"[1-9]|1[0-9]|20", value) is None:
+                raise ParserWorkerError("DOCX table column span is invalid")
+            colspan = int(value)
+        if vertical:
+            merge = vertical[0].get(f"{W}val", "continue")
+            if merge not in {"restart", "continue"}:
+                raise ParserWorkerError("DOCX table vertical merge is invalid")
+        return colspan, merge
 
     def _parse_odt(self, content: bytes) -> str:
         with self._open_zip(content) as archive:

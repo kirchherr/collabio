@@ -6,6 +6,7 @@ Only normalized pixels are persisted; an upload never changes a document head.
 
 from __future__ import annotations
 
+import base64
 import copy
 import struct
 from datetime import UTC, datetime
@@ -234,6 +235,27 @@ def prepare_image_references(
     if not references:
         return content
     result = copy.deepcopy(content)
+    imported: dict[str, dict[str, Any]] = {}
+    provenance = content.get("attrs", {}).get("importProvenance")
+    if creating and provenance is not None:
+        # Only foreign temporary references require the source again. Ordinary copies
+        # of a saved imported document use their independently owned image assets.
+        try:
+            repository._document(connection, user.tenant_id, references[0]["documentId"])
+        except OfficeDocumentNotFoundError:
+            imported = _prepare_docx_image_copies(repository, connection, user, document, provenance)
+    if imported:
+        from suite.platform.office_docx_images import IMPORT_IMAGE_IDENTITY_KEYS
+
+        temporary_owners = {item["image"]["documentId"] for item in imported.values()}
+        # Reject a forged later reference before the first S3 PUT, not after a partial copy.
+        for attrs in references:
+            if attrs["assetId"] in imported or attrs["documentId"] in temporary_owners:
+                candidate = imported.get(attrs["assetId"])
+                if candidate is None or any(
+                    attrs[name] != candidate["image"][name] for name in IMPORT_IMAGE_IDENTITY_KEYS
+                ):
+                    raise OfficeDocumentInvalidContentError("DOCX image reference differs from the source")
     copies: dict[tuple[str, str], dict[str, Any]] = {}
     for attrs in image_references(result):
         owner = attrs["documentId"]
@@ -243,8 +265,17 @@ def prepare_image_references(
         if not creating:
             raise OfficeDocumentInvalidContentError("Image belongs to another document")
         # Explicit Create/reuse obtains independent ownership; never inherit sharing.
-        source_document = repository._authorized_document(connection, user, owner)
-        _, pixels = read_image(repository.source_repository, source_document, attrs)
+        if attrs["assetId"] in imported:
+            from suite.platform.office_docx_images import IMPORT_IMAGE_IDENTITY_KEYS
+
+            candidate = imported[attrs["assetId"]]
+            expected = candidate["image"]
+            if any(attrs[name] != expected[name] for name in IMPORT_IMAGE_IDENTITY_KEYS):
+                raise OfficeDocumentInvalidContentError("DOCX image reference differs from the source")
+            pixels = base64.b64decode(candidate["content_base64"], validate=True)
+        else:
+            source_document = repository._authorized_document(connection, user, owner)
+            _, pixels = read_image(repository.source_repository, source_document, attrs)
         key = (attrs["assetId"], attrs["versionId"])
         if key not in copies:
             copies[key] = persist_image(
@@ -259,6 +290,45 @@ def prepare_image_references(
         for name in ("documentId", "assetId", "versionId", "contentHash", "manifestHash"):
             attrs[name] = copies[key][name]
     return result
+
+
+def _prepare_docx_image_copies(
+    repository: PgOfficeDocumentRepository,
+    connection: psycopg.Connection[Any],
+    user: UserContext,
+    document: OfficeDocumentRecord,
+    provenance: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    from suite.ai_control_plane.audit import InMemoryAuditLogger
+    from suite.platform.office_import_preview import OfficeImportPreviewCommand, OfficeImportPreviewService
+
+    source_id = provenance["sourceObjectId"]
+    try:
+        metadata = repository.source_repository.get_metadata(
+            tenant_id=user.tenant_id, object_id=source_id, version_id=provenance["sourceVersionId"]
+        )
+    except KeyError as exc:
+        raise OfficeDocumentInvalidContentError("DOCX source is unavailable") from exc
+    # The application deliberately has no ACL mutation/row-lock privilege.
+    # Authorize before parsing and again after decoder work, in this write transaction.
+    if not repository._permissions(connection, user, source_id, object_type=metadata.object_type.value):
+        raise OfficeDocumentPermissionError("DOCX source is no longer readable")
+    preview = OfficeImportPreviewService(
+        source_repository=repository.source_repository, audit=InMemoryAuditLogger()
+    ).preview(
+        user_context=user,
+        command=OfficeImportPreviewCommand(source_object_id=source_id, source_version_id=metadata.version_id),
+    )
+    if preview.document["attrs"]["importProvenance"] != provenance:
+        raise OfficeDocumentInvalidContentError("DOCX source provenance changed")
+    if not repository._permissions(connection, user, source_id, object_type=metadata.object_type.value):
+        raise OfficeDocumentPermissionError("DOCX source is no longer readable")
+    classifications = ("public", "internal", "confidential", "restricted")
+    if classifications.index(document.information_classification) < classifications.index(
+        preview.information_classification
+    ):
+        raise OfficeDocumentPermissionError("Imported source classification cannot be lowered")
+    return {item["image"]["assetId"]: item for item in preview.image_previews}
 
 
 def store_uploaded_image(

@@ -16,7 +16,7 @@ import { renderOfficePrintDocument } from "./office-print.mjs";
 import { OFFICE_PAGE_SIDES, officePageColumns, officePageSettings, officePageDescription, officePagePreview, configureOfficePrintPage } from "./office-page.mjs";
 import { installOfficePageControls } from "./office-page-controls.mjs";
 import { OFFICE_SECTION_LIMIT, clearOfficeSectionPrint, configureOfficeSectionPrint, officeSectionDescription, officeSectionProfile } from "./office-sections.mjs";
-import { OfficeImageReadError, officeImageAttributes, officeImageReferences, loadOfficePrintImages } from "./office-images.mjs";
+import { OfficeImageReadError, officeImageAttributes, officeImageReferences, officeImportImagePreviews, loadOfficePrintImages } from "./office-images.mjs";
 import { officeImageExtension, installOfficeImageControls } from "./office-image-controls.mjs";
 import { officeImageGroupAttributes } from "./office-image-groups.mjs";
 import { officeImageGroupExtension } from "./office-image-group-extension.mjs";
@@ -4164,7 +4164,7 @@ function prepareEditor(content, session) {
       officeImageGroupExtension(),
       officeShapeGroupExtension(),
       officeShapeExtension(),
-      officeImageExtension(state.context, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
+      officeImageExtension({ ...state.context, importImages: session.importImages }, () => { if (sessionCurrent(session)) officeAccessDenied(); }),
     ],
     editorProps: {
       attributes: { "aria-label": "Dokumentinhalt", role: "textbox", "aria-multiline": "true", spellcheck: "true" },
@@ -4557,6 +4557,7 @@ function acceptContent(result, session) {
   session.metadata = result.document;
   session.version = result.version;
   session.importProvenance = result.content?.attrs?.importProvenance || null;
+  session.importImages = null;
   session.objectId = result.document.object_id;
   session.canWrite = result.can_write === true;
   session.canShare = result.document.can_share === true;
@@ -4727,11 +4728,13 @@ async function beginImportPreview(event) {
       },
     });
     if (!importPreviewMatches(result)) throw new ApiError(502, true);
+    const importImages = officeImportImagePreviews(result.image_previews || [], result.document);
     if (epoch !== state.epoch) return;
     clearWorkspace();
     const session = freshSession();
     session.canWrite = true;
     session.importProvenance = result.document.attrs.importProvenance;
+    session.importImages = importImages;
     state.session = session;
     $("office-welcome").hidden = true;
     $("document-workspace").hidden = false;
@@ -5373,10 +5376,15 @@ async function loadPrintContent(print = state.print, finalAction = false) {
       try {
         setPrintModal(print, false);
         if (!current()) return;
+        // Chromium resolves PDF destinations by DOM ID, including the hidden preview.
+        $("print-preview").replaceChildren();
         await window.print();
       } finally {
         clearPreparedPrint(print);
-        if (current()) setPrintModal(print, true);
+        if (current()) {
+          $("print-preview").replaceChildren(preview);
+          setPrintModal(print, true);
+        }
       }
       if (!current()) return;
       $("print-status").textContent = "Druckansicht bereit. Ob gedruckt oder eine PDF gespeichert wurde, bestimmt der Browser.";

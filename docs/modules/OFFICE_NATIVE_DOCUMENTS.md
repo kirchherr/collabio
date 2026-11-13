@@ -1,17 +1,245 @@
 # Native Office Documents
 
-Status: Roadmap 252–935 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 935 / PLANS 796 bounded DOCX page breaks
-Module: `office_documents` / version 0.9.25
-Decisions: ADR-0079 through ADR-0214; current movement: `ARCHITECTURE_DECISIONS/ADR-0214-bounded-native-office-docx-page-breaks.md`
+Status: Roadmap 252–1031 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 1031 / PLANS 892 bounded DOCX run font sizes
+Module: `office_documents` / version 0.9.37
+Decisions: ADR-0079 through ADR-0226; current decision: `ARCHITECTURE_DECISIONS/ADR-0226-bounded-native-office-docx-run-font-sizes.md`
 
-Publication: implementation is published through `0102f4ba` on `kirchherr/kb-write-unit-of-work`.
+Publication: the current block is included in the local Office closeout commit above published commit `95fdd0dd`
+on `kirchherr/kb-write-unit-of-work`. External Git publication remains pending explicit authorization.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
-Validation scope: parser/socket/API checks cover synthetic DOCX input. The responsive import browser test mocks the
-source-discovery and preview responses, then exercises real native editing/save/readback. A stored-source-to-parser
-browser integration proof remains open and should precede the embedded-image slice. Preserved last-rendered page
-breaks are cached source-layout markers, not a current pagination or round-trip fidelity guarantee.
+## Bounded DOCX run font sizes (Roadmap 1024–1031)
+
+The isolated parser maps direct run half-point sizes exactly to the native point sizes 8, 9, 10, 11, 12, 14,
+16, 18, 20, 24, 28, 32, 36 and 48. Absent size keeps the prior run shape. Optional complex-script size must
+agree with the normal size. Unsupported, malformed or conflicting sizes refuse Office preview while text stays
+available. Script-based size selection and style inheritance remain outside this profile.
+
+The API independently validates actual integers and the native enum, then adds a native text-style mark.
+Shared run conversion preserves existing marks, admitted internal links, list text, table cells and text split
+by supported page breaks. A stored synthetic source covers mixed sizes, bold text, a heading and header cells
+through authorization, provenance, classification, confirmed save, reopening and native print.
+
+The focused suite passed 458/458. The exact desktop/mobile check passed 2/2, followed by 39/39 selected Chromium
+checks in 5.4 minutes without retries: 34 browser cases and five native model checks. Actual print-media CSS
+preserves all seven fixture sizes. Poppler independently verifies the 8/24/48-point text ratios and 10-point
+table body in each one-page PDF; visual inspection confirms the heading, mixed sizes and table are unclipped.
+The screenshots capture the visible part of the scrolling print preview; the complete PDFs cover all seven runs.
+
+Full quality passed on dev001 at 10:11 UTC on 2026-11-13: Ruff, 1,022 format-conformant files, Mypy over 674 sources
+and Pytest at 100 percent with the known Starlette/AnyIO warning. Exact source/evidence hashes and restart
+instructions are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX paragraph pagination (Roadmap 1016–1023)
+
+The isolated parser admits direct keep-with-next and keep-lines markers on main-body paragraphs and supported
+headings. Canonical booleans preserve explicit false separately from absence. The API validates actual booleans
+and maps to the existing native controls. Explicit false maps to automatic breaking in print, including headings.
+
+Malformed, duplicate or misplaced markers and controls combined with inline page breaks refuse Office preview
+while text extraction remains available. Style inheritance, lists, cells and running text retain their existing
+profile. The stored synthetic source compares split and kept paragraphs at equivalent page boundaries through
+authorization, provenance, classification, confirmed save, reopening and native print.
+
+The focused suite passed 419/419. The exact desktop/mobile check passed 2/2. The selected Chromium matrix
+passed 31/31, comprising 30 browser cases and one native model check. Independent Poppler page inspection and
+visual review confirmed that control lines split across pages 2–3 while the kept heading and all eight lines
+move together to page 5 in both PDFs.
+
+Full quality passed with Ruff, 1,019 format-conformant files, Mypy over 672 sources and Pytest at 100 percent.
+Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX paragraph indentation (Roadmap 1008–1015)
+
+The isolated parser maps direct physical left/right indents of 0, 360, 720, 1080 and 1440 twips to the native
+0, 18, 36, 54 and 72 point values. First-line and hanging indents admit 0, 18 and 36 points. Positive hanging
+indents require an explicit left value at least as large; native padding is accounted for so both the first
+and continuation lines retain the correct source positions.
+
+Canonical evidence preserves explicit zero and absence separately. The API independently validates native
+types and enums. Unsupported units, ambiguous markers, directional/mirrored paragraphs and inline page breaks
+with indentation refuse Office preview while text extraction remains available. The profile covers direct
+formatting on main-body ordinary paragraphs and supported headings. The stored synthetic source exercises
+authorization, provenance, classification, explicit save, reopening and native print.
+
+The focused suite passed 381/381. The exact desktop/mobile check passed 2/2 and the selected Chromium
+regression passed 26/26. Poppler independently verified first-line, continuation and right-edge positions
+in both tagged PDFs.
+
+Full quality passed with Ruff, 1,016 format-conformant files, Mypy over 670 sources and Pytest at 100 percent.
+Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX paragraph spacing (Roadmap 1000–1007)
+
+The isolated parser maps direct before/after spacing of 0, 120, 240, 360 and 480 twips to native 0, 6, 12, 18
+and 24 point values. Automatic line values of 240, 276, 360 and 480 map to native ratios 1, 1.15, 1.5 and 2.
+Explicit zero and absent values remain distinct. The API validates the types and native enums independently.
+
+Unsupported units, malformed or conflicting markers and spacing combined with inline page breaks refuse Office
+preview while text extraction remains available. The profile covers direct formatting on main-body ordinary
+paragraphs and supported headings. The stored synthetic source exercises authorization, exact provenance,
+classification, explicit save, readback and native print.
+
+Source discovery applies the 500-candidate bound after filtering normalized MIME on the latest version of each
+object. Newer native saves therefore cannot displace the stored DOCX candidates. Current tenant and ACL checks
+still apply, and an old DOCX version cannot replace a newer non-DOCX version.
+
+The focused suite passed 348/348, including the PostgreSQL filter and current-version check. Desktop/mobile
+Chromium passed 24/24. Poppler independently verified single, double and 1.5 line heights and 6/12/24-point
+paragraph spacing in both tagged PDFs.
+Full quality passed with Ruff, 1,013 format-conformant files, Mypy over 668 sources and Pytest at 100 percent.
+Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX paragraph alignment (Roadmap 992–999)
+
+The isolated parser preserves direct left, center, right and justified alignment on main-body paragraphs and
+supported headings. Alignment is hash-bound and independently checked against the native API enum. Explicit
+inline page-break segments retain their source alignment. Malformed or unsupported direct values refuse Office
+preview while plain text extraction remains available. Style inheritance, lists, table cells and running text
+are outside this profile.
+
+The stored synthetic source uses the existing exact-version authorization, classification, confirmed native save
+and print paths on desktop and mobile.
+
+The focused suite passed 302/302 and the desktop/mobile Chromium regression passed 22/22. Independent Poppler
+word bounds confirmed all four alignments and the centered heading in both tagged PDFs.
+Full quality passed with Ruff, 1,010 format-conformant files, Mypy over 666 sources and Pytest at 100 percent.
+Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX table header (Roadmap 984–991)
+
+The isolated parser preserves one explicitly enabled header on the first physical row of a bounded rectangular
+main-body table. Disabled markers keep the prior table representation. The API independently validates the
+canonical marker and maps the first row to native header cells. Horizontal spans are supported, and vertical
+spans crossing the header/body boundary refuse the Office preview.
+
+The native print path uses column headers and the existing repeating table header group. The stored synthetic
+source exercises source authorization, classification, confirmed save, exact-version readback and print on desktop
+and mobile.
+
+The focused suite passed 287/287 and the desktop/mobile Chromium regression passed 20/20. Poppler independently
+confirmed that both three-page PDFs repeat the header on each page and preserve all 54 data rows in order.
+Full quality passed with Ruff, 1,007 format-conformant files, Mypy over 664 sources and Pytest at 100 percent.
+Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX table spans (Roadmap 976–983)
+
+The isolated parser accepts explicit column spans and vertical restart/continuation markers in bounded rectangular
+main-body tables. Vertical continuations must cover the same columns as the preceding group and contain no
+nonblank text. The API reconstructs the grid independently and validates native span attributes and source-order
+text equality. Existing simple tables keep their prior representation.
+
+The stored synthetic DOCX checks combined horizontal and vertical spans through exact source provenance,
+confirmed native save and reopening. The native print path preserves both span directions in the table markup
+and emits a tagged Chromium PDF. The development preview admits complete rows of at most 20 logical columns
+and 200 rows, with at least one native cell anchor per row.
+
+The focused suite passed 267/267 and the desktop/mobile Chromium regression passed 18/18. Independent PDF
+inspection confirmed all five cell texts and the row and column span tags on both devices. The evidence
+hashes are in `docs/CURRENT_HANDOFF.md`.
+Full quality passed with Ruff, 1,004 format-conformant files, Mypy over 662 sources and Pytest at 100 percent.
+
+## Bounded DOCX list nesting and numbering (Roadmap 968–975)
+
+The isolated parser resolves explicit numbering instances against the package-local numbering part. It admits up to
+three levels of bullet or simple decimal lists with bounded starts and start-only overrides. A repeated instance
+continues its root ordinal across interruptions. Descendants restart when their parent or an ancestor advances.
+Different instances retain separate counters.
+
+Nested structure and explicit start values are hash-bound and independently checked at the API boundary. Unknown
+definitions, skipped levels and unsupported numbering rules refuse the Office preview. Body text extraction remains
+independent. Native list styling supplies the markers and indentation.
+
+The standard synthetic stored DOCX proof covers exact source provenance, classification, explicit save and reopen.
+Chromium and PDF evidence verify root continuation and descendant restart on desktop and mobile.
+The focused suite passed 253/253, and Chromium passed 16/16 in 2.1 minutes. Independent PDF text extraction
+verified the root and nested decimal markers. The evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+Full quality passed with Ruff, 1,001 format-conformant files, Mypy over 660 sources and Pytest at 100 percent.
+
+## Bounded DOCX navigation (Roadmap 960–967)
+
+The isolated parser maps an admitted bookmark start/end pair to a native point at the range start. The pair
+must stay within one top-level nonlist paragraph or heading, with a unique bounded name and numeric identity.
+Direct literal anchors to exact admitted names become native cross-references. Link text and admitted marks stay
+in the body, and bookmark points contribute no body text. Relationship hyperlinks retain their inert text.
+
+The parser hashes the positions and resolved target IDs. The API independently validates the shape, namespace,
+counts and target set. Missing or ambiguous targets refuse the Office preview while existing text-only extraction
+remains available. Limits are 100 visible bookmarks and 200 linked runs. Hidden markers remain inert.
+
+The stored synthetic source exercises exact source and version provenance through explicit native save. The
+browser regression checks the native jump without a request or URL change. The print path briefly detaches the
+screen preview to avoid duplicate fragment IDs. Both Chromium PDFs resolve the same local named destination.
+Focused checks passed 235/235 and the final desktop/mobile Chromium regression passed 21/21 in 2.7 minutes.
+Poppler independently resolves the exact target in both PDFs. Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+Full quality passed with Ruff, 997 format-conformant files, Mypy over 657 sources and Pytest at 100 percent.
+
+## Bounded DOCX running text (Roadmap 952–959)
+
+The isolated parser accepts default header and footer references on the admitted explicit section profiles.
+It resolves each through a typed internal package relationship to a canonical direct part with its exact content
+type. Each part may contain one plain paragraph of up to 64 native characters. An omitted reference inherits the
+previous value for that kind, while an explicitly empty paragraph clears it.
+
+The resolved text enters canonical structure evidence and stays outside body text equality. The API maps it to
+the native root and section running profiles with numbering disabled. The existing native schema validates the
+text and margin clearance. Fields, markup, external targets and first/even page variants are outside the lane.
+
+The standard Work E2E seed adds a stored synthetic three-section DOCX. The unmocked browser proof retains
+classification and exact source provenance through explicit save and reopen. It checks both desktop and mobile
+PDFs for the first header and footer, the inherited header and replaced footer, then the cleared header with
+inherited footer.
+
+Focused checks passed 212/212. Desktop and mobile Chromium passed 36/36 in 4.5 minutes, and independent
+per-page text extraction confirmed both PDFs. Evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+Full quality passed with Ruff, 993 format-conformant files, Mypy over 654 sources and Pytest at 100 percent.
+
+## Bounded DOCX section profiles (Roadmap 944–951)
+
+The isolated parser reads explicit section properties from main-body paragraph ends and the terminal body
+profile. The first profile becomes the native root page configuration. Up to twelve next-page markers carry
+the complete page profile for their following sections. Supported properties are A4 or Letter, portrait or
+landscape, four margins rounded to native whole millimeters in the 5–50 mm range, and up to three equal columns
+with native styling.
+
+Malformed, misplaced and unsupported layouts refuse the Office preview. The extracted text remains available
+to text-only callers. Page profiles and section markers enter the canonical structure hash, while independently
+normalized text excludes them. The native schema validates the profiles and positions again. The stored source
+retains its ACL and exact provenance checks, classification and confirmed save workflow.
+
+The synthetic review uses the standard Work E2E seed and the existing native print surface. The new proof
+compares the first A4 portrait page and following Letter landscape page in actual Chromium PDF output. Header
+and footer content, numbering restarts, continuous sections and Word layout fidelity remain separate scopes.
+
+Focused parser/API/native schema and PostgreSQL regression passed 185/185. The targeted desktop/mobile Chromium
+regression passed 12/12 in 1.6 minutes. Both PDFs contain the same two paper sizes in order. Browser report and
+artifact hashes are in `docs/CURRENT_HANDOFF.md`.
+Full quality passed with Ruff, 989 format-conformant files, Mypy over 651 sources and Pytest at 100 percent.
+
+## Bounded embedded DOCX images (Roadmap 936–943)
+
+The isolated parser accepts a single inline PNG or JPEG in an otherwise empty ordinary paragraph in the main body.
+It resolves only package-local image relationships and direct `word/media/` targets. Limits are eight occurrences,
+1 MiB aggregate encoded media, four million aggregate decoded pixels and 4,096 pixels on either axis. The parser
+rejects linked and external pictures, unsafe paths and unsupported drawing or paragraph contexts. Image blocks
+retain source order in canonical structure evidence and contribute no text to the independent text equality check.
+
+The API sends embedded bytes to the existing isolated image decoder and builds canonical PNGs with alpha. Preview
+images are temporary and remain in browser memory. Confirmed create rechecks the exact source version, hashes and
+current access around parser and decoder work, enforces the source classification floor, and saves the normalized
+images as authorized document-owned assets through the native write path.
+
+The standard Work E2E seeder provides two synthetic saved DOCX sources. The unmocked desktop/mobile tests exercise
+PostgreSQL metadata and ACLs, exact-version object storage, the parser socket, preview and confirmed native
+save/readback. The image flow also tests pixel alpha and rejects an unauthorized reader. The older browser test
+with intercepted discovery/preview remains a separate regression for native editing. Review is available at
+`http://192.168.0.108:42880/office?review=docx-images-adr0215`.
+
+The initial unmocked stored-text proof passed 2/2 before implementation. Final focused parser, API and PostgreSQL
+checks passed 263/263. The targeted desktop/mobile Chromium regression passed 26/26 in 4.1 minutes. The report
+SHA-256 is `91ffa4cb30a8ddfe3bc6c267f22a3ffcb6b4609e49c7da0535ebea8d6cb46723`.
+Full quality passed with Ruff, 986 format-conformant files, Mypy over 649 sources and Pytest at 100 percent.
 
 ## Bounded DOCX page breaks (Roadmap 928-935)
 

@@ -1,8 +1,521 @@
 # Current Project Handoff
 
-Updated: 2026-10-27
+Updated: 2026-11-13
 
 ## Authoritative restart state
+
+Roadmap 1031 / PLANS 892 / ADR-0226 adds bounded DOCX run font sizes. The Office module documentation is at 0.9.37.
+The last published commit on
+`kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through ADR-0226 and their closeout are included in the
+local Office closeout commit above it. Office remains ahead of CRM.
+
+The bounded DOCX import block is complete through Roadmap 1031 / PLANS 892. No implementation or test task
+remains open within that scope. The local closeout contains 76 explicitly selected files, all matched by SHA-256
+against the verified dev001 tree before the documentation closeout. The protected `.tmp/`, `erp_modul.md` and
+`review.md` are excluded. Git publication remains pending explicit authorization for the external push.
+
+Future work is separately scoped: wider DOCX fidelity and style inheritance, productive export/Quick Edit/WOPI,
+live collaboration, and accountable tenant/pilot/production admission. These are not prerequisites for closing
+the bounded synthetic import. The open human/external lanes below retain their own evidence requirements.
+
+The isolated parser maps explicit run half-point sizes to the existing native point-size enum. Absent size
+keeps the old run shape. Optional complex-script size must agree with the normal size. Invalid size evidence
+refuses Office preview while plain text stays available. The API validates integers and enum membership
+independently before constructing native text-style marks. Existing marks, admitted links and shared run
+conversion for lists, headings, tables and supported page-break segments are preserved.
+
+Standard Work E2E seeds `work-e2e-stored-docx-font-size/stored-docx-font-size-v1` as a confidential stored source.
+The synthetic review is `http://192.168.0.108:42880/office?review=docx-font-size-adr0226`.
+
+The final focused suite passed 458/458 after admitting size markers in the internal-link structural allowlist.
+Actual size validation remains in the shared run parser and the API; negative link-size tests cover that boundary.
+The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed 39/39 in 5.4 minutes without retries,
+comprising 34 browser cases and five native model checks. It covers source denial, exact provenance, classification,
+confirmed save, readback, reopening and all seven actual print-media sizes.
+
+Independent Poppler inspection confirms one-page PDFs with the expected 8/24/48-point text ratios and the
+10-point table body. Visual review of both full PDF pages confirms the heading, mixed sizes and table are unclipped.
+The screenshots capture the visible part of the scrolling print preview; the complete PDFs cover all seven runs.
+
+Full quality passed at 10:11 UTC with Ruff, 1,022 format-conformant files, Mypy over 674 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy. All nine scoped
+source hashes and eight evidence hashes matched after transfer to the operator workstation.
+
+| Evidence under `e2e/work/artifacts/roadmap-1031/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `fcefe6381428308a54f790069fa19bdf9027d1abcea9aa773891c4a989bc806d` |
+| `office-docx-font-size-desktop-chromium.png` | `9556c54f3fcd5de635c755a2dec525fed140743f7175e020b41c6bc9ec572055` |
+| `office-docx-font-size-mobile-chromium.png` | `2eca4433913c33f70d0012de3c350872ce1bab9387e64205b65fb0bc228dbf73` |
+| `office-docx-font-size-desktop-chromium.pdf` | `6b0508c6f1a021a5424f4aa15406f4dc153990ab11e3887da53902e9a6b917ce` |
+| `office-docx-font-size-mobile-chromium.pdf` | `72855a3053cc84166e6d21047a89f819b810d4d45ce83986c544d18dc3a9d06e` |
+| `office0226-pdf.log` | `644e7dc5ece287016d03d8a4306515a51968b1e0624e11cbe7dcfb64b141e1d6` |
+| `office0226-sources.sha256` | `0f6bedb8994a48cf6a75bc9e03676a3724b684eb8bc382fef50e9963228829ab` |
+| `office0226-quality.log` | `cbe5843a7ca76e605637d9b5cb3db4590c7e6bc66690a6ea90706ed4d32dbae9` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1023 restart state (2026-11-12)
+
+Roadmap 1023 / PLANS 884 / ADR-0225 adds bounded DOCX paragraph keeping controls. The Office module documentation
+is at 0.9.36. The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through
+ADR-0225 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser binds direct keep-with-next and keep-lines booleans to canonical evidence for main-body
+paragraphs and supported headings. Explicit false remains distinct from absence. The API validates booleans
+independently. Native print explicitly handles false, including the default keep-with-next behavior of headings.
+Malformed controls and controls combined with inline page breaks refuse Office preview while text stays available.
+
+Standard Work E2E seeds `work-e2e-stored-docx-paragraph-pagination/stored-docx-paragraph-pagination-v1` as a
+confidential stored source comparing split and kept paragraphs at equivalent page boundaries. The synthetic review
+is `http://192.168.0.108:42880/office?review=docx-paragraph-pagination-adr0225`.
+
+The focused suite passed 419/419. The exact desktop/mobile check passed 2/2. The selected Chromium matrix
+passed 31/31 in 4.5 minutes without retries, comprising 30 browser cases and one native model check. It covered
+permission denial, exact provenance, classification, confirmed save, readback and actual print-media CSS.
+Independent Poppler inspection and visual review confirmed five-page PDFs: the control body splits across
+pages 2–3, while the kept heading and all eight body lines move together to page 5. The screenshots are heading
+captures; the PDFs provide the page-placement evidence.
+
+Full quality passed at 17:47 UTC with Ruff, 1,019 format-conformant files, Mypy over 672 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-1023/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `c2301a20c3a6c4754b49b02112341f26336a5b5925066b5f01e9f19cfd30e247` |
+| `office-docx-paragraph-pagination-desktop-chromium.png` | `9d6d410b7f08bbcbe1a2542d584c624e0d7a8648b3a4221d93dba58efd951687` |
+| `office-docx-paragraph-pagination-mobile-chromium.png` | `8f71d0f23be4d9c6a6f111f9017ea13ff60f950c651684e06ab70d93e37ed972` |
+| `office-docx-paragraph-pagination-desktop-chromium.pdf` | `9776ae9a6bb6636d22af61ec219402adb7fe6edae92747b9708e059e649de873` |
+| `office-docx-paragraph-pagination-mobile-chromium.pdf` | `0fa4c20f3bcc2f5ca2ce16200ced29d343218763e97df7a0f5cefb818f3b26c0` |
+| `office0225-pdf.log` | `b94aac75213286d948a23ded6e0196a98a260c5b956ca34c03d18e2db8d90f8f` |
+| `office0225-sources.sha256` | `a48c5fa38b557207a03e0199a5c7e473eea48a98bb05c9b0c84cc92878540f87` |
+| `office0225-quality.log` | `3910dc0d5ef671d442763d718eb83dbe014d31838c731200f1d476f658430385` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1015 restart state (2026-11-12)
+
+Roadmap 1015 / PLANS 876 / ADR-0224 adds bounded DOCX paragraph indentation. The Office module documentation
+is at 0.9.35. The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through
+ADR-0224 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser maps direct physical left/right and first-line/hanging indents to native enums. Positive
+hanging indentation requires a sufficiently large explicit left value. The native margin accounts for the
+padding in the existing hanging format so first and continuation lines keep their WordprocessingML positions.
+Canonical evidence preserves zero and absence separately, and the API validates native types independently.
+Unsupported indentation and inline page breaks with indentation refuse Office preview while text remains available.
+
+Standard Work E2E seeds `work-e2e-stored-docx-paragraph-indentation/stored-docx-paragraph-indentation-v1` as a
+confidential stored source. The synthetic review is
+`http://192.168.0.108:42880/office?review=docx-paragraph-indentation-adr0224`.
+
+The focused suite passed 381/381. The exact desktop/mobile check passed 2/2 and the selected Chromium regression
+passed 26/26 in 4.0 minutes without retries. It covered permission denial, exact provenance, classification,
+explicit save, readback, computed layout and native print. Poppler independently verified the left/right,
+first-line and hanging text positions in both PDFs. The desktop preview capture shows all cases. The mobile
+capture shows the upper part of the scrolling preview; computed-style checks and the complete PDF cover the rest.
+
+Full quality passed at 17:18 UTC with Ruff, 1,016 format-conformant files, Mypy over 670 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-1015/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `e1b4cbbebe93755ada17df355b4f3157dff87c254d4b2873e59d067a37c1fb71` |
+| `office-docx-paragraph-indentation-desktop-chromium.png` | `c1d8f595bbe1b0c4995e5513c4b12f91d84989c85f6bfe18346e9094cedfe71e` |
+| `office-docx-paragraph-indentation-mobile-chromium.png` | `d6f24efaf86635f6f9fee95ea57f4a5824b5e0aa3e9f25dcd883c900c4d7fb1f` |
+| `office-docx-paragraph-indentation-desktop-chromium.pdf` | `3fe09448c28ab2930da4f950cb70383329ac5464919a0ee3f7f3943205488529` |
+| `office-docx-paragraph-indentation-mobile-chromium.pdf` | `184537f8fc7e70e906d5908c4c37b790fd93892f6c7d9bcdd6f0fcf024ec3ae8` |
+| `office0224-pdf.log` | `2d8537b1c3cd01968f6187164964b897793963ed38124521b0e7009221e0c54f` |
+| `office0224-sources.sha256` | `52285c08adb9a54cb30180112f037a5b22177431c1662fcfb224ec43e0bd4e08` |
+| `office0224-quality.log` | `9dd16d43f35f419332b672a436801aa2b67327c1444f5fde4c69c14b7b017507` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1007 restart state (2026-11-11)
+
+Roadmap 1007 / PLANS 868 / ADR-0223 adds bounded DOCX paragraph and line spacing. The Office module documentation
+is at 0.9.34. The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through
+ADR-0223 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser maps admitted direct twip and automatic line values to existing native spacing enums.
+Canonical evidence preserves explicit zero and absent values separately. The API validates types and enum
+membership independently. Unsupported direct values and spacing combined with inline page breaks refuse Office
+preview while text extraction remains available.
+
+Standard Work E2E seeds `work-e2e-stored-docx-paragraph-spacing/stored-docx-paragraph-spacing-v1` as a confidential
+stored source. The synthetic review is `http://192.168.0.108:42880/office?review=docx-paragraph-spacing-adr0223`.
+
+The growing synthetic store exposed the unfiltered discovery bound during regression. The diagnostic found
+510 current objects, no DOCX in the first 500 and ten current DOCX overall. Both repositories now filter MIME
+after current-version selection and before the result bound. Tenant scope and authoritative ACL checks remain
+in the discovery flow. Tests cover saturation and refusal to resurrect an older DOCX version.
+
+The focused suite passed 348/348. Desktop/mobile Chromium passed 24/24 in 3.7 minutes without retries.
+It covered permission denial, exact provenance, classification, explicit save, readback, computed spacing
+and print. Poppler independently measured line heights and 6/12/24-point paragraph spacing in both PDFs.
+The desktop print-preview capture shows all cases. The mobile capture shows the upper part of the scrolling
+preview; computed-style checks and the complete PDF cover the remaining paragraphs.
+
+Full quality passed at 17:44 UTC with Ruff, 1,013 format-conformant files, Mypy over 668 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-1007/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `a44ddbb6f9dd97f4559e02055dbf8e8a282af4543ce56e804ef1839c7019d5eb` |
+| `office-docx-paragraph-spacing-desktop-chromium.png` | `6993f0072795d1a4ba9521695b1147cc7ea9f769f364497c4d3d96296c844e7f` |
+| `office-docx-paragraph-spacing-mobile-chromium.png` | `49c0c798601c11178343d6b8d863f860aef20599fd949cfccf12c8bfb7bfe4f8` |
+| `office-docx-paragraph-spacing-desktop-chromium.pdf` | `e54f2ff16d11f7c849fac889285704cf0c92f8e136a8e5531674a1c1466b875b` |
+| `office-docx-paragraph-spacing-mobile-chromium.pdf` | `c75c914a1528a0b361533abba2b5688c973eaf40d9f3fa30a8fe365d801acdc8` |
+| `office0223-pdf.log` | `45773825b8fa85b97e44064bf472cc79c064630202d3e06d43328be07b8b6006` |
+| `office0223-discovery-diagnostic.log` | `15ba5092e635f28bea49b2f94d1975246f76ebeef0b815012c6ef10d57ca47c5` |
+| `office0223-sources.sha256` | `e609d20ffbc7da3f8d211e880c2466f739ff56ba7706f9d2ea97d7ac87c72381` |
+| `office0223-quality.log` | `00cf28ab50959308ee1963fc94c1c197d2983618bfe8fd0381a35e2408463dff` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 999 restart state (2026-11-09)
+
+Roadmap 999 / PLANS 860 / ADR-0222 adds bounded DOCX paragraph alignment. The Office module documentation is
+at 0.9.33. The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through
+ADR-0222 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser binds direct left, center, right and justified alignment to the canonical evidence for
+top-level paragraphs and supported headings. The API validates the native enum independently. Inline page-break
+segments preserve alignment. Unsupported direct values refuse Office preview while extracted text stays available.
+
+Standard Work E2E seeds `work-e2e-stored-docx-paragraph-alignment/stored-docx-paragraph-alignment-v1` as a
+confidential stored source. The synthetic review is
+`http://192.168.0.108:42880/office?review=docx-paragraph-alignment-adr0222`.
+
+The focused suite passed 302/302. The desktop/mobile Chromium regression passed 22/22 in 3.3 minutes without
+retries. It covered source permission, exact provenance, classification, explicit save, readback and print.
+Poppler independently verified all four alignments and the centered heading from both tagged PDFs. The desktop
+editor capture shows all cases. The mobile editor capture stops above the justified paragraph, which is covered
+by the browser's computed-style assertion and the mobile PDF measurement.
+
+Full quality passed at 16:50 UTC with Ruff, 1,010 format-conformant files, Mypy over 666 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-999/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `91b37f8935dd421bb686e4f542271a78e863187b37b4e048e1966a968915b770` |
+| `office-docx-paragraph-alignment-desktop-chromium.png` | `cb8d91aa69dfa5109352e30dc470d7a4fcef47c3a7dd09146fcff569eceece1c` |
+| `office-docx-paragraph-alignment-mobile-chromium.png` | `cd665dd43883fb12beb7a2d2cdb64693866bedb5f689a8eeeb3f3e43fea8f80c` |
+| `office-docx-paragraph-alignment-desktop-chromium.pdf` | `0fd76ab3019013450788a1f6b00c22c21097dde3e2de761c18730bd1bfdb24b2` |
+| `office-docx-paragraph-alignment-mobile-chromium.pdf` | `221490ead3dc5797464ef335b42729aee505a0316e6c74d1006a04f12e2b8ae4` |
+| `office0222-pdf.log` | `33f72daece855f2f851fb59a24901de84caed8b9c316cbbde507a0e9ba176e7a` |
+| `office0222-sources.sha256` | `fa718aaeeb8650b5fbfa27ef7bb5b67bf49575176393df4f2e09fbce34cf47d7` |
+| `office0222-quality.log` | `911694bdf6052aacf9eaf4782533390823e46d52c8e365bb1df4d38cb0dbf665` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 991 restart state (2026-11-06)
+
+Roadmap 991 / PLANS 852 / ADR-0221 adds the bounded repeating DOCX table header. The Office module documentation
+is at 0.9.32. Office remains ahead of CRM.
+The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through ADR-0221 and
+their closeout are working-tree changes above it.
+
+The isolated parser binds a single explicitly enabled first physical row to canonical evidence. The API accepts
+only the canonical true flag and reconstructs native header cells. Horizontal spans are supported. A vertical
+span that crosses into the body refuses the preview. Existing row, column and source-text checks still apply.
+
+Standard Work E2E seeds `work-e2e-stored-docx-table-header/stored-docx-table-header-v1` as a confidential stored
+source with one header and 54 body rows. The synthetic review is
+`http://192.168.0.108:42880/office?review=docx-table-header-adr0221`.
+
+The focused suite passed 287/287. The desktop/mobile Chromium regression passed 20/20 in 3.0 minutes
+without retries. The stored workflow verified source permission, exact provenance, classification, explicit
+save, readback and tagged Chromium print. Both screenshots show the saved header cells. Poppler confirmed
+that each three-page PDF repeats the header on every page and includes all 54 body rows in order.
+
+Full quality passed at 21:39 UTC with Ruff, 1,007 format-conformant files, Mypy over 664 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-991/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `2e36db86bb23e73f520f773a90e16d34e86749ded8ddaf0ba90ef8401802ed55` |
+| `office-docx-table-header-desktop-chromium.png` | `6d599115e12b99288347c086c11cacfceaac52601a8fdadf94d650ea8eab7d8d` |
+| `office-docx-table-header-mobile-chromium.png` | `990b8f4a02dd3daf2a6c947762458dec5f708842a83723e1b64092e520c6092a` |
+| `office-docx-table-header-desktop-chromium.pdf` | `b74332d23a3e6eabf0a5a2d2e687d815228fe61f0eb1b2f984211d46cfdbb6f2` |
+| `office-docx-table-header-mobile-chromium.pdf` | `eb812e2ceb0b76af8beb7b5925efd9558cc60ed04bc2c33a60868bc1fc6d6628` |
+| `office0221-pdf.log` | `944af8ee20fa6eb84d2efc6d2c4bd1b4f0941859b3f88bd1ffedcdafbfca773b` |
+| `office0221-sources.sha256` | `a16c94eb8c5450d3be423e2540c2e3c3df6437b59ce48797aaf96d66e0b30783` |
+| `office0221-quality.log` | `d7237313b205f4e959311618bbe07ada16dcbbdba4ab07434a70b123f69116dc` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 983 restart state (2026-11-06)
+
+Roadmap 983 / PLANS 844 / ADR-0220 adds bounded DOCX table spans. The Office module documentation is at 0.9.31.
+The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through ADR-0220 and
+their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser preserves explicit horizontal and vertical merge evidence in main-body tables. The API
+validates the physical grid independently, preserves source-order text equality and maps to native column and
+row spans. Vertical continuations must cover the same columns and contain no nonblank text. Complete rows
+of up to 20 logical columns and 200 rows are admitted with at least one native cell anchor per row.
+
+Standard Work E2E seeds `work-e2e-stored-docx-table-spans/stored-docx-table-spans-v1`. The unmocked flow covers
+permission denial, exact provenance, classification, explicit save, readback and native Chromium print. The
+synthetic review is `http://192.168.0.108:42880/office?review=docx-table-spans-adr0220`.
+
+The focused suite passed 267/267. The exact new browser check passed 2/2, and the desktop/mobile Chromium
+regression passed 18/18 in 2.7 minutes with no retries. The desktop capture shows the full table in the saved
+editor. Both tagged PDFs contain the five expected cell texts, a combined two-row, two-column span and a
+separate two-column span.
+
+Full quality passed at 17:29 UTC with Ruff, 1,004 format-conformant files, Mypy over 662 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-983/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `f5914cdfbf147e094040bf252ba0ba6b8dc46c13ed62930ea32f82f9115f150d` |
+| `office-docx-table-spans-desktop-chromium.png` | `eacebccd9ab10e167069160f2b598fb5a24179577399bb7ed39439cc6fe1118b` |
+| `office-docx-table-spans-mobile-chromium.png` | `900ab77a602630fc7393e99530fce10c787f66d968f49645f0cf2ee9c6520acf` |
+| `office-docx-table-spans-desktop-chromium.pdf` | `14af5d759c9457acfb4f1f0e505fa899be5fdc631fb01c1e4744e3bd31170d27` |
+| `office-docx-table-spans-mobile-chromium.pdf` | `08372fb16fe6776a8fb4d6479676ff97000216f42e3aa75598c301a24649cbde` |
+| `office0220-pdf.log` | `a74143181d0a8ef7a49115038953836d66ac6b2d035d75d7f21343a495e48b9d` |
+| `office0220-sources.sha256` | `8f75108ff40211f4381f9501a611ee7c16bf25a3f276a34fa14a1fe5d957ee99` |
+| `office0220-quality.log` | `92393b128fd66fdf0046f86a91ddc854f562157551305c5e98e3c8401003081b` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and the user-owned local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 975 restart state (2026-11-06)
+
+Roadmap 975 / PLANS 836 / ADR-0219 closes this bounded DOCX import sequence. The Office module documentation
+is at 0.9.30. The last published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215
+through ADR-0219 and their closeout are working-tree changes above it.
+
+The isolated parser preserves up to three explicit list levels with bullets or simple decimal markers. It resolves
+package-local numbering, start-only overrides and separate instance counters. A root list continues after an
+interruption, while descendant counters restart when their parent or an ancestor advances. Unsupported list
+semantics refuse the Office preview while body extraction stays independent.
+
+Standard Work E2E seeds `work-e2e-stored-docx-lists/stored-docx-lists-v1`. The unmocked flow covers source
+authorization, exact provenance, classification, confirmed save, readback and rendered markers in Chromium.
+The synthetic review is `http://192.168.0.108:42880/office?review=docx-lists-adr0219`.
+
+The focused suite passed 253/253. The desktop/mobile Chromium regression passed 16/16 in 2.1 minutes.
+Visual review confirmed nested markers in the saved editor. Independent PDF text extraction confirmed
+root markers 4, 5, 6, 9 and 7 in order, and depth-three markers 3, 4 and 3 across the parent change.
+Full quality passed at 16:51 UTC with Ruff, 1,001 format-conformant files, Mypy over 660 sources and Pytest
+at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary test PostgreSQL container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-975/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `761fe898d51fee0a300c650fc21a047ca990afbb5525733437b5cba85c29d808` |
+| `office-docx-lists-desktop-chromium.png` | `a180530f7959c89cc4f683e6d1e0fd320b6c850099f1d06540cc2691b0ea99c8` |
+| `office-docx-lists-mobile-chromium.png` | `d3debc653730dc1a57af906f36825f14fdc076154b0e4d91bd0a3ad7ccec9bbd` |
+| `office-docx-lists-desktop-chromium.pdf` | `d286a33354bf48c9201cceb37d966021f3a191ee2782fed03452a4e67573bb68` |
+| `office-docx-lists-mobile-chromium.pdf` | `450cc5902f77cdbfa103f966e7acb8cc834225cdca1e267076388506c9fc336a` |
+| `office0219-pdf.log` | `c2739d2f45b97bc2755afec75e6642adb0adf2a35644c6a2bf81c8b654f56bcb` |
+| `office0219-sources.sha256` | `f769721b79e4fe4ac04736967a08ab8e13a26171b220971db0b6dfab3c1907f4` |
+| `office0219-quality.log` | `4f217e4f04ac6fa6734b092067efde6f26af8f1a273405814e0632d8035b6477` |
+
+Use dev001 at `/home/extern/collabio` with Compose project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare exact scoped hashes under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and user-owned
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 967 restart state (2026-11-06)
+
+Roadmap 967 / PLANS 828 / ADR-0218 completes bounded DOCX bookmarks and internal links. The module
+documentation is at 0.9.29. The latest published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`.
+ADR-0215 through ADR-0218 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser maps ordered, nonoverlapping bookmark pairs in top-level paragraphs and headings to
+native points at their range starts. Explicit internal links resolve exact names to those points. The
+canonical structure binds position and target, independently of body text extraction. Hidden bookmarks
+and relationship hyperlinks stay inert. Invalid, ambiguous and unresolved navigation refuses Office preview.
+
+Standard Work E2E seeds `work-e2e-stored-docx-navigation/stored-docx-navigation-v1`. The unmocked flow exercises
+source authorization, exact provenance, classification, confirmed save, readback, native local jump and the
+PDF fragment. The synthetic review is `http://192.168.0.108:42880/office?review=docx-navigation-adr0218`.
+
+Chromium needs a single DOM owner for each print fragment. The print routine detaches the screen preview
+for the native print call and restores it afterwards. Poppler independently resolves the exact named destination
+in the desktop and mobile PDFs.
+
+The focused suite passed 235/235. The exact new browser check passed 2/2, and the final desktop/mobile Chromium
+matrix passed 21/21 in 2.7 minutes without retries. Visual review confirmed the imported target in the native
+cross-reference dialog.
+Full quality passed at 15:17 UTC with Ruff, 997 format-conformant files, Mypy over 657 sources and Pytest at
+100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary test PostgreSQL container.
+Both health endpoints returned `ok`, and the synthetic review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-967/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `ec2278423041455b66391c6300e5f0d09612473e665a83761fe25c817f899484` |
+| `office-docx-navigation-desktop-chromium.png` | `a2d4d8f7568d2df186973fc10b5211b72485dbfa5265941156779df3cf879c4c` |
+| `office-docx-navigation-mobile-chromium.png` | `95026258f406c2d7c7778aeae89ec518eefeec18bbd6d1bfcb2e384f3030998e` |
+| `office-docx-navigation-desktop-chromium.pdf` | `9efea6d57345cbfe12657f51e0699a6a248f4372abef55bb47e78d6a34acc89a` |
+| `office-docx-navigation-mobile-chromium.pdf` | `d4b3f43494e0663ae2d5b53d30eb0e82f7c474200fddb674f85b0fe0a338e8dc` |
+| `office0218-pdf.log` | `b6c8e911ca83bf8a7570d6872e7db2ff4c624bf22e19aee0d25f00cef4b74ae5` |
+| `office0218-sources.sha256` | `0584254ab567e0d5227c1d93994fb1a2c4d0708b6e47cbc064cd5beac8008230` |
+| `office0218-quality.log` | `4b8593498f347e9bcc28826d8776cdde5aeeb3fbae9527ca2ed0664bea4d1769` |
+
+
+Use dev001 at `/home/extern/collabio` and explicit Compose project `collabio`. Read `/home/extern/AGENTS.md`,
+inspect services and ports, acquire `build.lock` before `docker.lock`, and compare scoped hashes under
+`git.lock`. Preserve the separately synchronized remote tree at Git HEAD `add05b4`, the existing review
+override and the user-owned local `.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 959 restart state (2026-11-06)
+
+Roadmap 959 / PLANS 820 / ADR-0217 completes bounded literal default DOCX headers and footers. The module
+documentation is at 0.9.28. The latest published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`.
+ADR-0215 through ADR-0217 and their closeout are working-tree changes above it. Office remains ahead of CRM.
+
+Only typed package-local default running parts on explicit supported profiles are admitted. Each part contains
+one plain paragraph of up to 64 characters. Omitted references inherit independently, and an empty part clears
+its value. The canonical structure binds the effective literals. Existing body extraction stays independent.
+Alternate page variants, fields, native placeholder syntax and external targets fail closed in Office preview.
+
+Standard Work E2E seeds `work-e2e-stored-docx-running/stored-docx-running-v1`. The unmocked flow uses authorized
+PostgreSQL and MinIO data and the isolated parser. It checks classification and exact provenance through explicit
+save and reopen. The three-page Chromium PDF proves the starting header/footer, inherited header with replaced
+footer, then an explicitly cleared header with inherited footer. The synthetic review is
+`http://192.168.0.108:42880/office?review=docx-running-adr0217`.
+
+On dev001 the focused suite passed 212/212 and the Chromium matrix passed 36/36 in 4.5 minutes.
+Visual review confirmed the imported literals in the existing desktop and mobile section dialog.
+Independent page-by-page text extraction verified the exact default, inherited and cleared profiles in both PDFs.
+Full quality passed at 12:12 UTC with Ruff, 993 format-conformant files, Mypy over 654 sources and Pytest at
+100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary test PostgreSQL and blocked
+review API. Regular and review health endpoints returned `ok`. The review API and parser remained healthy.
+
+| Evidence under `e2e/work/artifacts/roadmap-959/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `e14e169330d8664c06dfb33f075d131da3a61188c20ea3be2ab6d05223da9497` |
+| `office-docx-running-desktop-chromium.png` | `2e4be349994baeb8c9241709c895a526517904f01dd513e7b7940213b1dae0c3` |
+| `office-docx-running-mobile-chromium.png` | `e8fa831a7fede9d022350e2ef4ca63516a3caad9c36eb37aa460857b40e2966f` |
+| `office-docx-running-desktop-chromium.pdf` | `dca77aaab47622aa95e0294fd84d2fcbb313f8923cf883f7fdfe3e800d1cc0d7` |
+| `office-docx-running-mobile-chromium.pdf` | `f9c78b141b9b61c81e6f692d4b8cd596c4c50b56eea685be0b09200957991853` |
+| `office0217-pdf.log` | `140d32dd51273ee09b01f04345a590b961a76392687e8b18905a59fc48c72638` |
+| `office0217-sources.sha256` | `7a214085f1426ee0f41a65cde52db811248d9ed30e69fd35b979b5b6eae1933c` |
+| `office0217-quality.log` | `292089e2b1beac1d28c3cba1b53092dedbccc78bafd18dbb8215321fb518a101` |
+
+Use dev001 at `/home/extern/collabio` and explicit Compose project `collabio`. Read `/home/extern/AGENTS.md`,
+inspect services and ports, acquire `build.lock` before `docker.lock`, and compare scoped hashes under
+`git.lock`. The remote tree has independently synchronized changes and Git HEAD `add05b4`. Preserve the
+existing review override and the user-owned local `.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 951 restart state (2026-11-06)
+
+Roadmap 951 / PLANS 812 / ADR-0216 completes bounded DOCX section and page profiles. The module documentation
+is at 0.9.27. The latest published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 and
+ADR-0216 are working-tree changes above it. Office remains ahead of CRM.
+
+The isolated parser reads explicit profiles from the end of each section and maps them to the native root and
+following-section markers. The admitted layout is A4 or Letter, portrait or landscape, four bounded margins,
+one to three equal-width columns and up to twelve next-page boundaries. The parser hashes those profiles and
+preserves the existing independent text extraction. Office refuses unsupported and ambiguous section layouts.
+
+Standard Work E2E seeds a third authorized synthetic source at `work-e2e-stored-docx-sections/stored-docx-sections-v1`.
+The unmocked browser proof covers permission denial, confirmed save, exact provenance, classification and ordered
+paper sizes in Chromium's native PDF. The review URL is
+`http://192.168.0.108:42880/office?review=docx-sections-adr0216`.
+
+The focused suite passed 185/185. The targeted Chromium regression passed 12/12 in 1.6 minutes. Both actual PDFs
+contain two ordered pages, A4 portrait followed by Letter landscape. Visual review confirmed the imported Letter
+profile, two columns and all four margins in the existing section dialog on desktop and mobile.
+Full quality passed at 11:30 UTC with Ruff, 989 format-conformant files, Mypy over 651 sources and Pytest at
+100 percent with the known Starlette/AnyIO warning. The review API, parser and decoder are healthy after a
+fresh isolated seed. Both health endpoints returned `ok` after the run removed its temporary test PostgreSQL
+container. The regular API and its stores were outside the rollout.
+
+| Evidence under `e2e/work/artifacts/roadmap-951/` | SHA-256 |
+| --- | --- |
+| `results.json` | `43483dd65f8d963600202155bf798e733bfe3807462f47a108c10d7d5cadc12d` |
+| `office-docx-sections-desktop-chromium.pdf` | `1428bad90fd82cf0164d1ab6f79e028d41cf83d023f542c9e7324ee8270b87af` |
+| `office-docx-sections-mobile-chromium.pdf` | `e95a1ee9c792457fa4eb06668ef46e487a96c897ce80499d5713139583280874` |
+| `office-docx-sections-desktop-chromium.png` | `f990265573f4c259abb8ba631cf07a40b34862c975a5c4d7f58025cac853c99f` |
+| `office-docx-sections-mobile-chromium.png` | `6b3cd011615be7c06ff366e47a6961864eaa9ad884243cd1b5cefaf30fd3e8ed` |
+
+The source and evidence manifests, quality log and image IDs are under `tmp/office0216-*` on dev001. See
+`docs/operations/DEV001_OPERATIONS_LOG.md` for the exact synthetic review services and images.
+
+Use dev001 at `/home/extern/collabio` with Compose project `collabio`, the dedicated Collabio SSH identity
+and the existing Work E2E override. The remote tree has independent synchronized changes and Git HEAD `add05b4`.
+Compare scoped files before synchronizing under `git.lock`. Inspect services and ports and take `build.lock`
+before `docker.lock`. Keep `.tmp/`, `erp_modul.md` and `review.md` in the local workspace untouched.
+
+## Retained Roadmap 943 restart state (2026-11-06)
+
+Roadmap 943 / PLANS 804 / ADR-0215 completes bounded embedded DOCX image import. Module documentation is at 0.9.26.
+The latest published commit on `kirchherr/kb-write-unit-of-work` is `95fdd0dd`. This implementation and its closeout
+are working-tree changes above that commit. Office remains ahead of CRM.
+
+The standard Work E2E seed creates two authorized synthetic sources. The original unmocked proof used a stored text
+DOCX before the image implementation. The final browser regression exercises both stored sources through real
+PostgreSQL metadata and ACLs, versioned MinIO objects, the parser socket and explicit native save and readback.
+It checks exact provenance, the source classification, access denial and alpha before and after image save.
+
+On dev001 the initial proof passed 2/2 in 17.1 seconds. The final focused suite passed 263/263 and the targeted
+desktop/mobile Chromium regression passed 26/26 in 4.1 minutes. The final desktop and mobile image captures were
+reviewed for the saved figure and caption. The test asserts the alpha samples 0, 128 and 255 before and after save.
+Full quality passed on 2026-11-06 at 10:10 UTC. Ruff passed, 986 files passed format check, Mypy passed 649 sources
+and full Pytest reached 100 percent with the known Starlette/AnyIO deprecation warning.
+
+| Evidence on dev001 | SHA-256 |
+| --- | --- |
+| `e2e/work/artifacts/roadmap-936-baseline/results.json` | `32fe0135a2451f142764c919e667d29ff74c895a9f17f5f1c074075bae69f9b1` |
+| `e2e/work/artifacts/roadmap-943/results.json` | `91ffa4cb30a8ddfe3bc6c267f22a3ffcb6b4609e49c7da0535ebea8d6cb46723` |
+| Final desktop alpha figure | `8199d6a993281049bdd7cf7ed02781f4e445908a10483ba53a5540d82c25cc9a` |
+| Final mobile alpha figure | `1410b82786be73c54c5a5c51345e4a652a61fe8d3dd16c602a1ef17e7bf1ca70` |
+| `tmp/office0215-accepted-sources.sha256` | `e7c97190ecb5b21604daffaacff9ea39193a0663af64e1d6abc2f7a075061c70` |
+| `tmp/office0215-accepted-quality.log` | `ce5135d886a720a529a38d14e6d5236c390e532ad3d44cdee233a0bdc67114bc` |
+
+The admitted image shape is one inline package-local PNG or JPEG per otherwise empty ordinary body paragraph.
+Canonical structure preserves source order. Existing isolated decoding and normalization produce canonical PNG with
+alpha. Confirmed create revalidates source access and exact version, applies the source classification floor and
+materializes authorized document-owned assets. The old mocked preview test remains useful for editor regression.
+Word layout fidelity and productive DOCX interchange require their own evidence.
+
+Builds, tests and lifecycle use only dev001 at `/home/extern/collabio` with Compose project `collabio`. Read
+`/home/extern/AGENTS.md`, inspect projects, containers and ports, take `build.lock` before `docker.lock`, and use
+`git.lock` for scoped synchronization. The remote Git HEAD is `add05b4` with separately synchronized changes.
+Preserve that tree and compare targeted hashes. Use the dedicated
+`C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001` identity for `extern@192.168.0.108` with `HostKeyAlias=dev001`.
+Preserve the user-owned `.tmp/`, `erp_modul.md` and `review.md` in the local workspace.
+
+Synthetic review uses `docker-compose.yml` and `tmp/roadmap-310-review.override.yml` with profile `work-e2e`.
+The current review URL is `http://192.168.0.108:42880/office?review=docx-images-adr0215`. The review API and parser
+are healthy, and regular and review health endpoints returned `ok` after removal of the isolated
+`collabio-postgres-test-1` container. Image IDs and the full evidence manifest are in the dev001 operations log and
+`tmp/office0215-accepted-evidence.sha256`. The next Office slice is bounded DOCX section/page profiles. Use the
+continuation and bootstrap at the end of this handoff.
+
+## Retained Roadmap 935 restart state (2026-10-27)
 
 The current completed scope is Roadmap 935 / PLANS 796, module documentation version 0.9.25 and ADR-0214.
 Implementation is published on `kirchherr/kb-write-unit-of-work` through commit `0102f4ba`. The operator explicitly
@@ -5586,18 +6099,10 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Continue after Roadmap 935 / PLANS 796 / ADR-0214. Office remains ahead of CRM. The next product slice is bounded
-embedded DOCX image import. First inspect existing Office image normalization, isolated decoder, asset authorization
-and immutable save contracts. Define an ADR for package-local media relationships, bounded byte/pixel counts,
-alpha preservation, deterministic source order, safe metadata and unsupported-content handling before implementation.
-Keep exact source/version authorization, text/structure consistency, tenant classification and explicit save intact.
-
-Start with an unmocked synthetic stored-DOCX browser proof for the existing import path; the responsive proof currently
-mocks discovery/preview responses. Then carry embedded images through the established normalization and asset path.
-Do not silently fetch remote relationships or decode untrusted media inside the API process. Rich section profiles,
-headers/footers, exact Word pagination, full workbook semantics, live collaboration, productive DOCX export and WOPI
-remain separate scopes. Native multi-selection, cross-table calculations and linked charts already have completed
-historical slices; do not restart those older continuation tasks.
+Resume from Roadmap 1031 / PLANS 892 / ADR-0226 and the operator's next scope. Office remains ahead of CRM under the
+existing priority decision. Preserve exact source/version authorization, text/structure consistency,
+classification and confirmed save. External destinations, fields, exact Word pagination, live collaboration,
+productive DOCX export and WOPI retain separate gates.
 
 Preserve fresh current access checks, immutable history, atomic accepted versions, explicit confirmed CAS saves and
 memory-only draft semantics. Continue DOCX interchange separately through the existing Quick Edit spike, synthetic
@@ -5635,22 +6140,21 @@ Copyable prompt for the next chat:
 ```text
 Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
 docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
-docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0214.
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0226.
 
-Stand: Roadmap 935 / PLANS 796 abgeschlossen, ADR-0214-Implementierung 0102f4ba ist gepusht.
-Bleibe auf kirchherr/kb-write-unit-of-work und prüfe den aktuellen HEAD einschließlich Dokumentationsabschluss.
-Office hat Vorrang vor CRM. Nächster Block: abgesicherter Import eingebetteter DOCX-Bilder.
-Beginne mit einem ungemockten Browsernachweis über eine synthetische gespeicherte DOCX-Quelle,
-da der vorhandene responsive Importtest discovery/preview abfängt. Verwende bestehende Bildnormalisierung,
-isolierten Decoder und autorisierte Assets; erhalte Alpha, Quellen-/Versionsbindung, Klassifikation,
-Strukturbelege und explizites Speichern. Lege Grenzen und Relationship-Verarbeitung vorab im ADR fest.
+Stand: Roadmap 1031 / PLANS 892 / ADR-0226, begrenzter Import direkter DOCX-Schriftgroessen in Textlaeufen.
+Zuletzt gepusht ist 95fdd0dd auf
+kirchherr/kb-write-unit-of-work. ADR-0215 bis ADR-0226 sind im lokalen Office-Abschlusscommit darüber enthalten.
+Der begrenzte Importblock ist abgeschlossen; Git-Push ist noch offen. Prüfe vor Änderungen Log und Arbeitsbaum.
+Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.
+Erhalte Quellen-/Versionsbindung, Klassifikation, kanonische Struktur und explizites Speichern.
 
 Builds, Tests und Dienstaktionen ausschließlich auf dev001:/home/extern/collabio via Compose-Projekt collabio.
 Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordinationslocks beachten.
 SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
 Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
 Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
-Review: http://192.168.0.108:42880/office?review=docx-pages-adr0214
+Review: http://192.168.0.108:42880/office?review=docx-font-size-adr0226
 
 .tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
 Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,

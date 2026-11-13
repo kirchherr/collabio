@@ -252,7 +252,13 @@ class PgOfficeDocumentRepository:
         connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
 
     @staticmethod
-    def _permissions(connection: psycopg.Connection[Any], user: UserContext, object_id: str) -> set[str]:
+    def _permissions(
+        connection: psycopg.Connection[Any],
+        user: UserContext,
+        object_id: str,
+        *,
+        object_type: str = OFFICE_DOCUMENT_OBJECT_TYPE,
+    ) -> set[str]:
         # The request's readable IDs include ABAC decisions. The second query is
         # authoritative and typed; an arbitrary readable ID never grants write.
         if object_id not in user.readable_object_ids:
@@ -266,7 +272,7 @@ class PgOfficeDocumentRepository:
               AND (acl.expires_at_utc IS NULL OR acl.expires_at_utc > now())
               AND ({_ACL_SUBJECT_SQL})
             """,
-            (user.tenant_id, object_id, OFFICE_DOCUMENT_OBJECT_TYPE, user.user_id, sorted(user.role_ids), user.user_id),
+            (user.tenant_id, object_id, object_type, user.user_id, sorted(user.role_ids), user.user_id),
         ).fetchall()
         return {str(row[0]) for row in rows}
 

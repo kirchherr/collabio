@@ -159,7 +159,26 @@ export function officeImagePath(attrs) {
   return `/v1/office/documents/${encodeURIComponent(attrs.documentId)}/images/${encodeURIComponent(attrs.assetId)}/${encodeURIComponent(attrs.versionId)}`;
 }
 
+export function officeImportImagePreviews(entries, content) {
+  const references = officeImageReferences(content), images = new Map();
+  if (!Array.isArray(entries) || entries.length > 8 || entries.length !== references.length) throw new Error("import-images");
+  let pixels = 0;
+  for (const [index, entry] of entries.entries()) {
+    const attrs = officeImageAttributes(entry.image);
+    if (Object.keys(entry).sort().join() !== "content_base64,image" || JSON.stringify(attrs) !== JSON.stringify(references[index]) ||
+        typeof entry.content_base64 !== "string" || entry.content_base64.length > 21420716) throw new Error("import-image");
+    pixels += attrs.pixelWidth * attrs.pixelHeight;
+    if (pixels > 4000000) throw new Error("import-pixels");
+    const bytes = Uint8Array.from(atob(entry.content_base64), (character) => character.charCodeAt(0));
+    if (bytes.length > 16065536 || bytes.length < 26 || bytes[0] !== 137 || bytes[1] !== 80 || bytes[25] !== 6) throw new Error("import-png");
+    images.set(officeImagePath(attrs), new Blob([bytes], { type: "image/png" }));
+  }
+  return images;
+}
+
 export async function fetchOfficeImage(attrs, context, signal) {
+  const preview = context.importImages?.get(officeImagePath(attrs));
+  if (preview && !signal?.aborted) return URL.createObjectURL(preview);
   const response = await fetch(officeImagePath(attrs), { cache: "no-store", signal, headers: {
     "X-Tenant-Id": context.tenantId, "X-User-Id": context.userId,
     "X-Role-Ids": context.roleIds, "X-Readable-Object-Ids": context.readableObjectIds,

@@ -2415,22 +2415,243 @@ exact source/parser provenance readback.
 796. [x] Close the block with parser/import/schema and browser regressions plus full quality. Add no migration,
 dependency, external engine, inferred pagination, tenant activation or productive DOCX admission.
 
+797. [x] Prove the existing DOCX preview and explicit save on desktop and mobile with a synthetic stored source,
+real PostgreSQL ACLs, exact-version object storage and the isolated parser, without browser response interception.
+
+798. [x] Bound package-local inline PNG and JPEG relationships, image counts and media bytes under ADR-0215.
+
+799. [x] Reject external, linked, ambiguous or unsupported drawings and preserve supported images in source order
+and in the canonical structure hash. Keep independent normalized text verification.
+
+800. [x] Reuse the isolated decoder and canonical PNG normalization, preserving alpha and enforcing decoded pixel
+limits before exposing ephemeral image previews.
+
+801. [x] Recheck exact source provenance and current ACL during confirmed create, and enforce the source
+classification floor before creating any document-owned assets.
+
+802. [x] Materialize confirmed image references through the existing asset authorization and immutable save path.
+Verify exact-version readback, replay, caption preservation and rollback of relational metadata.
+
+803. [x] Seed both saved synthetic sources through the standard Work E2E seeder. Verify real image preview, save,
+pixel alpha, access denial and responsive containment on desktop and mobile.
+
+804. [x] Close the block with focused parser, API, PostgreSQL and browser regression checks plus full quality.
+
+805. [x] Define the bounded DOCX section and page profile under ADR-0216 against the existing native schema.
+
+806. [x] Map paragraph-ending and final body section properties to the native root and following-section profiles.
+
+807. [x] Bound paper size, orientation, margins and equal-width column count. Reject unsupported geometry and
+non-next-page transitions.
+
+808. [x] Reject ambiguous placement, duplicate properties, unsupported section settings and conflicting page starts.
+Retain extracted text for existing text-only callers.
+
+809. [x] Bind the admitted profiles to canonical structure evidence and independently validate the native mapping
+without changing normalized text equality or the parser transport.
+
+810. [x] Seed a classified synthetic stored DOCX with distinct first and following profiles in standard Work E2E.
+
+811. [x] Verify preview, confirmed save, exact-version readback and ordered PDF page sizes on desktop and mobile.
+
+812. [x] Run focused and full regressions on dev001 and record scope and evidence in the operations log and handoff.
+
+813. [x] Define bounded literal default DOCX headers and footers under ADR-0217.
+
+814. [x] Resolve typed, canonical package-local relationships and exact content types without following part links.
+
+815. [x] Accept a single plain paragraph per running-text part and reject fields, links, formatting and alternate
+page variants under explicit byte and character limits.
+
+816. [x] Resolve header and footer inheritance independently. Preserve an explicitly empty part as a clear.
+
+817. [x] Bind effective running text to canonical structure and independently validate native profiles and
+margin clearance. Keep body extraction and parser transport unchanged.
+
+818. [x] Add a classified synthetic stored DOCX to the standard Work E2E seed.
+
+819. [x] Verify exact save and reopen on desktop and mobile. Check default, inherited and cleared values on the
+three resulting Chromium PDF pages.
+
+820. [x] Run focused and full regression on dev001 and capture evidence and operational scope.
+
+821. [x] Define bounded DOCX bookmark ranges and same-document hyperlinks under ADR-0218.
+
+822. [x] Match canonical start/end IDs and names, and preserve each admitted range start as a native point.
+
+823. [x] Resolve explicit anchors to admitted same-document points, preserving linked text and supported marks.
+
+824. [x] Reject ambiguous pairs, unresolved or mixed targets and out-of-scope markup in Office preview.
+Preserve independent body extraction and the existing inert treatment of relationship hyperlinks.
+
+825. [x] Bind bookmark positions and link targets to canonical structure evidence, and independently validate
+the closed wire shape, target set and counts in the API.
+
+826. [x] Add a classified, authorized navigation fixture to the standard Work E2E seed.
+
+827. [x] Verify explicit save, exact readback, native local jump and the internal PDF annotation on desktop and mobile.
+
+828. [x] Run focused and full regression on dev001 and record evidence, operational scope and continuation.
+
+829. [x] Define the bounded DOCX list and numbering contract under ADR-0219.
+
+830. [x] Resolve direct list instances and three explicit levels through package-local numbering definitions.
+
+831. [x] Preserve simple decimal starts, start-only overrides, continuation across interruptions and descendant
+restarts when an ancestor advances.
+
+832. [x] Refuse ambiguous list layouts in Office preview while retaining independent body extraction and the
+simple flat structure contract.
+
+833. [x] Validate nested parser evidence independently before mapping it to native list items and start values.
+
+834. [x] Seed an authorized synthetic stored DOCX with mixed levels, reset and continuation.
+
+835. [x] Verify exact save, reopen and rendered numbering on desktop and mobile.
+
+836. [x] Run focused and full dev001 regression and close the bounded DOCX import sequence with an updated handoff.
+
+837. [x] Define bounded DOCX table spans under ADR-0220 against the existing native grid contract.
+
+838. [x] Preserve explicit horizontal spans and physical vertical restart/continuation markers from the main body.
+
+839. [x] Reject unsafe or ambiguous markup, irregular grids, and continuation cells carrying body text.
+
+840. [x] Reconstruct the native rectangular grid independently at the API boundary and verify physical text order.
+
+841. [x] Preserve the simple-table wire shape and bind new spans to canonical source evidence.
+
+842. [x] Seed an authorized synthetic stored source with combined horizontal and vertical spans.
+
+843. [x] Verify confirmed save, exact readback and native print on desktop and mobile.
+
+844. [x] Run focused and full dev001 checks and close the block with updated operations evidence and handoff.
+
+### Native Office bounded DOCX table header (Roadmap 984–991)
+
+845. [x] Define one explicit first-row table header under ADR-0221 against the existing native table contract.
+
+846. [x] Read the closed OOXML marker forms in the isolated parser and bind the enabled flag to canonical evidence.
+
+847. [x] Reject ambiguous placement, later enabled rows and unsupported physical grids.
+
+848. [x] Map to native header cells at the API boundary and reject vertical spans crossing into the body.
+
+849. [x] Seed an editor-only stored DOCX source with a table long enough to require pagination.
+
+850. [x] Verify classification, exact provenance, confirmed save, readback and semantic header cells in Chromium.
+
+851. [x] Independently verify the repeated header and ordered body rows in desktop and mobile PDFs.
+
+852. [x] Complete the dev001 regression and update the operations evidence and handoff.
+
+### Native Office bounded DOCX paragraph alignment (Roadmap 992–999)
+
+853. [x] Define the direct paragraph and heading alignment profile in ADR-0222.
+
+854. [x] Resolve the four explicit WordprocessingML values to the native alignment enum.
+
+855. [x] Bind alignment and page-break segments to canonical parser evidence while keeping text extraction independent.
+
+856. [x] Validate the native enum and structured runs independently at the preview API boundary.
+
+857. [x] Seed an editor-only stored DOCX and cover valid, malformed and forged alignment evidence.
+
+858. [x] Verify exact provenance, classification, confirmed save and reopened native layout in Chromium.
+
+859. [x] Verify the four positions and the centered heading in desktop and mobile Chromium PDFs.
+
+860. [x] Complete dev001 quality and close the operations evidence and handoff.
+
+### Native Office bounded DOCX paragraph spacing (Roadmap 1000–1007)
+
+861. [x] Define direct paragraph and line spacing in ADR-0223 against the existing native enums.
+
+862. [x] Convert admitted twip and automatic line values exactly, preserving explicit zeros and absent values.
+
+863. [x] Bind spacing to canonical evidence while keeping unsupported-layout text extraction available.
+
+864. [x] Validate native types and enums independently at the API boundary.
+
+865. [x] Seed an editor-only stored source and cover malformed, conflicting and forged spacing evidence.
+Filter latest metadata by MIME before the discovery bound, retaining tenant and authoritative ACL checks.
+
+866. [x] Verify provenance, classification, confirmed save, readback and computed spacing in Chromium.
+
+867. [x] Measure line heights and paragraph spacing independently in desktop and mobile PDFs.
+
+868. [x] Complete dev001 regression and close the operations evidence and handoff.
+
+### Native Office bounded DOCX paragraph indentation (Roadmap 1008–1015)
+
+869. [x] Define direct and special paragraph indents in ADR-0224 against the native enums.
+
+870. [x] Convert admitted twip values exactly, preserving explicit zero and absence separately.
+
+871. [x] Account for native hanging-indent padding to preserve first-line and continuation positions.
+
+872. [x] Bind canonical values and validate native types and enums independently at the API boundary.
+
+873. [x] Seed an editor-only stored source and cover ambiguous, unsupported and forged indentation evidence.
+
+874. [x] Verify authorization, provenance, classification, confirmed save, readback and computed layout in Chromium.
+
+875. [x] Measure first-line, continuation and right-edge positions in desktop and mobile PDFs.
+
+876. [x] Complete dev001 quality and close the operations evidence and handoff.
+
+### Native Office bounded DOCX paragraph pagination (Roadmap 1016–1023)
+
+877. [x] Define direct keep-with-next and keep-lines controls in ADR-0225.
+
+878. [x] Canonicalize explicit OOXML booleans while preserving false separately from absence.
+
+879. [x] Refuse malformed and ambiguous controls while keeping plain text extraction available.
+
+880. [x] Validate actual booleans independently at the API boundary and render explicit false in native print.
+
+881. [x] Seed a stored source comparing a split control with a kept group at equivalent page boundaries.
+
+882. [x] Verify exact provenance, classification, confirmed save, reopening and actual print-media CSS in Chromium.
+
+883. [x] Independently verify split and kept page placement in desktop and mobile PDFs.
+
+884. [x] Complete dev001 regression, native pagination checks and full quality, then update the handoff.
+
+### Native Office bounded DOCX run font sizes (Roadmap 1024–1031)
+
+885. [x] Define direct run font sizes in ADR-0226 against the existing native size enum.
+
+886. [x] Convert supported half-point values exactly and preserve the old run shape when size is absent.
+
+887. [x] Refuse malformed, unsupported and conflicting size evidence while keeping extracted text available.
+
+888. [x] Validate integer type and native enum independently before constructing text-style marks.
+
+889. [x] Cover combinations with existing marks, lists, headings, header cells, internal links and page-break segments.
+
+890. [x] Verify source authorization, provenance, classification, confirmed save and reopened computed sizes in Chromium.
+
+891. [x] Verify actual print-media sizes and independent text dimensions in desktop and mobile PDFs.
+
+892. [x] Complete dev001 quality and relevant native character-format regression, then close the handoff.
+
 ## Next Engineering Step
 
-Close the next coherent product loop instead of extending preparation-only boundaries:
-
-Publication closeout: Roadmap 935 / PLANS 796 / ADR-0214 implementation is published as `0102f4ba`.
-Before adding embedded DOCX images, close the unmocked stored-source-to-parser browser proof; the current responsive
-import test intercepts discovery and preview responses. Use the authoritative restart state in `docs/CURRENT_HANDOFF.md`.
+Roadmap 1031 / PLANS 892 / ADR-0226 adds direct run font sizes to the verified DOCX import.
+Use the authoritative restart state in `docs/CURRENT_HANDOFF.md`.
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 935 / PLANS 796. A governed picker exposes only currently readable DOCX
-  metadata, and the exact selected version can produce a bounded non-persisting native preview that preserves headings,
-  flat lists, simple tables and bounded bold/italic/underline/strike runs through the isolated parser and explicit
-  confirmed save. Explicit hard and paragraph page breaks also survive the bounded preview. Continue with embedded
-  images and richer section/page profiles before productive import/export or collaboration gates. Preserve all earlier AI,
-  voice, interchange, collaboration,
-  object, document, table, formula, vector, classification, sharing, page, typography, history, review, suggestion,
+- Native Office is complete through Roadmap 1031 / PLANS 892. The governed picker binds currently readable DOCX
+  sources to an exact version. The bounded preview preserves supported structures, inline marks, explicit page breaks,
+  standalone embedded raster images, explicit next-page section profiles, literal default headers and footers,
+  bookmark points, internal links, up to three list levels with bounded decimal numbering, explicit rectangular
+  table spans with one repeating first row, direct paragraph and heading alignment, bounded direct spacing,
+  direct paragraph indentation, explicit paragraph keeping controls and bounded direct run font sizes.
+  Confirmed save preserves classification and exact provenance and creates authorized document-owned image assets.
+  Preserve all earlier
+  AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page,
+  typography, history, review, suggestion,
   print, recovery and quality contracts. External workbook links, volatile formulas, macros, automatic save or action,
   public links, external guests, live collaboration and DOCX interchange remain closed until their separate gates pass.
 - Roadmap 251 completes CRM account details with associated contacts and activities in `/work`, reusing all three CRM feature gates and the existing account-workspace API. Preserve the 60-case browser matrix. CRM account onboarding and further CRM expansion are deferred behind Office development by the user's priority decision.

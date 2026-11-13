@@ -46,6 +46,7 @@ from suite.platform.office_api import (
     build_office_ai_summary_service,
     build_office_ai_translation_service,
     build_office_dictation_service,
+    build_office_import_preview_service,
     build_office_rag_answer_service,
     build_office_read_aloud_service,
     build_office_source_search_service,
@@ -361,6 +362,9 @@ app.state.office_document_service = build_synthetic_office_service(
     database_dsn=os.environ["SUITE_DATABASE_DSN"],
     client=FailureInjectableObjectStoreClient(sdk_client=office_sdk_client.sdk_client, storage_provider="minio"),
     audit=app.state.audit_logger,
+)
+app.state.office_import_preview_service = build_office_import_preview_service(
+    source_repository=app.state.office_document_service.source_repository, audit=app.state.audit_logger
 )
 app.state.office_review_service = build_synthetic_office_review_service(
     document_service=app.state.office_document_service, audit=app.state.audit_logger

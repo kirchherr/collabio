@@ -755,13 +755,21 @@ class InMemorySourceObjectRepository:
     def latest(self, *, tenant_id: str, object_id: str) -> SourceObjectRecord:
         return self._records[self._latest_keys[(tenant_id, object_id)]]
 
-    def list_latest_metadata(self, *, tenant_id: str, limit: int = 100) -> tuple[SourceObjectMetadata, ...]:
+    def list_latest_metadata(
+        self, *, tenant_id: str, limit: int = 100, mime_type: str | None = None
+    ) -> tuple[SourceObjectMetadata, ...]:
         if not 1 <= limit <= 500:
             raise ValueError("source object metadata limit must be between 1 and 500")
+        if mime_type is not None:
+            mime_type = mime_type.partition(";")[0].strip().lower()
         values = [
             self._records[key].metadata
             for (record_tenant_id, _), key in self._latest_keys.items()
             if record_tenant_id == tenant_id
+            and (
+                mime_type is None
+                or self._records[key].metadata.mime_type.partition(";")[0].strip().lower() == mime_type
+            )
         ]
         return tuple(sorted(values, key=lambda value: (value.updated_at_utc, value.object_id), reverse=True)[:limit])
 

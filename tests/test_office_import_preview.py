@@ -158,6 +158,22 @@ def test_import_source_discovery_returns_only_current_acl_authorized_docx_metada
     }
 
 
+def test_docx_discovery_filters_before_limit_and_uses_only_the_latest_version() -> None:
+    old = source_record(version_id="v1")
+    current = source_record(version_id="v2", mime_type="application/pdf")
+    docx = source_record(object_id="source-readable", mime_type=f" {DOCX_MIME_TYPE.upper()} ; ignored=1")
+    hidden = source_record(object_id="source-hidden")
+    noise = tuple(source_record(object_id=f"zz-noise-{index:03d}", mime_type="text/plain") for index in range(501))
+    repository = InMemorySourceObjectRepository((old, current, docx, hidden, *noise))
+    service = OfficeImportPreviewService(
+        source_repository=repository, audit=InMemoryAuditLogger(), parser_dispatch=parser
+    )
+    context = user().model_copy(update={"readable_object_ids": {"source-docx-1", "source-readable"}})
+    result = service.discover_sources(user_context=context)
+    assert [(item.source_object_id, item.source_version_id) for item in result.items] == [("source-readable", "v7")]
+    assert repository.list_latest_metadata(tenant_id="another-tenant", mime_type=DOCX_MIME_TYPE) == ()
+
+
 def test_import_preview_denies_unreadable_source_before_parser_dispatch() -> None:
     dispatched = False
 
