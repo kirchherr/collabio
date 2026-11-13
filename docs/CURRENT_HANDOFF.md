@@ -5,14 +5,15 @@ Updated: 2026-11-13
 ## Authoritative restart state
 
 Roadmap 1031 / PLANS 892 / ADR-0226 adds bounded DOCX run font sizes. The Office module documentation is at 0.9.37.
-The last published commit on
-`kirchherr/kb-write-unit-of-work` is `95fdd0dd`. ADR-0215 through ADR-0226 and their closeout are included in the
-local Office closeout commit above it. Office remains ahead of CRM.
+The verified implementation on `kirchherr/kb-write-unit-of-work` is published through `ee5278f1`, including
+ADR-0215 through ADR-0226 and their closeout above the previous published commit `95fdd0dd`.
+The publication documentation follows on the same branch. Office remains ahead of CRM.
 
 The bounded DOCX import block is complete through Roadmap 1031 / PLANS 892. No implementation or test task
-remains open within that scope. The local closeout contains 76 explicitly selected files, all matched by SHA-256
+remains open within that scope. The implementation closeout contains 76 explicitly selected files, all matched by SHA-256
 against the verified dev001 tree before the documentation closeout. The protected `.tmp/`, `erp_modul.md` and
-`review.md` are excluded. Git publication remains pending explicit authorization for the external push.
+`review.md` are excluded. The operator authorized the external push, and publication used a regular fast-forward
+from `95fdd0dd` to `ee5278f1`. The separately synchronized dev001 Git tree was preserved.
 
 Future work is separately scoped: wider DOCX fidelity and style inheritance, productive export/Quick Edit/WOPI,
 live collaboration, and accountable tenant/pilot/production admission. These are not prerequisites for closing
@@ -6143,9 +6144,9 @@ docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschni
 docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0226.
 
 Stand: Roadmap 1031 / PLANS 892 / ADR-0226, begrenzter Import direkter DOCX-Schriftgroessen in Textlaeufen.
-Zuletzt gepusht ist 95fdd0dd auf
-kirchherr/kb-write-unit-of-work. ADR-0215 bis ADR-0226 sind im lokalen Office-Abschlusscommit darüber enthalten.
-Der begrenzte Importblock ist abgeschlossen; Git-Push ist noch offen. Prüfe vor Änderungen Log und Arbeitsbaum.
+Die Implementierung einschließlich ADR-0215 bis ADR-0226 ist bis ee5278f1 auf
+kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
+Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
 Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.
 Erhalte Quellen-/Versionsbindung, Klassifikation, kanonische Struktur und explizites Speichern.
 

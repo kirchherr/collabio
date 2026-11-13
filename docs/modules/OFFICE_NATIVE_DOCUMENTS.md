@@ -5,8 +5,9 @@ Roadmap: 252 / PLANS 113 foundation through 1031 / PLANS 892 bounded DOCX run fo
 Module: `office_documents` / version 0.9.37
 Decisions: ADR-0079 through ADR-0226; current decision: `ARCHITECTURE_DECISIONS/ADR-0226-bounded-native-office-docx-run-font-sizes.md`
 
-Publication: the current block is included in the local Office closeout commit above published commit `95fdd0dd`
-on `kirchherr/kb-write-unit-of-work`. External Git publication remains pending explicit authorization.
+Publication: the implementation through ADR-0226 is published as `ee5278f1` on
+`kirchherr/kb-write-unit-of-work`, above the previous published commit `95fdd0dd`.
+Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
 ## Bounded DOCX run font sizes (Roadmap 1024–1031)

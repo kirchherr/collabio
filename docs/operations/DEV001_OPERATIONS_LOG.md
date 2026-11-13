@@ -1741,3 +1741,17 @@ This closeout adds no product behavior. Wider fidelity, productive DOCX intercha
 tenant/pilot/production admission remain separately scoped. The local Git commit records the completed work;
 external publication is pending explicit push authorization. Remote Git HEAD and its separately synchronized
 working tree are preserved. No service lifecycle or port change is part of this closeout.
+
+## 2026-11-13 Native Office Roadmap 1031 Git publication
+
+The operator authorized completing the remaining publication. After fetching and verifying the remote branch
+as an ancestor, the regular push advanced `kirchherr/kb-write-unit-of-work` from `95fdd0dd` to `ee5278f1`.
+The implementation commit contains the 76 verified files through ADR-0226 / Roadmap 1031 / PLANS 892.
+The publication handoff follows in a documentation-only commit on the same branch.
+
+The final three documentation files synchronize to dev001 under exact scoped baseline hashes and `git.lock`.
+Documentation contract checks use explicit Compose project `collabio`, preflight and `build.lock` before
+`docker.lock`. The earlier full quality and browser acceptance remain applicable because product sources
+are unchanged. The separately synchronized remote Git HEAD stays `add05b4`; no pull or reset is used.
+Protected `.tmp/`, `erp_modul.md` and `review.md` remain outside publication. No service lifecycle or port change
+is part of publication.
