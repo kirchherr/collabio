@@ -5,8 +5,8 @@ Updated: 2026-11-13
 ## Authoritative restart state
 
 Roadmap 1047 / PLANS 908 / ADR-0228 adds bounded DOCX run font families. The Office module documentation is at 0.9.39.
-The previous published closeout is `5aef1464` on `kirchherr/kb-write-unit-of-work`. The font-family block and its
-closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+The implementation through ADR-0228 is published as `60ce6265` on `kirchherr/kb-write-unit-of-work`, above the
+previous closeout `5aef1464`. Publication documentation follows on the same branch. Office remains ahead of CRM.
 
 The isolated parser admits paired direct ASCII/High-ANSI names Arial, Georgia and Consolas, mapped to the existing
 native sans, serif and mono families. Case is canonicalized; absent assignment keeps the old run shape. Theme,
@@ -6252,7 +6252,7 @@ docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschni
 docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0228.
 
 Stand: Roadmap 1047 / PLANS 908 / ADR-0228, begrenzter Import direkter DOCX-Schriftfamilien.
-Die Implementierung einschließlich ADR-0215 bis ADR-0227 ist bis d99a61f7 auf
+Die Implementierung einschließlich ADR-0215 bis ADR-0228 ist bis 60ce6265 auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
 Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.

@@ -1858,3 +1858,15 @@ transfer. Final manifests are tmp/office0228-sources.sha256 and tmp/office0228-e
 
 Cleanup removed collabio-postgres-test-1. Both health endpoints returned ok; review API and parser remain healthy.
 The separately synchronized remote Git tree remains at add05b4. Protected operator files remain excluded.
+
+## 2026-11-13 Native Office Roadmap 1047 Git publication
+
+The operator-authorized regular push advanced `kirchherr/kb-write-unit-of-work` from `5aef1464` to `60ce6265`.
+The implementation commit contains 14 scoped files through Roadmap 1047 / PLANS 908 / ADR-0228. Nine source
+hashes and five documentation hashes matched the tested dev001 tree before committing. Eight documentation
+contracts passed after synchronization. The publication record follows on the same branch as a documentation-only
+commit. Product sources retain the completed 538 focused, two exact, 43 no-retry matrix and full quality acceptance.
+
+The final publication documents synchronize with exact baseline guards under `git.lock` and the established
+build/docker lock order for their contract checks. The separately synchronized dev001 Git tree remains at
+`add05b4`; no pull or reset is used. Protected operator files remain excluded from publication.

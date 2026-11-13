@@ -5,8 +5,8 @@ Roadmap: 252 / PLANS 113 foundation through 1047 / PLANS 908 bounded DOCX run fo
 Module: `office_documents` / version 0.9.39
 Decisions: ADR-0079 through ADR-0228; current decision: `ARCHITECTURE_DECISIONS/ADR-0228-bounded-native-office-docx-run-font-families.md`
 
-Publication: the previous implementation through ADR-0227 is published as `d99a61f7` on
-`kirchherr/kb-write-unit-of-work`, above the previous closeout `55afa4dc`.
+Publication: the implementation through ADR-0228 is published as `60ce6265` on
+`kirchherr/kb-write-unit-of-work`, above the previous closeout `5aef1464`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
