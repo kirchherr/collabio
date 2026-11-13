@@ -1822,3 +1822,39 @@ and full quality acceptance.
 The final publication documents synchronize with exact baseline guards under `git.lock` and the established
 build/docker lock order for their contract checks. The separately synchronized dev001 Git tree remains at
 `add05b4`; no pull or reset is used. Protected operator files remain excluded from publication.
+
+## 2026-11-13 Native Office DOCX run font families
+
+ADR-0228 maps paired direct Arial/Georgia/Consolas assignments to the existing native sans/serif/mono families.
+The profile admits the documented Latin and common punctuation/currency ranges, with native browser font fallbacks.
+Theme/script ambiguity, unsupported names and malformed evidence refuse Office preview while text remains
+available. The API independently validates family names and combines family, size and color in one text-style mark.
+
+The run used `/home/extern/collabio` and explicit project `collabio`. Ten scoped baseline hashes matched under
+`git.lock` before synchronizing nine source/ADR files. Builds, tests and lifecycle work used preflight and
+`build.lock` before `docker.lock`. The standard synthetic seed added the confidential stored font-family source.
+The review API and isolated parser were recreated; existing review stores and the image decoder were reused.
+The review override retained port 42880.
+
+The initial Ruff check required explicit Unicode escapes for deliberate test characters. The correction preserves
+the runtime characters. Final focused tests passed 538/538; Ruff and Mypy over 678 sources passed.
+
+
+The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed 43/43 in 6.0 minutes with
+retries disabled (38 browser cases and five native model checks). Poppler ties each labeled run to its actual
+native font group and verifies equal eight-character monospace advances. Both full PDF pages passed visual review.
+The verifier is retained at tmp/office0228-pdf-verify.py; outputs and hashes are in the current handoff.
+
+Full quality completed at 20:12 UTC: Ruff, 1031 format-conformant files, Mypy over 678 sources and
+Pytest at 100 percent with the known Starlette/AnyIO warning. Nine source and eight evidence hashes matched after
+transfer. Final manifests are tmp/office0228-sources.sha256 and tmp/office0228-evidence.sha256.
+
+| Image | Image ID |
+| --- | --- |
+| `collabio-work-e2e:latest` | `sha256:58c09725dfd467cb77fdcb5e16427fca7406244a4c89f3dfd8181a3d92fd18cd` |
+| `collabio-work-e2e-api:latest` | `sha256:46e9adf5885587eecf269ab537640e63c3b213b55c9b7ca199dce31fec597331` |
+| `collabio-work-e2e-rich-document-parser:latest` | `sha256:b8086c92ecab90271db5a33c040983f7170e56d40a9c7326278b1b08d72f9cae` |
+| `collabio-quality:latest` | `sha256:f506d624cf37ff4ba5eb5b0a06410a755ba6112295461ceca8e046baf5a7821f` |
+
+Cleanup removed collabio-postgres-test-1. Both health endpoints returned ok; review API and parser remain healthy.
+The separately synchronized remote Git tree remains at add05b4. Protected operator files remain excluded.

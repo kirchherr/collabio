@@ -1,14 +1,33 @@
 # Native Office Documents
 
-Status: Roadmap 252–1039 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 1039 / PLANS 900 bounded DOCX run text colors
-Module: `office_documents` / version 0.9.38
-Decisions: ADR-0079 through ADR-0227; current decision: `ARCHITECTURE_DECISIONS/ADR-0227-bounded-native-office-docx-run-text-colors.md`
+Status: Roadmap 252–1047 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 1047 / PLANS 908 bounded DOCX run font families
+Module: `office_documents` / version 0.9.39
+Decisions: ADR-0079 through ADR-0228; current decision: `ARCHITECTURE_DECISIONS/ADR-0228-bounded-native-office-docx-run-font-families.md`
 
-Publication: the implementation through ADR-0227 is published as `d99a61f7` on
+Publication: the previous implementation through ADR-0227 is published as `d99a61f7` on
 `kirchherr/kb-write-unit-of-work`, above the previous closeout `55afa4dc`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX run font families (Roadmap 1040–1047)
+
+Direct paired ASCII/High-ANSI font names Arial, Georgia and Consolas map to native sans, serif and mono.
+Case is canonicalized; absent assignment retains the prior run shape. Ambiguous, theme-based, script-specific
+and malformed evidence refuses Office preview while text extraction stays available. The admitted text ranges
+are the Latin, combining, common punctuation and currency blocks listed in ADR-0228. Existing local browser
+fallbacks apply; embedded-font fidelity and exact Word layout retain separate scope.
+
+The API independently validates native family names and combines family, size and color in one text-style mark.
+Shared conversion covers headings, lists, cells, admitted links and page breaks. The stored synthetic source
+covers authorization, provenance, classification, confirmed save, reopening, print styles and monospace text.
+
+Focused tests passed 538/538. The exact desktop/mobile check passed 2/2, followed by 43/43 selected Chromium
+checks in 6.0 minutes with retries disabled: 38 browser cases and five native model checks. Actual print
+CSS preserves all family declarations. Independent PDF inspection confirms distinct native font groups and equal
+monospace advances. Both full PDF pages passed visual review. Full quality passed at 20:12 UTC with Ruff,
+1031 format-conformant files, Mypy over 678 sources and Pytest at 100 percent. Evidence hashes and the
+restart instructions are in the current handoff.
 
 ## Bounded DOCX run text colors (Roadmap 1032–1039)
 

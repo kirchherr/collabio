@@ -4,6 +4,56 @@ Updated: 2026-11-13
 
 ## Authoritative restart state
 
+Roadmap 1047 / PLANS 908 / ADR-0228 adds bounded DOCX run font families. The Office module documentation is at 0.9.39.
+The previous published closeout is `5aef1464` on `kirchherr/kb-write-unit-of-work`. The font-family block and its
+closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+
+The isolated parser admits paired direct ASCII/High-ANSI names Arial, Georgia and Consolas, mapped to the existing
+native sans, serif and mono families. Case is canonicalized; absent assignment keeps the old run shape. Theme,
+script or name ambiguity and malformed evidence refuse Office preview while text extraction stays available.
+Admitted text ranges are Latin U+0000–024F/U+1E00–1EFF, combining marks U+0300–036F, common punctuation
+U+2000–206F and currency U+20A0–20CF. The API independently validates native family names and combines family,
+size and color in one text-style mark. Headings, lists, cells, admitted links and page-break segments reuse the
+shared conversion. Existing browser font fallbacks apply; embedded-font fidelity and exact Word layout remain separate.
+
+Standard Work E2E seeds `work-e2e-stored-docx-font-family/stored-docx-font-family-v1` as a confidential stored source.
+The synthetic review is `http://192.168.0.108:42880/office?review=docx-font-family-adr0228`.
+
+Focused tests passed 538/538. The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed
+43/43 in 6.0 minutes with retries explicitly disabled: 38 browser cases and five native model checks.
+It covers source denial, exact provenance, classification, confirmed save, readback, reopening, mixed formatting
+and all eight actual print-media family assignments. The established direct observation and bounded PDF waiter
+from ADR-0227 remain in use. The initial Ruff check required Unicode escapes for intentional test characters;
+the runtime characters and test coverage were preserved.
+
+Independent Poppler inspection ties each labeled run to the expected sans/serif/mono PDF font group, including
+the native local substitutes. The two eight-character monospace words have equal measured advances in both
+one-page PDFs. Visual review confirms the mixed families, formatting and table are unclipped. Preview captures
+show the visible part of the scrolling print preview; the complete PDFs cover all assignments.
+
+Full quality passed at 20:12 UTC with Ruff, 1031 format-conformant files, Mypy over 678 sources
+and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL test
+container. Both health endpoints returned `ok`, and the review API/parser remain healthy. All nine source hashes
+and eight evidence hashes matched after transfer to the operator workstation.
+
+| Evidence under `e2e/work/artifacts/roadmap-1047/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `db26e7788dff16dc4f13964b37c66e364cecb44223a6fd7ce95a9c0538894b6c` |
+| `office-docx-font-family-desktop-chromium.png` | `6d93679695bd02713959a4d6eb0857aee84e932100a39a07f55817f2cd1116b6` |
+| `office-docx-font-family-desktop-chromium.pdf` | `6793e5007c4f0a8169a171fb78b626f15ee4adcc55a684485d98990c8f7ba705` |
+| `office-docx-font-family-mobile-chromium.png` | `3094dc52a9c5a441f7ba8d1a1b6bd4da126a93c388a9ab7efb6cfb3ee6c7110c` |
+| `office-docx-font-family-mobile-chromium.pdf` | `5040ad144457f6172ed8244a2b4f6fe76d6bf3498f5ea855b3bde7617b8eb7cf` |
+| `office0228-sources.sha256` | `5e2df7a16638131b11e2f4a2e5540bde96cd7ddf8006eb54afc005b44a1751f0` |
+| `office0228-quality.log` | `dc466c8f60af10fa1e94965823a42327e3289618e2f33c9b63d4218e68558319` |
+| `office0228-pdf.log` | `d3c20611bde5923955142f36b2065f661d82b99a39d021fcf36b4dcbc4ac5ec0` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare scoped baselines under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and protected local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1039 restart state (2026-11-13)
+
 Roadmap 1039 / PLANS 900 / ADR-0227 adds bounded DOCX run text colors. The Office module documentation is at 0.9.38.
 The implementation through ADR-0227 is published as `d99a61f7` on `kirchherr/kb-write-unit-of-work`, above the
 previous closeout `55afa4dc`. Publication documentation follows on the same branch. Office remains ahead of CRM.
@@ -6158,7 +6208,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Resume from Roadmap 1039 / PLANS 900 / ADR-0227 and the operator's next scope. Office remains ahead of CRM under the
+Resume from Roadmap 1047 / PLANS 908 / ADR-0228 and the operator's next scope. Office remains ahead of CRM under the
 existing priority decision. Preserve exact source/version authorization, text/structure consistency,
 classification and confirmed save. External destinations, fields, exact Word pagination, live collaboration,
 productive DOCX export and WOPI retain separate gates.
@@ -6199,9 +6249,9 @@ Copyable prompt for the next chat:
 ```text
 Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
 docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
-docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0227.
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0228.
 
-Stand: Roadmap 1039 / PLANS 900 / ADR-0227, begrenzter Import direkter DOCX-Textfarben der nativen Palette.
+Stand: Roadmap 1047 / PLANS 908 / ADR-0228, begrenzter Import direkter DOCX-Schriftfamilien.
 Die Implementierung einschließlich ADR-0215 bis ADR-0227 ist bis d99a61f7 auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
@@ -6213,7 +6263,7 @@ Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordi
 SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
 Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
 Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
-Review: http://192.168.0.108:42880/office?review=docx-text-color-adr0227
+Review: http://192.168.0.108:42880/office?review=docx-font-family-adr0228
 
 .tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
 Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,

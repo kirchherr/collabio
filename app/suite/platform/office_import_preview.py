@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import UserContext
 from suite.platform.office_document_schema import (
+    FONT_FAMILIES,
     FONT_SIZES,
     MAX_DOCUMENT_CHARACTERS,
     PARAGRAPH_VALUES,
@@ -153,7 +154,7 @@ def _run_content(
             continue
         fields = set(value)
         linked = navigation and "target" in fields
-        allowed = {"text", "marks", "font_size", "text_color"} | ({"target"} if navigation else set())
+        allowed = {"text", "marks", "font_family", "font_size", "text_color"} | ({"target"} if navigation else set())
         if not {"text", "marks"}.issubset(fields) or fields - allowed:
             raise OfficeImportPreviewInvalid("parser inline run is invalid")
         text = value["text"]
@@ -171,6 +172,11 @@ def _run_content(
         node: dict[str, Any] = {"type": "text", "text": text}
         native_marks: list[dict[str, Any]] = [{"type": mark} for mark in marks]
         native_style: dict[str, Any] = {}
+        if "font_family" in value:
+            family = value["font_family"]
+            if not isinstance(family, str) or family not in FONT_FAMILIES:
+                raise OfficeImportPreviewInvalid("parser font family is invalid")
+            native_style["fontFamily"] = family
         if "font_size" in value:
             size = value["font_size"]
             if type(size) is not int or size not in FONT_SIZES:

@@ -33,6 +33,7 @@ WORD_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 W = f"{{{WORD_NS}}}"
 DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
 DOCX_RUN_FONT_SIZES = {str(size * 2): size for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)}
+DOCX_RUN_FONT_FAMILIES = {"arial": "sans", "georgia": "serif", "consolas": "mono"}
 DOCX_RUN_TEXT_COLORS = {
     "111827": "black",
     "475569": "slate",
@@ -341,7 +342,11 @@ class RichDocumentParserWorker:
                 continue
             properties = run.find(f"{W}rPr")
             marks = [mark for mark in DOCX_INLINE_MARKS if self._docx_run_mark_enabled(properties, mark)]
-            style_attrs = {**self._docx_run_font_size(run), **self._docx_run_text_color(run)}
+            style_attrs = {
+                **self._docx_run_font_family(run),
+                **self._docx_run_font_size(run),
+                **self._docx_run_text_color(run),
+            }
             parts: list[str] = []
             for node in run:
                 if node.tag == f"{W}t":
@@ -380,6 +385,48 @@ class RichDocumentParserWorker:
             segments.append(current)
         current.append({"text": "".join(parts), "marks": marks, **style_attrs})
         parts.clear()
+
+    def _docx_run_font_family(self, run: ElementTree.Element) -> dict[str, object]:
+        markers = run.findall(f"{W}rPr/{W}rFonts")
+        misplaced = run.find(f"{W}rFonts") is not None
+        if not markers and not misplaced:
+            return {}
+        unsupported: dict[str, object] = {"unsupported_font_family": True}
+        if (
+            len(markers) != 1
+            or len(run.findall(f"{W}rPr")) != 1
+            or misplaced
+            or run.find(f"{W}rPr/{W}cs") is not None
+            or run.find(f"{W}rPr/{W}rtl") is not None
+        ):
+            return unsupported
+        marker = markers[0]
+        ascii_font = marker.get(f"{W}ascii", "")
+        high_font = marker.get(f"{W}hAnsi", "")
+        if (
+            len(marker)
+            or (marker.text or "").strip()
+            or set(marker.attrib) != {f"{W}ascii", f"{W}hAnsi"}
+            or len(ascii_font) > 8
+            or len(high_font) > 8
+            or ascii_font.casefold() != high_font.casefold()
+        ):
+            return unsupported
+        family = DOCX_RUN_FONT_FAMILIES.get(ascii_font.casefold())
+        # Script-specific font selection requires a separate profile.
+        for text in run.iter(f"{W}t"):
+            if any(
+                not (
+                    ord(char) <= 0x024F
+                    or 0x0300 <= ord(char) <= 0x036F
+                    or 0x1E00 <= ord(char) <= 0x1EFF
+                    or 0x2000 <= ord(char) <= 0x206F
+                    or 0x20A0 <= ord(char) <= 0x20CF
+                )
+                for char in (text.text or "")
+            ):
+                return unsupported
+        return unsupported if family is None else {"font_family": family}
 
     def _docx_run_font_size(self, run: ElementTree.Element) -> dict[str, object]:
         markers = run.findall(f"{W}rPr/{W}sz")

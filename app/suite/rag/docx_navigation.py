@@ -71,7 +71,9 @@ def _plain_runs(link: Element) -> list[Element]:
         children = list(run)
         if children and children[0].tag == f"{W}rPr":
             properties = children.pop(0)
-            allowed = {f"{W}{tag}" for tag in ("b", "i", "u", "strike", "dstrike", "rStyle", "sz", "szCs", "color")}
+            allowed = {
+                f"{W}{tag}" for tag in ("b", "i", "u", "strike", "dstrike", "rStyle", "sz", "szCs", "color", "rFonts")
+            }
             if (
                 properties.attrib
                 or (properties.text or "").strip()
@@ -82,7 +84,7 @@ def _plain_runs(link: Element) -> list[Element]:
                     or len(child)
                     or (child.text or "").strip()
                     or (child.tail or "").strip()
-                    or set(child.attrib) - {f"{W}val"}
+                    or set(child.attrib) - ({f"{W}ascii", f"{W}hAnsi"} if child.tag == f"{W}rFonts" else {f"{W}val"})
                     or (child.tag == f"{W}rStyle" and child.get(f"{W}val") != "Hyperlink")
                     for child in properties
                 )

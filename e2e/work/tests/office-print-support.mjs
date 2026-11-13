@@ -63,6 +63,10 @@ export async function installPrintProbe(page, { pdfName = null } = {}) {
             points: Number(element.getAttribute("data-office-font-size")),
             pixels: parseFloat(getComputedStyle(element).fontSize),
           })),
+          fontFamilies: [...root.querySelectorAll("[data-office-font-family]")].map((element) => ({
+            family: element.getAttribute("data-office-font-family"),
+            css: getComputedStyle(element).fontFamily,
+          })),
           textColors: [...root.querySelectorAll("[data-office-text-color]")].map((element) => ({
             color: element.getAttribute("data-office-text-color"),
             rgb: getComputedStyle(element).color,
