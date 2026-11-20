@@ -1905,3 +1905,17 @@ hashes matched after transfer. Manifests are tmp/office0229-sources.sha256 and t
 
 Cleanup removed collabio-postgres-test-1. Both health endpoints returned ok; review API and parser remain healthy.
 The separately synchronized remote Git tree remains at add05b4. Protected operator files remain excluded.
+
+
+### Roadmap 1055 publication closeout
+
+The operator-authorized regular push published implementation `bf65874a` above `b1df8e8e` on
+`kirchherr/kb-write-unit-of-work`. The explicit 14-file scope contains nine verified source/decision files
+and five verified documentation files. No force push, reset or remote pull was used. The separately
+synchronized dev001 Git tree remains at `add05b4`.
+
+Validation: 573 focused tests, 2 exact desktop/mobile cases, 45 selected browser/model cases with retries
+disabled, independent PDF inspection, full quality and eight documentation contracts passed on dev001 with
+Compose project `collabio`. Publication documentation is synchronized with exact scoped hashes and the
+documentation contracts are repeated before its regular push. Protected `.tmp/`, `erp_modul.md` and
+`review.md` remain excluded.

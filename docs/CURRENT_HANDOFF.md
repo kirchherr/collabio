@@ -5,8 +5,8 @@ Updated: 2026-11-20
 ## Authoritative restart state
 
 Roadmap 1055 / PLANS 916 / ADR-0229 adds bounded DOCX run vertical position. The Office module documentation is at 0.9.40.
-The previous published closeout is `b1df8e8e` on `kirchherr/kb-write-unit-of-work`. The vertical-position block
-and its closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+The implementation through ADR-0229 is published as `bf65874a` on `kirchherr/kb-write-unit-of-work`, above
+the previous closeout `b1df8e8e`. Publication documentation follows on the same branch. Office remains ahead of CRM.
 
 The isolated parser admits direct baseline, superscript and subscript markers. Absence retains the prior run
 shape; explicit baseline stays distinct in source evidence and omits the native position attribute. Malformed,
@@ -34,6 +34,7 @@ Full quality passed at 09:53 UTC on 2026-11-20 with Ruff, 1034 format-conformant
 680 sources and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary
 PostgreSQL test container. Both health endpoints returned `ok`, and review API/parser remain healthy. All nine
 source hashes and eight evidence hashes matched after transfer to the operator workstation.
+Eight documentation contracts passed on dev001 after exact synchronization of the five documentation files.
 
 | Evidence under `e2e/work/artifacts/roadmap-1055/` and `tmp/` | SHA-256 |
 | --- | --- |
@@ -6301,7 +6302,7 @@ docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschni
 docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0229.
 
 Stand: Roadmap 1055 / PLANS 916 / ADR-0229, begrenzter Import direkter DOCX-Zeichenlagen.
-Die Implementierung einschließlich ADR-0215 bis ADR-0228 ist bis 60ce6265 auf
+Die Implementierung einschließlich ADR-0215 bis ADR-0229 ist bis bf65874a auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
 Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.

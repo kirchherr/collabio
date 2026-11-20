@@ -5,8 +5,8 @@ Roadmap: 252 / PLANS 113 foundation through 1055 / PLANS 916 bounded DOCX run ve
 Module: `office_documents` / version 0.9.40
 Decisions: ADR-0079 through ADR-0229; current decision: `ARCHITECTURE_DECISIONS/ADR-0229-bounded-native-office-docx-run-vertical-position.md`
 
-Publication: the previous implementation through ADR-0228 is published as `60ce6265` on
-`kirchherr/kb-write-unit-of-work`, above the previous closeout `5aef1464`.
+Publication: the implementation through ADR-0229 is published as `bf65874a` on
+`kirchherr/kb-write-unit-of-work`, above the previous closeout `b1df8e8e`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
