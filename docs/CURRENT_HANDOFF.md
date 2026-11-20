@@ -5,8 +5,8 @@ Updated: 2026-11-20
 ## Authoritative restart state
 
 Roadmap 1063 / PLANS 924 / ADR-0230 adds bounded DOCX run display casing. The Office module documentation is at 0.9.41.
-The previous published closeout is `f21b3534` on `kirchherr/kb-write-unit-of-work`. The text-case block and its
-closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+The implementation through ADR-0230 is published as `d304ba5c` on `kirchherr/kb-write-unit-of-work`, above
+the previous closeout `f21b3534`. Publication documentation follows on the same branch. Office remains ahead of CRM.
 
 The isolated parser admits one direct caps or smallCaps marker with exact on/off values. Source Unicode text
 stays unchanged. Explicit disabling carries normal-case evidence separately from absence and omits the native
@@ -45,6 +45,7 @@ Full quality passed at 17:21 UTC on 2026-11-20 with Ruff, 1038 format-conformant
 sources and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL
 test container. Both health endpoints returned `ok`; review API/parser remain healthy. All ten source and eight
 evidence hashes matched after transfer to the operator workstation.
+Eight documentation contracts passed on dev001 after exact synchronization of the five documentation files.
 
 | Evidence under `e2e/work/artifacts/roadmap-1063/` and `tmp/` | SHA-256 |
 | --- | --- |
@@ -6362,7 +6363,7 @@ docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschni
 docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0230.
 
 Stand: Roadmap 1063 / PLANS 924 / ADR-0230, begrenzter Import direkter DOCX-Schreibweisen.
-Die Implementierung einschließlich ADR-0215 bis ADR-0229 ist bis bf65874a auf
+Die Implementierung einschließlich ADR-0215 bis ADR-0230 ist bis d304ba5c auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
 Setze bei einer neuen Aufgabenstellung auf dem verifizierten Stand auf. Office hat Vorrang vor CRM.

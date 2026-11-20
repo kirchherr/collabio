@@ -1961,3 +1961,16 @@ tmp/office0230-sources.sha256 and tmp/office0230-evidence.sha256, verifier tmp/o
 Cleanup removed the temporary PostgreSQL test container. Both health endpoints returned ok; review API/parser
 remain healthy. The separately synchronized remote tree remains at add05b4. Protected operator files are excluded.
 Health checks used http://127.0.0.1:8000/health and http://192.168.0.108:42880/health.
+
+
+### Roadmap 1063 publication closeout
+
+The operator-authorized regular push published implementation `d304ba5c` above `f21b3534` on
+`kirchherr/kb-write-unit-of-work`. Fifteen explicitly selected files contain ten verified source/decision
+files and five verified documentation files. No force push, reset or remote pull was used; the separately
+synchronized dev001 Git tree remains at `add05b4`.
+
+Validation passed on dev001 with project `collabio`: 618 focused tests, two exact desktop/mobile cases, 47
+selected browser/model cases without retries, independent PDF inspection, full quality and eight documentation
+contracts. Publication documents are synchronized with exact scoped hashes and documentation contracts are
+repeated before the documentation-only regular push. Protected `.tmp/`, `erp_modul.md` and `review.md` remain excluded.

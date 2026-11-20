@@ -5,8 +5,8 @@ Roadmap: 252 / PLANS 113 foundation through 1063 / PLANS 924 bounded DOCX run di
 Module: `office_documents` / version 0.9.41
 Decisions: ADR-0079 through ADR-0230; current decision: `ARCHITECTURE_DECISIONS/ADR-0230-bounded-native-office-docx-run-text-case.md`
 
-Publication: the previous implementation through ADR-0229 is published as `bf65874a` on
-`kirchherr/kb-write-unit-of-work`, above the previous closeout `b1df8e8e`.
+Publication: the implementation through ADR-0230 is published as `d304ba5c` on
+`kirchherr/kb-write-unit-of-work`, above the previous closeout `f21b3534`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
 
