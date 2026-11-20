@@ -1,0 +1,252 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "add_to_recent_files": {
+      "const": false,
+      "default": false,
+      "title": "Add To Recent Files",
+      "type": "boolean"
+    },
+    "assignment_id": {
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "candidate_pdf_sha256": {
+      "title": "Candidate Pdf Sha256",
+      "type": "string"
+    },
+    "completed_at_utc": {
+      "format": "date-time",
+      "title": "Completed At Utc",
+      "type": "string"
+    },
+    "dedicated_local_account_verified": {
+      "const": true,
+      "default": true,
+      "title": "Dedicated Local Account Verified",
+      "type": "boolean"
+    },
+    "document_content_in_receipt": {
+      "const": false,
+      "default": false,
+      "title": "Document Content In Receipt",
+      "type": "boolean"
+    },
+    "engine_id": {
+      "const": "microsoft_word",
+      "default": "microsoft_word",
+      "title": "Engine Id",
+      "type": "string"
+    },
+    "explicit_human_confirmation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Explicit Human Confirmation Verified",
+      "type": "boolean"
+    },
+    "font_count": {
+      "maximum": 100000,
+      "minimum": 1,
+      "title": "Font Count",
+      "type": "integer"
+    },
+    "font_inventory": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Font Inventory",
+      "type": "array"
+    },
+    "host_readiness_report_sha256": {
+      "title": "Host Readiness Report Sha256",
+      "type": "string"
+    },
+    "human_confirmed_at_utc": {
+      "format": "date-time",
+      "title": "Human Confirmed At Utc",
+      "type": "string"
+    },
+    "interactive_user_session_verified": {
+      "const": true,
+      "default": true,
+      "title": "Interactive User Session Verified",
+      "type": "boolean"
+    },
+    "macros_force_disabled": {
+      "const": true,
+      "default": true,
+      "title": "Macros Force Disabled",
+      "type": "boolean"
+    },
+    "network_isolation_rule_sha256": {
+      "title": "Network Isolation Rule Sha256",
+      "type": "string"
+    },
+    "network_isolation_verified": {
+      "const": true,
+      "default": true,
+      "title": "Network Isolation Verified",
+      "type": "boolean"
+    },
+    "normalized_font_inventory_sha256": {
+      "title": "Normalized Font Inventory Sha256",
+      "type": "string"
+    },
+    "office_identity_absent": {
+      "const": true,
+      "default": true,
+      "title": "Office Identity Absent",
+      "type": "boolean"
+    },
+    "operator_account_sid_sha256": {
+      "title": "Operator Account Sid Sha256",
+      "type": "string"
+    },
+    "output_docx_sha256": {
+      "title": "Output Docx Sha256",
+      "type": "string"
+    },
+    "persistent_product_version_written": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Product Version Written",
+      "type": "boolean"
+    },
+    "powershell_version": {
+      "title": "Powershell Version",
+      "type": "string"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "process_architecture": {
+      "title": "Process Architecture",
+      "type": "string"
+    },
+    "reference_pdf_sha256": {
+      "title": "Reference Pdf Sha256",
+      "type": "string"
+    },
+    "run_request_hash": {
+      "title": "Run Request Hash",
+      "type": "string"
+    },
+    "runner_mode": {
+      "const": "interactive_windows_client",
+      "default": "interactive_windows_client",
+      "title": "Runner Mode",
+      "type": "string"
+    },
+    "runner_script_sha256": {
+      "title": "Runner Script Sha256",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_docx_word_interactive_receipt.v1",
+      "default": "genoffice_docx_word_interactive_receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "session_zero_absent": {
+      "const": true,
+      "default": true,
+      "title": "Session Zero Absent",
+      "type": "boolean"
+    },
+    "signing_custody_accessible": {
+      "const": false,
+      "default": false,
+      "title": "Signing Custody Accessible",
+      "type": "boolean"
+    },
+    "source_content_sha256": {
+      "title": "Source Content Sha256",
+      "type": "string"
+    },
+    "source_opened_read_only": {
+      "const": true,
+      "default": true,
+      "title": "Source Opened Read Only",
+      "type": "boolean"
+    },
+    "source_synthetic": {
+      "const": true,
+      "default": true,
+      "title": "Source Synthetic",
+      "type": "boolean"
+    },
+    "started_at_utc": {
+      "format": "date-time",
+      "title": "Started At Utc",
+      "type": "string"
+    },
+    "tenant_content_processed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Processed",
+      "type": "boolean"
+    },
+    "tenant_credentials_available": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Credentials Available",
+      "type": "boolean"
+    },
+    "windows_build": {
+      "title": "Windows Build",
+      "type": "string"
+    },
+    "windows_display_version": {
+      "title": "Windows Display Version",
+      "type": "string"
+    },
+    "windows_product_name": {
+      "title": "Windows Product Name",
+      "type": "string"
+    },
+    "word_executable_sha256": {
+      "title": "Word Executable Sha256",
+      "type": "string"
+    },
+    "word_version": {
+      "title": "Word Version",
+      "type": "string"
+    },
+    "word_visible_during_execution": {
+      "const": true,
+      "default": true,
+      "title": "Word Visible During Execution",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "assignment_id",
+    "run_request_hash",
+    "host_readiness_report_sha256",
+    "runner_script_sha256",
+    "operator_account_sid_sha256",
+    "word_executable_sha256",
+    "network_isolation_rule_sha256",
+    "source_content_sha256",
+    "output_docx_sha256",
+    "reference_pdf_sha256",
+    "candidate_pdf_sha256",
+    "word_version",
+    "windows_product_name",
+    "windows_display_version",
+    "windows_build",
+    "process_architecture",
+    "powershell_version",
+    "font_inventory",
+    "font_count",
+    "normalized_font_inventory_sha256",
+    "started_at_utc",
+    "human_confirmed_at_utc",
+    "completed_at_utc"
+  ],
+  "title": "GenOfficeDocxWordInteractiveReceipt",
+  "type": "object"
+}

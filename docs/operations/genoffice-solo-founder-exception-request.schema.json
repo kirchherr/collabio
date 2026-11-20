@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "GenOfficeSoloFounderExceptionPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_source_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Approved Source Scopes",
+          "type": "array"
+        },
+        "approved_usage_profiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Approved Usage Profiles",
+          "type": "array"
+        },
+        "blocked_actions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocked Actions",
+          "type": "array"
+        },
+        "blocked_usage_profiles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blocked Usage Profiles",
+          "type": "array"
+        },
+        "change_control_ref": {
+          "title": "Change Control Ref",
+          "type": "string"
+        },
+        "compensating_controls": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Compensating Controls",
+          "type": "array"
+        },
+        "engine_execution_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Engine Execution Allowed",
+          "type": "boolean"
+        },
+        "exception_id": {
+          "title": "Exception Id",
+          "type": "string"
+        },
+        "hosted_service_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Hosted Service Allowed",
+          "type": "boolean"
+        },
+        "issued_at_utc": {
+          "format": "date-time",
+          "title": "Issued At Utc",
+          "type": "string"
+        },
+        "later_required_approval_roles": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Later Required Approval Roles",
+          "type": "array"
+        },
+        "legal_dossier_report_hash": {
+          "title": "Legal Dossier Report Hash",
+          "type": "string"
+        },
+        "on_prem_distribution_allowed": {
+          "const": false,
+          "default": false,
+          "title": "On Prem Distribution Allowed",
+          "type": "boolean"
+        },
+        "payload_hash": {
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "production_use_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Production Use Allowed",
+          "type": "boolean"
+        },
+        "prohibited_source_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Prohibited Source Scopes",
+          "type": "array"
+        },
+        "risk_acceptance_ref": {
+          "title": "Risk Acceptance Ref",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "genoffice_solo_founder_exception_payload.v1",
+          "default": "genoffice_solo_founder_exception_payload.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "signer_policy_hash": {
+          "title": "Signer Policy Hash",
+          "type": "string"
+        },
+        "source_import_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Source Import Allowed",
+          "type": "boolean"
+        },
+        "tenant_content_allowed": {
+          "const": false,
+          "default": false,
+          "title": "Tenant Content Allowed",
+          "type": "boolean"
+        },
+        "third_party_notice_artifact_sha256": {
+          "title": "Third Party Notice Artifact Sha256",
+          "type": "string"
+        },
+        "third_party_notice_report_hash": {
+          "title": "Third Party Notice Report Hash",
+          "type": "string"
+        },
+        "valid_until_utc": {
+          "format": "date-time",
+          "title": "Valid Until Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "exception_id",
+        "issued_at_utc",
+        "valid_until_utc",
+        "risk_acceptance_ref",
+        "change_control_ref",
+        "signer_policy_hash",
+        "legal_dossier_report_hash",
+        "third_party_notice_report_hash",
+        "third_party_notice_artifact_sha256",
+        "approved_usage_profiles",
+        "blocked_usage_profiles",
+        "approved_source_scopes",
+        "prohibited_source_scopes",
+        "compensating_controls",
+        "later_required_approval_roles",
+        "blocked_actions",
+        "payload_hash"
+      ],
+      "title": "GenOfficeSoloFounderExceptionPayload",
+      "type": "object"
+    },
+    "GenOfficeSoloFounderSigningAssignment": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "ed25519",
+          "default": "ed25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signer_id": {
+          "title": "Signer Id",
+          "type": "string"
+        },
+        "signer_role": {
+          "const": "founder_risk_owner",
+          "default": "founder_risk_owner",
+          "title": "Signer Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "signer_id",
+        "key_id"
+      ],
+      "title": "GenOfficeSoloFounderSigningAssignment",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "content_included": {
+      "const": false,
+      "default": false,
+      "title": "Content Included",
+      "type": "boolean"
+    },
+    "exception_effective": {
+      "const": false,
+      "default": false,
+      "title": "Exception Effective",
+      "type": "boolean"
+    },
+    "payload": {
+      "$ref": "#/$defs/GenOfficeSoloFounderExceptionPayload"
+    },
+    "prepared_at_utc": {
+      "format": "date-time",
+      "title": "Prepared At Utc",
+      "type": "string"
+    },
+    "private_key_ingestion_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Ingestion Allowed",
+      "type": "boolean"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_solo_founder_exception_request.v1",
+      "default": "genoffice_solo_founder_exception_request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets_included": {
+      "const": false,
+      "default": false,
+      "title": "Secrets Included",
+      "type": "boolean"
+    },
+    "signature_creation_performed": {
+      "const": false,
+      "default": false,
+      "title": "Signature Creation Performed",
+      "type": "boolean"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "signature_message_size_bytes": {
+      "title": "Signature Message Size Bytes",
+      "type": "integer"
+    },
+    "signing_assignment": {
+      "$ref": "#/$defs/GenOfficeSoloFounderSigningAssignment"
+    }
+  },
+  "required": [
+    "prepared_at_utc",
+    "payload",
+    "signing_assignment",
+    "signature_message_sha256",
+    "signature_message_size_bytes",
+    "request_hash"
+  ],
+  "title": "GenOfficeSoloFounderExceptionRequest",
+  "type": "object"
+}

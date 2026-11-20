@@ -1,0 +1,216 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "approved_source_scopes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Approved Source Scopes",
+      "type": "array"
+    },
+    "approved_usage_profiles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Approved Usage Profiles",
+      "type": "array"
+    },
+    "blocked_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocked Actions",
+      "type": "array"
+    },
+    "blocked_usage_profiles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Blocked Usage Profiles",
+      "type": "array"
+    },
+    "compensating_controls": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Compensating Controls",
+      "type": "array"
+    },
+    "compensating_controls_verified": {
+      "const": true,
+      "default": true,
+      "title": "Compensating Controls Verified",
+      "type": "boolean"
+    },
+    "detached_signature_verified": {
+      "const": true,
+      "default": true,
+      "title": "Detached Signature Verified",
+      "type": "boolean"
+    },
+    "development_build_context_materialization_allowed": {
+      "const": true,
+      "default": true,
+      "title": "Development Build Context Materialization Allowed",
+      "type": "boolean"
+    },
+    "engine_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Engine Execution Allowed",
+      "type": "boolean"
+    },
+    "exception_id": {
+      "title": "Exception Id",
+      "type": "string"
+    },
+    "exception_payload_hash": {
+      "title": "Exception Payload Hash",
+      "type": "string"
+    },
+    "hosted_service_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Hosted Service Allowed",
+      "type": "boolean"
+    },
+    "issued_at_utc": {
+      "format": "date-time",
+      "title": "Issued At Utc",
+      "type": "string"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "later_required_approval_roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Later Required Approval Roles",
+      "type": "array"
+    },
+    "legal_dossier_report_hash": {
+      "title": "Legal Dossier Report Hash",
+      "type": "string"
+    },
+    "on_prem_distribution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "On Prem Distribution Allowed",
+      "type": "boolean"
+    },
+    "production_use_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Production Use Allowed",
+      "type": "boolean"
+    },
+    "prohibited_source_scopes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prohibited Source Scopes",
+      "type": "array"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "reproducible_worker_build_allowed": {
+      "const": true,
+      "default": true,
+      "title": "Reproducible Worker Build Allowed",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "genoffice_solo_founder_exception_report.v1",
+      "default": "genoffice_solo_founder_exception_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature_response_hash": {
+      "title": "Signature Response Hash",
+      "type": "string"
+    },
+    "signer_id": {
+      "title": "Signer Id",
+      "type": "string"
+    },
+    "signer_policy_hash": {
+      "title": "Signer Policy Hash",
+      "type": "string"
+    },
+    "signing_request_hash": {
+      "title": "Signing Request Hash",
+      "type": "string"
+    },
+    "solo_founder_risk_acceptance_verified": {
+      "const": true,
+      "default": true,
+      "title": "Solo Founder Risk Acceptance Verified",
+      "type": "boolean"
+    },
+    "source_import_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Source Import Allowed",
+      "type": "boolean"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "third_party_notice_artifact_sha256": {
+      "title": "Third Party Notice Artifact Sha256",
+      "type": "string"
+    },
+    "third_party_notice_report_hash": {
+      "title": "Third Party Notice Report Hash",
+      "type": "string"
+    },
+    "two_person_control_verified": {
+      "const": false,
+      "default": false,
+      "title": "Two Person Control Verified",
+      "type": "boolean"
+    },
+    "valid_until_utc": {
+      "format": "date-time",
+      "title": "Valid Until Utc",
+      "type": "string"
+    },
+    "write_once_evidence_required": {
+      "const": true,
+      "default": true,
+      "title": "Write Once Evidence Required",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "exception_id",
+    "issued_at_utc",
+    "valid_until_utc",
+    "signer_id",
+    "key_id",
+    "signer_policy_hash",
+    "exception_payload_hash",
+    "signing_request_hash",
+    "signature_response_hash",
+    "legal_dossier_report_hash",
+    "third_party_notice_report_hash",
+    "third_party_notice_artifact_sha256",
+    "approved_usage_profiles",
+    "blocked_usage_profiles",
+    "approved_source_scopes",
+    "prohibited_source_scopes",
+    "compensating_controls",
+    "later_required_approval_roles",
+    "blocked_actions",
+    "report_hash"
+  ],
+  "title": "GenOfficeSoloFounderExceptionReport",
+  "type": "object"
+}

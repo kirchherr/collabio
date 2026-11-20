@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from email import policy
 from email.message import EmailMessage
 from email.parser import BytesParser
 from hashlib import sha256
-from typing import Protocol
+from typing import Any, Protocol
 
 from suite.rag.source_indexing import ExtractedText, ResolvedSource
 
@@ -17,6 +18,11 @@ def sha256_bytes(value: bytes) -> str:
 def normalize_extracted_text(value: str) -> str:
     normalized = value.replace("\r\n", "\n").replace("\r", "\n")
     return "\n".join(line.rstrip() for line in normalized.split("\n")).strip()
+
+
+def hash_document_blocks(values: tuple[dict[str, Any], ...]) -> str:
+    encoded = json.dumps(values, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return sha256_bytes(encoded)
 
 
 class ParserWorkerError(ValueError):
@@ -94,6 +100,8 @@ class ParsedTextArtifact:
     text_hash: str
     text_byte_length: int
     warnings: tuple[str, ...] = ()
+    document_blocks: tuple[dict[str, Any], ...] = ()
+    document_blocks_hash: str = ""
 
 
 class PolicyEnforcedParserWorker:

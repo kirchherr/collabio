@@ -1,7 +1,7 @@
 # Repository Governance
 
-Status: initial
-Date: 2026-06-10
+Status: ruleset policy ready; GitHub enforcement pending
+Date: 2026-08-14
 
 ## Current Status
 
@@ -11,21 +11,33 @@ Implemented:
 - GitHub Actions CI workflow.
 - Dependabot configuration.
 - Repository-local Deploy Key for Git push.
+- Importable default-branch ruleset in `.github/rulesets/main.json`.
+- Required checks bound to GitHub Actions application ID `15368` to prevent an unrelated status producer from
+  satisfying the gate.
 
 Blocked from this workspace:
 
-- Branch Protection cannot be applied with the Deploy Key because Deploy Keys cannot change repository settings.
+- The ruleset has not yet been imported into GitHub repository settings.
+- Branch protection cannot be applied with the Deploy Key because Deploy Keys cannot change repository settings.
 - The GitHub CLI is not installed on this machine.
-- The connected GitHub app does not currently have access to `kirchherr/collabio`.
-- No `GH_TOKEN` or `GITHUB_TOKEN` is available locally.
+- The connected GitHub app can inspect `kirchherr/collabio`, but its available write tools do not include repository
+  rules administration.
+- No administration-scoped `GH_TOKEN` or `GITHUB_TOKEN` is available locally.
 
 Manual fallback:
 
 1. Open `kirchherr/collabio` repository settings in GitHub.
-2. Go to Branches and add a ruleset or branch protection rule for `main`.
-3. Require status check `quality`.
-4. Require branches to be up to date before merge.
-5. Disable force pushes and branch deletion.
+2. Go to **Rules**, then **Rulesets**, select **New ruleset**, and import `.github/rulesets/main.json`.
+3. Verify enforcement is **Active** and the target is the default branch.
+4. Verify required checks are `quality` and `supply-chain`, both sourced from **GitHub Actions**.
+5. Verify pull requests, resolved review threads, an up-to-date branch, linear history, and zero bypass actors are
+   required while force pushes and deletion are blocked.
+6. Create the ruleset and verify `GET /repos/kirchherr/collabio/rules/branches/main` returns all five rule types.
+
+The repository currently has one human administrator. Requiring one approving review would make that administrator
+unable to merge their own pull requests, so the ruleset intentionally requires zero approvals while still requiring a
+pull request and green checks. Increase `required_approving_review_count` to `1`, enable stale-review dismissal and
+last-push approval, and add CODEOWNERS review as soon as a second independent maintainer is available.
 
 ## Required Gates
 
@@ -59,12 +71,14 @@ Target branch: `main`
 
 Required controls:
 
-- Require status check `quality`.
+- Require status checks `quality` and `supply-chain` from GitHub Actions.
 - Require branches to be up to date before merge.
 - Block force pushes.
 - Block branch deletion.
-- Require linear history when supported by repository settings.
-- Prefer pull requests over direct pushes once protection is active.
+- Require linear history.
+- Require pull requests and resolved review threads.
+- Allow squash and rebase merges only.
+- Define no bypass actors.
 
 ## Local Git SSH
 

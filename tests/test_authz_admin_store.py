@@ -194,6 +194,23 @@ def test_pg_authz_admin_store_upserts_authorization_graph_with_audit_refs(
         role_ids=resolved_membership.role_ids,
         group_ids=resolved_membership.group_ids,
     ) == {object_id}
+    expired_object_id = f"office-expired-{suffix}"
+    with psycopg.connect(live_database.authz_admin_dsn) as connection:
+        connection.execute("SELECT set_config('app.tenant_id', %s, true)", (tenant_id,))
+        connection.execute(
+            "INSERT INTO collabio.object_acl_entries "
+            "(tenant_id, object_id, object_type, acl_subject_type, acl_subject_id, permission, acl_version, status, "
+            "created_at_utc, expires_at_utc, audit_chain_ref) "
+            "VALUES (%s, %s, 'office.document', 'user', %s, 'read', 1, 'active', now() - interval '2 days', "
+            "now() - interval '1 day', 'audit:expired-office-share')",
+            (tenant_id, expired_object_id, user_id),
+        )
+    assert directory.readable_object_ids(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        role_ids=resolved_membership.role_ids,
+        group_ids=resolved_membership.group_ids,
+    ) == {object_id}
     assert directory.active_abac_policy_ids(tenant_id=tenant_id) == (policy_id,)
 
 

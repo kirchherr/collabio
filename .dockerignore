@@ -4,6 +4,10 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
+.provider-runtime
+.env
+.env.*
+!.env.example
 *.pyc
 *.pyo
 *.pyd

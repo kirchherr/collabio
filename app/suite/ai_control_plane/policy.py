@@ -30,6 +30,8 @@ class PolicyEngine:
         self.require_tenant_match(user_context, tenant_policy)
         if not tenant_policy.ai_enabled:
             raise PolicyViolation("AI is disabled for this tenant")
+        if prompt_template.approval_status != "approved":
+            raise PolicyViolation("Prompt template is not approved")
         model = self.model_registry.get(request.model_id)
         if model.model_id not in tenant_policy.allowed_model_ids:
             raise PolicyViolation("Model is not allowed for this tenant")

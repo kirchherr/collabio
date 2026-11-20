@@ -1,7 +1,7 @@
 # Knowledge Base Write Approval Ledger
 
-Status: wired for dry-run persistence, approval lineage, trusted create metadata, and source-object write receipts
-Date: 2026-06-12
+Status: guarded product workflow with persistent approval lineage and source-object write receipts
+Date: 2026-09-18
 Module ID: `knowledge_base`
 Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
 
@@ -9,7 +9,10 @@ Implementation contract: `docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md`
 
 Knowledge Base create/edit actions require a persistent approval-evidence ledger before article metadata, source objects, search indexes, embeddings, or RAG state may change.
 
-The current implementation remains metadata-only in audit and API responses. It validates approval command metadata, creates command and evidence hashes, writes audit, persists approval evidence through the append-only ledger port, supports approval lineage, projects restore/source evidence before execution, persists metadata-only source-object write receipts during execution, and can commit guarded edit/create metadata writes without enabling search, embeddings, or RAG.
+Ledger, audit, receipt and approval/execution responses remain metadata-only. The separately authorized preparation
+and edit-content responses carry the proposed or current article source for the editor. The implementation validates
+approval metadata and hashes, persists append-only lineage, projects recovery evidence, and commits guarded
+PostgreSQL/S3 create/edit writes while search, embeddings and RAG remain disabled.
 
 ## Ledger Contract
 
@@ -60,6 +63,17 @@ Each ledger row must carry:
 
 ## Runtime Boundary
 
+Every authoring endpoint requires tenant context, tenant-admin, the normal enabled Knowledge Base module gate and
+`knowledge_base.articles.write`. Edits additionally require current article/version/source authorization. A compliance
+read while the module is disabled or suspended never authorizes an approval transition or article write.
+
+The `/work` editor starts with `POST /v1/admin/kb/articles/prepare-write`, which builds the proposed source and command
+server-side from title/body and exact edit-version references. It reads an existing source only through
+`GET /v1/admin/kb/articles/{article_object_id}/edit-content`. After approval,
+`POST /v1/admin/kb/articles/source-object-write-guard` returns the authoritative decision. Browser code carries these
+evidence objects through the stages; it does not construct security metadata or canonical hashes. Changing the draft
+invalidates approval, and final execution requires an explicit confirmation action.
+
 `POST /v1/admin/kb/articles/write-dry-run` requires tenant context and creates dry-run evidence. The service appends that evidence to the ledger before returning a `write_approval_evidence_hash`.
 
 `POST /v1/admin/kb/articles/write-approvals/approve` requires tenant context and a tenant admin. It accepts a dry-run evidence hash, a new human approval reference, and a reason. The service verifies the dry-run evidence hash, current restore evidence, and expected current article version before appending a new `approved_for_write` ledger row whose `transition_source_evidence_hash` points back to the dry-run evidence. It does not write article metadata, source objects, source text, article bodies, embeddings, or RAG state.
@@ -68,24 +82,37 @@ Each ledger row must carry:
 
 `POST /v1/admin/kb/articles/write-approvals/execution-skeleton` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, and explicit human confirmation. It verifies that the evidence binds to the same article and proposed source version, returns an `execution_plan_hash`, and still blocks execution with `execution_allowed=false`. It does not append ledger rows and does not persist article metadata, source objects, source-version evidence, restore evidence, source text, article bodies, embeddings, or RAG state.
 
-`POST /v1/admin/kb/articles/write-approvals/execute` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, the skeleton execution plan hash, explicit human confirmation, and the proposed source object. The service re-evaluates the guard against the submitted source object, persists the source object, appends a metadata-only source-object write receipt, updates edit/create article/current-version metadata, refreshes source-version evidence and restore evidence, and audits only metadata/hash evidence. Create execution uses article key, title, proposed version label, and source system from approved ledger evidence. It returns `source_object_write_receipt_hash` and keeps RAG and search indexing disabled.
+`POST /v1/admin/kb/articles/write-approvals/execute` requires tenant context and a tenant admin. It accepts approved ledger evidence, source-object write-guard decision metadata, refresh-preview hashes, the skeleton execution plan hash, explicit human confirmation, and the proposed source object. The service re-evaluates the guard against the submitted source object, then commits through `KnowledgeBaseWriteUnitOfWork`: it appends a metadata-only source-object write receipt, persists the source object/source metadata/storage manifest, updates edit/create article/current-version metadata, refreshes source-version evidence and restore evidence, and audits only metadata/hash evidence. Create execution uses article key, title, proposed version label, and source system from approved ledger evidence. It returns `source_object_write_receipt_hash`, exposes `write_unit_of_work_committed=true` and `write_unit_of_work_contract`, and keeps RAG and search indexing disabled.
 
 Runtime wiring:
 
 - tests and local in-memory slices use `InMemoryKnowledgeBaseWriteApprovalLedger`.
 - the Docker Compose API profile sets `SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND=postgres` after migrations, so dry-run evidence is inserted into `knowledge_base.write_approval_evidence`.
 - the ledger row remains metadata-only and cannot authorize persistence while `approval_state` is `dry_run`.
-- `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before future article/source writes.
+- `KnowledgeBaseSourceObjectWriteGuard` consumes ledger evidence by exact tenant-scoped evidence hash and returns a metadata-only guard decision before article/source writes.
 - the refresh preview consumes exact tenant-scoped approved ledger evidence and produces hash/count projection only.
 - the execution skeleton consumes exact tenant-scoped approved ledger evidence, guard decision metadata, refresh-preview hashes, and human confirmation, then returns a blocked execution plan hash.
-- the execute path consumes the same evidence plus the proposed source object, persists a source-object write receipt, commits edit/create writes, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
+- the execute path consumes the same evidence plus the proposed source object, commits through `KnowledgeBaseWriteUnitOfWork`, records `source_object_write_receipt_hash`, and returns refreshed source/restore evidence hashes without enabling RAG or search indexing.
 - `PgKnowledgeBaseArticleRepository` provides the PostgreSQL transaction adapter for article metadata, article-version metadata, source-version evidence, and restore evidence.
 - `PgSourceObjectWriteReceiptStore` provides the PostgreSQL/RLS receipt adapter for source-object write metadata and hashes.
 - `PgSourceObjectRepository` provides the PostgreSQL/RLS source metadata and storage-manifest bridge behind a content-store interface.
+- `KnowledgeBaseWriteUnitOfWork` binds the receipt hash into receipt-aware source repositories before article/version/evidence metadata is committed.
+- `PostgresKnowledgeBaseWriteUnitOfWork` executes receipt, source metadata/storage manifest, and KB article/version/source/restore evidence writes in one shared PostgreSQL metadata transaction.
+- `source_object_content_recovery_evidence.v1` compares content-store inventory with persisted storage manifests, records orphaned content reference hashes and missing manifest hashes, binds a restore-drill report hash, and exposes `api_wiring_allowed`.
+- `S3CompatibleSourceObjectContentStore` provides the S3/MinIO-compatible content-store adapter port and requires bucket versioning plus Object Lock/legal-hold capabilities for WORM buckets.
+- `Boto3S3CompatibleObjectStoreClient` provides the concrete S3-compatible SDK binding behind the object-store protocol.
+- `knowledge_base_production_write_deployment_gate.v1` requires clean content recovery, ready `s3_compatible_provider_profile_evidence.v1`, and bound restore-drill evidence before API write wiring is allowed.
 
-Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes, records `source_object_write_receipt_hash`, and refreshes source-version plus restore evidence. PostgreSQL-backed article/version/evidence writes now share one database transaction; source-object write receipts, source metadata, and storage manifests are durable metadata evidence. The next boundary is a coordinated Knowledge Base unit-of-work with the production content-store adapter before claiming atomic content persistence.
+Current dry-run persistence inserts the ledger row before any article/source write can exist. Approval transition appends a second lineage-linked ledger row. Refresh preview projects post-write source/restore evidence without persistence. Execution skeleton binds approved evidence, source guard, refresh preview, and human confirmation without persistence. Execute commits approved edit/create writes through `KnowledgeBaseWriteUnitOfWork`, records `source_object_write_receipt_hash`, and refreshes source-version plus restore evidence. PostgreSQL-backed receipt/source/article/version/evidence metadata can now share one database transaction through `PostgresKnowledgeBaseWriteUnitOfWork`. Content-store recovery evidence proves whether orphan reconciliation is clean; when the production deployment gate approves the Postgres UoW, execution exposes both `source_content_recovery_evidence_hash` and `production_write_deployment_gate_evidence_hash`. The existing tenant-scoped runtime resolver wires the concrete provider and bound recovery, provider-profile and deployment-gate evidence into this path; a tenant still requires its separate activation approval.
 
 ## Source-Object Write Guard
+
+The PostgreSQL UoW takes a tenant-scoped transaction lock and rechecks the expected version and approved restore state
+before receipt persistence or S3 access. Source/restore evidence is validated before commit and returned from the same
+transaction snapshot. Competing creates and edits cannot commit against the same stale tenant state, and a later
+successful write cannot invalidate an earlier execution response after its commit. Migration `0082` includes article
+creator grants and inherited version ACLs in this metadata transaction. Source bytes remain in the versioned content
+store; a post-storage metadata failure requires the existing recovery/reconciliation process.
 
 The write guard checks:
 
@@ -103,6 +130,9 @@ The decision stores only metadata, hashes, object IDs, and blocking reason codes
 
 The ledger belongs to the `knowledge_base_content` continuity domain. Source-object write receipts belong to the `postgres_metadata` continuity domain and are referenced by Knowledge Base execution evidence. Backup and restore drills must verify write-approval evidence hashes and source-object write receipt hashes before approved write workflows are allowed.
 
+The isolated browser profile enables writing only for `tenant-work-e2e`. Its fixture activation and evidence do not
+enable another tenant, the productivity pilot, or indexing. Operational proof is recorded separately after validation.
+
 ## Verification
 
 - `tests/test_knowledge_base.py`
@@ -112,3 +142,4 @@ The ledger belongs to the `knowledge_base_content` continuity domain. Source-obj
 - `tests/test_knowledge_base_write_approval_ledger.py`
 - `tests/test_source_object_write_receipts.py`
 - `tests/test_source_object_storage_bridge.py`
+- `tests/test_knowledge_base_write_unit_of_work.py`

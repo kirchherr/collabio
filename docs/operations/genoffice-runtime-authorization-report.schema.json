@@ -1,0 +1,151 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "authorization_id": {
+      "title": "Authorization Id",
+      "type": "string"
+    },
+    "authorization_record_hash": {
+      "title": "Authorization Record Hash",
+      "type": "string"
+    },
+    "corpus_manifest_hash": {
+      "title": "Corpus Manifest Hash",
+      "type": "string"
+    },
+    "detached_signatures_verified": {
+      "const": true,
+      "default": true,
+      "title": "Detached Signatures Verified",
+      "type": "boolean"
+    },
+    "external_network_allowed": {
+      "const": false,
+      "default": false,
+      "title": "External Network Allowed",
+      "type": "boolean"
+    },
+    "general_worker_execution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "General Worker Execution Allowed",
+      "type": "boolean"
+    },
+    "hosted_service_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Hosted Service Allowed",
+      "type": "boolean"
+    },
+    "no_egress_profile_verified": {
+      "const": true,
+      "default": true,
+      "title": "No Egress Profile Verified",
+      "type": "boolean"
+    },
+    "on_prem_distribution_allowed": {
+      "const": false,
+      "default": false,
+      "title": "On Prem Distribution Allowed",
+      "type": "boolean"
+    },
+    "persistent_document_write_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Persistent Document Write Allowed",
+      "type": "boolean"
+    },
+    "production_use_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Production Use Allowed",
+      "type": "boolean"
+    },
+    "report_hash": {
+      "title": "Report Hash",
+      "type": "string"
+    },
+    "sandbox_profile_hash": {
+      "title": "Sandbox Profile Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_runtime_authorization_report.v1",
+      "default": "genoffice_runtime_authorization_report.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signed_worker_binding_verified": {
+      "const": true,
+      "default": true,
+      "title": "Signed Worker Binding Verified",
+      "type": "boolean"
+    },
+    "signer_policy_hash": {
+      "title": "Signer Policy Hash",
+      "type": "string"
+    },
+    "source_import_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Source Import Allowed",
+      "type": "boolean"
+    },
+    "synthetic_corpus_verified": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Corpus Verified",
+      "type": "boolean"
+    },
+    "synthetic_proof_execution_allowed": {
+      "const": true,
+      "default": true,
+      "title": "Synthetic Proof Execution Allowed",
+      "type": "boolean"
+    },
+    "tenant_content_allowed": {
+      "const": false,
+      "default": false,
+      "title": "Tenant Content Allowed",
+      "type": "boolean"
+    },
+    "two_person_control_verified": {
+      "const": true,
+      "default": true,
+      "title": "Two Person Control Verified",
+      "type": "boolean"
+    },
+    "valid_until_utc": {
+      "format": "date-time",
+      "title": "Valid Until Utc",
+      "type": "string"
+    },
+    "verified_at_utc": {
+      "format": "date-time",
+      "title": "Verified At Utc",
+      "type": "string"
+    },
+    "worker_admission_report_hash": {
+      "title": "Worker Admission Report Hash",
+      "type": "string"
+    },
+    "worker_image_config_digest": {
+      "title": "Worker Image Config Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "authorization_id",
+    "verified_at_utc",
+    "valid_until_utc",
+    "signer_policy_hash",
+    "authorization_record_hash",
+    "worker_admission_report_hash",
+    "worker_image_config_digest",
+    "corpus_manifest_hash",
+    "sandbox_profile_hash",
+    "report_hash"
+  ],
+  "title": "GenOfficeRuntimeAuthorizationReport",
+  "type": "object"
+}

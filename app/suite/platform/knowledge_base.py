@@ -3,26 +3,38 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
+from uuid import uuid4
 
 import psycopg
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger, canonical_json, stable_hash
 from suite.ai_control_plane.models import DataClass, UserContext
+from suite.storage.s3_compatible_content_store import (
+    S3CompatibleProviderProfileEvidence,
+    build_s3_compatible_provider_profile_evidence_hash,
+)
+from suite.storage.source_object_storage import (
+    SourceObjectContentRecoveryEvidence,
+    build_source_object_content_recovery_evidence_hash,
+)
 from suite.storage.source_objects import (
     InMemorySourceObjectRepository,
     InMemorySourceObjectWriteReceiptStore,
     LegalHoldState,
     SourceLifecycleState,
     SourceObjectMetadata,
+    SourceObjectMetadataRepository,
     SourceObjectRecord,
     SourceObjectRepository,
     SourceObjectType,
     SourceObjectWriteDeniedError,
     SourceObjectWriteGuard,
+    SourceObjectWriteReceipt,
     SourceObjectWriteReceiptStore,
     build_source_object_manifest_hash,
     build_source_object_write_receipt,
@@ -89,6 +101,11 @@ KB_WRITE_EXECUTION_REQUIRED_EVIDENCE = (
     "source_object_write_guard_decision",
     "source_object_write_guard_ref",
     "source_object_write_receipt_hash",
+    "write_unit_of_work_commit_contract",
+    "write_unit_of_work_transaction_scope",
+    "source_content_recovery_required",
+    "source_content_recovery_evidence_hash",
+    "production_write_deployment_gate_evidence_hash",
     "restore_evidence_refresh_preview_hash",
     "write_execution_plan_hash",
     "explicit_human_confirmation_reference",
@@ -125,6 +142,11 @@ class KnowledgeBaseWriteApprovalState(StrEnum):
     APPROVED_FOR_WRITE = "approved_for_write"
     REJECTED = "rejected"
     EXPIRED = "expired"
+
+
+class KnowledgeBaseProductionWriteDeploymentGateStatus(StrEnum):
+    READY = "ready"
+    BLOCKED = "blocked"
 
 
 class KnowledgeBaseArticleRecord(BaseModel):
@@ -379,6 +401,68 @@ class KnowledgeBaseRestoreEvidence(BaseModel):
         return self
 
 
+class KnowledgeBaseProductionWriteDeploymentGateEvidence(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    module_id: str = KNOWLEDGE_BASE_MODULE_ID
+    continuity_domain: str = "knowledge_base_content"
+    source_content_recovery_evidence_hash: str
+    provider_profile_evidence_hash: str
+    restore_drill_report_hash: str
+    source_content_recovery_api_wiring_allowed: bool
+    provider_profile_ready: bool
+    restore_drill_bound: bool
+    blocking_reasons: tuple[str, ...] = ()
+    api_wiring_allowed: bool
+    gate_status: KnowledgeBaseProductionWriteDeploymentGateStatus
+    evidence_hash: str
+    schema_version: str = "knowledge_base_production_write_deployment_gate.v1"
+
+    @field_validator("tenant_id")
+    @classmethod
+    def require_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("knowledge base deployment gate tenant_id must not be empty")
+        return value
+
+    @field_validator(
+        "source_content_recovery_evidence_hash",
+        "provider_profile_evidence_hash",
+        "restore_drill_report_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_sha256_refs(cls, value: str) -> str:
+        if not SHA256_REF_PATTERN.fullmatch(value):
+            raise ValueError("knowledge base deployment gate hashes must be sha256 references")
+        return value
+
+    @field_validator("blocking_reasons")
+    @classmethod
+    def validate_blocking_reasons(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(value) != len(set(value)):
+            raise ValueError("knowledge base deployment gate blocking reasons must be unique")
+        for reason in value:
+            if not reason.strip():
+                raise ValueError("knowledge base deployment gate blocking reasons must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_gate_consistency(self) -> KnowledgeBaseProductionWriteDeploymentGateEvidence:
+        if self.module_id != KNOWLEDGE_BASE_MODULE_ID:
+            raise ValueError("knowledge base deployment gate must belong to knowledge_base")
+        if self.continuity_domain != "knowledge_base_content":
+            raise ValueError("knowledge base deployment gate must use knowledge_base_content")
+        if self.api_wiring_allowed and self.blocking_reasons:
+            raise ValueError("knowledge base deployment gate cannot allow API wiring with blocking reasons")
+        if self.api_wiring_allowed and self.gate_status != KnowledgeBaseProductionWriteDeploymentGateStatus.READY:
+            raise ValueError("knowledge base deployment gate allowed state must be ready")
+        if not self.api_wiring_allowed and self.gate_status != KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED:
+            raise ValueError("knowledge base deployment gate blocked state must be blocked")
+        return self
+
+
 class KnowledgeBaseArticlesResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -389,6 +473,7 @@ class KnowledgeBaseArticlesResponse(BaseModel):
     source_version_evidence_hashes: list[str]
     restore_evidence_hash: str
     audit_event_id: str
+    can_write: bool = False
 
 
 class KnowledgeBaseEvidenceResponse(BaseModel):
@@ -499,6 +584,70 @@ class KnowledgeBaseWriteApprovalCommand(BaseModel):
         if self.operation == KnowledgeBaseWriteOperation.CREATE and self.expected_current_version_object_id is not None:
             raise ValueError("create dry-run must not include expected_current_version_object_id")
         return self
+
+
+class KnowledgeBaseProductWriteCommand(BaseModel):
+    """User-editable fields only; security metadata and canonical hashes belong to the server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    operation: KnowledgeBaseWriteOperation
+    title: str = Field(min_length=1, max_length=240)
+    body: str = Field(min_length=1, max_length=100_000)
+    article_object_id: str | None = Field(default=None, min_length=1, max_length=200)
+    expected_current_version_object_id: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @field_validator("title", "body")
+    @classmethod
+    def require_content(cls, value: str) -> str:
+        if not value.strip() or "\x00" in value:
+            raise ValueError("article title and body must be non-empty text without null characters")
+        return value
+
+    @model_validator(mode="after")
+    def require_operation_target(self) -> KnowledgeBaseProductWriteCommand:
+        if self.operation == KnowledgeBaseWriteOperation.CREATE:
+            if self.article_object_id is not None or self.expected_current_version_object_id is not None:
+                raise ValueError("create article identifiers are assigned by the server")
+        elif not self.article_object_id or not self.expected_current_version_object_id:
+            raise ValueError("edit requires article_object_id and expected_current_version_object_id")
+        return self
+
+
+class KnowledgeBaseProductWritePreparation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    write_command: KnowledgeBaseWriteApprovalCommand
+    proposed_source_record: SourceObjectRecord
+    rag_indexing_allowed: bool = False
+    search_indexing_allowed: bool = False
+    audit_event_id: str
+
+
+class KnowledgeBaseArticleEditContent(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str
+    article: KnowledgeBaseArticleView
+    body: str
+    audit_event_id: str
+
+
+class KnowledgeBaseArticleContent(KnowledgeBaseArticleEditContent):
+    rag_indexing_allowed: bool = False
+    search_indexing_allowed: bool = False
+
+
+class KnowledgeBaseProductSourceGuardCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approved_write_approval_evidence_hash: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
+    proposed_source_record: SourceObjectRecord
+
+
+class KnowledgeBaseWriteConflictError(ValueError):
+    pass
 
 
 class KnowledgeBaseWriteDryRunResponse(BaseModel):
@@ -1135,6 +1284,12 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
     execution_allowed: bool = True
     source_object_persisted: bool = True
     source_object_write_receipt_persisted: bool = True
+    write_unit_of_work_committed: bool = True
+    write_unit_of_work_contract: str = "knowledge_base_write_unit_of_work.v1"
+    write_unit_of_work_transaction_scope: str = "coordinated_repository_calls"
+    source_content_recovery_required: bool = False
+    source_content_recovery_evidence_hash: str | None = None
+    production_write_deployment_gate_evidence_hash: str | None = None
     article_metadata_persisted: bool = True
     article_version_metadata_persisted: bool = True
     source_version_evidence_refreshed: bool = True
@@ -1151,6 +1306,8 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
         "current_version_object_id",
         "current_source_object_id",
         "current_source_version_id",
+        "write_unit_of_work_contract",
+        "write_unit_of_work_transaction_scope",
         "audit_event_id",
     )
     @classmethod
@@ -1179,10 +1336,12 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
         "refreshed_source_version_evidence_hash",
         "previous_restore_evidence_hash",
         "refreshed_restore_evidence_hash",
+        "source_content_recovery_evidence_hash",
+        "production_write_deployment_gate_evidence_hash",
     )
     @classmethod
-    def validate_sha256_refs(cls, value: str) -> str:
-        if not SHA256_REF_PATTERN.fullmatch(value):
+    def validate_sha256_refs(cls, value: str | None) -> str | None:
+        if value is not None and not SHA256_REF_PATTERN.fullmatch(value):
             raise ValueError("knowledge base write execution response hashes must be sha256 references")
         return value
 
@@ -1204,6 +1363,10 @@ class KnowledgeBaseWriteExecutionResponse(BaseModel):
             raise ValueError("knowledge base write execution must persist the source object")
         if not self.source_object_write_receipt_persisted:
             raise ValueError("knowledge base write execution must persist the source object write receipt")
+        if not self.write_unit_of_work_committed:
+            raise ValueError("knowledge base write execution must commit through the write unit of work")
+        if self.write_unit_of_work_contract != "knowledge_base_write_unit_of_work.v1":
+            raise ValueError("knowledge base write execution must expose the expected write unit-of-work contract")
         if not self.article_metadata_persisted:
             raise ValueError("knowledge base write execution must persist article metadata")
         if not self.article_version_metadata_persisted:
@@ -1247,6 +1410,310 @@ class KnowledgeBaseWriteApprovalLedger(Protocol):
 
     def list_evidence(self, *, tenant_id: str) -> Sequence[KnowledgeBaseWriteApprovalEvidence]:
         pass
+
+
+@runtime_checkable
+class SourceObjectReceiptAwareRepository(Protocol):
+    def add_with_receipt(
+        self,
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None: ...
+
+
+@dataclass(frozen=True)
+class KnowledgeBaseWriteUnitOfWorkCommit:
+    article: KnowledgeBaseArticleRecord
+    source_object_write_receipt: SourceObjectWriteReceipt
+    source_version_evidence: KnowledgeBaseSourceVersionEvidence
+    restore_evidence: KnowledgeBaseRestoreEvidence
+    source_object_persisted: bool = True
+    source_object_write_receipt_persisted: bool = True
+    write_unit_of_work_committed: bool = True
+    article_metadata_persisted: bool = True
+    article_version_metadata_persisted: bool = True
+    source_version_evidence_refreshed: bool = True
+    restore_evidence_refreshed: bool = True
+    contract_version: str = "knowledge_base_write_unit_of_work.v1"
+    transaction_scope: str = "coordinated_repository_calls"
+    source_content_recovery_required: bool = False
+    source_content_recovery_evidence_hash: str | None = None
+    production_write_deployment_gate_evidence_hash: str | None = None
+
+
+class KnowledgeBaseWriteUnitOfWork(Protocol):
+    def commit(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        source_object_write_receipt: SourceObjectWriteReceipt,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseWriteUnitOfWorkCommit: ...
+
+
+class TransactionalSourceObjectWriteReceiptStore(Protocol):
+    def append_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        receipt: SourceObjectWriteReceipt,
+    ) -> SourceObjectWriteReceipt: ...
+
+
+class TransactionalSourceObjectRepository(Protocol):
+    def add_with_receipt_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        record: SourceObjectRecord,
+        source_object_write_receipt_hash: str | None,
+    ) -> None: ...
+
+
+class TransactionalKnowledgeBaseArticleRepository(Protocol):
+    def list_articles_in_transaction(
+        self, connection: psycopg.Connection[Any], *, tenant_id: str
+    ) -> Sequence[KnowledgeBaseArticleRecord]: ...
+
+    def apply_write_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseArticleRecord: ...
+
+
+class CoordinatedKnowledgeBaseWriteUnitOfWork:
+    def __init__(
+        self,
+        *,
+        article_repository: KnowledgeBaseArticleRepository,
+        source_repository: SourceObjectRepository,
+        source_object_write_receipt_store: SourceObjectWriteReceiptStore,
+    ) -> None:
+        self.article_repository = article_repository
+        self.source_repository = source_repository
+        self.source_object_write_receipt_store = source_object_write_receipt_store
+
+    def commit(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        source_object_write_receipt: SourceObjectWriteReceipt,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseWriteUnitOfWorkCommit:
+        records = tuple(self.article_repository.list_articles(tenant_id=tenant_id))
+        require_current_knowledge_base_write(tenant_id=tenant_id, evidence=evidence, articles=records)
+        persisted_write_receipt = self.source_object_write_receipt_store.append(source_object_write_receipt)
+        if isinstance(self.source_repository, SourceObjectReceiptAwareRepository):
+            self.source_repository.add_with_receipt(
+                record=source_record,
+                source_object_write_receipt_hash=persisted_write_receipt.receipt_hash,
+            )
+        else:
+            self.source_repository.add(source_record)
+        updated_article = self.article_repository.apply_write(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            source_record=source_record,
+            audit_chain_ref=audit_chain_ref,
+        )
+        refreshed_records = (
+            *(record for record in records if record.object_id != updated_article.object_id),
+            updated_article,
+        )
+        source_evidence, restore_evidence = build_committed_knowledge_base_evidence(
+            tenant_id=tenant_id,
+            evidence=evidence,
+            article=updated_article,
+            source_record=source_record,
+            previous_articles=records,
+            committed_articles=refreshed_records,
+        )
+        return KnowledgeBaseWriteUnitOfWorkCommit(
+            article=updated_article,
+            source_object_write_receipt=persisted_write_receipt,
+            source_version_evidence=source_evidence,
+            restore_evidence=restore_evidence,
+        )
+
+
+class PostgresKnowledgeBaseWriteUnitOfWork:
+    def __init__(
+        self,
+        *,
+        database_dsn: str,
+        article_repository: TransactionalKnowledgeBaseArticleRepository,
+        source_repository: TransactionalSourceObjectRepository,
+        source_object_write_receipt_store: TransactionalSourceObjectWriteReceiptStore,
+        source_content_recovery_evidence: SourceObjectContentRecoveryEvidence | None = None,
+        production_write_deployment_gate_evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence | None = None,
+        require_source_content_recovery_gate: bool = False,
+    ) -> None:
+        if not database_dsn.strip():
+            raise ValueError("database_dsn must not be empty")
+        if source_content_recovery_evidence is not None and not source_content_recovery_evidence.api_wiring_allowed:
+            raise ValueError("source content recovery evidence does not allow API wiring")
+        if (
+            production_write_deployment_gate_evidence is not None
+            and not production_write_deployment_gate_evidence.api_wiring_allowed
+        ):
+            raise ValueError("knowledge base production write deployment gate does not allow API wiring")
+        if require_source_content_recovery_gate and source_content_recovery_evidence is None:
+            raise ValueError("source content recovery evidence is required before API wiring")
+        if require_source_content_recovery_gate and production_write_deployment_gate_evidence is None:
+            raise ValueError("knowledge base production write deployment gate evidence is required before API wiring")
+        if (
+            production_write_deployment_gate_evidence is not None
+            and source_content_recovery_evidence is not None
+            and production_write_deployment_gate_evidence.source_content_recovery_evidence_hash
+            != source_content_recovery_evidence.evidence_hash
+        ):
+            raise ValueError("deployment gate evidence does not match source content recovery evidence")
+        self.database_dsn = database_dsn
+        self.article_repository = article_repository
+        self.source_repository = source_repository
+        self.source_object_write_receipt_store = source_object_write_receipt_store
+        self.source_content_recovery_evidence = source_content_recovery_evidence
+        self.production_write_deployment_gate_evidence = production_write_deployment_gate_evidence
+
+    def commit(
+        self,
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        source_object_write_receipt: SourceObjectWriteReceipt,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseWriteUnitOfWorkCommit:
+        if (
+            self.source_content_recovery_evidence is not None
+            and self.source_content_recovery_evidence.tenant_id != tenant_id
+        ):
+            raise ValueError("source content recovery evidence tenant does not match write tenant")
+        if (
+            self.production_write_deployment_gate_evidence is not None
+            and self.production_write_deployment_gate_evidence.tenant_id != tenant_id
+        ):
+            raise ValueError("production write deployment gate tenant does not match write tenant")
+        try:
+            with psycopg.connect(self.database_dsn) as connection, connection.transaction():
+                self._set_tenant(connection, tenant_id)
+                lock_knowledge_base_tenant_write(connection, tenant_id=tenant_id)
+                records = self.article_repository.list_articles_in_transaction(connection, tenant_id=tenant_id)
+                require_current_knowledge_base_write(tenant_id=tenant_id, evidence=evidence, articles=records)
+                persisted_write_receipt = self.source_object_write_receipt_store.append_in_transaction(
+                    connection,
+                    source_object_write_receipt,
+                )
+                self.source_repository.add_with_receipt_in_transaction(
+                    connection,
+                    record=source_record,
+                    source_object_write_receipt_hash=persisted_write_receipt.receipt_hash,
+                )
+                updated_article = self.article_repository.apply_write_in_transaction(
+                    connection,
+                    tenant_id=tenant_id,
+                    evidence=evidence,
+                    source_record=source_record,
+                    audit_chain_ref=audit_chain_ref,
+                )
+                refreshed_records = self.article_repository.list_articles_in_transaction(
+                    connection, tenant_id=tenant_id
+                )
+                source_evidence, restore_evidence = build_committed_knowledge_base_evidence(
+                    tenant_id=tenant_id,
+                    evidence=evidence,
+                    article=updated_article,
+                    source_record=source_record,
+                    previous_articles=records,
+                    committed_articles=refreshed_records,
+                )
+        except psycopg.errors.UniqueViolation as exc:
+            raise ValueError("knowledge base write unit-of-work conflicts with existing metadata") from exc
+        return KnowledgeBaseWriteUnitOfWorkCommit(
+            article=updated_article,
+            source_object_write_receipt=persisted_write_receipt,
+            source_version_evidence=source_evidence,
+            restore_evidence=restore_evidence,
+            transaction_scope="shared_postgres_metadata_transaction",
+            source_content_recovery_required=self.source_content_recovery_evidence is None,
+            source_content_recovery_evidence_hash=(
+                self.source_content_recovery_evidence.evidence_hash
+                if self.source_content_recovery_evidence is not None
+                else None
+            ),
+            production_write_deployment_gate_evidence_hash=(
+                self.production_write_deployment_gate_evidence.evidence_hash
+                if self.production_write_deployment_gate_evidence is not None
+                else None
+            ),
+        )
+
+    def _set_tenant(self, connection: psycopg.Connection[Any], tenant_id: str) -> None:
+        connection.execute("SELECT set_config('app.tenant_id', %s, false)", (tenant_id,))
+
+
+def lock_knowledge_base_tenant_write(connection: psycopg.Connection[Any], *, tenant_id: str) -> None:
+    # A row lock cannot serialize two first writes into an empty tenant.
+    connection.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"knowledge-base-write:{tenant_id}",))
+
+
+def require_current_knowledge_base_write(
+    *, tenant_id: str, evidence: KnowledgeBaseWriteApprovalEvidence, articles: Sequence[KnowledgeBaseArticleRecord]
+) -> None:
+    if evidence.tenant_id != tenant_id:
+        raise ValueError("knowledge base write evidence tenant mismatch")
+    existing = next((article for article in articles if article.object_id == evidence.article_object_id), None)
+    if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+        if existing is None or existing.current_version_object_id != evidence.expected_current_version_object_id:
+            raise KnowledgeBaseWriteConflictError("expected current article version does not match approved evidence")
+    elif existing is not None or any(article.article_key == evidence.article_key for article in articles):
+        raise KnowledgeBaseWriteConflictError("create write target article already exists")
+    current_restore = build_knowledge_base_restore_evidence(
+        tenant_id=tenant_id,
+        articles=articles,
+        source_evidences=tuple(build_source_version_evidence_stub(article) for article in articles),
+        restore_drill_report_hash=stable_hash(f"{tenant_id}:knowledge_base_content:restore-drill"),
+        audit_chain_ref="audit:knowledge-base-restore-evidence",
+    )
+    if current_restore.evidence_hash != evidence.current_restore_evidence_hash:
+        raise KnowledgeBaseWriteConflictError("current restore evidence no longer matches approved write evidence")
+
+
+def build_committed_knowledge_base_evidence(
+    *,
+    tenant_id: str,
+    evidence: KnowledgeBaseWriteApprovalEvidence,
+    article: KnowledgeBaseArticleRecord,
+    source_record: SourceObjectRecord,
+    previous_articles: Sequence[KnowledgeBaseArticleRecord],
+    committed_articles: Sequence[KnowledgeBaseArticleRecord],
+) -> tuple[KnowledgeBaseSourceVersionEvidence, KnowledgeBaseRestoreEvidence]:
+    source_evidence = build_knowledge_base_source_version_evidence(article, source_record)
+    restore_evidence = build_knowledge_base_restore_evidence(
+        tenant_id=tenant_id,
+        articles=committed_articles,
+        source_evidences=tuple(build_source_version_evidence_stub(record) for record in committed_articles),
+        restore_drill_report_hash=stable_hash(f"{tenant_id}:knowledge_base_content:restore-drill"),
+        audit_chain_ref="audit:knowledge-base-restore-evidence",
+    )
+    expected_hashes = build_projected_source_version_evidence_hashes(
+        approved_evidence=evidence,
+        current_source_evidences=tuple(build_source_version_evidence_stub(record) for record in previous_articles),
+    )
+    if source_evidence.evidence_hash != evidence.proposed_source_version_evidence_hash:
+        raise ValueError("committed source-version evidence does not match approved evidence")
+    if restore_evidence.source_version_evidence_hashes != expected_hashes:
+        raise ValueError("committed source-version evidence hashes do not match approved projection")
+    return source_evidence, restore_evidence
 
 
 def knowledge_base_audit_source_object_ids(records: Sequence[KnowledgeBaseArticleRecord]) -> list[str]:
@@ -1369,6 +1836,7 @@ def build_edited_article_from_write_evidence(
         raise ValueError("expected current article version does not match approved evidence")
     return existing_article.model_copy(
         update={
+            "title": evidence.title,
             "updated_at_utc": metadata.updated_at_utc,
             "current_version_object_id": evidence.proposed_version_object_id,
             "current_version_label": evidence.proposed_version_label,
@@ -1553,81 +2021,105 @@ class PgKnowledgeBaseArticleRepository:
             with psycopg.connect(self.database_dsn) as connection:
                 self._set_tenant(connection, tenant_id)
                 with connection.transaction():
-                    records = list(self._list_articles(connection, tenant_id=tenant_id, for_update=True))
-                    records_by_object_id = {record.object_id: record for record in records}
-                    existing_article = records_by_object_id.get(evidence.article_object_id)
-
-                    if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
-                        if existing_article is not None:
-                            raise ValueError("create write target article already exists")
-                        if any(article.article_key == evidence.article_key for article in records):
-                            raise ValueError("create write target article key already exists")
-                        updated_article = build_created_article_from_write_evidence(
-                            tenant_id=tenant_id,
-                            evidence=evidence,
-                            source_record=source_record,
-                            audit_chain_ref=audit_chain_ref,
-                        )
-                        refreshed_records = sorted(
-                            [*records, updated_article],
-                            key=lambda record: (record.title.lower(), record.object_id),
-                        )
-                        self._insert_article(connection, article=updated_article)
-                    else:
-                        if existing_article is None:
-                            raise LookupError(f"knowledge base article not found: {evidence.article_object_id}")
-                        updated_article = build_edited_article_from_write_evidence(
-                            tenant_id=tenant_id,
-                            evidence=evidence,
-                            source_record=source_record,
-                            existing_article=existing_article,
-                            audit_chain_ref=audit_chain_ref,
-                        )
-                        refreshed_records = sorted(
-                            [
-                                updated_article if record.object_id == updated_article.object_id else record
-                                for record in records
-                            ],
-                            key=lambda record: (record.title.lower(), record.object_id),
-                        )
-
-                    self._insert_article_version(connection, article=updated_article)
-                    if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
-                        self._update_article_current_version(connection, article=updated_article)
-
-                    refreshed_source_evidence = build_source_version_evidence_for_source_record(
-                        tenant_id=tenant_id,
-                        article_object_id=evidence.article_object_id,
-                        article_version_object_id=evidence.proposed_version_object_id,
-                        source_record=source_record,
-                    )
-                    if refreshed_source_evidence.evidence_hash != evidence.proposed_source_version_evidence_hash:
-                        raise ValueError("post-write source-version evidence does not match approved evidence")
-                    refreshed_source_evidences = [
-                        (
-                            refreshed_source_evidence
-                            if record.object_id == updated_article.object_id
-                            else build_source_version_evidence_stub(record)
-                        )
-                        for record in refreshed_records
-                    ]
-                    refreshed_restore_evidence = build_knowledge_base_restore_evidence(
-                        tenant_id=tenant_id,
-                        articles=refreshed_records,
-                        source_evidences=refreshed_source_evidences,
-                        restore_drill_report_hash=stable_hash(f"{tenant_id}:knowledge_base_content:restore-drill"),
-                        audit_chain_ref="audit:knowledge-base-restore-evidence",
-                    )
-
-                    self._insert_source_version_evidence(
+                    updated_article = self.apply_write_in_transaction(
                         connection,
-                        evidence=refreshed_source_evidence,
+                        tenant_id=tenant_id,
+                        evidence=evidence,
+                        source_record=source_record,
                         audit_chain_ref=audit_chain_ref,
                     )
-                    self._insert_restore_evidence(connection, evidence=refreshed_restore_evidence)
         except psycopg.errors.UniqueViolation as exc:
             raise ValueError("knowledge base write transaction conflicts with existing metadata") from exc
         return updated_article
+
+    def apply_write_in_transaction(
+        self,
+        connection: psycopg.Connection[Any],
+        *,
+        tenant_id: str,
+        evidence: KnowledgeBaseWriteApprovalEvidence,
+        source_record: SourceObjectRecord,
+        audit_chain_ref: str,
+    ) -> KnowledgeBaseArticleRecord:
+        self._set_tenant(connection, tenant_id)
+        lock_knowledge_base_tenant_write(connection, tenant_id=tenant_id)
+        records = list(self._list_articles(connection, tenant_id=tenant_id, for_update=True))
+        require_current_knowledge_base_write(tenant_id=tenant_id, evidence=evidence, articles=records)
+        records_by_object_id = {record.object_id: record for record in records}
+        existing_article = records_by_object_id.get(evidence.article_object_id)
+
+        if evidence.operation == KnowledgeBaseWriteOperation.CREATE:
+            if existing_article is not None:
+                raise ValueError("create write target article already exists")
+            if any(article.article_key == evidence.article_key for article in records):
+                raise ValueError("create write target article key already exists")
+            updated_article = build_created_article_from_write_evidence(
+                tenant_id=tenant_id,
+                evidence=evidence,
+                source_record=source_record,
+                audit_chain_ref=audit_chain_ref,
+            )
+            refreshed_records = sorted(
+                [*records, updated_article],
+                key=lambda record: (record.title.lower(), record.object_id),
+            )
+            self._insert_article(connection, article=updated_article)
+        else:
+            if existing_article is None:
+                raise LookupError(f"knowledge base article not found: {evidence.article_object_id}")
+            updated_article = build_edited_article_from_write_evidence(
+                tenant_id=tenant_id,
+                evidence=evidence,
+                source_record=source_record,
+                existing_article=existing_article,
+                audit_chain_ref=audit_chain_ref,
+            )
+            refreshed_records = sorted(
+                [updated_article if record.object_id == updated_article.object_id else record for record in records],
+                key=lambda record: (record.title.lower(), record.object_id),
+            )
+
+        self._insert_article_version(connection, article=updated_article, created_by=source_record.metadata.created_by)
+        if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            self._update_article_current_version(connection, article=updated_article)
+
+        refreshed_source_evidence = build_source_version_evidence_for_source_record(
+            tenant_id=tenant_id,
+            article_object_id=evidence.article_object_id,
+            article_version_object_id=evidence.proposed_version_object_id,
+            source_record=source_record,
+        )
+        if refreshed_source_evidence.evidence_hash != evidence.proposed_source_version_evidence_hash:
+            raise ValueError("post-write source-version evidence does not match approved evidence")
+        refreshed_source_evidences = [
+            (
+                refreshed_source_evidence
+                if record.object_id == updated_article.object_id
+                else build_source_version_evidence_stub(record)
+            )
+            for record in refreshed_records
+        ]
+        refreshed_restore_evidence = build_knowledge_base_restore_evidence(
+            tenant_id=tenant_id,
+            articles=refreshed_records,
+            source_evidences=refreshed_source_evidences,
+            restore_drill_report_hash=stable_hash(f"{tenant_id}:knowledge_base_content:restore-drill"),
+            audit_chain_ref="audit:knowledge-base-restore-evidence",
+        )
+
+        self._insert_source_version_evidence(
+            connection,
+            evidence=refreshed_source_evidence,
+            audit_chain_ref=audit_chain_ref,
+        )
+        self._insert_restore_evidence(connection, evidence=refreshed_restore_evidence)
+        return updated_article
+
+    def list_articles_in_transaction(
+        self, connection: psycopg.Connection[Any], *, tenant_id: str
+    ) -> Sequence[KnowledgeBaseArticleRecord]:
+        self._set_tenant(connection, tenant_id)
+        return self._list_articles(connection, tenant_id=tenant_id, for_update=True)
 
     def _list_articles(
         self,
@@ -1812,6 +2304,7 @@ class PgKnowledgeBaseArticleRepository:
         connection: psycopg.Connection[Any],
         *,
         article: KnowledgeBaseArticleRecord,
+        created_by: str,
     ) -> None:
         connection.execute(
             """
@@ -1848,7 +2341,7 @@ class PgKnowledgeBaseArticleRepository:
                 article.current_version_object_id,
                 KB_ARTICLE_VERSION_OBJECT_TYPE,
                 article.owner_principal_id,
-                article.created_by,
+                created_by,
                 article.updated_at_utc,
                 article.updated_at_utc,
                 article.data_classification,
@@ -1876,7 +2369,8 @@ class PgKnowledgeBaseArticleRepository:
         result = connection.execute(
             """
             UPDATE knowledge_base.articles
-            SET updated_at_utc = %s,
+            SET title = %s,
+                updated_at_utc = %s,
                 audit_chain_ref = %s,
                 current_version_object_id = %s,
                 current_version_label = %s,
@@ -1886,6 +2380,7 @@ class PgKnowledgeBaseArticleRepository:
               AND object_id = %s
             """,
             (
+                article.title,
                 article.updated_at_utc,
                 article.audit_chain_ref,
                 article.current_version_object_id,
@@ -2416,6 +2911,7 @@ class KnowledgeBaseArticleService:
         write_approval_ledger: KnowledgeBaseWriteApprovalLedger | None = None,
         source_object_write_guard: KnowledgeBaseSourceObjectWriteGuard | None = None,
         source_object_write_receipt_store: SourceObjectWriteReceiptStore | None = None,
+        write_unit_of_work: KnowledgeBaseWriteUnitOfWork | None = None,
     ) -> None:
         self.repository = repository
         self.source_repository = source_repository
@@ -2424,6 +2920,306 @@ class KnowledgeBaseArticleService:
         self.source_object_write_guard = source_object_write_guard or KnowledgeBaseSourceObjectWriteGuard()
         self.source_object_write_receipt_store = (
             source_object_write_receipt_store or InMemorySourceObjectWriteReceiptStore()
+        )
+        self.write_unit_of_work = write_unit_of_work or CoordinatedKnowledgeBaseWriteUnitOfWork(
+            article_repository=self.repository,
+            source_repository=self.source_repository,
+            source_object_write_receipt_store=self.source_object_write_receipt_store,
+        )
+
+    def require_write_access(
+        self,
+        *,
+        user_context: UserContext,
+        command: KnowledgeBaseWriteApprovalCommand | None = None,
+        evidence_hash: str | None = None,
+    ) -> None:
+        """Revalidate the authenticated actor and current object ACL at every HTTP write stage."""
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        if command is not None:
+            operation = command.operation
+            article_object_id = command.article_object_id
+        elif evidence_hash is not None:
+            evidence = self.write_approval_ledger.get(tenant_id=user_context.tenant_id, evidence_hash=evidence_hash)
+            operation = evidence.operation
+            article_object_id = evidence.article_object_id
+        else:
+            raise ValueError("write command or approval evidence is required")
+        if operation == KnowledgeBaseWriteOperation.EDIT:
+            self._authorized_article(user_context=user_context, article_object_id=article_object_id)
+
+    def _authorized_article(self, *, user_context: UserContext, article_object_id: str) -> KnowledgeBaseArticleRecord:
+        article = next(
+            (
+                record
+                for record in self.repository.list_articles(tenant_id=user_context.tenant_id)
+                if record.tenant_id == user_context.tenant_id and record.object_id == article_object_id
+            ),
+            None,
+        )
+        if article is None or not {
+            article.object_id,
+            article.current_version_object_id,
+            article.current_source_object_id,
+        }.issubset(user_context.readable_object_ids):
+            raise LookupError("Knowledge Base article is unavailable")
+        return article
+
+    def require_product_source_metadata(
+        self,
+        *,
+        user_context: UserContext,
+        evidence_hash: str,
+        proposed_source_record: SourceObjectRecord,
+    ) -> None:
+        """Opaque browser payloads are untrusted: rederive all writable security fields."""
+        evidence = self.write_approval_ledger.get(tenant_id=user_context.tenant_id, evidence_hash=evidence_hash)
+        current: SourceObjectMetadata | None = None
+        if evidence.operation == KnowledgeBaseWriteOperation.EDIT:
+            article = self._authorized_article(user_context=user_context, article_object_id=evidence.article_object_id)
+            source = self.source_repository.get(
+                tenant_id=user_context.tenant_id,
+                object_id=article.current_source_object_id,
+                version_id=article.current_source_version_id,
+            )
+            build_knowledge_base_source_version_evidence(article, source)
+            current = source.metadata
+        metadata = proposed_source_record.metadata
+        if metadata.object_id == evidence.article_object_id:
+            raise ValueError("Knowledge Base source and article identifiers must differ")
+        try:
+            self.source_repository.latest(tenant_id=user_context.tenant_id, object_id=metadata.object_id)
+        except KeyError:
+            pass
+        else:
+            raise ValueError("Knowledge Base proposed source identifier already exists")
+        expected = {
+            "tenant_id": user_context.tenant_id,
+            "object_id": evidence.proposed_version_object_id,
+            "object_type": SourceObjectType.WIKI,
+            "title": evidence.title,
+            "owner_principal_id": current.owner_principal_id if current else user_context.user_id,
+            "created_by": user_context.user_id,
+            "classification": DataClass.INTERNAL,
+            "retention_policy_id": "rp-standard",
+            "legal_hold_state": LegalHoldState.NONE,
+            "kms_key_ref": current.kms_key_ref if current else f"kms://{user_context.tenant_id}/internal/v1",
+            "source_system": current.source_system if current else "collabio",
+            "schema_version": "source_object.v1",
+            "mime_type": "text/plain",
+            "acl_hash": current.acl_hash if current else knowledge_base_product_acl_hash(user_context),
+            "acl_version": current.acl_version if current else 1,
+            "lifecycle_state": SourceLifecycleState.SAVED_VERSION,
+            "parent_object_id": None,
+            "thread_id": None,
+            "parser_profile_id": None,
+        }
+        if any(getattr(metadata, field) != value for field, value in expected.items()):
+            raise ValueError("Knowledge Base source security metadata does not match the authorized write policy")
+        if (
+            proposed_source_record.content_bytes is not None
+            or len(proposed_source_record.text) > 100_000
+            or not proposed_source_record.text.strip()
+            or "\x00" in proposed_source_record.text
+        ):
+            raise ValueError("Knowledge Base source content is outside the editor contract")
+
+    def _read_article_text(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> tuple[KnowledgeBaseArticleRecord, KnowledgeBaseSourceVersionEvidence, str]:
+        article = self._authorized_article(user_context=user_context, article_object_id=article_object_id)
+        if (
+            article.status != KnowledgeBaseArticleStatus.PUBLISHED
+            or article.lifecycle_state != KnowledgeBaseArticleLifecycleState.PUBLISHED
+        ):
+            raise LookupError("Knowledge Base article is unavailable")
+        source_identity = {
+            "tenant_id": user_context.tenant_id,
+            "object_id": article.current_source_object_id,
+            "version_id": article.current_source_version_id,
+        }
+        if isinstance(self.source_repository, SourceObjectMetadataRepository):
+            metadata = self.source_repository.get_metadata(**source_identity)
+            self._require_article_text_metadata(article, metadata)
+        source = self.source_repository.get(
+            **source_identity,
+        )
+        self._require_article_text_metadata(article, source.metadata)
+        content = source_object_content_bytes(source)
+        if len(content) != source.metadata.content_byte_length or len(content) > 400_000:
+            raise ValueError("Knowledge Base source exceeds the content size limit")
+        evidence = build_knowledge_base_source_version_evidence(article, source)
+        body = content.decode("utf-8")
+        if len(body) > 100_000 or not body.strip() or "\x00" in body:
+            raise ValueError("Knowledge Base source is not supported article text")
+        return article, evidence, body
+
+    @staticmethod
+    def _require_article_text_metadata(article: KnowledgeBaseArticleRecord, metadata: SourceObjectMetadata) -> None:
+        require_knowledge_base_source_version_metadata(article, metadata)
+        if (
+            metadata.object_type != SourceObjectType.WIKI
+            or metadata.mime_type != "text/plain"
+            or metadata.schema_version != "source_object.v1"
+            or metadata.lifecycle_state != SourceLifecycleState.SAVED_VERSION
+            or not 0 < metadata.content_byte_length <= 400_000
+        ):
+            raise ValueError("Knowledge Base source is not supported article text")
+
+    def read_content(self, *, user_context: UserContext, article_object_id: str) -> KnowledgeBaseArticleContent:
+        article, evidence, body = self._read_article_text(
+            user_context=user_context, article_object_id=article_object_id
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.content_read",
+            source_object_ids=knowledge_base_audit_source_object_ids([article]),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "feature_id": KB_ARTICLES_FEATURE_ID,
+                "surface": "api",
+                "result_contract": "metadata_only",
+                "content_included": False,
+                "source_version_evidence_hash": evidence.evidence_hash,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
+        )
+        return KnowledgeBaseArticleContent(
+            tenant_id=user_context.tenant_id,
+            article=knowledge_base_article_view(article).model_copy(
+                update={"source_version_evidence_hash": evidence.evidence_hash}
+            ),
+            body=body,
+            audit_event_id=event.event_id,
+        )
+
+    def read_edit_content(
+        self, *, user_context: UserContext, article_object_id: str
+    ) -> KnowledgeBaseArticleEditContent:
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        article, evidence, body = self._read_article_text(
+            user_context=user_context, article_object_id=article_object_id
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.edit_content_read",
+            source_object_ids=knowledge_base_audit_source_object_ids([article]),
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "result_contract": "metadata_only",
+                "source_version_evidence_hash": evidence.evidence_hash,
+            },
+        )
+        return KnowledgeBaseArticleEditContent(
+            tenant_id=user_context.tenant_id,
+            article=knowledge_base_article_view(article).model_copy(
+                update={"source_version_evidence_hash": evidence.evidence_hash}
+            ),
+            body=body,
+            audit_event_id=event.event_id,
+        )
+
+    def prepare_product_write(
+        self, *, command: KnowledgeBaseProductWriteCommand, user_context: UserContext
+    ) -> KnowledgeBaseProductWritePreparation:
+        if "tenant-admin" not in user_context.role_ids:
+            raise PermissionError("Tenant admin role required")
+        proposal_id = uuid4().hex
+        article_object_id = f"kb-article-{proposal_id}"
+        article_key = f"KB-{proposal_id.upper()}"
+        version_label = "v1"
+        current_source: SourceObjectMetadata | None = None
+        if command.operation == KnowledgeBaseWriteOperation.EDIT:
+            article = self._authorized_article(
+                user_context=user_context, article_object_id=str(command.article_object_id)
+            )
+            if article.current_version_object_id != command.expected_current_version_object_id:
+                raise KnowledgeBaseWriteConflictError("expected current article version does not match")
+            source_record = self.source_repository.get(
+                tenant_id=user_context.tenant_id,
+                object_id=article.current_source_object_id,
+                version_id=article.current_source_version_id,
+            )
+            build_knowledge_base_source_version_evidence(article, source_record)
+            current_source = source_record.metadata
+            if article.legal_hold_state != "none" or current_source.legal_hold_state != LegalHoldState.NONE:
+                raise ValueError("Legal Hold blocks this Knowledge Base edit")
+            if article.status != KnowledgeBaseArticleStatus.PUBLISHED:
+                raise ValueError("Only published Knowledge Base articles can be edited")
+            article_object_id = article.object_id
+            article_key = article.article_key
+            match = re.fullmatch(r"v([0-9]{1,9})", article.current_version_label)
+            version_label = f"v{int(match.group(1)) + 1}" if match else f"v-{proposal_id}"
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        version_object_id = f"kb-article-version-{proposal_id}"
+        content = command.body.encode("utf-8")
+        metadata = SourceObjectMetadata(
+            tenant_id=user_context.tenant_id,
+            object_id=version_object_id,
+            object_type=SourceObjectType.WIKI,
+            version_id=version_label,
+            title=command.title.strip(),
+            owner_principal_id=current_source.owner_principal_id if current_source else user_context.user_id,
+            created_by=user_context.user_id,
+            created_at_utc=now,
+            updated_at_utc=now,
+            classification=DataClass.INTERNAL,
+            retention_policy_id="rp-standard",
+            legal_hold_state=LegalHoldState.NONE,
+            kms_key_ref=current_source.kms_key_ref if current_source else f"kms://{user_context.tenant_id}/internal/v1",
+            manifest_hash=ZERO_HASH,
+            audit_chain_ref=f"audit:kb-write-{proposal_id}",
+            source_system=current_source.source_system if current_source else "collabio",
+            mime_type="text/plain",
+            acl_hash=(current_source.acl_hash if current_source else knowledge_base_product_acl_hash(user_context)),
+            acl_version=current_source.acl_version if current_source else 1,
+            content_hash=sha256_bytes(content),
+            content_byte_length=len(content),
+            lifecycle_state=SourceLifecycleState.SAVED_VERSION,
+        )
+        metadata = metadata.model_copy(update={"manifest_hash": build_source_object_manifest_hash(metadata)})
+        proposed_source = SourceObjectRecord(metadata=metadata, text=command.body)
+        SourceObjectWriteGuard().validate_before_write(proposed_source)
+        write_command = KnowledgeBaseWriteApprovalCommand(
+            approval_reference=f"approval:kb-write-{proposal_id}",
+            reason="Prepare an explicitly confirmed Knowledge Base write from Work",
+            operation=command.operation,
+            article_object_id=article_object_id,
+            article_key=article_key,
+            title=metadata.title,
+            proposed_version_object_id=version_object_id,
+            proposed_version_label=version_label,
+            proposed_source_object_id=version_object_id,
+            proposed_source_version_id=version_label,
+            proposed_source_manifest_hash=metadata.manifest_hash,
+            proposed_content_hash=metadata.content_hash,
+            proposed_acl_version=metadata.acl_version,
+            expected_current_version_object_id=command.expected_current_version_object_id,
+            source_system=metadata.source_system,
+        )
+        event = self.audit_logger.record(
+            user_context=user_context,
+            event_type="knowledge_base.article.write_prepared",
+            source_object_ids=[article_object_id, version_object_id],
+            metadata={
+                "module_id": KNOWLEDGE_BASE_MODULE_ID,
+                "operation": command.operation,
+                "result_contract": "metadata_only",
+                "proposed_source_manifest_hash": metadata.manifest_hash,
+                "proposed_content_hash": metadata.content_hash,
+                "persistence_allowed": False,
+                "rag_indexing_allowed": False,
+                "search_indexing_allowed": False,
+            },
+        )
+        return KnowledgeBaseProductWritePreparation(
+            tenant_id=user_context.tenant_id,
+            write_command=write_command,
+            proposed_source_record=proposed_source,
+            audit_event_id=event.event_id,
         )
 
     def list_articles(self, *, user_context: UserContext) -> KnowledgeBaseArticlesResponse:
@@ -2557,7 +3353,7 @@ class KnowledgeBaseArticleService:
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
-                "surface": "compliance_api",
+                "surface": "api",
                 "operation": command.operation,
                 "dry_run": True,
                 "persistence_allowed": False,
@@ -2644,7 +3440,7 @@ class KnowledgeBaseArticleService:
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
-                "surface": "compliance_api",
+                "surface": "api",
                 "operation": dry_run_evidence.operation,
                 "approval_reference": command.approval_reference,
                 "approval_state": KnowledgeBaseWriteApprovalState.APPROVED_FOR_WRITE,
@@ -2752,7 +3548,7 @@ class KnowledgeBaseArticleService:
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
-                "surface": "compliance_api",
+                "surface": "api",
                 "operation": approved_evidence.operation,
                 "preview_reference": command.preview_reference,
                 "approval_state": approved_evidence.approval_state,
@@ -2889,7 +3685,7 @@ class KnowledgeBaseArticleService:
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
-                "surface": "compliance_api",
+                "surface": "api",
                 "operation": approved_evidence.operation,
                 "execution_reference": command.execution_reference,
                 "human_confirmation_reference": command.human_confirmation_reference,
@@ -3041,34 +3837,19 @@ class KnowledgeBaseArticleService:
             receipt_reference=f"receipt:{command.execution_reference}",
             audit_chain_ref=audit_chain_ref,
         )
-        persisted_write_receipt = self.source_object_write_receipt_store.append(source_object_write_receipt)
-        self.source_repository.add(command.proposed_source_record)
-        updated_article = self.repository.apply_write(
+        write_commit = self.write_unit_of_work.commit(
             tenant_id=user_context.tenant_id,
             evidence=approved_evidence,
             source_record=command.proposed_source_record,
+            source_object_write_receipt=source_object_write_receipt,
             audit_chain_ref=audit_chain_ref,
         )
-        refreshed_records = sorted(
-            self.repository.list_articles(tenant_id=user_context.tenant_id),
-            key=lambda record: (record.title.lower(), record.object_id),
-        )
-        refreshed_source_evidences = [self.source_version_evidence(record) for record in refreshed_records]
-        refreshed_restore_evidence = build_knowledge_base_restore_evidence(
-            tenant_id=user_context.tenant_id,
-            articles=refreshed_records,
-            source_evidences=refreshed_source_evidences,
-            restore_drill_report_hash=stable_hash(f"{user_context.tenant_id}:knowledge_base_content:restore-drill"),
-            audit_chain_ref="audit:knowledge-base-restore-evidence",
-        )
-        refreshed_evidence_by_article = {
-            evidence.article_object_id: evidence for evidence in refreshed_source_evidences
-        }
-        refreshed_source_evidence = refreshed_evidence_by_article[approved_evidence.article_object_id]
-        if refreshed_source_evidence.evidence_hash != approved_evidence.proposed_source_version_evidence_hash:
-            raise ValueError("post-write source-version evidence does not match approved evidence")
-        if refreshed_restore_evidence.source_version_evidence_hashes != projected_source_hashes:
-            raise ValueError("post-write source-version evidence hashes do not match refresh preview")
+        persisted_write_receipt = write_commit.source_object_write_receipt
+        updated_article = write_commit.article
+        # Evidence is verified before commit and returned from that transaction's snapshot.
+        # A later tenant write must not turn this durable success into a post-commit error.
+        refreshed_restore_evidence = write_commit.restore_evidence
+        refreshed_source_evidence = write_commit.source_version_evidence
 
         event = self.audit_logger.record(
             user_context=user_context,
@@ -3078,7 +3859,7 @@ class KnowledgeBaseArticleService:
             metadata={
                 "module_id": KNOWLEDGE_BASE_MODULE_ID,
                 "feature_id": KB_ARTICLES_WRITE_FEATURE_ID,
-                "surface": "compliance_api",
+                "surface": "api",
                 "operation": approved_evidence.operation,
                 "execution_reference": command.execution_reference,
                 "human_confirmation_reference": command.human_confirmation_reference,
@@ -3097,12 +3878,20 @@ class KnowledgeBaseArticleService:
                 "refreshed_restore_evidence_hash": refreshed_restore_evidence.evidence_hash,
                 "refreshed_source_version_evidence_hash": refreshed_source_evidence.evidence_hash,
                 "source_version_evidence_hashes_after": list(refreshed_restore_evidence.source_version_evidence_hashes),
-                "source_object_persisted": True,
-                "source_object_write_receipt_persisted": True,
-                "article_metadata_persisted": True,
-                "article_version_metadata_persisted": True,
-                "source_version_evidence_refreshed": True,
-                "restore_evidence_refreshed": True,
+                "source_object_persisted": write_commit.source_object_persisted,
+                "source_object_write_receipt_persisted": write_commit.source_object_write_receipt_persisted,
+                "write_unit_of_work_committed": write_commit.write_unit_of_work_committed,
+                "write_unit_of_work_contract": write_commit.contract_version,
+                "write_unit_of_work_transaction_scope": write_commit.transaction_scope,
+                "source_content_recovery_required": write_commit.source_content_recovery_required,
+                "source_content_recovery_evidence_hash": write_commit.source_content_recovery_evidence_hash,
+                "production_write_deployment_gate_evidence_hash": (
+                    write_commit.production_write_deployment_gate_evidence_hash
+                ),
+                "article_metadata_persisted": write_commit.article_metadata_persisted,
+                "article_version_metadata_persisted": write_commit.article_version_metadata_persisted,
+                "source_version_evidence_refreshed": write_commit.source_version_evidence_refreshed,
+                "restore_evidence_refreshed": write_commit.restore_evidence_refreshed,
                 "rag_indexing_allowed": False,
                 "search_indexing_allowed": False,
                 "result_contract": "metadata_only",
@@ -3136,6 +3925,20 @@ class KnowledgeBaseArticleService:
             article_count_after=refreshed_restore_evidence.article_count,
             article_version_count_after=refreshed_restore_evidence.article_version_count,
             source_version_evidence_count_after=refreshed_restore_evidence.source_version_evidence_count,
+            source_object_persisted=write_commit.source_object_persisted,
+            source_object_write_receipt_persisted=write_commit.source_object_write_receipt_persisted,
+            write_unit_of_work_committed=write_commit.write_unit_of_work_committed,
+            write_unit_of_work_contract=write_commit.contract_version,
+            write_unit_of_work_transaction_scope=write_commit.transaction_scope,
+            source_content_recovery_required=write_commit.source_content_recovery_required,
+            source_content_recovery_evidence_hash=write_commit.source_content_recovery_evidence_hash,
+            production_write_deployment_gate_evidence_hash=(
+                write_commit.production_write_deployment_gate_evidence_hash
+            ),
+            article_metadata_persisted=write_commit.article_metadata_persisted,
+            article_version_metadata_persisted=write_commit.article_version_metadata_persisted,
+            source_version_evidence_refreshed=write_commit.source_version_evidence_refreshed,
+            restore_evidence_refreshed=write_commit.restore_evidence_refreshed,
             audit_event_id=event.event_id,
         )
 
@@ -3265,6 +4068,10 @@ class KnowledgeBaseArticleService:
         return build_knowledge_base_source_version_evidence(record, source_record)
 
 
+def knowledge_base_product_acl_hash(user_context: UserContext) -> str:
+    return stable_hash(canonical_json({"tenant_id": user_context.tenant_id, "owner": user_context.user_id}))
+
+
 def default_knowledge_base_enabled_features() -> dict[str, bool]:
     return {KB_ARTICLES_FEATURE_ID: True, KB_ARTICLES_WRITE_FEATURE_ID: False}
 
@@ -3284,13 +4091,11 @@ def build_default_knowledge_base_write_approval_ledger() -> KnowledgeBaseWriteAp
     raise ValueError(f"Unsupported SUITE_KB_WRITE_APPROVAL_LEDGER_BACKEND: {backend}")
 
 
-def build_knowledge_base_source_version_evidence(
+def require_knowledge_base_source_version_metadata(
     article: KnowledgeBaseArticleRecord,
-    source_record: SourceObjectRecord,
-) -> KnowledgeBaseSourceVersionEvidence:
-    metadata = source_record.metadata
+    metadata: SourceObjectMetadata,
+) -> None:
     expected_manifest_hash = build_source_object_manifest_hash(metadata)
-    expected_content_hash = sha256_bytes(source_object_content_bytes(source_record))
     mismatches: list[str] = []
     if metadata.tenant_id != article.tenant_id:
         mismatches.append("tenant_id")
@@ -3307,7 +4112,7 @@ def build_knowledge_base_source_version_evidence(
         or metadata.manifest_hash != expected_manifest_hash
     ):
         mismatches.append("source_manifest_hash")
-    if metadata.content_hash != article.current_content_hash or metadata.content_hash != expected_content_hash:
+    if metadata.content_hash != article.current_content_hash:
         mismatches.append("content_hash")
     if metadata.acl_version != article.current_acl_version:
         mismatches.append("acl_version")
@@ -3320,6 +4125,15 @@ def build_knowledge_base_source_version_evidence(
     if mismatches:
         raise ValueError(f"knowledge base source version evidence mismatch: {', '.join(sorted(mismatches))}")
 
+
+def build_knowledge_base_source_version_evidence(
+    article: KnowledgeBaseArticleRecord,
+    source_record: SourceObjectRecord,
+) -> KnowledgeBaseSourceVersionEvidence:
+    metadata = source_record.metadata
+    require_knowledge_base_source_version_metadata(article, metadata)
+    if metadata.content_hash != sha256_bytes(source_object_content_bytes(source_record)):
+        raise ValueError("knowledge base source version evidence mismatch: content_hash")
     draft = KnowledgeBaseSourceVersionEvidence(
         tenant_id=article.tenant_id,
         article_object_id=article.object_id,
@@ -3754,6 +4568,66 @@ def build_knowledge_base_restore_evidence(
 
 
 def build_restore_evidence_hash(evidence: KnowledgeBaseRestoreEvidence) -> str:
+    return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def build_knowledge_base_production_write_deployment_gate(
+    *,
+    tenant_id: str,
+    source_content_recovery_evidence: SourceObjectContentRecoveryEvidence,
+    provider_profile_evidence: S3CompatibleProviderProfileEvidence,
+    restore_drill_report_hash: str,
+) -> KnowledgeBaseProductionWriteDeploymentGateEvidence:
+    blocking_reasons: list[str] = []
+    if source_content_recovery_evidence.tenant_id != tenant_id:
+        blocking_reasons.append("source_content_recovery_tenant_mismatch")
+    if (
+        build_source_object_content_recovery_evidence_hash(source_content_recovery_evidence)
+        != source_content_recovery_evidence.evidence_hash
+    ):
+        blocking_reasons.append("source_content_recovery_evidence_hash_invalid")
+    if not source_content_recovery_evidence.api_wiring_allowed:
+        blocking_reasons.append("source_content_recovery_not_ready")
+    if build_s3_compatible_provider_profile_evidence_hash(provider_profile_evidence) != (
+        provider_profile_evidence.evidence_hash
+    ):
+        blocking_reasons.append("provider_profile_evidence_hash_invalid")
+    if not provider_profile_evidence.provider_profile_ready:
+        blocking_reasons.append("provider_profile_not_ready")
+    if provider_profile_evidence.blocking_reasons:
+        blocking_reasons.extend(f"provider_profile:{reason}" for reason in provider_profile_evidence.blocking_reasons)
+    restore_drill_bound = (
+        restore_drill_report_hash == source_content_recovery_evidence.restore_drill_report_hash
+        and SHA256_REF_PATTERN.fullmatch(restore_drill_report_hash) is not None
+    )
+    if not restore_drill_bound:
+        blocking_reasons.append("restore_drill_evidence_not_bound")
+
+    unique_blocking_reasons = tuple(sorted(set(blocking_reasons)))
+    api_wiring_allowed = not unique_blocking_reasons
+    draft = KnowledgeBaseProductionWriteDeploymentGateEvidence(
+        tenant_id=tenant_id,
+        source_content_recovery_evidence_hash=source_content_recovery_evidence.evidence_hash,
+        provider_profile_evidence_hash=provider_profile_evidence.evidence_hash,
+        restore_drill_report_hash=restore_drill_report_hash,
+        source_content_recovery_api_wiring_allowed=source_content_recovery_evidence.api_wiring_allowed,
+        provider_profile_ready=provider_profile_evidence.provider_profile_ready,
+        restore_drill_bound=restore_drill_bound,
+        blocking_reasons=unique_blocking_reasons,
+        api_wiring_allowed=api_wiring_allowed,
+        gate_status=(
+            KnowledgeBaseProductionWriteDeploymentGateStatus.READY
+            if api_wiring_allowed
+            else KnowledgeBaseProductionWriteDeploymentGateStatus.BLOCKED
+        ),
+        evidence_hash=ZERO_HASH,
+    )
+    return draft.model_copy(update={"evidence_hash": build_production_write_deployment_gate_hash(draft)})
+
+
+def build_production_write_deployment_gate_hash(
+    evidence: KnowledgeBaseProductionWriteDeploymentGateEvidence,
+) -> str:
     return stable_hash(canonical_json(evidence.model_dump(mode="json", exclude={"evidence_hash"})))
 
 

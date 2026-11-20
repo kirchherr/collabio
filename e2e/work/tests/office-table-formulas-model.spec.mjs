@@ -1,0 +1,304 @@
+import { expect, test } from "@playwright/test";
+
+import { clearOfficeTableFormula, clearOfficeTableFormulas, fillOfficeTableFormulas, officeTableFromTSV, pasteOfficeTableCells, recalculateOfficeDocumentFormulas, recalculateOfficeTableFormulas, remapOfficeTableFormulas, remapOfficeTableRangeDefinitions, setOfficeTableFormula } from "../office-table-formulas.mjs";
+import { officeTableDisplayValue, officeTableFormulaSource } from "../office-tables.mjs";
+
+const text = (cell) => cell.content[0].content?.[0]?.text || "";
+
+test("Office TSV import preserves quoted cells and evaluates local arithmetic and ranges", () => {
+  let table = officeTableFromTSV('Item\tQ1\tQ2\tTotal\n"Alpha\tteam"\t2\t3\t=SUM(B2:C2)\nBravo\t4\t6\t=B3+C3');
+  expect(table.content.map((row) => row.content.map(text))).toEqual([
+    ["Item", "Q1", "Q2", "Total"], ["Alpha\tteam", "2", "3", "5"], ["Bravo", "4", "6", "10"],
+  ]);
+  expect(table.content[1].content[3].attrs).toMatchObject({ formula: "=SUM(B2:C2)", formulaResult: "5" });
+  table.content[1].content[1].content[0].content[0].text = "7";
+  table = recalculateOfficeTableFormulas(table);
+  expect(text(table.content[1].content[3])).toBe("10");
+});
+
+test("Office formulas normalize German input support functions and remain removable", () => {
+  let table = officeTableFromTSV("2\t4\n6\t8");
+  table = setOfficeTableFormula(table, { row: 1, column: 1, formula: "=MITTELWERT(A1;B1;A2)" });
+  expect(table.content[1].content[1].attrs).toMatchObject({ formula: "=AVERAGE(A1,B1,A2)", formulaResult: "4" });
+  table = clearOfficeTableFormula(table, { row: 1, column: 1 });
+  expect(table.content[1].content[1].attrs.formula).toBeUndefined();
+  expect(text(table.content[1].content[1])).toBe("4");
+});
+
+test("Office formulas evaluate comparisons conditions logic rounding and advanced numeric functions transitively", () => {
+  let table = officeTableFromTSV("5\t2\t0\t0\n0\t0\t0\t0");
+  table = setOfficeTableFormula(table, { row: 0, column: 2,
+    formula: "=WENN(A1>B1;RUNDEN(POTENZ(A1;2)/3;2);1/0)" });
+  table = setOfficeTableFormula(table, { row: 0, column: 3,
+    formula: "=PRODUKT(A1:B1)+MEDIAN(A1:B1)+WURZEL(4)+ABS(-3)" });
+  table = setOfficeTableFormula(table, { row: 1, column: 0,
+    formula: "=UND(C1=8.33;NICHT(A1=B1);ODER(0;1))" });
+  table = setOfficeTableFormula(table, { row: 1, column: 1, formula: "=C1+D1" });
+  expect(table.content.flatMap((row) => row.content).map(text)).toEqual(["5", "2", "8.33", "18.5", "1", "26.83", "0", "0"]);
+  expect(table.content[0].content[2].attrs.formula).toBe("=IF(A1>B1,ROUND(POWER(A1,2)/3,2),1/0)");
+});
+
+test("Office advanced formulas fail closed on invalid arity domains and bounded results", () => {
+  const table = officeTableFromTSV("1\t0");
+  for (const [formula, result] of [["=SQRT(-1)", "#WERT!"], ["=ROUND(1,11)", "#WERT!"],
+    ["=POWER(10,20)", "#LIMIT!"], ["=IF(0,1/0,7)", "7"]]) {
+    const calculated = setOfficeTableFormula(table, { row: 0, column: 1, formula });
+    expect(text(calculated.content[0].content[1])).toBe(result);
+  }
+  for (const formula of ["=NOT(1,2)", "=IF(1,2)", "=ROUND(1)"]) {
+    expect(text(setOfficeTableFormula(table, { row: 0, column: 1, formula }).content[0].content[1])).toBe("#WERT!");
+  }
+});
+
+test("Office named ranges calculate across tables with exact lookup and deterministic dates", () => {
+  const source = officeTableFromTSV("101\t5\t2\n102\t7\t3");
+  source.attrs = { tableId: `table-${"a".repeat(24)}`, caption: "Source" };
+  const result = officeTableFromTSV("0\t0\n0\t0"); result.attrs = { tableId: `table-${"b".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUM(SALES)+XLOOKUP(102,ITEM_IDS,PRICES)", formulaResult: "#WERT!" };
+  result.content[0].content[0].content = [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  result.content[0].content[1].attrs = { formula: "=YEAR(DATE(2026,10,12))+MONTH(DATE(2026,10,12))+DAY(DATE(2026,10,12))", formulaResult: "#WERT!" };
+  result.content[0].content[1].content = [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  const document = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "ITEM_IDS", tableId: source.attrs.tableId, range: "A1:A2" },
+    { name: "PRICES", tableId: source.attrs.tableId, range: "B1:B2" },
+    { name: "SALES", tableId: source.attrs.tableId, range: "C1:C2" },
+  ] }, content: [source, result] });
+  expect(document.content[1].content[0].content.map(text)).toEqual(["12", "2048"]);
+  expect(document.content[1].content[0].content[0].attrs.formulaResult).toBe("12");
+});
+
+test("Office text formulas preserve literal case delimiters and quoted references", () => {
+  let table = officeTableFromTSV("0\t0");
+  table = setOfficeTableFormula(table, { row: 0, column: 0,
+    formula: '=verketten("A1;Tag";" ";links("März";3))' });
+  expect(table.content[0].content[0].attrs).toMatchObject({
+    formula: '=CONCAT("A1;Tag"," ",LEFT("März",3))', formulaResult: "A1;Tag Mär",
+  });
+  const filled = fillOfficeTableFormulas(table, { top: 0, left: 0, bottom: 1, right: 2,
+    formula: '=VERKETTEN("A1";RECHTS("2026";2))' });
+  expect(filled.content[0].content.map((cell) => cell.attrs.formula)).toEqual([
+    '=CONCAT("A1",RIGHT("2026",2))', '=CONCAT("A1",RIGHT("2026",2))',
+  ]);
+  expect(filled.content[0].content.map(text)).toEqual(["A126", "A126"]);
+});
+
+test("Office text formulas resolve named ranges and exact text lookup across tables", () => {
+  const source = officeTableFromTSV("A\tAlpha\nB\tBeta");
+  source.attrs = { tableId: `table-${"7".repeat(24)}`, caption: "Labels" };
+  const result = officeTableFromTSV("0\t0"); result.attrs = { tableId: `table-${"8".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = {
+    formula: '=CONCAT(XLOOKUP("B",ITEMS,LABELS)," / ",RIGHT("2026",2))', formulaResult: "0",
+  };
+  result.content[0].content[1].attrs = { formula: '=LEN(CONCAT("A","😀"))', formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "ITEMS", tableId: source.attrs.tableId, range: "A1:A2" },
+    { name: "LABELS", tableId: source.attrs.tableId, range: "B1:B2" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map(text)).toEqual(["Beta / 26", "2"]);
+});
+
+test("Office calendar formulas clip month ends and use ISO weekdays deterministically", () => {
+  let table = officeTableFromTSV("0\t0\t0\t0");
+  for (const [column, formula] of [
+    [0, "=TAG(EDATUM(DATUM(2024;1;31);1))"],
+    [1, "=TAG(MONATSENDE(DATUM(2025;2;4);0))"],
+    [2, "=TAGE(DATUM(2026;10;13);DATUM(2026;10;1))"],
+    [3, "=WOCHENTAG(DATUM(2026;10;13))"],
+  ]) table = setOfficeTableFormula(table, { row: 0, column, formula });
+  expect(table.content[0].content.map(text)).toEqual(["29", "28", "12", "2"]);
+  expect(table.content[0].content.map((cell) => cell.attrs.formula)).toEqual([
+    "=DAY(EDATE(DATE(2024,1,31),1))", "=DAY(EOMONTH(DATE(2025,2,4),0))",
+    "=DAYS(DATE(2026,10,13),DATE(2026,10,1))", "=WEEKDAY(DATE(2026,10,13))",
+  ]);
+});
+
+test("Office conditional aggregates use exact numeric criteria across local and named ranges", () => {
+  const source = officeTableFromTSV("1\t10\n2\t20\n1\t30");
+  source.attrs = { tableId: `table-${"c".repeat(24)}`, caption: "Values" };
+  const result = officeTableFromTSV("0\t0\t0"); result.attrs = { tableId: `table-${"d".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUMIF(KEYS,1,VALUES)", formulaResult: "0" };
+  result.content[0].content[1].attrs = { formula: "=COUNTIF(KEYS,1)", formulaResult: "0" };
+  result.content[0].content[2].attrs = { formula: "=AVERAGEIF(KEYS,1,VALUES)", formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "KEYS", tableId: source.attrs.tableId, range: "A1:A3" },
+    { name: "VALUES", tableId: source.attrs.tableId, range: "B1:B3" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map((cell) => cell.attrs.formulaResult)).toEqual(["40", "2", "20"]);
+  expect(officeTableFormulaSource("=SUMMEWENN(KEYS;1;VALUES)+ZÄHLENWENN(KEYS;2)+MITTELWERTWENN(KEYS;1;VALUES)"))
+    .toBe("=SUMIF(KEYS,1,VALUES)+COUNTIF(KEYS,2)+AVERAGEIF(KEYS,1,VALUES)");
+});
+
+test("Office multiple-criteria aggregates align local and named ranges exactly", () => {
+  const source = officeTableFromTSV("1\t1\t10\n1\t2\t20\n2\t1\t30\n1\t1\t40");
+  source.attrs = { tableId: `table-${"e".repeat(24)}`, caption: "Criteria" };
+  const result = officeTableFromTSV("0\t0\t0"); result.attrs = { tableId: `table-${"f".repeat(24)}`, caption: "Result" };
+  result.content[0].content[0].attrs = { formula: "=SUMIFS(VALUES,REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  result.content[0].content[1].attrs = { formula: "=COUNTIFS(REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  result.content[0].content[2].attrs = { formula: "=AVERAGEIFS(VALUES,REGIONS,1,QUARTERS,1)", formulaResult: "0" };
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: [
+    { name: "REGIONS", tableId: source.attrs.tableId, range: "A1:A4" },
+    { name: "QUARTERS", tableId: source.attrs.tableId, range: "B1:B4" },
+    { name: "VALUES", tableId: source.attrs.tableId, range: "C1:C4" },
+  ] }, content: [source, result] });
+  expect(calculated.content[1].content[0].content.map((cell) => cell.attrs.formulaResult)).toEqual(["50", "2", "25"]);
+  expect(officeTableFormulaSource("=SUMMEWENNS(VALUES;REGIONS;1;QUARTERS;1)+" +
+    "ZÄHLENWENNS(REGIONS;1;QUARTERS;1)+MITTELWERTWENNS(VALUES;REGIONS;1;QUARTERS;1)"))
+    .toBe("=SUMIFS(VALUES,REGIONS,1,QUARTERS,1)+COUNTIFS(REGIONS,1,QUARTERS,1)+" +
+      "AVERAGEIFS(VALUES,REGIONS,1,QUARTERS,1)");
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t1\n2\t2\n3\t0"),
+    { row: 2, column: 1, formula: "=SUMIFS(A1:A3,B1:B2,1)" }).content[2].content[1])).toBe("#WERT!");
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t1\n2\t2\n3\t0"),
+    { row: 2, column: 1, formula: "=AVERAGEIFS(A1:A2,A1:A2,9)" }).content[2].content[1])).toBe("#DIV/0!");
+});
+
+test("Office table presentation formats keep canonical numeric values separate", () => {
+  expect(officeTableDisplayValue("1234.5", "currency-eur")).toBe("1.234,50 €");
+  expect(officeTableDisplayValue("0.125", "percent-2")).toBe("12,50 %");
+  expect(officeTableDisplayValue("20738", "date-de")).toBe("12.10.2026");
+  expect(officeTableDisplayValue("20738", "date-iso")).toBe("2026-10-12");
+  expect(officeTableDisplayValue("1.5", "date-de")).toBeNull();
+});
+
+test("Office named ranges propagate cross-table cycles and follow structural mapping", () => {
+  const left = officeTableFromTSV("0\t0"), right = officeTableFromTSV("0\t0");
+  left.attrs = { tableId: `table-${"c".repeat(24)}`, caption: "Left" };
+  right.attrs = { tableId: `table-${"d".repeat(24)}`, caption: "Right" };
+  left.content[0].content[0].attrs = { formula: "=RIGHT_VALUE", formulaResult: "#WERT!" };
+  right.content[0].content[0].attrs = { formula: "=LEFT_VALUE", formulaResult: "#WERT!" };
+  for (const table of [left, right]) table.content[0].content[0].content =
+    [{ type: "paragraph", content: [{ type: "text", text: "#WERT!" }] }];
+  const ranges = [
+    { name: "LEFT_VALUE", tableId: left.attrs.tableId, range: "A1:A1" },
+    { name: "RIGHT_VALUE", tableId: right.attrs.tableId, range: "A1:A1" },
+  ];
+  const calculated = recalculateOfficeDocumentFormulas({ type: "doc", attrs: { tableRanges: ranges }, content: [left, right] });
+  expect(calculated.content.map((table) => text(table.content[0].content[0]))).toEqual(["#ZYKLUS!", "#ZYKLUS!"]);
+  expect(remapOfficeTableRangeDefinitions(ranges, left.attrs.tableId,
+    [{ source: 0, duplicate: true }, { source: 0, duplicate: false }], [{ source: 0 }, { source: 1 }]))
+    .toContainEqual({ name: "LEFT_VALUE", tableId: left.attrs.tableId, range: "A1:A2" });
+});
+
+test("Office formulas preserve absolute and mixed row and column anchors", () => {
+  let table = officeTableFromTSV("2\t3\t0\n4\t6\t0");
+  table = setOfficeTableFormula(table, { row: 1, column: 2, formula: "=SUM($A$1;$B1;A$2)" });
+  expect(table.content[1].content[2].attrs).toMatchObject({
+    formula: "=SUM($A$1,$B1,A$2)", formulaResult: "9",
+  });
+  for (const formula of ["=$$A1", "=A$$1", "=$A$", "=$1+A1"]) {
+    expect(() => setOfficeTableFormula(table, { row: 1, column: 2, formula })).toThrow();
+  }
+});
+
+test("Office formulas fill and clear a range with anchored reference axes", () => {
+  let table = officeTableFromTSV("1\t2\t0\t0\n3\t4\t0\t0");
+  table = fillOfficeTableFormulas(table, { top: 0, left: 2, bottom: 2, right: 4, formula: "=$A1+B$1" });
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map((cell) => cell.attrs.formula))).toEqual([
+    ["=$A1+B$1", "=$A1+C$1"], ["=$A2+B$1", "=$A2+C$1"],
+  ]);
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map(text))).toEqual([["3", "4"], ["5", "6"]]);
+  table = clearOfficeTableFormulas(table, { top: 0, left: 2, bottom: 2, right: 4 });
+  expect(table.content.slice(0, 2).map((row) => row.content.slice(2).map(text))).toEqual([["3", "4"], ["5", "6"]]);
+  expect(table.content[1].content[3].attrs.formula).toBeUndefined();
+});
+
+test("Office formula ranges reject headers invalid bounds and shifted overflow", () => {
+  const table = officeTableFromTSV("1\t2\n3\t4");
+  table.content[0].content[0].type = "tableHeader";
+  expect(() => fillOfficeTableFormulas(table,
+    { top: 0, left: 0, bottom: 1, right: 2, formula: "=A1" })).toThrow();
+  expect(() => clearOfficeTableFormulas(table, { top: 1, left: 0, bottom: 3, right: 1 })).toThrow();
+  expect(() => fillOfficeTableFormulas(officeTableFromTSV("1\t2"),
+    { top: 0, left: 0, bottom: 1, right: 2, formula: "=T1" })).toThrow();
+});
+
+test("Office formulas expose deterministic reference division cycle and syntax errors", () => {
+  let table = officeTableFromTSV("1\t=T200\n0\t=A1/A2");
+  expect(text(table.content[0].content[1])).toBe("#BEZUG!");
+  expect(text(table.content[1].content[1])).toBe("#DIV/0!");
+  table = officeTableFromTSV("=B1\t=A1");
+  expect(table.content[0].content.map(text)).toEqual(["#ZYKLUS!", "#ZYKLUS!"]);
+  expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1, formula: "=FOO(A1)" })).toThrow();
+  expect(text(setOfficeTableFormula(officeTableFromTSV("1\t2"),
+    { row: 0, column: 1, formula: "=U1" }).content[0].content[1])).toBe("#BEZUG!");
+  expect(() => setOfficeTableFormula(officeTableFromTSV("1\t2"), { row: 0, column: 1,
+    formula: "='[external.xlsx]Sheet1'!A1" })).toThrow();
+});
+
+test("Office table paste expands from one cell and shifts relative formulas", () => {
+  const target = officeTableFromTSV("Name\tQ1\tQ2\tTotal\nExisting\t1\t1\t2");
+  const source = officeTableFromTSV("Alpha\t2\t3\t=SUM(B1:C1)\nBravo\t4\t6\t=SUM(B2:C2)");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 0, bottom: 2, right: 1 });
+  expect(pasted.content.map((row) => row.content.map(text))).toEqual([
+    ["Name", "Q1", "Q2", "Total"], ["Alpha", "2", "3", "5"], ["Bravo", "4", "6", "10"],
+  ]);
+  expect(pasted.content[1].content[3].attrs.formula).toBe("=SUM(B2:C2)");
+  expect(pasted.content[2].content[3].attrs.formula).toBe("=SUM(B3:C3)");
+});
+
+test("Office table paste shifts only relative reference axes", () => {
+  const target = officeTableFromTSV("10\t20\t30\t40\t50\n11\t21\t31\t41\t51\n12\t22\t32\t42\t52");
+  const source = officeTableFromTSV("1\t2\t3\t=SUM($A$1,$B1,A$1,B1)");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 1, bottom: 2, right: 2 });
+  expect(pasted.content[1].content[4].attrs).toMatchObject({
+    formula: "=SUM($A$1,$B2,B$1,C2)", formulaResult: "33",
+  });
+});
+
+test("Office table paste fills an exact selection and rejects ambiguous dimensions", () => {
+  const target = officeTableFromTSV("A\tB\nC\tD"); const source = officeTableFromTSV("7\t8");
+  const pasted = pasteOfficeTableCells(target, source, { top: 1, left: 0, bottom: 2, right: 2 });
+  expect(pasted.content.map((row) => row.content.map(text))).toEqual([["A", "B"], ["7", "8"]]);
+  expect(() => pasteOfficeTableCells(target, source, { top: 0, left: 0, bottom: 2, right: 2 })).toThrow();
+  const single = { type: "table", content: [{ type: "tableRow", content: [
+    { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "9" }] }] },
+  ] }] };
+  const repeated = pasteOfficeTableCells(target, single, { top: 0, left: 0, bottom: 2, right: 2 });
+  expect(repeated.content.map((row) => row.content.map(text))).toEqual([["9", "9"], ["9", "9"]]);
+});
+
+test("Office structural formula mapping preserves logical cells and exposes deleted references", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM(A1:B1)\n4\t6\t=SUM(A2:B2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const inserted = structuredClone(original);
+  inserted.content.splice(0, 0, { type: "tableRow", content: Array.from({ length: 3 }, () =>
+    ({ type: "tableCell", content: [{ type: "paragraph" }] })) });
+  const shifted = remapOfficeTableFormulas(original, inserted,
+    { rows: [entry(0, true), entry(0), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(shifted.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
+  expect(shifted.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
+
+  const removed = { ...original, content: original.content.map((row) => ({ ...row, content: row.content.slice(1) })) };
+  const broken = remapOfficeTableFormulas(original, removed,
+    { rows: [entry(0), entry(1)], columns: [entry(1), entry(2)] });
+  expect(broken.content[0].content[1].attrs).toMatchObject({ formula: "=SUM(#BEZUG!:A1)", formulaResult: "#BEZUG!" });
+  expect(() => setOfficeTableFormula(original, { row: 0, column: 2, formula: "=#BROKEN!" })).toThrow();
+});
+
+test("Office structural formula mapping follows moves and gives duplicates relative references", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM(A1:B1)\n4\t6\t=SUM(A2:B2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const movedRows = { ...original, content: [original.content[1], original.content[0]] };
+  const moved = remapOfficeTableFormulas(original, movedRows,
+    { rows: [entry(1), entry(0)], columns: [entry(0), entry(1), entry(2)] });
+  expect(moved.content[0].content[2].attrs.formula).toBe("=SUM(A1:B1)");
+  expect(moved.content[1].content[2].attrs.formula).toBe("=SUM(A2:B2)");
+
+  const duplicatedRows = { ...original, content: [original.content[0], structuredClone(original.content[0]), original.content[1]] };
+  const duplicated = remapOfficeTableFormulas(original, duplicatedRows,
+    { rows: [entry(0), entry(0, true), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(duplicated.content[0].content[2].attrs).toMatchObject({ formula: "=SUM(A1:B1)", formulaResult: "5" });
+  expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM(A2:B2)", formulaResult: "5" });
+  expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM(A3:B3)", formulaResult: "10" });
+});
+
+test("Office structural formula mapping follows anchored cells but copies only relative axes", () => {
+  const original = officeTableFromTSV("2\t3\t=SUM($A$1,B1)\n4\t6\t=SUM($A2,B$2)");
+  const entry = (source, duplicate = false) => ({ source, duplicate });
+  const duplicatedRows = { ...original,
+    content: [original.content[0], structuredClone(original.content[0]), original.content[1]] };
+  const duplicated = remapOfficeTableFormulas(original, duplicatedRows,
+    { rows: [entry(0), entry(0, true), entry(1)], columns: [entry(0), entry(1), entry(2)] });
+  expect(duplicated.content[0].content[2].attrs.formula).toBe("=SUM($A$1,B1)");
+  expect(duplicated.content[1].content[2].attrs).toMatchObject({ formula: "=SUM($A$1,B2)", formulaResult: "5" });
+  expect(duplicated.content[2].content[2].attrs).toMatchObject({ formula: "=SUM($A3,B$3)", formulaResult: "10" });
+});

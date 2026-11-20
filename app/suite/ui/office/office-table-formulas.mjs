@@ -1,0 +1,609 @@
+import { officeTableCellAttributes, officeTableCellText, officeTableFormulaSource, officeTableReorderInfo } from "./office-tables.mjs";
+
+const formulaErrors = new Set(["#BEZUG!", "#DIV/0!", "#ZYKLUS!", "#WERT!", "#LIMIT!"]);
+const numericText = /^[+-]?(?:0|[1-9][0-9]*)(?:[.,][0-9]+)?$/u;
+const formulaReferencePattern = /(\$?)([A-T])(\$?)([1-9][0-9]{0,2})/gu;
+const namedRangePattern = /^[A-Z][A-Z0-9_]{0,31}$/u;
+const formulaFunctions = ["AVERAGEIFS", "AVERAGEIF", "COUNTIFS", "XLOOKUP", "COUNTIF", "PRODUCT", "AVERAGE", "MEDIAN",
+  "SUMIFS", "SUMIF", "POWER", "ROUND", "COUNT", "SQRT", "SUM", "MIN", "MAX", "IF", "AND", "OR", "NOT", "ABS",
+  "EOMONTH", "WEEKDAY", "CONCAT", "EDATE", "DAYS", "RIGHT", "LEFT", "DATE", "YEAR", "MONTH", "DAY", "LEN"];
+const dayMilliseconds = 86400000;
+
+function formulaError(code) { const error = new Error(code); error.formulaCode = code; return error; }
+
+function formatFormulaNumber(value) {
+  if (!Number.isFinite(value) || Math.abs(value) > 1e15) throw formulaError("#LIMIT!");
+  const stable = Math.abs(value) < 5e-11 ? 0 : Math.round(value * 1e10) / 1e10;
+  return stable.toFixed(10).replace(/\.0+$/u, "").replace(/(\.[0-9]*?)0+$/u, "$1");
+}
+
+function formatFormulaValue(value) {
+  if (typeof value === "number") return formatFormulaNumber(value);
+  if (typeof value !== "string" || value.length > 512 || value.startsWith("#") ||
+      /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) throw formulaError("#LIMIT!");
+  return value;
+}
+
+function tokenize(source) {
+  const tokens = []; let index = 1;
+  while (index < source.length) {
+    const rest = source.slice(index); const space = /^\s+/u.exec(rest);
+    if (space) { index += space[0].length; continue; }
+    if (rest[0] === '"') {
+      let value = "", offset = 1, closed = false;
+      while (offset < rest.length) {
+        if (rest[offset] !== '"') { value += rest[offset]; offset += 1; continue; }
+        if (rest[offset + 1] === '"') { value += '"'; offset += 2; continue; }
+        offset += 1; closed = true; break;
+      }
+      if (!closed || value.length > 512 || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) throw formulaError("#WERT!");
+      tokens.push({ type: "string", value }); index += offset; continue;
+    }
+    const number = /^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?/u.exec(rest);
+    if (number) { tokens.push({ type: "number", value: Number(number[0]) }); index += number[0].length; continue; }
+    if (rest.startsWith("#BEZUG!")) { tokens.push({ type: "error", value: "#BEZUG!" }); index += 7; continue; }
+    const ref = /^\$?[A-T]\$?(?:[1-9][0-9]{0,2})/u.exec(rest);
+    if (ref) { tokens.push({ type: "ref", value: ref[0] }); index += ref[0].length; continue; }
+    const comparison = /^(?:<=|>=|<>|=|<|>)/u.exec(rest);
+    if (comparison) { tokens.push({ type: "compare", value: comparison[0] }); index += comparison[0].length; continue; }
+    const name = new RegExp(`^(?:${formulaFunctions.join("|")})(?=\\s*\\()`, "u").exec(rest);
+    if (name) { tokens.push({ type: "name", value: name[0] }); index += name[0].length; continue; }
+    const named = /^[A-Z][A-Z0-9_]{0,31}/u.exec(rest);
+    if (named) { tokens.push({ type: "named", value: named[0] }); index += named[0].length; continue; }
+    if ("+-*/(),:".includes(rest[0])) { tokens.push({ type: rest[0], value: rest[0] }); index += 1; continue; }
+    throw formulaError("#WERT!");
+  }
+  tokens.push({ type: "end" }); return tokens;
+}
+
+function referenceCoordinates(reference, rows, columns) {
+  const match = /^\$?([A-T])\$?([1-9][0-9]{0,2})$/u.exec(reference);
+  const row = match ? Number(match[2]) - 1 : -1; const column = match ? match[1].charCodeAt(0) - 65 : -1;
+  if (row < 0 || row >= rows || column < 0 || column >= columns) throw formulaError("#BEZUG!");
+  return { row, column };
+}
+
+function parseFormula(source, context) {
+  const tokens = tokenize(officeTableFormulaSource(source)); let position = 0;
+  const peek = () => tokens[position]; const take = (type) => {
+    if (peek().type !== type) throw formulaError("#WERT!"); return tokens[position++];
+  };
+  const bounded = (value) => {
+    if (!Number.isFinite(value) || Math.abs(value) > 1e15) throw formulaError("#LIMIT!");
+    return value;
+  };
+  const numeric = (value) => {
+    if (value === "") return 0;
+    if (typeof value !== "number") throw formulaError("#WERT!");
+    return bounded(value);
+  };
+  const textual = (value) => typeof value === "number" ? formatFormulaNumber(value) : value;
+  const rounded = (value, digits) => {
+    if (!Number.isInteger(digits) || digits < -10 || digits > 10) throw formulaError("#WERT!");
+    const factor = 10 ** Math.abs(digits), scaled = digits >= 0 ? value * factor : value / factor;
+    const integer = Math.sign(scaled) * Math.floor(Math.abs(scaled) + 0.5);
+    return bounded(digits >= 0 ? integer / factor : integer * factor);
+  };
+  const dateSerial = (year, month, day) => {
+    if (![year, month, day].every(Number.isInteger) || year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+      throw formulaError("#WERT!");
+    }
+    const timestamp = Date.UTC(year, month - 1, day), date = new Date(timestamp);
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) throw formulaError("#WERT!");
+    return timestamp / dayMilliseconds;
+  };
+  const datePart = (serial, part) => {
+    if (!Number.isInteger(serial)) throw formulaError("#WERT!");
+    const date = new Date(serial * dayMilliseconds);
+    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) throw formulaError("#WERT!");
+    return part === "YEAR" ? date.getUTCFullYear() : part === "MONTH" ? date.getUTCMonth() + 1 : date.getUTCDate();
+  };
+  const checkedDate = (serial) => {
+    if (!Number.isInteger(serial)) throw formulaError("#WERT!");
+    const date = new Date(serial * dayMilliseconds);
+    if (!Number.isFinite(date.getTime()) || date.getUTCFullYear() < 1900 || date.getUTCFullYear() > 9999) {
+      throw formulaError("#WERT!");
+    }
+    return date;
+  };
+  const shiftedDate = (serial, months, endOfMonth) => {
+    const original = checkedDate(serial);
+    if (!Number.isInteger(months) || Math.abs(months) > 120000) throw formulaError("#WERT!");
+    const total = original.getUTCFullYear() * 12 + original.getUTCMonth() + months;
+    const year = Math.floor(total / 12), month = total - year * 12;
+    if (year < 1900 || year > 9999) throw formulaError("#WERT!");
+    const last = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    return dateSerial(year, month + 1, endOfMonth ? last : Math.min(original.getUTCDate(), last));
+  };
+  const rangeArgument = (active = true) => {
+    if (peek().type === "ref" && tokens[position + 1]?.type === ":") {
+      const from = take("ref").value; take(":"); const to = take("ref").value;
+      return active ? context.range(from, to) : [0];
+    }
+    if (peek().type === "named") {
+      const name = take("named").value; return active ? context.namedRange(name) : [0];
+    }
+    throw formulaError("#WERT!");
+  };
+  const primary = (active = true) => {
+    if (peek().type === "error") { const code = take("error").value; if (active) throw formulaError(code); return 0; }
+    if (peek().type === "number") { const value = take("number").value; return active ? value : 0; }
+    if (peek().type === "string") { const value = take("string").value; return active ? value : ""; }
+    if (peek().type === "ref") { const reference = take("ref").value; return active ? context.value(reference) : 0; }
+    if (peek().type === "named") { const name = take("named").value; return active ? context.namedValue(name) : 0; }
+    if (peek().type === "(") { take("("); const value = expression(active); take(")"); return value; }
+    if (peek().type === "name") {
+      const name = take("name").value; take("(");
+      if (name === "IF") {
+        const condition = numeric(expression(active)); take(",");
+        const truthy = expression(active && condition !== 0); take(",");
+        const falsy = expression(active && condition === 0); take(")");
+        return active ? (condition !== 0 ? truthy : falsy) : 0;
+      }
+      if (name === "XLOOKUP") {
+        const search = expression(active); take(","); const lookup = rangeArgument(active); take(",");
+        const returned = rangeArgument(active); take(")");
+        if (!active) return 0;
+        if (lookup.length !== returned.length || lookup.length > 4000) throw formulaError("#WERT!");
+        const match = lookup.findIndex((value) => value === search);
+        if (match < 0) throw formulaError("#BEZUG!");
+        return returned[match];
+      }
+      if (["SUMIF", "COUNTIF", "AVERAGEIF"].includes(name)) {
+        const tested = rangeArgument(active); take(","); const criterion = expression(active);
+        let returned = tested;
+        if (peek().type === ",") { take(","); returned = rangeArgument(active); }
+        take(")");
+        if (!active) return 0;
+        if ((name === "COUNTIF" && returned !== tested) || tested.length !== returned.length || tested.length > 4000) {
+          throw formulaError("#WERT!");
+        }
+        const matches = tested.flatMap((value, index) => value === criterion ? [returned[index]] : []);
+        if (name === "COUNTIF") return matches.length;
+        if (!matches.length && name === "AVERAGEIF") throw formulaError("#DIV/0!");
+        const numbers = matches.map(numeric);
+        return name === "SUMIF" ? numbers.reduce((total, value) => total + value, 0) :
+          numbers.reduce((total, value) => total + value, 0) / numbers.length;
+      }
+      if (["SUMIFS", "COUNTIFS", "AVERAGEIFS"].includes(name)) {
+        let returned = null;
+        if (name !== "COUNTIFS") { returned = rangeArgument(active); take(","); }
+        const criteria = [];
+        while (true) {
+          const tested = rangeArgument(active); take(","); const criterion = expression(active);
+          criteria.push({ tested, criterion });
+          if (peek().type !== ",") break; take(",");
+        }
+        take(")");
+        if (!active) return 0;
+        const length = returned?.length ?? criteria[0]?.tested.length;
+        if (!criteria.length || criteria.length > 10 || !length || length > 4000 ||
+            (returned != null && returned.length !== length) || criteria.some((entry) => entry.tested.length !== length)) {
+          throw formulaError("#WERT!");
+        }
+        const matches = Array.from({ length }, (_, index) => index)
+          .filter((index) => criteria.every((entry) => entry.tested[index] === entry.criterion));
+        if (name === "COUNTIFS") return matches.length;
+        if (!matches.length && name === "AVERAGEIFS") throw formulaError("#DIV/0!");
+        const values = matches.map((index) => numeric(returned[index]));
+        return name === "SUMIFS" ? values.reduce((total, value) => total + value, 0) :
+          values.reduce((total, value) => total + value, 0) / values.length;
+      }
+      const values = [];
+      if (peek().type !== ")") {
+        while (true) {
+          if ((peek().type === "ref" && tokens[position + 1]?.type === ":") ||
+              (peek().type === "named" && [",", ")"].includes(tokens[position + 1]?.type))) {
+            values.push(...rangeArgument(active));
+          } else values.push(expression(active));
+          if (peek().type !== ",") break; take(",");
+        }
+      }
+      take(")");
+      if (!values.length || values.length > 4000) throw formulaError("#LIMIT!");
+      if (!active) return 0;
+      if (name === "CONCAT") return formatFormulaValue(values.map(textual).join(""));
+      if (["LEFT", "RIGHT"].includes(name) && [1, 2].includes(values.length)) {
+        const characters = [...textual(values[0])], count = values.length === 2 ? numeric(values[1]) : 1;
+        if (!Number.isInteger(count) || count < 0 || count > 512) throw formulaError("#WERT!");
+        return name === "LEFT" ? characters.slice(0, count).join("") : characters.slice(Math.max(0, characters.length - count)).join("");
+      }
+      if (name === "LEN" && values.length === 1) return [...textual(values[0])].length;
+      const numbers = values.map(numeric);
+      if (name === "SUM") return numbers.reduce((total, value) => total + value, 0);
+      if (name === "AVERAGE") return numbers.reduce((total, value) => total + value, 0) / numbers.length;
+      if (name === "MIN") return Math.min(...numbers);
+      if (name === "MAX") return Math.max(...numbers);
+      if (name === "COUNT") return numbers.length;
+      if (name === "PRODUCT") return bounded(numbers.reduce((total, value) => total * value, 1));
+      if (name === "MEDIAN") { const sorted = [...numbers].sort((left, right) => left - right), middle = Math.floor(sorted.length / 2);
+        return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2; }
+      if (name === "AND") return numbers.every((value) => value !== 0) ? 1 : 0;
+      if (name === "OR") return numbers.some((value) => value !== 0) ? 1 : 0;
+      if (name === "NOT" && numbers.length === 1) return numbers[0] === 0 ? 1 : 0;
+      if (name === "ABS" && numbers.length === 1) return Math.abs(numbers[0]);
+      if (name === "ROUND" && numbers.length === 2) return rounded(numbers[0], numbers[1]);
+      if (name === "POWER" && numbers.length === 2) { const value = numbers[0] ** numbers[1];
+        if (Number.isNaN(value)) throw formulaError("#WERT!"); return bounded(value); }
+      if (name === "SQRT" && numbers.length === 1 && numbers[0] >= 0) return Math.sqrt(numbers[0]);
+      if (name === "DATE" && numbers.length === 3) return dateSerial(numbers[0], numbers[1], numbers[2]);
+      if (["YEAR", "MONTH", "DAY"].includes(name) && numbers.length === 1) return datePart(numbers[0], name);
+      if (name === "EDATE" && numbers.length === 2) return shiftedDate(numbers[0], numbers[1], false);
+      if (name === "EOMONTH" && numbers.length === 2) return shiftedDate(numbers[0], numbers[1], true);
+      if (name === "DAYS" && numbers.length === 2) { checkedDate(numbers[0]); checkedDate(numbers[1]); return numbers[0] - numbers[1]; }
+      if (name === "WEEKDAY" && numbers.length === 1) return (checkedDate(numbers[0]).getUTCDay() + 6) % 7 + 1;
+    }
+    throw formulaError("#WERT!");
+  };
+  const unary = (active = true) => peek().type === "+" ? (take("+"), numeric(unary(active))) :
+    peek().type === "-" ? (take("-"), -numeric(unary(active))) : primary(active);
+  const term = (active = true) => { let value = unary(active); while (["*", "/"].includes(peek().type)) {
+    const operator = take(peek().type).type; const right = numeric(unary(active)); value = numeric(value);
+    if (active && operator === "/" && right === 0) throw formulaError("#DIV/0!");
+    value = active ? (operator === "*" ? value * right : value / right) : 0;
+  } return value; };
+  const additive = (active = true) => { let value = term(active); while (["+", "-"].includes(peek().type)) {
+    const operator = take(peek().type).type; const right = numeric(term(active)); value = numeric(value);
+    value = operator === "+" ? value + right : value - right;
+  } return value; };
+  const expression = (active = true) => { const left = additive(active); if (peek().type !== "compare") return left;
+    const operator = take("compare").value, right = additive(active); if (!active) return 0;
+    if (operator === "=") return left === right ? 1 : 0; if (operator === "<>") return left !== right ? 1 : 0;
+    const leftNumber = numeric(left), rightNumber = numeric(right);
+    return ({ "<": leftNumber < rightNumber, "<=": leftNumber <= rightNumber,
+      ">": leftNumber > rightNumber, ">=": leftNumber >= rightNumber })[operator] ? 1 : 0; };
+  const value = expression(); if (peek().type !== "end") throw formulaError("#WERT!"); return value;
+}
+
+function rangeCoordinates(value, rows, columns) {
+  const match = /^([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})$/u.exec(value);
+  if (!match) throw new TypeError("Invalid Office named table range");
+  const first = { row: Number(match[2]) - 1, column: match[1].charCodeAt(0) - 65 };
+  const last = { row: Number(match[4]) - 1, column: match[3].charCodeAt(0) - 65 };
+  if (first.row > last.row || first.column > last.column || last.row >= rows || last.column >= columns) {
+    throw new TypeError("Invalid Office named table range");
+  }
+  return { first, last };
+}
+
+export function officeTableRangeDefinitions(value = []) {
+  if (!Array.isArray(value) || value.length > 100) throw new TypeError("Invalid Office named table ranges");
+  const names = new Set();
+  return value.map((entry) => {
+    if (!entry || Object.keys(entry).sort().join(",") !== "name,range,tableId" ||
+        typeof entry.name !== "string" || !namedRangePattern.test(entry.name) || /^[A-T][1-9][0-9]{0,2}$/u.test(entry.name) ||
+        formulaFunctions.includes(entry.name) || names.has(entry.name) ||
+        typeof entry.tableId !== "string" || !/^table-[a-f0-9]{24}$/u.test(entry.tableId) ||
+        typeof entry.range !== "string" || !/^([A-T])([1-9][0-9]{0,2}):([A-T])([1-9][0-9]{0,2})$/u.test(entry.range)) {
+      throw new TypeError("Invalid Office named table range");
+    }
+    names.add(entry.name); return { name: entry.name, tableId: entry.tableId, range: entry.range };
+  });
+}
+
+export function remapOfficeTableRangeDefinitions(value, tableId, rows, columns) {
+  const definitions = officeTableRangeDefinitions(value); const mapped = [];
+  const axis = (from, to, entries) => {
+    const indexes = entries.flatMap((entry, index) => entry.source >= from && entry.source < to ? [index] : []);
+    if (!indexes.length || indexes.at(-1) - indexes[0] + 1 !== indexes.length) return null;
+    return { from: indexes[0], to: indexes.at(-1) + 1 };
+  };
+  for (const definition of definitions) {
+    if (definition.tableId !== tableId) { mapped.push(definition); continue; }
+    const match = rangeCoordinates(definition.range, 200, 20);
+    const row = axis(match.first.row, match.last.row + 1, rows), column = axis(match.first.column, match.last.column + 1, columns);
+    if (!row || !column) continue;
+    mapped.push({ ...definition, range: `${String.fromCharCode(65 + column.from)}${row.from + 1}:` +
+      `${String.fromCharCode(65 + column.to - 1)}${row.to}` });
+  }
+  return officeTableRangeDefinitions(mapped);
+}
+
+function calculateOfficeFormulaTables(tables, definitions = []) {
+  const tableMap = new Map(tables.map((entry) => [entry.key, {
+    ...entry, info: officeTableReorderInfo(entry.table), cells: entry.table.content.map((row) => row.content),
+  }]));
+  const named = new Map();
+  for (const definition of definitions) {
+    const table = tableMap.get(definition.tableId); if (!table) throw new TypeError("Invalid Office named table range");
+    const range = rangeCoordinates(definition.range, table.info.rows, table.info.columns);
+    named.set(definition.name, { table, ...range });
+  }
+  const states = new Map(), memo = new Map(), errors = new Map(); let formulaCount = 0;
+  const key = (table, row, column) => `${table.key}:${row}:${column}`;
+  const scalarValue = (table, row, column) => {
+    const cell = table.cells[row][column];
+    if (cell.attrs?.formula != null) return evaluate(table, row, column);
+    const text = officeTableCellText(cell); if (!text) return "";
+    if (!numericText.test(text)) return text;
+    const number = Number(text.replace(",", ".")); if (!Number.isFinite(number)) throw formulaError("#WERT!"); return number;
+  };
+  const valuesFor = (definition) => {
+    const values = [];
+    for (let row = definition.first.row; row <= definition.last.row; row += 1) {
+      for (let column = definition.first.column; column <= definition.last.column; column += 1) {
+        values.push(scalarValue(definition.table, row, column));
+      }
+    }
+    return values;
+  };
+  const evaluate = (table, row, column) => {
+    const id = key(table, row, column); if (memo.has(id)) return memo.get(id);
+    if (errors.has(id)) throw formulaError(errors.get(id));
+    if (states.get(id) === "visiting") throw formulaError("#ZYKLUS!"); states.set(id, "visiting");
+    const source = table.cells[row][column].attrs?.formula;
+    if (source == null) return scalarValue(table, row, column);
+    const context = {
+      value(reference) { const point = referenceCoordinates(reference, table.info.rows, table.info.columns);
+        return scalarValue(table, point.row, point.column); },
+      range(from, to) {
+        const first = referenceCoordinates(from, table.info.rows, table.info.columns);
+        const last = referenceCoordinates(to, table.info.rows, table.info.columns), values = [];
+        for (let rowIndex = Math.min(first.row, last.row); rowIndex <= Math.max(first.row, last.row); rowIndex += 1) {
+          for (let columnIndex = Math.min(first.column, last.column); columnIndex <= Math.max(first.column, last.column); columnIndex += 1) {
+            values.push(scalarValue(table, rowIndex, columnIndex));
+          }
+        }
+        return values;
+      },
+      namedRange(name) { const definition = named.get(name); if (!definition) throw formulaError("#BEZUG!"); return valuesFor(definition); },
+      namedValue(name) { const definition = named.get(name); if (!definition) throw formulaError("#BEZUG!");
+        const values = valuesFor(definition); if (values.length !== 1) throw formulaError("#WERT!"); return values[0]; },
+    };
+    try {
+      const calculated = parseFormula(source, context); states.set(id, "done"); memo.set(id, calculated); return calculated;
+    } catch (error) {
+      const code = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!";
+      states.set(id, "done"); errors.set(id, code); throw formulaError(code);
+    }
+  };
+  for (const table of tableMap.values()) for (let row = 0; row < table.info.rows; row += 1) {
+    for (let column = 0; column < table.info.columns; column += 1) {
+      const cell = table.cells[row][column]; if (cell.attrs?.formula == null) continue;
+      formulaCount += 1; if (formulaCount > 1000 || cell.type !== "tableCell") throw new TypeError("Invalid Office table formula");
+      let formulaResult;
+      try { formulaResult = formatFormulaValue(evaluate(table, row, column)); }
+      catch (error) { formulaResult = formulaErrors.has(error.formulaCode) ? error.formulaCode : "#WERT!"; }
+      const attrs = { ...cell.attrs, formula: cell.attrs.formula, formulaResult };
+      if (!numericText.test(formulaResult)) delete attrs.numberFormat;
+      cell.attrs = officeTableCellAttributes(attrs);
+      cell.content = [{ type: "paragraph", ...(formulaResult ? { content: [{ type: "text", text: formulaResult }] } : {}) }];
+    }
+  }
+}
+
+export function recalculateOfficeTableFormulas(value) {
+  const result = structuredClone(value); calculateOfficeFormulaTables([{ key: "local", table: result }]); return result;
+}
+
+export function recalculateOfficeDocumentFormulas(value) {
+  if (!value || value.type !== "doc" || !Array.isArray(value.content)) throw new TypeError("Invalid Office formula document");
+  const result = structuredClone(value), definitions = officeTableRangeDefinitions(result.attrs?.tableRanges || []), tables = [];
+  const visit = (node) => {
+    if (node?.type === "table") tables.push({ key: node.attrs?.tableId || `local-${tables.length}`, table: node });
+    for (const child of node?.content || []) visit(child);
+  };
+  visit(result); calculateOfficeFormulaTables(tables, definitions); return result;
+}
+
+export function setOfficeTableFormula(value, options) {
+  if (!options || Object.keys(options).sort().join(",") !== "column,formula,row" ||
+      !Number.isInteger(options.row) || !Number.isInteger(options.column)) {
+    throw new TypeError("Invalid Office table formula target");
+  }
+  return fillOfficeTableFormulas(value, { top: options.row, left: options.column,
+    bottom: options.row + 1, right: options.column + 1, formula: options.formula });
+}
+
+export function clearOfficeTableFormula(value, options) {
+  if (!options || Object.keys(options).sort().join(",") !== "column,row" || !Number.isInteger(options.row) ||
+      !Number.isInteger(options.column)) {
+    throw new TypeError("Invalid Office table formula target");
+  }
+  return clearOfficeTableFormulas(value, { top: options.row, left: options.column,
+    bottom: options.row + 1, right: options.column + 1 });
+}
+
+export function officeTableFromTSV(text) {
+  if (typeof text !== "string" || !text.includes("\t") || text.length > 100000) return null;
+  const rows = []; let row = [], field = "", quoted = false;
+  const source = text.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+  for (let index = 0; index <= source.length; index += 1) {
+    const character = index === source.length ? "\n" : source[index];
+    if (quoted) {
+      if (character === '"' && source[index + 1] === '"') { field += '"'; index += 1; }
+      else if (character === '"') quoted = false;
+      else field += character;
+    } else if (character === '"' && !field) quoted = true;
+    else if (character === "\t") { row.push(field); field = ""; }
+    else if (character === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+    else field += character;
+  }
+  if (quoted) throw new TypeError("Invalid Office clipboard quoting");
+  if (rows.at(-1)?.every((entry) => !entry)) rows.pop();
+  const width = rows[0]?.length || 0;
+  if (!rows.length || rows.length > 200 || width < 1 || width > 20 || rows.some((entry) => entry.length !== width)) {
+    throw new TypeError("Invalid Office clipboard table");
+  }
+  const table = { type: "table", content: rows.map((entries) => ({ type: "tableRow", content: entries.map((entry) => {
+    const formula = entry.trim().startsWith("=") ? officeTableFormulaSource(entry) : null;
+    return { type: "tableCell", ...(formula ? { attrs: { formula, formulaResult: "#WERT!" } } : {}),
+      content: [{ type: "paragraph", ...(!formula && entry ? { content: [{ type: "text", text: entry }] } : {}) }] };
+  }) })) };
+  return recalculateOfficeTableFormulas(table);
+}
+
+function replaceFormulaReferences(source, replacer) {
+  let result = "", start = 0, index = 0;
+  while (index < source.length) {
+    if (source[index] !== '"') { index += 1; continue; }
+    result += source.slice(start, index).replace(formulaReferencePattern, replacer); const literalStart = index; index += 1;
+    while (index < source.length) {
+      if (source[index] !== '"') { index += 1; continue; }
+      if (source[index + 1] === '"') { index += 2; continue; }
+      index += 1; break;
+    }
+    result += source.slice(literalStart, index); start = index;
+  }
+  return result + source.slice(start).replace(formulaReferencePattern, replacer);
+}
+
+function shiftedFormula(source, rowOffset, columnOffset) {
+  const normalized = officeTableFormulaSource(source);
+  return replaceFormulaReferences(normalized, (_match, columnAnchor, letter, rowAnchor, rowText) => {
+    const column = letter.charCodeAt(0) - 65 + (columnAnchor ? 0 : columnOffset);
+    const row = Number(rowText) - 1 + (rowAnchor ? 0 : rowOffset);
+    if (column < 0 || column >= 20 || row < 0 || row >= 200) throw new TypeError("Shifted Office table formula is out of bounds");
+    return `${columnAnchor}${String.fromCharCode(65 + column)}${rowAnchor}${row + 1}`;
+  });
+}
+
+function simpleTable(value) {
+  const info = officeTableReorderInfo(value);
+  if (value.content.some((row) => row.content.some((cell) => {
+    const attrs = officeTableCellAttributes(cell.attrs);
+    return attrs.colspan !== 1 || attrs.rowspan !== 1;
+  }))) throw new TypeError("Office table paste requires a simple grid");
+  return info;
+}
+
+function formulaRange(value, options, keys) {
+  const info = simpleTable(value);
+  if (!options || Object.keys(options).sort().join(",") !== keys ||
+      ![options.top, options.left, options.bottom, options.right].every(Number.isInteger) ||
+      options.top < 0 || options.left < 0 || options.bottom <= options.top || options.right <= options.left ||
+      options.bottom > info.rows || options.right > info.columns) {
+    throw new TypeError("Invalid Office table formula range");
+  }
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      if (value.content[row].content[column].type !== "tableCell") {
+        throw new TypeError("Office table formulas require data cells");
+      }
+    }
+  }
+  return info;
+}
+
+export function fillOfficeTableFormulas(value, options) {
+  formulaRange(value, options, "bottom,formula,left,right,top");
+  const source = officeTableFormulaSource(options.formula); const result = structuredClone(value);
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      const cell = result.content[row].content[column];
+      cell.attrs = { ...officeTableCellAttributes(cell.attrs),
+        formula: shiftedFormula(source, row - options.top, column - options.left), formulaResult: "#WERT!" };
+    }
+  }
+  return recalculateOfficeTableFormulas(result);
+}
+
+export function clearOfficeTableFormulas(value, options) {
+  formulaRange(value, options, "bottom,left,right,top");
+  const result = structuredClone(value);
+  for (let row = options.top; row < options.bottom; row += 1) {
+    for (let column = options.left; column < options.right; column += 1) {
+      const cell = result.content[row].content[column]; const attrs = { ...(cell.attrs || {}) };
+      delete attrs.formula; delete attrs.formulaResult; cell.attrs = officeTableCellAttributes(attrs);
+    }
+  }
+  return recalculateOfficeTableFormulas(result);
+}
+
+function emptyCell(type) {
+  return { type, attrs: { colspan: 1, rowspan: 1 }, content: [{ type: "paragraph" }] };
+}
+
+function pastedCell(target, source, rowOffset, columnOffset) {
+  const sourceAttrs = officeTableCellAttributes(source.attrs); const attrs = { ...sourceAttrs, colspan: 1, rowspan: 1 };
+  if (sourceAttrs.formula) {
+    attrs.formula = shiftedFormula(sourceAttrs.formula, rowOffset, columnOffset);
+    attrs.formulaResult = "#WERT!";
+  }
+  return { type: target.type, attrs: officeTableCellAttributes(attrs), content: structuredClone(source.content) };
+}
+
+export function pasteOfficeTableCells(target, source, options) {
+  const targetInfo = simpleTable(target); const sourceInfo = simpleTable(source);
+  if (!options || Object.keys(options).sort().join(",") !== "bottom,left,right,top" ||
+      ![options.top, options.left, options.bottom, options.right].every(Number.isInteger) ||
+      options.top < 0 || options.left < 0 || options.bottom <= options.top || options.right <= options.left ||
+      options.bottom > targetInfo.rows || options.right > targetInfo.columns) {
+    throw new TypeError("Invalid Office table paste target");
+  }
+  const selectedRows = options.bottom - options.top, selectedColumns = options.right - options.left;
+  const singleTarget = selectedRows === 1 && selectedColumns === 1;
+  if (!singleTarget && !((sourceInfo.rows === selectedRows && sourceInfo.columns === selectedColumns) ||
+      (sourceInfo.rows === 1 && sourceInfo.columns === 1))) {
+    throw new TypeError("Office table paste dimensions do not match the selection");
+  }
+  const pasteRows = singleTarget ? sourceInfo.rows : selectedRows;
+  const pasteColumns = singleTarget ? sourceInfo.columns : selectedColumns;
+  const requiredRows = Math.max(targetInfo.rows, options.top + pasteRows);
+  const requiredColumns = Math.max(targetInfo.columns, options.left + pasteColumns);
+  if (requiredRows > 200 || requiredColumns > 20) throw new TypeError("Office table paste exceeds grid limits");
+  const result = structuredClone(target);
+  const headerRow = result.content[0].content.every((cell) => cell.type === "tableHeader");
+  const headerColumn = result.content.every((row) => row.content[0].type === "tableHeader");
+  for (const row of result.content) while (row.content.length < requiredColumns) {
+    row.content.push(emptyCell(headerRow && result.content.indexOf(row) === 0 ? "tableHeader" : "tableCell"));
+  }
+  while (result.content.length < requiredRows) {
+    const rowIndex = result.content.length;
+    result.content.push({ type: "tableRow", content: Array.from({ length: requiredColumns }, (_entry, column) =>
+      emptyCell(headerColumn && column === 0 && rowIndex > 0 ? "tableHeader" : "tableCell")) });
+  }
+  for (let row = 0; row < pasteRows; row += 1) for (let column = 0; column < pasteColumns; column += 1) {
+    const sourceRow = sourceInfo.rows === 1 ? 0 : row;
+    const sourceColumn = sourceInfo.columns === 1 ? 0 : column;
+    const targetRow = options.top + row, targetColumn = options.left + column;
+    result.content[targetRow].content[targetColumn] = pastedCell(result.content[targetRow].content[targetColumn],
+      source.content[sourceRow].content[sourceColumn], targetRow - sourceRow, targetColumn - sourceColumn);
+  }
+  return recalculateOfficeTableFormulas(result);
+}
+
+function formulaStructureEntry(entry, maximum) {
+  if (!entry || Object.keys(entry).sort().join(",") !== "duplicate,source" ||
+      !Number.isInteger(entry.source) || entry.source < 0 || entry.source >= maximum || typeof entry.duplicate !== "boolean") {
+    throw new TypeError("Invalid Office table formula structure map");
+  }
+  return entry;
+}
+
+function formulaReference(row, column, rowAnchor = "", columnAnchor = "") {
+  if (row == null || column == null || row < 0 || row >= 200 || column < 0 || column >= 20) return "#BEZUG!";
+  return `${columnAnchor}${String.fromCharCode(65 + column)}${rowAnchor}${row + 1}`;
+}
+
+export function remapOfficeTableFormulas(original, transformed, options) {
+  const before = simpleTable(original); const after = simpleTable(transformed);
+  if (!options || Object.keys(options).sort().join(",") !== "columns,rows" ||
+      !Array.isArray(options.rows) || options.rows.length !== after.rows ||
+      !Array.isArray(options.columns) || options.columns.length !== after.columns) {
+    throw new TypeError("Invalid Office table formula structure map");
+  }
+  const rows = options.rows.map((entry) => formulaStructureEntry(entry, before.rows));
+  const columns = options.columns.map((entry) => formulaStructureEntry(entry, before.columns));
+  const canonicalRows = new Map(); const canonicalColumns = new Map();
+  rows.forEach((entry, index) => { if (!entry.duplicate && !canonicalRows.has(entry.source)) canonicalRows.set(entry.source, index); });
+  columns.forEach((entry, index) => { if (!entry.duplicate && !canonicalColumns.has(entry.source)) canonicalColumns.set(entry.source, index); });
+  const result = structuredClone(transformed);
+  for (let row = 0; row < after.rows; row += 1) for (let column = 0; column < after.columns; column += 1) {
+    const cell = result.content[row].content[column]; if (cell.attrs?.formula == null) continue;
+    const rowEntry = rows[row], columnEntry = columns[column];
+    const formula = replaceFormulaReferences(officeTableFormulaSource(cell.attrs.formula),
+      (_match, columnAnchor, letter, rowAnchor, rowText) => {
+        const sourceRow = Number(rowText) - 1, sourceColumn = letter.charCodeAt(0) - 65;
+        const canonicalRow = canonicalRows.get(sourceRow), canonicalColumn = canonicalColumns.get(sourceColumn);
+        const sourceFormulaRow = canonicalRows.get(rowEntry.source), sourceFormulaColumn = canonicalColumns.get(columnEntry.source);
+        const targetRow = rowEntry.duplicate && !rowAnchor && canonicalRow != null && sourceFormulaRow != null ?
+          canonicalRow + row - sourceFormulaRow : canonicalRow;
+        const targetColumn = columnEntry.duplicate && !columnAnchor && canonicalColumn != null && sourceFormulaColumn != null ?
+          canonicalColumn + column - sourceFormulaColumn : canonicalColumn;
+        return formulaReference(targetRow, targetColumn, rowAnchor, columnAnchor);
+      });
+    cell.attrs = officeTableCellAttributes({ ...cell.attrs, formula, formulaResult: "#WERT!" });
+  }
+  return recalculateOfficeTableFormulas(result);
+}

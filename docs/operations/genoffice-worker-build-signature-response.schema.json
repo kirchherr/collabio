@@ -1,0 +1,70 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "algorithm": {
+      "const": "ed25519",
+      "default": "ed25519",
+      "title": "Algorithm",
+      "type": "string"
+    },
+    "content_included": {
+      "const": false,
+      "default": false,
+      "title": "Content Included",
+      "type": "boolean"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "private_key_included": {
+      "const": false,
+      "default": false,
+      "title": "Private Key Included",
+      "type": "boolean"
+    },
+    "request_hash": {
+      "title": "Request Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_worker_build_signature_response.v1",
+      "default": "genoffice_worker_build_signature_response.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets_included": {
+      "const": false,
+      "default": false,
+      "title": "Secrets Included",
+      "type": "boolean"
+    },
+    "signature_base64": {
+      "title": "Signature Base64",
+      "type": "string"
+    },
+    "signature_message_sha256": {
+      "title": "Signature Message Sha256",
+      "type": "string"
+    },
+    "signer_id": {
+      "title": "Signer Id",
+      "type": "string"
+    },
+    "signer_role": {
+      "const": "founder_risk_owner",
+      "default": "founder_risk_owner",
+      "title": "Signer Role",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_hash",
+    "signature_message_sha256",
+    "signer_id",
+    "key_id",
+    "signature_base64"
+  ],
+  "title": "GenOfficeWorkerBuildSignatureResponse",
+  "type": "object"
+}

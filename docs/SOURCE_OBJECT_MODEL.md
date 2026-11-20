@@ -121,6 +121,10 @@ Runtime adapters:
 
 They store authoritative source metadata, retention manifest hashes, storage manifest hashes, bucket/object-version references, ACL versions, KMS references, Legal Hold state, and content hashes. They do not store source text, article bodies, native bytes, prompts, outputs, transcripts, embeddings, or raw payloads.
 
+`0028_knowledge_base_runtime_activation.sql` adds `collabio.knowledge_base_runtime_activations` for tenant-scoped, metadata-only Knowledge Base runtime activation evidence. It stores provider-profile, source-content-recovery, and production-gate evidence JSON plus hashes, enforces one active activation per tenant, uses RLS, allows no hard delete, and does not store source text, article bodies, prompts, outputs, transcripts, embeddings, or raw payloads.
+
+`0029_knowledge_base_runtime_reconciliation.sql` adds append-only `collabio.knowledge_base_runtime_reconciliation_evidence` and deactivation metadata on runtime activations. It records refreshed provider, source-content recovery, and production-gate evidence hashes; drift deactivates the runtime activation so stale evidence cannot keep the Knowledge Base write path enabled.
+
 `PgSourceObjectRepository` coordinates:
 
 ```text
@@ -131,7 +135,13 @@ SourceObjectWriteGuard
   -> PostgreSQL source metadata + storage manifest insert
 ```
 
-The first content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. Production still needs the S3/MinIO-compatible adapter from `docs/STORAGE_ADAPTER_PLAN.md`.
+The local content-store implementation is `InMemorySourceObjectContentStore`. It is a bridge contract for tests and local development, not production object storage. `S3CompatibleSourceObjectContentStore` is the S3-compatible adapter port for production-style object storage. It depends on the `S3CompatibleObjectStoreClient` protocol so the concrete SDK binding stays outside feature code, and it checks bucket versioning, Object Lock/WORM capability, and legal-hold support before writes. `Boto3S3CompatibleObjectStoreClient` is that concrete protocol adapter. MinIO supplies development compatibility; self-hosted Ceph RGW plus OpenBao is the production reference. `s3_compatible_provider_profile_evidence.v1` records bucket capability evidence for all bucket profiles and blocks production wiring when versioning, Object Lock, or legal-hold requirements are not met. `knowledge_base_runtime` activates the Postgres/S3 Knowledge Base path only from explicit runtime configuration and binds provider-profile evidence, content-recovery evidence, restore-drill evidence, and deployment-gate evidence before constructing `PostgresKnowledgeBaseWriteUnitOfWork`. `KnowledgeBaseArticleServiceResolver` selects that path per request tenant from persisted runtime activation evidence instead of relying on a process-wide runtime tenant, and `KnowledgeBaseRuntimeReconciliationWorker` deactivates activations when refreshed evidence drifts.
+
+`source_object_content_recovery_evidence.v1` is the API-wiring gate for production Knowledge Base writes. `PgSourceObjectRepository.build_content_recovery_evidence` compares tenant-scoped content-store inventory with `collabio.source_object_storage_manifests`, verifies manifest-backed content hashes through the content-store read path, records orphaned content reference hashes and missing manifest hashes, binds a restore-drill report hash, and returns `api_wiring_allowed=true` only when there are no orphaned or missing content objects. `SourceObjectContentReconciliationWorker` turns that evidence into a metadata-only recommended action: `ready_for_api_wiring` or `manual_reconciliation_required`. The evidence and worker run never include source bytes.
+
+`exact_version_restore_drill_report.v1` enumerates manifests only through the tenant-scoped PostgreSQL repository, reads each authoritative source object version, copies it to an independently addressed S3-compatible target, reads the exact returned target version, and verifies content hash, byte length, target metadata, bucket policy, Object Lock and Legal Hold controls. It stores only hashes, counts and status fields. `backend_storage_foundation_gate.v1` then recomputes `persistent_source_object_runtime_report.v1` with the new restore-report hash and opens only when runtime, restore, tenant scope, target isolation and metadata-only evidence all agree.
+
+The drill target is never treated as the authorization source and its target version IDs never replace authoritative PostgreSQL manifests. A real failover restores PostgreSQL metadata and object storage as one recovery unit, validates this gate, and only then changes the governed object-store endpoint.
 
 Content hash verification is documented in:
 
@@ -207,14 +217,19 @@ Implemented now:
 - Storage write guard for required metadata, tenant/data-class matching KMS references, shared content hash verification, and canonical manifest hashes.
 - Metadata-only source-object write receipt model with in-memory and PostgreSQL/RLS stores.
 - PostgreSQL/RLS source-object metadata and storage-manifest bridge with an explicit content-store interface.
+- Content-store recovery evidence with inventory comparison, orphan detection, restore-drill hash binding, and API-wiring gate signal.
+- Metadata-only source-object content reconciliation worker with explicit API-wiring recommendation.
+- S3/MinIO-compatible content-store adapter port with versioning, Object Lock/WORM, legal-hold, and content-hash checks.
+- Concrete S3-compatible SDK adapter behind `S3CompatibleObjectStoreClient`.
+- S3/MinIO provider-profile evidence and Knowledge Base production write deployment gate.
 - RAG-compatible source resolver.
 - SourceDocument bridge for existing demo and parser flows.
 - Compliance validations for required references, parent objects, mail MIME type, content length, UTC timestamps, and legal-hold lifecycle blocking.
 
 Not implemented yet:
 
-Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, but production Knowledge Base wiring still needs one coordinated unit-of-work across source metadata, content-store manifest, article metadata, source evidence, and restore evidence.
-- Concrete S3/MinIO-compatible content-store implementation.
+Note: `PgKnowledgeBaseArticleRepository` persists Knowledge Base article/version metadata and source-version/restore evidence transactionally, and Knowledge Base execution now also persists a source-object write receipt before article metadata is committed. `PgSourceObjectRepository` proves the shared source metadata/storage-manifest bridge, and `PostgresKnowledgeBaseWriteUnitOfWork` can bind receipts, source metadata, storage manifests, article metadata, source evidence, and restore evidence in one shared PostgreSQL metadata transaction. Clean content-store recovery evidence, S3/MinIO provider-profile evidence, and bound restore-drill evidence now gate the Postgres UoW for production API wiring through `knowledge_base_production_write_deployment_gate.v1` and `production_write_deployment_gate_evidence_hash`. `knowledge_base_runtime` wires that concrete provider path from explicit tenant-scoped activation evidence and reconciles active activations before they can become stale.
+- Persistent orphan-reconciliation worker for production object storage.
 - Runtime WORM/object-lock bucket bootstrap and provider verification.
 - Persistent retention-manifest storage and lifecycle worker.
 - Persistent legal-matter and legal-hold scope storage.

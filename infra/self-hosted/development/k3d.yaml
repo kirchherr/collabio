@@ -1,0 +1,118 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: collabio-provider
+servers: 3
+agents: 0
+kubeAPI:
+  host: localhost
+  hostIP: 127.0.0.1
+  hostPort: "26443"
+image: ${K3S_IMAGE}
+volumes:
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-0/rook:/var/lib/rook
+    nodeFilters:
+      - server:0
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-0/local-path:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - server:0
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-0/osd:/var/lib/collabio-osd
+    nodeFilters:
+      - server:0
+  - volume: ${COLLABIO_PROVIDER_CONFIG}/audit-policy.yaml:/etc/collabio/audit-policy.yaml:ro
+    nodeFilters:
+      - server:0
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-1/rook:/var/lib/rook
+    nodeFilters:
+      - server:1
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-1/local-path:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - server:1
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-1/osd:/var/lib/collabio-osd
+    nodeFilters:
+      - server:1
+  - volume: ${COLLABIO_PROVIDER_CONFIG}/audit-policy.yaml:/etc/collabio/audit-policy.yaml:ro
+    nodeFilters:
+      - server:1
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-2/rook:/var/lib/rook
+    nodeFilters:
+      - server:2
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-2/local-path:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - server:2
+  - volume: ${COLLABIO_PROVIDER_RUNTIME}/nodes/server-2/osd:/var/lib/collabio-osd
+    nodeFilters:
+      - server:2
+  - volume: ${COLLABIO_PROVIDER_CONFIG}/audit-policy.yaml:/etc/collabio/audit-policy.yaml:ro
+    nodeFilters:
+      - server:2
+options:
+  k3d:
+    wait: true
+    timeout: 300s
+    disableLoadbalancer: true
+    disableImageVolume: false
+    disableRollback: false
+  k3s:
+    extraArgs:
+      - arg: --disable=traefik,servicelb,metrics-server
+        nodeFilters:
+          - server:*
+      - arg: --secrets-encryption
+        nodeFilters:
+          - server:*
+      - arg: --secrets-encryption-provider=secretbox
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-policy-file=/etc/collabio/audit-policy.yaml
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-log-mode=blocking-strict
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-log-maxage=30
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-log-maxbackup=10
+        nodeFilters:
+          - server:*
+      - arg: --kube-apiserver-arg=audit-log-maxsize=100
+        nodeFilters:
+          - server:*
+    nodeLabels:
+      - label: collabio.io/provider-node=true
+        nodeFilters:
+          - server:*
+      - label: rook.io/has-disk=true
+        nodeFilters:
+          - server:*
+      - label: topology.kubernetes.io/zone=dev001-a
+        nodeFilters:
+          - server:0
+      - label: topology.kubernetes.io/zone=dev001-b
+        nodeFilters:
+          - server:1
+      - label: topology.kubernetes.io/zone=dev001-c
+        nodeFilters:
+          - server:2
+  kubeconfig:
+    updateDefaultKubeconfig: false
+    switchCurrentContext: false
+  runtime:
+    labels:
+      - label: com.collabio.owner=collabio
+        nodeFilters:
+          - server:*
+      - label: com.collabio.stack=self-hosted-provider-development
+        nodeFilters:
+          - server:*
+      - label: collabio.io/storage-node-runtime-fingerprint=${COLLABIO_STORAGE_NODE_RUNTIME_FINGERPRINT}
+        nodeFilters:
+          - server:*
+    ulimits:
+      - name: nofile
+        soft: 1048576
+        hard: 1048576

@@ -1,0 +1,178 @@
+{
+  "$defs": {
+    "GenOfficeDependencyLicenseResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "declared_license_expression": {
+          "title": "Declared License Expression",
+          "type": "string"
+        },
+        "legal_file_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Legal File Evidence Ids",
+          "type": "array"
+        },
+        "package_name": {
+          "title": "Package Name",
+          "type": "string"
+        },
+        "package_version": {
+          "title": "Package Version",
+          "type": "string"
+        },
+        "selected_distribution_license_expression": {
+          "title": "Selected Distribution License Expression",
+          "type": "string"
+        }
+      },
+      "required": [
+        "package_name",
+        "package_version",
+        "declared_license_expression",
+        "selected_distribution_license_expression",
+        "legal_file_evidence_ids"
+      ],
+      "title": "GenOfficeDependencyLicenseResolution",
+      "type": "object"
+    },
+    "GenOfficeLegalQuestionResolution": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_refs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "question_id": {
+          "title": "Question Id",
+          "type": "string"
+        },
+        "resolution": {
+          "title": "Resolution",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question_id",
+        "resolution",
+        "evidence_refs"
+      ],
+      "title": "GenOfficeLegalQuestionResolution",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_source_scopes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Approved Source Scopes",
+      "type": "array"
+    },
+    "change_control_ref": {
+      "title": "Change Control Ref",
+      "type": "string"
+    },
+    "decision": {
+      "enum": [
+        "approved",
+        "rejected"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "decision_id": {
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "dependency_license_resolutions": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeDependencyLicenseResolution"
+      },
+      "title": "Dependency License Resolutions",
+      "type": "array"
+    },
+    "detached_signature_verification_evidence_hash": {
+      "title": "Detached Signature Verification Evidence Hash",
+      "type": "string"
+    },
+    "dossier_report_hash": {
+      "title": "Dossier Report Hash",
+      "type": "string"
+    },
+    "legal_opinion_ref": {
+      "title": "Legal Opinion Ref",
+      "type": "string"
+    },
+    "notice_distribution_artifact_sha256": {
+      "title": "Notice Distribution Artifact Sha256",
+      "type": "string"
+    },
+    "prohibited_source_scopes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Prohibited Source Scopes",
+      "type": "array"
+    },
+    "question_resolutions": {
+      "items": {
+        "$ref": "#/$defs/GenOfficeLegalQuestionResolution"
+      },
+      "title": "Question Resolutions",
+      "type": "array"
+    },
+    "record_hash": {
+      "title": "Record Hash",
+      "type": "string"
+    },
+    "reviewed_at_utc": {
+      "format": "date-time",
+      "title": "Reviewed At Utc",
+      "type": "string"
+    },
+    "reviewer_id": {
+      "title": "Reviewer Id",
+      "type": "string"
+    },
+    "reviewer_professional_role": {
+      "title": "Reviewer Professional Role",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "genoffice_legal_decision_record.v1",
+      "default": "genoffice_legal_decision_record.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "trademark_policy": {
+      "title": "Trademark Policy",
+      "type": "string"
+    }
+  },
+  "required": [
+    "dossier_report_hash",
+    "decision_id",
+    "decision",
+    "reviewer_id",
+    "reviewer_professional_role",
+    "reviewed_at_utc",
+    "legal_opinion_ref",
+    "change_control_ref",
+    "approved_source_scopes",
+    "prohibited_source_scopes",
+    "trademark_policy",
+    "notice_distribution_artifact_sha256",
+    "question_resolutions",
+    "dependency_license_resolutions",
+    "detached_signature_verification_evidence_hash",
+    "record_hash"
+  ],
+  "title": "GenOfficeLegalDecisionRecord",
+  "type": "object"
+}

@@ -1,0 +1,4 @@
+schema=cyclonedx-1.6
+validator=cyclonedx-cli-0.32.0@sha256:9a858a15e7b0843606efc0ff19d5f7575011a5428d7f3d343b4f6cf09d8f0d4e
+sbom_sha256=c5e8678efe9b0dc3f8e64a978eacfe43fd9fae6a9e63c8bb74d94b0c1a8b43f0
+status=valid

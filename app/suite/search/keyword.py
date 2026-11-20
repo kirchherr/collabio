@@ -1,5 +1,6 @@
 import re
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -16,6 +17,9 @@ from suite.search.models import (
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9_]+", re.IGNORECASE)
 ACTIVE_LIFECYCLE_STATE = "active"
+ACL_PREFILTER_MULTIPLIER = 10
+ACL_PREFILTER_MINIMUM = 50
+ACL_PREFILTER_MAXIMUM = 500
 
 
 @dataclass(frozen=True)
@@ -119,16 +123,26 @@ class KeywordSearchService:
         index: KeywordIndex,
         acl_authorizer: AclAuthorizer,
         audit_logger: InMemoryAuditLogger,
+        audit_event_type: str = "search.keyword.query",
+        audit_metadata_context: Mapping[str, object] | None = None,
+        result_contract: str = "candidate_only",
     ) -> None:
         self.index = index
         self.acl_authorizer = acl_authorizer
         self.audit_logger = audit_logger
+        self.audit_event_type = audit_event_type
+        self.audit_metadata_context = dict(audit_metadata_context or {})
+        self.result_contract = result_contract
 
     def search(self, *, query: KeywordSearchQuery, user_context: UserContext) -> KeywordSearchResponse:
+        prefilter_top_k = min(
+            ACL_PREFILTER_MAXIMUM,
+            max(query.top_k, query.top_k * ACL_PREFILTER_MULTIPLIER, ACL_PREFILTER_MINIMUM),
+        )
         candidates = self.index.search(
             tenant_id=user_context.tenant_id,
             query=query.query,
-            top_k=query.top_k,
+            top_k=prefilter_top_k,
         )
         authorized_candidates: list[KeywordSearchCandidate] = []
         for candidate in candidates:
@@ -142,13 +156,16 @@ class KeywordSearchService:
             ):
                 continue
             authorized_candidates.append(candidate_view(candidate))
+            if len(authorized_candidates) >= query.top_k:
+                break
 
         audit_event = self.audit_logger.record(
             user_context=user_context,
-            event_type="search.keyword.query",
+            event_type=self.audit_event_type,
             source_object_ids=unique_candidate_object_ids(authorized_candidates),
             input_text=query.query,
             metadata={
+                **self.audit_metadata_context,
                 "candidate_count": len(candidates),
                 "authorized_candidate_count": len(authorized_candidates),
                 "authorized_candidate_refs": candidate_refs(authorized_candidates),
@@ -156,7 +173,7 @@ class KeywordSearchService:
                     {candidate.classification.value for candidate in authorized_candidates}
                 ),
                 "index_kind": "keyword",
-                "result_contract": "candidate_only",
+                "result_contract": self.result_contract,
                 "search_policy_id": SEARCH_POLICY_ID,
             },
         )
@@ -179,6 +196,7 @@ def keyword_metadata(
     object_type: str = "document",
     version_id: str = "v1",
     acl_version: int = 1,
+    legal_hold_state: str = "none",
 ) -> ChunkMetadata:
     return ChunkMetadata(
         tenant_id=tenant_id,
@@ -188,7 +206,7 @@ def keyword_metadata(
         chunk_id=chunk_id,
         classification=classification,
         retention_policy_id=retention_policy_id,
-        legal_hold_state="none",
+        legal_hold_state=legal_hold_state,
         acl_hash=acl_hash,
         acl_version=acl_version,
         created_at_utc="2026-06-10T00:00:00Z",

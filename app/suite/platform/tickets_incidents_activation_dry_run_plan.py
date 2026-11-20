@@ -1,0 +1,454 @@
+from __future__ import annotations
+
+import re
+from collections.abc import Iterable
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+from suite.ai_control_plane.audit import canonical_json, stable_hash
+from suite.ai_control_plane.models import UserContext
+from suite.persistence.migration_catalog import MigrationManifestEntry
+from suite.platform.modules import InMemoryModuleRegistry, PgModuleRegistry
+from suite.platform.tickets_incidents_module import (
+    TICKETS_INCIDENTS_CONTINUITY_DOMAIN,
+    TICKETS_INCIDENTS_MODULE_ID,
+)
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_gate import (
+    build_tickets_incidents_tenant_admin_activation_approval_gate_response,
+)
+from suite.platform.tickets_incidents_tenant_admin_activation_approval_record import (
+    TicketsIncidentsTenantAdminActivationApprovalRecordStore,
+)
+
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_SCHEMA_VERSION = "tickets_incidents_activation_dry_run_plan.v1"
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_RESULT_CONTRACT = (
+    "metadata_only_tickets_incidents_activation_dry_run_plan_no_execution"
+)
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_ENDPOINT = (
+    "/v1/platform/modules/families/tickets-incidents/activation-dry-run-plan"
+)
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_STATEMENT = (
+    "I prepare the Tickets & Incidents activation dry-run plan without executing activation or tenant provisioning."
+)
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_READY_NEXT_ACTION = (
+    "review_tickets_incidents_activation_dry_run_execution_boundary"
+)
+TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_RETRY_NEXT_ACTION = (
+    "prepare_tickets_incidents_activation_dry_run_plan_without_tenant_activation"
+)
+
+REF_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_+.-]*:.+")
+SHA256_PATTERN = re.compile(r"^sha256:[a-f0-9]{64}$")
+ZERO_SHA256 = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+
+
+class TicketsIncidentsActivationDryRunPlanCommand(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    activation_execution_boundary_evidence_hash: str
+    activation_executor_skeleton_evidence_hash: str
+    tenant_admin_approval_gate_hash: str
+    tenant_admin_approval_record_hash: str
+    activation_dry_run_plan_ref: str
+    change_request_ref: str
+    idempotency_key_ref: str
+    planned_at_utc: datetime
+    audit_chain_ref: str
+    activation_dry_run_plan_statement: str
+    activation_dry_run_plan_requested: bool = True
+    activation_dry_run_execution_requested: bool = False
+    activation_execution_requested: bool = False
+    tenant_provisioning_requested: bool = False
+    tenant_module_state_creation_requested: bool = False
+    migration_execution_requested: bool = False
+    tickets_business_api_activation_requested: bool = False
+    worker_activation_requested: bool = False
+    persistent_task_creation_requested: bool = False
+    content_payload_included: bool = False
+    destructive_actions_requested: bool = False
+    external_side_effect_requested: bool = False
+
+    @field_validator(
+        "activation_execution_boundary_evidence_hash",
+        "activation_executor_skeleton_evidence_hash",
+        "tenant_admin_approval_gate_hash",
+        "tenant_admin_approval_record_hash",
+    )
+    @classmethod
+    def require_sha256(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("Tickets & Incidents activation dry-run plan hashes must be sha256 references")
+        return value
+
+    @field_validator(
+        "activation_dry_run_plan_ref",
+        "change_request_ref",
+        "idempotency_key_ref",
+        "audit_chain_ref",
+    )
+    @classmethod
+    def require_ref(cls, value: str) -> str:
+        if not REF_PATTERN.fullmatch(value.strip()):
+            raise ValueError("Tickets & Incidents activation dry-run plan references need typed ref prefixes")
+        return value.strip()
+
+    @field_validator("activation_dry_run_plan_statement")
+    @classmethod
+    def require_exact_plan_statement(cls, value: str) -> str:
+        normalized = value.strip()
+        if normalized != TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_STATEMENT:
+            raise ValueError("Tickets & Incidents activation dry-run plan requires the exact statement")
+        return normalized
+
+    @field_validator("planned_at_utc")
+    @classmethod
+    def require_timezone_aware_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("Tickets & Incidents activation dry-run plan planned_at_utc needs a timezone")
+        return value
+
+
+class TicketsIncidentsActivationDryRunPlanSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dry_run_check_count: int
+    required_dry_run_plan_evidence_count: int
+    blocking_reason_count: int
+
+
+class TicketsIncidentsActivationDryRunPlanResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_SCHEMA_VERSION
+    tenant_id: str
+    module_id: str = TICKETS_INCIDENTS_MODULE_ID
+    endpoint: str = TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_ENDPOINT
+    result_contract: str = TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_RESULT_CONTRACT
+    continuity_domain: str = TICKETS_INCIDENTS_CONTINUITY_DOMAIN
+    approval_gate_ready: bool
+    human_approval_ready: bool
+    activation_execution_boundary_evidence_hash: str
+    activation_executor_skeleton_evidence_hash: str
+    tenant_admin_approval_gate_hash: str
+    tenant_admin_approval_record_hash: str
+    tickets_restore_drill_evidence_hash: str
+    command_hash: str
+    idempotency_key_hash: str
+    activation_dry_run_plan_statement_hash: str
+    activation_dry_run_plan_ref: str
+    change_request_ref: str
+    audit_chain_ref: str
+    planned_by: str
+    planned_at_utc: datetime
+    planner_role_allowed: bool
+    activation_dry_run_plan_requested: bool
+    activation_dry_run_plan_ready: bool
+    activation_dry_run_execution_boundary_required: bool = True
+    activation_dry_run_execution_allowed: bool = False
+    activation_dry_run_executed: bool = False
+    activation_execution_allowed: bool = False
+    tenant_provisioning_allowed: bool = False
+    migration_execution_allowed: bool = False
+    tickets_business_api_allowed: bool = False
+    worker_activation_allowed: bool = False
+    module_activation_executed: bool = False
+    tenant_module_state_created: bool = False
+    persistent_task_created: bool = False
+    content_included: bool = False
+    dry_run_result_persistence_allowed: bool = False
+    destructive_actions_allowed: bool = False
+    external_side_effect_allowed: bool = False
+    dry_run_checks: tuple[str, ...]
+    required_dry_run_plan_evidence: tuple[str, ...]
+    blocking_reasons: tuple[str, ...]
+    summary: TicketsIncidentsActivationDryRunPlanSummary
+    evidence_refs: tuple[str, ...]
+    evidence_hash: str
+    next_action: str
+
+    @field_validator(
+        "tenant_id",
+        "module_id",
+        "endpoint",
+        "result_contract",
+        "continuity_domain",
+        "activation_dry_run_plan_ref",
+        "change_request_ref",
+        "audit_chain_ref",
+        "planned_by",
+        "next_action",
+    )
+    @classmethod
+    def require_non_empty_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Tickets & Incidents activation dry-run plan text fields must not be empty")
+        return value
+
+    @field_validator(
+        "activation_execution_boundary_evidence_hash",
+        "activation_executor_skeleton_evidence_hash",
+        "tenant_admin_approval_gate_hash",
+        "tenant_admin_approval_record_hash",
+        "tickets_restore_drill_evidence_hash",
+        "command_hash",
+        "idempotency_key_hash",
+        "activation_dry_run_plan_statement_hash",
+        "evidence_hash",
+    )
+    @classmethod
+    def validate_hash_reference(cls, value: str) -> str:
+        if not SHA256_PATTERN.fullmatch(value):
+            raise ValueError("Tickets & Incidents activation dry-run plan hashes must be sha256 references")
+        return value
+
+    @field_validator("dry_run_checks", "required_dry_run_plan_evidence", "blocking_reasons", "evidence_refs")
+    @classmethod
+    def require_unique_lists(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("Tickets & Incidents activation dry-run plan lists must not contain duplicates")
+        for item in value:
+            if not item.strip():
+                raise ValueError("Tickets & Incidents activation dry-run plan list items must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def require_non_executing_dry_run_plan_contract(self) -> TicketsIncidentsActivationDryRunPlanResponse:
+        if self.schema_version != TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_SCHEMA_VERSION:
+            raise ValueError("Tickets & Incidents activation dry-run plan schema version is invalid")
+        if self.endpoint != TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_ENDPOINT:
+            raise ValueError("Tickets & Incidents activation dry-run plan endpoint is invalid")
+        if self.result_contract != TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_RESULT_CONTRACT:
+            raise ValueError("Tickets & Incidents activation dry-run plan result contract is invalid")
+        if self.module_id != TICKETS_INCIDENTS_MODULE_ID:
+            raise ValueError("Tickets & Incidents activation dry-run plan only applies to tickets_incidents")
+        if self.continuity_domain != TICKETS_INCIDENTS_CONTINUITY_DOMAIN:
+            raise ValueError("Tickets & Incidents activation dry-run plan continuity domain is invalid")
+        expected_ready = (
+            self.approval_gate_ready
+            and self.human_approval_ready
+            and self.planner_role_allowed
+            and self.activation_dry_run_plan_requested
+            and not self.blocking_reasons
+        )
+        if self.activation_dry_run_plan_ready != expected_ready:
+            raise ValueError("Tickets & Incidents activation dry-run plan readiness is inconsistent")
+        if not self.activation_dry_run_execution_boundary_required:
+            raise ValueError("Tickets & Incidents activation dry-run plan must require a future execution boundary")
+        if (
+            self.activation_dry_run_execution_allowed
+            or self.activation_dry_run_executed
+            or self.activation_execution_allowed
+            or self.tenant_provisioning_allowed
+            or self.migration_execution_allowed
+            or self.tickets_business_api_allowed
+            or self.worker_activation_allowed
+            or self.module_activation_executed
+            or self.tenant_module_state_created
+            or self.persistent_task_created
+            or self.content_included
+            or self.dry_run_result_persistence_allowed
+            or self.destructive_actions_allowed
+            or self.external_side_effect_allowed
+        ):
+            raise ValueError("Tickets & Incidents activation dry-run plan must remain metadata-only")
+        if self.summary.dry_run_check_count != len(self.dry_run_checks):
+            raise ValueError("Tickets & Incidents activation dry-run plan check count mismatch")
+        if self.summary.required_dry_run_plan_evidence_count != len(self.required_dry_run_plan_evidence):
+            raise ValueError("Tickets & Incidents activation dry-run plan evidence count mismatch")
+        if self.summary.blocking_reason_count != len(self.blocking_reasons):
+            raise ValueError("Tickets & Incidents activation dry-run plan blocking count mismatch")
+        return self
+
+
+def build_tickets_incidents_activation_dry_run_plan_response(
+    *,
+    command: TicketsIncidentsActivationDryRunPlanCommand,
+    user_context: UserContext,
+    module_registry: InMemoryModuleRegistry | PgModuleRegistry,
+    migration_manifest_entries: Iterable[MigrationManifestEntry],
+    approval_record_store: TicketsIncidentsTenantAdminActivationApprovalRecordStore | None,
+) -> TicketsIncidentsActivationDryRunPlanResponse:
+    approval_gate = build_tickets_incidents_tenant_admin_activation_approval_gate_response(
+        user_context=user_context,
+        module_registry=module_registry,
+        migration_manifest_entries=migration_manifest_entries,
+    )
+    approval_record = (
+        approval_record_store.latest_for_gate(
+            tenant_id=user_context.tenant_id,
+            approval_gate_evidence_hash=approval_gate.evidence_hash,
+        )
+        if approval_record_store is not None and approval_gate.approval_gate_ready
+        else None
+    )
+    command_hash = build_tickets_incidents_activation_dry_run_plan_command_hash(command)
+    idempotency_key_hash = stable_hash(
+        canonical_json(
+            {
+                "schema_version": "tickets_incidents_activation_dry_run_plan_idempotency_key.v1",
+                "tenant_id": user_context.tenant_id,
+                "activation_execution_boundary_evidence_hash": command.activation_execution_boundary_evidence_hash,
+                "activation_executor_skeleton_evidence_hash": command.activation_executor_skeleton_evidence_hash,
+                "tenant_admin_approval_gate_hash": command.tenant_admin_approval_gate_hash,
+                "tenant_admin_approval_record_hash": command.tenant_admin_approval_record_hash,
+                "idempotency_key_ref": command.idempotency_key_ref,
+            }
+        )
+    )
+    statement_hash = stable_hash(command.activation_dry_run_plan_statement)
+    planner_role_allowed = bool({"tenant-admin", "tenant_admin"} & user_context.role_ids)
+    blocking_reasons = _activation_dry_run_plan_blocking_reasons(
+        command=command,
+        approval_gate_ready=approval_gate.approval_gate_ready,
+        expected_approval_gate_hash=approval_gate.evidence_hash,
+        expected_approval_record_hash=approval_record.evidence_hash if approval_record is not None else None,
+        planner_role_allowed=planner_role_allowed,
+    )
+    activation_dry_run_plan_ready = not blocking_reasons
+    dry_run_checks = (
+        "verify_tickets_catalog_status_not_installed",
+        "verify_tenant_module_state_absent",
+        "verify_tickets_metadata_migrations_present",
+        "verify_restore_drill_evidence_hash_bound",
+        "verify_tenant_admin_activation_approval_record_hash_bound",
+        "verify_activation_execution_boundary_hash_bound",
+        "verify_activation_executor_skeleton_hash_bound",
+        "calculate_no_write_activation_candidate_summary",
+        "confirm_no_tickets_business_api_activation",
+        "confirm_no_ticket_worker_registration",
+        "confirm_no_ticket_content_payload",
+        "confirm_no_dry_run_result_persistence",
+    )
+    required_dry_run_plan_evidence = (
+        "tenant_admin_role",
+        "activation_approval_gate_hash",
+        "tenant_admin_activation_approval_record_hash",
+        "activation_execution_boundary_hash",
+        "activation_executor_skeleton_hash",
+        "tickets_restore_drill_evidence_hash",
+        "exact_activation_dry_run_plan_statement_hash",
+        "change_request_ref",
+        "idempotency_key_hash",
+        "audit_chain_ref",
+        "future_activation_dry_run_execution_boundary_required",
+        "no_tickets_activation_execution_confirmation",
+        "no_tickets_business_api_activation_confirmation",
+        "no_worker_activation_confirmation",
+        "no_content_payload_confirmation",
+    )
+    draft = TicketsIncidentsActivationDryRunPlanResponse(
+        tenant_id=user_context.tenant_id,
+        approval_gate_ready=approval_gate.approval_gate_ready,
+        human_approval_ready=approval_record is not None and approval_record.approval_record_created,
+        activation_execution_boundary_evidence_hash=command.activation_execution_boundary_evidence_hash,
+        activation_executor_skeleton_evidence_hash=command.activation_executor_skeleton_evidence_hash,
+        tenant_admin_approval_gate_hash=command.tenant_admin_approval_gate_hash,
+        tenant_admin_approval_record_hash=command.tenant_admin_approval_record_hash,
+        tickets_restore_drill_evidence_hash=approval_gate.tickets_restore_drill_evidence_hash or ZERO_SHA256,
+        command_hash=command_hash,
+        idempotency_key_hash=idempotency_key_hash,
+        activation_dry_run_plan_statement_hash=statement_hash,
+        activation_dry_run_plan_ref=command.activation_dry_run_plan_ref,
+        change_request_ref=command.change_request_ref,
+        audit_chain_ref=command.audit_chain_ref,
+        planned_by=user_context.user_id,
+        planned_at_utc=command.planned_at_utc,
+        planner_role_allowed=planner_role_allowed,
+        activation_dry_run_plan_requested=command.activation_dry_run_plan_requested,
+        activation_dry_run_plan_ready=activation_dry_run_plan_ready,
+        dry_run_checks=dry_run_checks,
+        required_dry_run_plan_evidence=required_dry_run_plan_evidence,
+        blocking_reasons=blocking_reasons,
+        summary=TicketsIncidentsActivationDryRunPlanSummary(
+            dry_run_check_count=len(dry_run_checks),
+            required_dry_run_plan_evidence_count=len(required_dry_run_plan_evidence),
+            blocking_reason_count=len(blocking_reasons),
+        ),
+        evidence_refs=(
+            "docs/modules/TICKETS_INCIDENTS_MODULE_CHARTER.md",
+            "docs/modules/MODULE_IMPLEMENTATION_CONTRACT.md",
+            "docs/operations/BACKUP_FAILOVER.md",
+            "app/suite/platform/tickets_incidents_activation_dry_run_plan.py",
+            "app/suite/platform/tickets_incidents_activation_executor_skeleton.py",
+            "app/suite/platform/tickets_incidents_activation_execution_boundary.py",
+            "app/suite/platform/tickets_incidents_tenant_admin_activation_approval_gate.py",
+            "app/suite/platform/tickets_incidents_tenant_admin_activation_approval_record.py",
+            "app/suite/platform/tickets_incidents_restore_drill_evidence.py",
+            "app/suite/platform/tickets_incidents_storage_migration_evidence.py",
+            "app/suite/persistence/migrations/0051_tickets_incidents_catalog_registration.sql",
+            "app/suite/persistence/migrations/0052_tickets_incidents_metadata_schema.sql",
+            "tests/test_tickets_incidents_activation_dry_run_plan.py",
+        ),
+        evidence_hash=ZERO_SHA256,
+        next_action=(
+            TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_READY_NEXT_ACTION
+            if activation_dry_run_plan_ready
+            else TICKETS_INCIDENTS_ACTIVATION_DRY_RUN_PLAN_RETRY_NEXT_ACTION
+        ),
+    )
+    return draft.model_copy(update={"evidence_hash": build_tickets_incidents_activation_dry_run_plan_hash(draft)})
+
+
+def build_tickets_incidents_activation_dry_run_plan_command_hash(
+    command: TicketsIncidentsActivationDryRunPlanCommand,
+) -> str:
+    payload = command.model_dump(mode="json", exclude={"activation_dry_run_plan_statement"})
+    payload["activation_dry_run_plan_statement_hash"] = stable_hash(command.activation_dry_run_plan_statement)
+    return stable_hash(canonical_json(payload))
+
+
+def build_tickets_incidents_activation_dry_run_plan_hash(
+    response: TicketsIncidentsActivationDryRunPlanResponse,
+) -> str:
+    return stable_hash(canonical_json(response.model_dump(mode="json", exclude={"evidence_hash"})))
+
+
+def _activation_dry_run_plan_blocking_reasons(
+    *,
+    command: TicketsIncidentsActivationDryRunPlanCommand,
+    approval_gate_ready: bool,
+    expected_approval_gate_hash: str,
+    expected_approval_record_hash: str | None,
+    planner_role_allowed: bool,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if not approval_gate_ready:
+        reasons.append("tickets_incidents_activation_approval_gate_not_ready")
+    if command.activation_execution_boundary_evidence_hash == ZERO_SHA256:
+        reasons.append("tickets_incidents_activation_execution_boundary_hash_missing")
+    if command.activation_executor_skeleton_evidence_hash == ZERO_SHA256:
+        reasons.append("tickets_incidents_activation_executor_skeleton_hash_missing")
+    if command.tenant_admin_approval_gate_hash != expected_approval_gate_hash:
+        reasons.append("tenant_admin_activation_approval_gate_hash_mismatch")
+    if expected_approval_record_hash is None:
+        reasons.append("tickets_incidents_tenant_admin_activation_approval_record_missing")
+    elif command.tenant_admin_approval_record_hash != expected_approval_record_hash:
+        reasons.append("tickets_incidents_tenant_admin_activation_approval_record_hash_mismatch")
+    if not planner_role_allowed:
+        reasons.append("tenant_admin_role_required")
+    if not command.activation_dry_run_plan_requested:
+        reasons.append("activation_dry_run_plan_not_requested")
+    if command.activation_dry_run_execution_requested:
+        reasons.append("activation_dry_run_execution_request_forbidden")
+    if command.activation_execution_requested:
+        reasons.append("activation_execution_request_forbidden")
+    if command.tenant_provisioning_requested:
+        reasons.append("tenant_provisioning_request_forbidden")
+    if command.tenant_module_state_creation_requested:
+        reasons.append("tenant_module_state_creation_request_forbidden")
+    if command.migration_execution_requested:
+        reasons.append("migration_execution_request_forbidden")
+    if command.tickets_business_api_activation_requested:
+        reasons.append("tickets_business_api_activation_request_forbidden")
+    if command.worker_activation_requested:
+        reasons.append("worker_activation_request_forbidden")
+    if command.persistent_task_creation_requested:
+        reasons.append("persistent_task_creation_request_forbidden")
+    if command.content_payload_included:
+        reasons.append("content_payload_forbidden")
+    if command.destructive_actions_requested:
+        reasons.append("destructive_action_request_forbidden")
+    if command.external_side_effect_requested:
+        reasons.append("external_side_effect_request_forbidden")
+    return tuple(reasons)

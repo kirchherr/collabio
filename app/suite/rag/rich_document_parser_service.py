@@ -8,6 +8,7 @@ from typing import Any
 
 from suite.rag.parser_worker import ParserWorkerRequest
 from suite.rag.rich_document_parser import RichDocumentParserWorker
+from suite.rag.rich_document_parser_socket import serve_rich_document_parser
 
 
 def parse_payload(payload: dict[str, Any]) -> ParserWorkerRequest:
@@ -28,11 +29,15 @@ def parse_payload(payload: dict[str, Any]) -> ParserWorkerRequest:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Isolated rich document parser worker")
     parser.add_argument("--describe", action="store_true", help="print parser manifest and exit")
+    parser.add_argument("--serve-socket", help="serve the bounded parser protocol on this Unix socket")
     args = parser.parse_args()
 
     worker = RichDocumentParserWorker()
     if args.describe:
         print(json.dumps(worker.manifest().__dict__, sort_keys=True))
+        return
+    if args.serve_socket:
+        serve_rich_document_parser(socket_path=args.serve_socket, worker=worker)
         return
 
     request = parse_payload(json.loads(sys.stdin.read()))

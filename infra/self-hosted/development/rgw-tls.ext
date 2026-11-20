@@ -1,0 +1,4 @@
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+subjectAltName=DNS:rook-ceph-rgw-collabio-objects,DNS:rook-ceph-rgw-collabio-objects.rook-ceph,DNS:rook-ceph-rgw-collabio-objects.rook-ceph.svc,DNS:rook-ceph-rgw-collabio-objects.rook-ceph.svc.cluster.local

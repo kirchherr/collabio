@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from suite.ai_control_plane.audit import InMemoryAuditLogger
 from suite.ai_control_plane.models import DataClass, UserContext
+from suite.platform.persistent_metadata import persistent_metadata_audit_metadata, validate_persistent_object_metadata
 
 CRM_ERP_MODULE_ID = "crm_erp"
 CRM_ACTIVITIES_FEATURE_ID = "crm_erp.crm.activities"
@@ -155,6 +156,12 @@ class CrmActivityRecord(BaseModel):
 
     @model_validator(mode="after")
     def require_consistent_lifecycle(self) -> CrmActivityRecord:
+        validate_persistent_object_metadata(
+            self,
+            expected_object_type=CRM_ACTIVITY_OBJECT_TYPE,
+            expected_schema_version=CRM_ACTIVITY_SCHEMA_VERSION,
+            expected_classification=DataClass.PERSONAL,
+        )
         if self.status == CrmActivityStatus.RESTRICTED and self.lifecycle_state != CrmLifecycleState.RESTRICTED:
             raise ValueError("restricted CRM activities must use restricted lifecycle_state")
         if self.status == CrmActivityStatus.DONE and self.completed_at_utc is None:
@@ -265,6 +272,12 @@ class CrmNoteRecord(BaseModel):
 
     @model_validator(mode="after")
     def require_restricted_lifecycle_when_status_is_restricted(self) -> CrmNoteRecord:
+        validate_persistent_object_metadata(
+            self,
+            expected_object_type=CRM_NOTE_OBJECT_TYPE,
+            expected_schema_version=CRM_NOTE_SCHEMA_VERSION,
+            expected_classification=DataClass.PERSONAL,
+        )
         if self.status == CrmNoteStatus.RESTRICTED and self.lifecycle_state != CrmLifecycleState.RESTRICTED:
             raise ValueError("restricted CRM notes must use restricted lifecycle_state")
         return self
@@ -573,6 +586,7 @@ class CrmActivityService:
                 "result_count": len(views),
                 "redacted_link_count": redacted_link_count(records, views),
                 "result_contract": "metadata_only",
+                **persistent_metadata_audit_metadata(),
             },
         )
         return CrmActivitiesResponse(
@@ -600,6 +614,7 @@ class CrmActivityService:
                 "result_count": len(views),
                 "redacted_link_count": redacted_link_count(records, views),
                 "result_contract": "metadata_only",
+                **persistent_metadata_audit_metadata(),
             },
         )
         return CrmNotesResponse(

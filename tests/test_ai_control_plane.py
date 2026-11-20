@@ -1,6 +1,6 @@
 import pytest
 
-from suite.ai_control_plane.models import DataClass, InferenceRequest, TenantPolicy, UserContext
+from suite.ai_control_plane.models import DataClass, InferenceRequest, Purpose, TenantPolicy, UserContext
 from suite.ai_control_plane.policy import PolicyEngine, PolicyViolation
 from suite.ai_control_plane.registries import InMemoryModelRegistry, InMemoryPromptRegistry
 
@@ -67,6 +67,33 @@ def test_policy_blocks_unauthorized_data_class() -> None:
         engine.authorize_inference(
             request=request,
             prompt_template=prompt_registry.get(request.prompt_template_id),
+            user_context=user,
+            tenant_policy=policy,
+        )
+
+
+def test_policy_blocks_unapproved_prompt_before_provider_execution() -> None:
+    model_registry = InMemoryModelRegistry.default()
+    prompt = InMemoryPromptRegistry.default().get("document_rewrite_v1").model_copy(update={"approval_status": "draft"})
+    engine = PolicyEngine(model_registry=model_registry)
+    request = InferenceRequest(
+        prompt_template_id=prompt.prompt_template_id,
+        model_id="mock-summarizer",
+        input_text="Rewrite this",
+        purpose=Purpose.DRAFTING,
+    )
+    policy = TenantPolicy(
+        tenant_id="tenant-1",
+        ai_enabled=True,
+        allowed_model_ids={"mock-summarizer"},
+        allowed_data_classes={DataClass.INTERNAL},
+    )
+    user = UserContext(user_id="user-1", tenant_id="tenant-1")
+
+    with pytest.raises(PolicyViolation, match="Prompt template is not approved"):
+        engine.authorize_inference(
+            request=request,
+            prompt_template=prompt,
             user_context=user,
             tenant_policy=policy,
         )

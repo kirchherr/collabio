@@ -1,0 +1,452 @@
+import os
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
+import psycopg
+import pytest
+
+from suite.ai_control_plane.audit import InMemoryAuditLogger
+from suite.ai_control_plane.models import UserContext
+from suite.persistence.migrator import apply_migrations
+from suite.platform.tasks_activities_module import TasksActivitiesLifecycleState
+from suite.platform.tasks_activities_service import (
+    AmendTaskCommand,
+    CreateTaskCommand,
+    InMemoryTasksActivitiesStore,
+    PgTasksActivitiesStore,
+    TaskPriority,
+    TasksActivitiesConflict,
+    TasksActivitiesService,
+    TaskTransitionKind,
+    TransitionTaskCommand,
+    task_transition_confirmation_statement,
+)
+
+
+@dataclass(frozen=True)
+class LiveDatabase:
+    migration_dsn: str
+    app_dsn: str
+    authz_admin_dsn: str
+
+
+def env_or_skip(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        pytest.skip(f"{name} is not configured")
+    return value
+
+
+@pytest.fixture(scope="module")
+def live_database() -> LiveDatabase:
+    migration_dsn = env_or_skip("SUITE_MIGRATION_DATABASE_DSN")
+    app_dsn = env_or_skip("SUITE_DATABASE_DSN")
+    authz_admin_dsn = env_or_skip("SUITE_AUTHZ_ADMIN_DATABASE_DSN")
+    apply_migrations(migration_dsn)
+    return LiveDatabase(
+        migration_dsn=migration_dsn,
+        app_dsn=app_dsn,
+        authz_admin_dsn=authz_admin_dsn,
+    )
+
+
+def task_command(suffix: str, *, mutation_reference: str | None = None) -> CreateTaskCommand:
+    return CreateTaskCommand(
+        mutation_reference=mutation_reference or f"request:task-create-{suffix}",
+        task_object_id=f"task-{suffix}",
+        task_number=f"TASK-{suffix}",
+        title="Prepare customer review",
+        priority=TaskPriority.HIGH,
+        due_at_utc=datetime(2026, 8, 5, 10, tzinfo=UTC),
+        activity_object_id=f"task-activity-{suffix}",
+        activity_number=f"TASK-ACT-{suffix}",
+        activity_summary="Task created for customer review",
+    )
+
+
+def first_int(row: tuple[Any, ...] | None) -> int:
+    assert row is not None
+    return int(row[0])
+
+
+def transition_command(
+    suffix: str,
+    *,
+    expected_state: TasksActivitiesLifecycleState,
+    target_state: TasksActivitiesLifecycleState,
+    transition_kind: TaskTransitionKind,
+    task_object_id: str,
+) -> TransitionTaskCommand:
+    return TransitionTaskCommand(
+        mutation_reference=f"request:task-transition-{suffix}",
+        transition_object_id=f"task-transition-{suffix}",
+        activity_object_id=f"task-transition-activity-{suffix}",
+        activity_number=f"TASK-TRANSITION-ACT-{suffix}",
+        expected_state=expected_state,
+        target_state=target_state,
+        transition_kind=transition_kind,
+        activity_summary=f"Task transition {transition_kind.value}",
+        human_confirmation_statement=(
+            task_transition_confirmation_statement(
+                task_object_id=task_object_id,
+                target_state=target_state,
+            )
+            if target_state in {TasksActivitiesLifecycleState.CANCELLED, TasksActivitiesLifecycleState.ARCHIVED}
+            else None
+        ),
+    )
+
+
+def test_task_creation_enforces_role_idempotency_and_authoritative_read_filter() -> None:
+    audit_logger = InMemoryAuditLogger()
+    store = InMemoryTasksActivitiesStore()
+    service = TasksActivitiesService(store=store, audit_logger=audit_logger)
+    command = task_command("memory")
+    reader = UserContext(
+        tenant_id="tenant-memory",
+        user_id="reader",
+        role_ids={"knowledge-worker"},
+    )
+
+    with pytest.raises(PermissionError, match="operator role required"):
+        service.create_task(user_context=reader, command=command)
+
+    operator = UserContext(
+        tenant_id="tenant-memory",
+        user_id="operator",
+        role_ids={"task-operator"},
+    )
+    created = service.create_task(user_context=operator, command=command)
+    replay = service.create_task(user_context=operator, command=command)
+
+    assert created.idempotent_replay is False
+    assert replay.idempotent_replay is True
+    assert replay.receipt.receipt_hash == created.receipt.receipt_hash
+    assert created.acl_grant_count == 2
+    assert created.receipt_content_included is False
+    assert command.title not in created.receipt.model_dump_json()
+    assert command.activity_summary not in created.receipt.model_dump_json()
+    assert audit_logger.events[-1].event_type == "tasks.task.creation.replayed"
+
+    with pytest.raises(TasksActivitiesConflict, match="different task command"):
+        service.create_task(
+            user_context=operator,
+            command=command.model_copy(update={"title": "Changed title"}),
+        )
+
+    fully_authorized = operator.model_copy(
+        update={"readable_object_ids": {command.task_object_id, command.activity_object_id}}
+    )
+    activity_only = operator.model_copy(update={"readable_object_ids": {command.activity_object_id}})
+    assert len(service.list_items(user_context=fully_authorized).items) == 1
+    assert len(service.list_activities(user_context=fully_authorized).activities) == 1
+    assert service.list_activities(user_context=activity_only).activities == []
+
+
+def test_postgres_task_creation_commits_task_activity_acls_and_receipt_atomically(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-tasks-{suffix}"
+    user_id = f"operator-{suffix}"
+    command = task_command(suffix)
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+
+    task, activity, receipt, replayed = store.create_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        command=command,
+    )
+    replay_task, replay_activity, replay_receipt, replayed_again = store.create_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        command=command,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        task_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.items WHERE tenant_id = %s AND object_id = %s",
+                (tenant_id, command.task_object_id),
+            ).fetchone()
+        )
+        activity_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.activities WHERE tenant_id = %s AND object_id = %s",
+                (tenant_id, command.activity_object_id),
+            ).fetchone()
+        )
+        acl_count = first_int(
+            connection.execute(
+                """
+                SELECT count(*) FROM collabio.object_acl_entries
+                WHERE tenant_id = %s AND audit_chain_ref = %s
+                """,
+                (tenant_id, receipt.audit_chain_ref),
+            ).fetchone()
+        )
+        receipt_count = first_int(
+            connection.execute(
+                """
+                SELECT count(*) FROM tasks.creation_receipts
+                WHERE tenant_id = %s AND mutation_reference = %s
+                """,
+                (tenant_id, command.mutation_reference),
+            ).fetchone()
+        )
+
+    assert replayed is False
+    assert replayed_again is True
+    assert replay_task.object_id == task.object_id
+    assert replay_activity.object_id == activity.object_id
+    assert replay_receipt.receipt_hash == receipt.receipt_hash
+    assert (task_count, activity_count, acl_count, receipt_count) == (1, 1, 2, 1)
+    assert len(store.list_items(tenant_id=tenant_id)) == 1
+    assert len(store.list_activities(tenant_id=tenant_id)) == 1
+
+
+def test_postgres_task_creation_rolls_back_all_surfaces_on_activity_collision(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-tasks-rollback-{suffix}"
+    user_id = f"operator-{suffix}"
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+    first = task_command(f"first-{suffix}")
+    store.create_task(tenant_id=tenant_id, user_id=user_id, command=first)
+    second = task_command(f"second-{suffix}").model_copy(update={"activity_object_id": first.activity_object_id})
+
+    with pytest.raises(TasksActivitiesConflict, match="already exist"):
+        store.create_task(tenant_id=tenant_id, user_id=user_id, command=second)
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        task_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.items WHERE tenant_id = %s AND object_id = %s",
+                (tenant_id, second.task_object_id),
+            ).fetchone()
+        )
+        acl_count = first_int(
+            connection.execute(
+                """
+                SELECT count(*) FROM collabio.object_acl_entries
+                WHERE tenant_id = %s AND object_id = %s
+                """,
+                (tenant_id, second.task_object_id),
+            ).fetchone()
+        )
+        receipt_count = first_int(
+            connection.execute(
+                """
+                SELECT count(*) FROM tasks.creation_receipts
+                WHERE tenant_id = %s AND mutation_reference = %s
+                """,
+                (tenant_id, second.mutation_reference),
+            ).fetchone()
+        )
+
+    assert (task_count, acl_count, receipt_count) == (0, 0, 0)
+
+
+def test_postgres_task_lifecycle_is_derived_from_append_only_transition_chain(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-task-transitions-{suffix}"
+    user_id = f"operator-{suffix}"
+    command = task_command(suffix)
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+    store.create_task(tenant_id=tenant_id, user_id=user_id, command=command)
+    start = transition_command(
+        f"start-{suffix}",
+        expected_state=TasksActivitiesLifecycleState.ASSIGNED,
+        target_state=TasksActivitiesLifecycleState.IN_PROGRESS,
+        transition_kind=TaskTransitionKind.STARTED,
+        task_object_id=command.task_object_id,
+    )
+    started, _, first_transition, first_replay = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=start,
+    )
+    _, _, replayed_transition, replayed = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=start,
+    )
+    complete = transition_command(
+        f"complete-{suffix}",
+        expected_state=TasksActivitiesLifecycleState.IN_PROGRESS,
+        target_state=TasksActivitiesLifecycleState.COMPLETED,
+        transition_kind=TaskTransitionKind.COMPLETED,
+        task_object_id=command.task_object_id,
+    )
+    completed, activity, second_transition, second_replay = store.transition_task(
+        tenant_id=tenant_id,
+        user_id=user_id,
+        task_object_id=command.task_object_id,
+        command=complete,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        transition_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.lifecycle_transitions WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        stored_state = connection.execute(
+            "SELECT lifecycle_state FROM tasks.items WHERE tenant_id = %s AND object_id = %s",
+            (tenant_id, command.task_object_id),
+        ).fetchone()
+
+    assert first_replay is False
+    assert replayed is True
+    assert second_replay is False
+    assert started.lifecycle_state == TasksActivitiesLifecycleState.IN_PROGRESS
+    assert first_transition.sequence_no == 1
+    assert replayed_transition.transition_hash == first_transition.transition_hash
+    assert second_transition.sequence_no == 2
+    assert second_transition.previous_transition_hash == first_transition.transition_hash
+    assert completed.lifecycle_state == TasksActivitiesLifecycleState.COMPLETED
+    assert activity.activity_type.value == "completed"
+    assert transition_count == 2
+    assert stored_state == ("assigned",)
+    assert store.list_items(tenant_id=tenant_id)[0].lifecycle_state == TasksActivitiesLifecycleState.COMPLETED
+
+
+def test_postgres_task_amendment_rebinds_only_managed_assignment_acl(
+    live_database: LiveDatabase,
+) -> None:
+    suffix = uuid4().hex
+    tenant_id = f"tenant-task-amendment-{suffix}"
+    operator_id = f"operator-{suffix}"
+    prior_assignee_id = f"assignee-prior-{suffix}"
+    target_assignee_id = f"assignee-target-{suffix}"
+    command = task_command(suffix).model_copy(update={"assigned_principal_id": prior_assignee_id})
+    store = PgTasksActivitiesStore(
+        read_database_dsn=live_database.app_dsn,
+        write_database_dsn=live_database.authz_admin_dsn,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        for user_id in (prior_assignee_id, target_assignee_id):
+            issuer = f"https://issuer.example/{user_id}"
+            subject = f"subject-{user_id}"
+            connection.execute(
+                """
+                INSERT INTO collabio.tenant_principals (
+                    tenant_id, issuer, subject, user_id, audit_chain_ref
+                ) VALUES (%s, %s, %s, %s, %s)
+                """,
+                (tenant_id, issuer, subject, user_id, f"audit:principal-{user_id}"),
+            )
+            connection.execute(
+                """
+                INSERT INTO collabio.tenant_principal_memberships (
+                    tenant_id, issuer, subject, audit_chain_ref
+                ) VALUES (%s, %s, %s, %s)
+                """,
+                (tenant_id, issuer, subject, f"audit:membership-{user_id}"),
+            )
+
+    _, _, receipt, _ = store.create_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        command=command,
+    )
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        connection.execute(
+            """
+            INSERT INTO collabio.object_acl_entries (
+                tenant_id, object_id, object_type, acl_subject_type, acl_subject_id,
+                permission, acl_version, status, audit_chain_ref
+            ) VALUES (%s, %s, 'task.task', 'user', %s, 'write', 2, 'active', %s)
+            """,
+            (tenant_id, command.task_object_id, prior_assignee_id, "audit:manual-task-grant"),
+        )
+
+    amendment_command = AmendTaskCommand(
+        mutation_reference=f"request:task-amendment-{suffix}",
+        amendment_object_id=f"task-amendment-{suffix}",
+        activity_object_id=f"task-amendment-activity-{suffix}",
+        activity_number=f"TASK-AMENDMENT-ACT-{suffix}",
+        expected_assigned_principal_id=prior_assignee_id,
+        target_assigned_principal_id=target_assignee_id,
+        expected_due_at_utc=command.due_at_utc,
+        target_due_at_utc=datetime(2026, 8, 6, 12, tzinfo=UTC),
+        activity_summary="Task reassigned and rescheduled",
+    )
+    amended, activity, amendment, replayed = store.amend_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        task_object_id=command.task_object_id,
+        command=amendment_command,
+    )
+    replayed_task, _, replayed_amendment, replayed_again = store.amend_task(
+        tenant_id=tenant_id,
+        user_id=operator_id,
+        task_object_id=command.task_object_id,
+        command=amendment_command,
+    )
+
+    with psycopg.connect(live_database.migration_dsn) as connection:
+        amendment_count = first_int(
+            connection.execute(
+                "SELECT count(*) FROM tasks.amendments WHERE tenant_id = %s",
+                (tenant_id,),
+            ).fetchone()
+        )
+        assignment_acl_rows = connection.execute(
+            """
+            SELECT acl_subject_id, acl_version, status, audit_chain_ref
+            FROM collabio.object_acl_entries
+            WHERE tenant_id = %s
+              AND object_id = %s
+              AND permission = 'write'
+            ORDER BY acl_subject_id, acl_version
+            """,
+            (tenant_id, command.task_object_id),
+        ).fetchall()
+        activity_acl = connection.execute(
+            """
+            SELECT permission, status
+            FROM collabio.object_acl_entries
+            WHERE tenant_id = %s
+              AND object_id = %s
+              AND acl_subject_id = %s
+            """,
+            (tenant_id, activity.object_id, target_assignee_id),
+        ).fetchone()
+
+    assert replayed is False
+    assert replayed_again is True
+    assert amended.assigned_principal_id == target_assignee_id
+    assert amended.due_at_utc == datetime(2026, 8, 6, 12, tzinfo=UTC)
+    assert replayed_task == amended
+    assert amendment.sequence_no == 1
+    assert replayed_amendment.amendment_hash == amendment.amendment_hash
+    assert amendment.previous_amendment_hash == "sha256:" + "0" * 64
+    assert amendment_count == 1
+    assert assignment_acl_rows == [
+        (prior_assignee_id, 1, "revoked", receipt.audit_chain_ref),
+        (prior_assignee_id, 2, "active", "audit:manual-task-grant"),
+        (target_assignee_id, 1, "active", receipt.audit_chain_ref),
+    ]
+    assert activity_acl == ("read", "active")
+    projected = store.list_items(tenant_id=tenant_id)[0]
+    assert projected.assigned_principal_id == target_assignee_id
+    assert projected.due_at_utc == datetime(2026, 8, 6, 12, tzinfo=UTC)

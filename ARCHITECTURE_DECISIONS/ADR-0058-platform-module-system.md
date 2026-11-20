@@ -54,6 +54,8 @@ Tenant Context
 
 The UI may call `GET /v1/platform/modules` to decide navigation, but the backend remains authoritative.
 
+`collabio.module_catalog` and `collabio.tenant_modules` are the persistent source for API and worker gates in containerized development. The catalog stores required migration versions. Tenant module rows store migration evidence captured at provisioning time. API paths use tenant-scoped RLS through the app role; compliance workers use a narrow worker select policy for module discovery and then re-check each tenant with `ModuleWorkerGate`.
+
 Module-aware migrations are deployment-time and provisioning-time operations. They must be checksummed, audited, and blocked on mismatch. A tenant module cannot be enabled before required migrations and provisioning evidence pass.
 
 Decommissioning is a compliance workflow, not a delete button. It must check retention, Legal Hold, export obligations, audit evidence, backup/restore evidence, and approval policy before any data disposition.

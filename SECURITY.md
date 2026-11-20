@@ -32,6 +32,8 @@ Current skeleton guarantees:
 - Local dev KMS and envelope encryption adapters are disabled in production environments.
 - Voice transcripts require explicit push-to-talk activation.
 - Tests run in Docker Compose.
+- CI scans the repository and built runtime image for vulnerabilities, secrets, misconfiguration, and forbidden licenses, then emits a CycloneDX SBOM.
+- Tagged runtime archives receive OIDC/Sigstore-backed build-provenance and SBOM attestations without repository signing keys.
 
 Not yet production-ready:
 
@@ -40,7 +42,7 @@ Not yet production-ready:
 - KMS integration.
 - WORM storage enforcement.
 - OIDC/SAML integration.
-- Supply-chain signing and SBOM generation.
+- Production registry promotion policy and long-term release-evidence archiving.
 
 ## Reporting Security Issues
 
