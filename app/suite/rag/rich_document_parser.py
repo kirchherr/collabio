@@ -348,6 +348,7 @@ class RichDocumentParserWorker:
                 **self._docx_run_font_size(run),
                 **self._docx_run_text_color(run),
                 **self._docx_run_vertical_position(run),
+                **self._docx_run_text_case(run),
             }
             parts: list[str] = []
             for node in run:
@@ -387,6 +388,28 @@ class RichDocumentParserWorker:
             segments.append(current)
         current.append({"text": "".join(parts), "marks": marks, **style_attrs})
         parts.clear()
+
+    def _docx_run_text_case(self, run: ElementTree.Element) -> dict[str, object]:
+        markers = [node for tag in ("caps", "smallCaps") for node in run.findall(f"{W}rPr/{W}{tag}")]
+        misplaced = any(run.find(f"{W}{tag}") is not None for tag in ("caps", "smallCaps"))
+        if not markers and not misplaced:
+            return {}
+        unsupported: dict[str, object] = {"unsupported_text_case": True}
+        if len(markers) != 1 or len(run.findall(f"{W}rPr")) != 1 or misplaced:
+            return unsupported
+        marker = markers[0]
+        raw = marker.get(f"{W}val", "true")
+        if (
+            len(marker)
+            or (marker.text or "").strip()
+            or set(marker.attrib) - {f"{W}val"}
+            or raw not in {"true", "false", "1", "0", "on", "off"}
+        ):
+            return unsupported
+        value = "normal"
+        if raw in {"true", "1", "on"}:
+            value = "uppercase" if marker.tag == f"{W}caps" else "smallCaps"
+        return {"text_case": value}
 
     def _docx_run_vertical_position(self, run: ElementTree.Element) -> dict[str, object]:
         markers = run.findall(f"{W}rPr/{W}vertAlign")

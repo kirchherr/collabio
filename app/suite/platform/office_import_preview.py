@@ -16,6 +16,7 @@ from suite.platform.office_document_schema import (
     FONT_SIZES,
     MAX_DOCUMENT_CHARACTERS,
     PARAGRAPH_VALUES,
+    TEXT_CASES,
     TEXT_COLORS,
     VERTICAL_POSITIONS,
     validate_office_document,
@@ -155,7 +156,7 @@ def _run_content(
             continue
         fields = set(value)
         linked = navigation and "target" in fields
-        allowed = {"text", "marks", "font_family", "font_size", "text_color", "vertical_position"} | (
+        allowed = {"text", "marks", "font_family", "font_size", "text_color", "vertical_position", "text_case"} | (
             {"target"} if navigation else set()
         )
         if not {"text", "marks"}.issubset(fields) or fields - allowed:
@@ -196,6 +197,12 @@ def _run_content(
                 raise OfficeImportPreviewInvalid("parser vertical position is invalid")
             if position != "baseline":
                 native_style["verticalPosition"] = position
+        if "text_case" in value:
+            text_case = value["text_case"]
+            if not isinstance(text_case, str) or text_case not in TEXT_CASES | {"normal"}:
+                raise OfficeImportPreviewInvalid("parser text case is invalid")
+            if text_case != "normal":
+                native_style["textCase"] = text_case
         if native_style:
             native_marks.append({"type": "textStyle", "attrs": native_style})
         if linked:

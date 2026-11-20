@@ -86,6 +86,8 @@ def _plain_runs(link: Element) -> list[Element]:
                     "rFonts",
                     "vertAlign",
                     "position",
+                    "caps",
+                    "smallCaps",
                 )
             }
             if (

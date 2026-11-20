@@ -2690,18 +2690,36 @@ Filter latest metadata by MIME before the discovery bound, retaining tenant and 
 
 916. [x] Complete dev001 regression and quality, then close documentation and publication.
 
+### Native Office bounded DOCX run text case (Roadmap 1056–1063)
+
+917. [x] Define direct caps/smallCaps toggles and existing native display semantics in ADR-0230.
+
+918. [x] Preserve source Unicode text, absence and explicit disabling in canonical evidence.
+
+919. [x] Refuse malformed, duplicate, misplaced and jointly present case markers while retaining extraction.
+
+920. [x] Validate case names independently and merge with existing character marks.
+
+921. [x] Seed a stored source and cover headings, lists, cells, links and page-break combinations.
+
+922. [x] Verify authorization, provenance, classification, confirmed save and unchanged saved text in Chromium.
+
+923. [x] Verify native print CSS and independently inspect desktop/mobile PDFs.
+
+924. [x] Complete dev001 regression and full quality, then close documentation and publication.
+
 ## Next Engineering Step
 
-Roadmap 1055 / PLANS 916 / ADR-0229 adds bounded direct run vertical position to the verified DOCX import.
+Roadmap 1063 / PLANS 924 / ADR-0230 adds bounded direct run display casing to the verified DOCX import.
 Use the authoritative restart state in `docs/CURRENT_HANDOFF.md`.
 
 - Knowledge Base authoring and ordinary reading are complete through Roadmap 250. Preserve their authorization, approval, PostgreSQL/S3 and 50-case browser regression contracts.
-- Native Office is complete through Roadmap 1055 / PLANS 916. The governed picker binds currently readable DOCX
+- Native Office is complete through Roadmap 1063 / PLANS 924. The governed picker binds currently readable DOCX
   sources to an exact version. The bounded preview preserves supported structures, inline marks, explicit page breaks,
   standalone embedded raster images, explicit next-page section profiles, literal default headers and footers,
   bookmark points, internal links, up to three list levels with bounded decimal numbering, explicit rectangular
   table spans with one repeating first row, direct paragraph and heading alignment, bounded direct spacing,
-  direct paragraph indentation, explicit paragraph keeping controls, bounded direct run font sizes, exact native-palette text colors and paired direct font families, superscript/subscript and explicit baseline evidence.
+  direct paragraph indentation, explicit paragraph keeping controls, bounded direct run font sizes, exact native-palette text colors and paired direct font families, superscript/subscript, explicit baseline evidence and direct display casing without source-text changes.
   Confirmed save preserves classification and exact provenance and creates authorized document-owned image assets.
   Preserve all earlier
   AI, voice, interchange, collaboration, object, document, table, formula, vector, classification, sharing, page,

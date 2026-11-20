@@ -4,6 +4,66 @@ Updated: 2026-11-20
 
 ## Authoritative restart state
 
+Roadmap 1063 / PLANS 924 / ADR-0230 adds bounded DOCX run display casing. The Office module documentation is at 0.9.41.
+The previous published closeout is `f21b3534` on `kirchherr/kb-write-unit-of-work`. The text-case block and its
+closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+
+The isolated parser admits one direct caps or smallCaps marker with exact on/off values. Source Unicode text
+stays unchanged. Explicit disabling carries normal-case evidence separately from absence and omits the native
+case attribute. Duplicate, misplaced, malformed and jointly present markers refuse Office preview while plain
+text remains available. The API independently validates the enum and combines casing with existing character
+marks. Shared conversion covers headings, lists, cells, admitted links and page-break segments. Existing native
+uppercase/small-caps CSS and font fallback apply; exact Word glyph sizing, locale fidelity and style inheritance
+remain separate scope.
+
+Standard Work E2E seeds `work-e2e-stored-docx-text-case/stored-docx-text-case-v1` as a confidential stored source.
+The review is `http://192.168.0.108:42880/office?review=docx-text-case-adr0230`.
+
+The initial unmocked browser run used the stored source against the previous importer and demonstrated the
+missing five case assignments. Its report, screenshot and trace are retained under `roadmap-1063-before` and
+`tmp/office0230-proof-browser.log`. A test-fixture line-length finding in the first format check was corrected
+before functional acceptance; the resumed scoped hashes preserve the separately synchronized remote tree.
+
+The first visual print inspection exposed the global font-synthesis restriction suppressing fallback small caps,
+despite correct case attributes and computed font-variant-caps. Small-cap synthesis is now allowed only on explicit
+native small-caps ranges. The browser checks its computed synthesis control and the independent PDF gate requires
+the printed capital glyphs. The superseded run remains under `roadmap-1063-initial` with its PDF-gate failure log.
+
+Focused tests passed 618/618. The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed
+47/47 in 6.7 minutes with retries disabled: 42 browser cases and five native model checks. It covers source
+denial, exact provenance, classification, confirmed save, unchanged text, readback, reopening, normal-case omission,
+mixed character formatting and all five actual print-media casing assignments.
+
+Independent Poppler inspection and visual review of both complete one-page PDFs passed. The uppercase labels,
+small-cap rendering, original-case disabled labels and mixed formatting remain readable without clipping or
+overlap. Exact Word small-cap sizing is not asserted. Preview screenshots show the visible portion of the
+scrolling print preview; the complete PDFs cover every assignment.
+Both small-cap labels contain capital glyphs smaller than their initial capitals on the same baseline; measured
+font-size ratios are retained in the independent PDF log.
+
+Full quality passed at 17:21 UTC on 2026-11-20 with Ruff, 1038 format-conformant files, Mypy over 682
+sources and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary PostgreSQL
+test container. Both health endpoints returned `ok`; review API/parser remain healthy. All ten source and eight
+evidence hashes matched after transfer to the operator workstation.
+
+| Evidence under `e2e/work/artifacts/roadmap-1063/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `701417f9aff672b99c97b3f791aba9317fd9f4f808bfb69e3bb078c703af83bc` |
+| `office-docx-text-case-desktop-chromium.png` | `5b075f0bcdd8db3de234d1966b348ef9b528b55eb27dc554a48d215e1eef8982` |
+| `office-docx-text-case-desktop-chromium.pdf` | `2a3075422051fae8ba2b53c3e32c4edff533efa579990c5aff1d70e808a02596` |
+| `office-docx-text-case-mobile-chromium.png` | `808c9a4291089b0c7dadab5fc11aa37abed52ebba3d7e92b48654542698dfaa8` |
+| `office-docx-text-case-mobile-chromium.pdf` | `c0f7977c13b3920ace19b21738a0d75f1963cc44bb4245a59582f5725271a919` |
+| `office0230-sources.sha256` | `377decf621b188492100dcd58e2e38c004e7934d7fc8729ba71c31adbd445293` |
+| `office0230-quality.log` | `b19c6a4fb776d9318d4731ea15a9aca78fbd99a5c4ad88efe3595dc26dc59dbf` |
+| `office0230-pdf.log` | `b30515bdd8b24e6dcdd5caf58f4e0b3ee5a0ea96d8bf371183ae2b88b4cf4347` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare scoped baselines under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and protected local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1055 restart state (2026-11-20)
+
 Roadmap 1055 / PLANS 916 / ADR-0229 adds bounded DOCX run vertical position. The Office module documentation is at 0.9.40.
 The implementation through ADR-0229 is published as `bf65874a` on `kirchherr/kb-write-unit-of-work`, above
 the previous closeout `b1df8e8e`. Publication documentation follows on the same branch. Office remains ahead of CRM.
@@ -6258,7 +6318,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Resume from Roadmap 1055 / PLANS 916 / ADR-0229 and the operator's next scope. Office remains ahead of CRM under the
+Resume from Roadmap 1063 / PLANS 924 / ADR-0230 and the operator's next scope. Office remains ahead of CRM under the
 existing priority decision. Preserve exact source/version authorization, text/structure consistency,
 classification and confirmed save. External destinations, fields, exact Word pagination, live collaboration,
 productive DOCX export and WOPI retain separate gates.
@@ -6299,9 +6359,9 @@ Copyable prompt for the next chat:
 ```text
 Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
 docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
-docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0229.
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0230.
 
-Stand: Roadmap 1055 / PLANS 916 / ADR-0229, begrenzter Import direkter DOCX-Zeichenlagen.
+Stand: Roadmap 1063 / PLANS 924 / ADR-0230, begrenzter Import direkter DOCX-Schreibweisen.
 Die Implementierung einschließlich ADR-0215 bis ADR-0229 ist bis bf65874a auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
@@ -6313,7 +6373,7 @@ Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordi
 SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
 Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
 Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
-Review: http://192.168.0.108:42880/office?review=docx-vertical-position-adr0229
+Review: http://192.168.0.108:42880/office?review=docx-text-case-adr0230
 
 .tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
 Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,

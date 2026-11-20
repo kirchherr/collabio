@@ -1919,3 +1919,45 @@ disabled, independent PDF inspection, full quality and eight documentation contr
 Compose project `collabio`. Publication documentation is synchronized with exact scoped hashes and the
 documentation contracts are repeated before its regular push. Protected `.tmp/`, `erp_modul.md` and
 `review.md` remain excluded.
+
+
+## 2026-11-20 Native Office DOCX run display casing
+
+ADR-0230 admits direct caps/smallCaps display toggles while preserving original Unicode text and explicit
+disabling separately from absence. Strict shared parsing and independent API enum validation reuse existing
+native casing, source authorization, classification, provenance and confirmed save.
+
+The initial unmocked stored-source browser proof against the previous importer failed on the missing five
+case assignments. The initial report/screenshot/trace remain under roadmap-1063-before and the proof log.
+Ten scoped initial hashes matched before the three fixture/seed/browser files were synchronized. The first
+format check found a long fixture line; it was split without changing the fixture bytes generated at runtime.
+Nine exact scoped hashes guarded the first resumed source synchronization. No pull or reset was used.
+The first visual PDF inspection exposed suppressed fallback small caps despite correct case CSS. A scoped
+font-synthesis-small-caps override fixes it. The final browser probe checks synthesis and the PDF gate requires
+capital glyphs; the initial run and PDF-gate failure remain under roadmap-1063-initial and the initial logs.
+Ten scoped hashes guard the final synchronization including the CSS file.
+
+All builds, tests and service actions used /home/extern/collabio and project collabio with preflight plus build.lock
+before docker.lock. Scoped synchronization used git.lock. Standard seed stored the confidential source. Only
+work-e2e-api/work-e2e-rich-document-parser were recreated; existing stores, isolated image decoder and port 42880
+were reused. The postgres-test service was temporarily started for the test suites and removed during cleanup.
+
+Focused tests passed 618/618; exact desktop/mobile passed 2/2; selected Chromium passed 47/47 in 6.7
+minutes without retries (42 browser and five native model cases). All five actual print casing assignments,
+unchanged stored text and mixed character marks passed. Independent Poppler and full-page visual inspection
+passed for both one-page PDFs; exact Word small-cap metrics are outside this native rendering profile.
+
+Full quality passed at 17:21 UTC: Ruff, 1038 formatted files, Mypy over 682 sources and Pytest at 100 percent
+with the known Starlette/AnyIO warning. Ten source/eight evidence hashes matched after transfer; manifests are
+tmp/office0230-sources.sha256 and tmp/office0230-evidence.sha256, verifier tmp/office0230-pdf-verify.py.
+
+| Image | Image ID |
+| --- | --- |
+| `collabio-work-e2e:latest` | `sha256:9e5e2ebbbe06991ccac628bb6bc135678470eb51f09a344433c31b6daa4e0e60` |
+| `collabio-work-e2e-api:latest` | `sha256:53558c0de1a9885390e0cf98ac63beb48461a0d0aba00cf8067633fbcc11c333` |
+| `collabio-work-e2e-rich-document-parser:latest` | `sha256:2c12f1242c5817ca4559fb89939955b183f1f84f4d05fc668637df00bc55d947` |
+| `collabio-quality:latest` | `sha256:0e4299ce4652811550c32d718e9a6d2d3d82c5ed4e38ea262ef255760f5a3f7d` |
+
+Cleanup removed the temporary PostgreSQL test container. Both health endpoints returned ok; review API/parser
+remain healthy. The separately synchronized remote tree remains at add05b4. Protected operator files are excluded.
+Health checks used http://127.0.0.1:8000/health and http://192.168.0.108:42880/health.

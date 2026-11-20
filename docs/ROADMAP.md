@@ -747,6 +747,8 @@ Aufgaben:
   Gemischte Formatierung und Schriftwahl im PDF nachweisen (Roadmap 1040-1047 / PLANS 901-908).
 - [x] Direktes DOCX-Hoch-/Tiefstellen und explizite Grundstellung begrenzt uebernehmen. Gemischte Formatierung,
   Speichern und tatsaechliche Textlage im PDF nachweisen (Roadmap 1048-1055 / PLANS 909-916).
+- [x] Direkte DOCX-Versalien und Kapitaelchen mit explizitem Ausschalten begrenzt uebernehmen. Quelltext,
+  gemischte Formatierung, Speichern und Druck nachweisen (Roadmap 1056-1063 / PLANS 917-924).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

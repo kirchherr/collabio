@@ -1,14 +1,33 @@
 # Native Office Documents
 
-Status: Roadmap 252–1055 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 1055 / PLANS 916 bounded DOCX run vertical position
-Module: `office_documents` / version 0.9.40
-Decisions: ADR-0079 through ADR-0229; current decision: `ARCHITECTURE_DECISIONS/ADR-0229-bounded-native-office-docx-run-vertical-position.md`
+Status: Roadmap 252–1063 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 1063 / PLANS 924 bounded DOCX run display casing
+Module: `office_documents` / version 0.9.41
+Decisions: ADR-0079 through ADR-0230; current decision: `ARCHITECTURE_DECISIONS/ADR-0230-bounded-native-office-docx-run-text-case.md`
 
-Publication: the implementation through ADR-0229 is published as `bf65874a` on
+Publication: the previous implementation through ADR-0229 is published as `bf65874a` on
 `kirchherr/kb-write-unit-of-work`, above the previous closeout `b1df8e8e`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX run text case (Roadmap 1056–1063)
+
+Direct caps/smallCaps toggles map to existing native uppercase/small-caps display formatting. Canonical evidence
+preserves explicit disabling separately from absence; native normal casing omits the attribute. Source Unicode
+text remains unchanged. Duplicate, malformed, misplaced or jointly present markers refuse Office preview while
+plain text extraction remains available.
+
+The API independently validates the enum and merges casing with existing character styles. Shared conversion
+covers headings, lists, cells, admitted internal links and page breaks. The existing browser/font fallback applies;
+exact Word small-cap sizing, locale-specific glyph fidelity and style inheritance remain separate scope.
+Small-cap synthesis is permitted on explicit native small-caps ranges so local fallback fonts show the requested
+capital glyphs under the global synthesis restriction. Other synthesis controls keep their existing settings.
+
+Focused tests passed 618/618. The exact desktop/mobile check passed 2/2, followed by 47/47 selected Chromium
+checks in 6.7 minutes with retries disabled: 42 browser cases and five native model checks. All five actual
+print-media casing assignments and unchanged saved text passed. Independent PDF inspection and full-page visual
+review passed for desktop/mobile. Full quality passed at 17:21 UTC on 2026-11-20 with Ruff, 1038 formatted
+files, Mypy over 682 sources and Pytest at 100 percent. Evidence hashes and initial browser proof are in the handoff.
 
 ## Bounded DOCX run vertical position (Roadmap 1048–1055)
 
