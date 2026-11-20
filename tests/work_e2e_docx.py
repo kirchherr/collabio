@@ -186,6 +186,10 @@ def seed_stored_docx_sources(*, report: bool = False) -> None:
     from docx_text_color_fixture import SOURCE_TITLE as text_color_source_title
     from docx_text_color_fixture import SOURCE_VERSION as text_color_source_version
     from docx_text_color_fixture import text_color_docx
+    from docx_vertical_position_fixture import SOURCE_ID as vertical_source_id
+    from docx_vertical_position_fixture import SOURCE_TITLE as vertical_source_title
+    from docx_vertical_position_fixture import SOURCE_VERSION as vertical_source_version
+    from docx_vertical_position_fixture import vertical_position_docx
 
     main(
         content=image_docx(),
@@ -204,6 +208,12 @@ def seed_stored_docx_sources(*, report: bool = False) -> None:
         title=navigation_source_title,
     )
     main(content=list_docx(), source_id=list_source_id, version=list_source_version, title=list_source_title)
+    main(
+        content=vertical_position_docx(),
+        source_id=vertical_source_id,
+        version=vertical_source_version,
+        title=vertical_source_title,
+    )
     main(
         content=font_family_docx(),
         source_id=font_family_source_id,

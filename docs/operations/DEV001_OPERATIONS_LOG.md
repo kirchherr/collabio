@@ -1870,3 +1870,38 @@ commit. Product sources retain the completed 538 focused, two exact, 43 no-retry
 The final publication documents synchronize with exact baseline guards under `git.lock` and the established
 build/docker lock order for their contract checks. The separately synchronized dev001 Git tree remains at
 `add05b4`; no pull or reset is used. Protected operator files remain excluded from publication.
+
+## 2026-11-20 Native Office DOCX run vertical position
+
+ADR-0229 maps direct superscript/subscript alignment to the existing native text-style attribute. Explicit
+baseline stays distinct from absence in source evidence and omits the native position attribute. The API
+independently validates the enum and combines alignment with family, size, color and existing marks. Malformed
+markers and manual position shifts refuse Office preview while plain extracted text remains available.
+
+The run used `/home/extern/collabio` and explicit project `collabio`. Ten scoped baseline hashes matched under
+`git.lock` before synchronizing nine source/ADR files. Builds, tests and lifecycle work used preflight and
+`build.lock` before `docker.lock`. The standard seed added the confidential stored vertical-position source.
+The review API and isolated parser were recreated; existing stores, image decoder and port 42880 were reused.
+
+Focused tests passed 573/573, including explicit baseline evidence, mixed formatting, headings, lists, cells,
+links, page-break segments, manual/malformed declarations and independently validated forged parser evidence.
+
+
+The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed 45/45 in 6.3 minutes with
+retries disabled (40 browser cases and five native model checks). Poppler confirms the superscript word above
+and the subscript word below the same-row baseline anchor in both one-page PDFs. All mixed/table labels are
+present, and both full pages passed visual review. The verifier is retained at tmp/office0229-pdf-verify.py.
+
+Full quality completed at 09:53 UTC on 2026-11-20: Ruff, 1034 format-conformant files, Mypy over
+680 sources and Pytest at 100 percent with the known Starlette/AnyIO warning. Nine source and eight evidence
+hashes matched after transfer. Manifests are tmp/office0229-sources.sha256 and tmp/office0229-evidence.sha256.
+
+| Image | Image ID |
+| --- | --- |
+| `collabio-work-e2e:latest` | `sha256:2ea917a262b705795d51479079fd8278b6482cd6dc2a7126ff86b474c9800441` |
+| `collabio-work-e2e-api:latest` | `sha256:4900bd0fff6c6ffd925b98175f44c9a50dfc0b02385ba2fe0df6198f3cd773a0` |
+| `collabio-work-e2e-rich-document-parser:latest` | `sha256:b0504ffffb9f0e24ce9a5f66c207a7dc999a4b2f8093fea634ac9a0abeae445d` |
+| `collabio-quality:latest` | `sha256:3024da8216b16db3ccc97cee35e7792a6b5c6a8e6961b79c1cca5696485f8ccf` |
+
+Cleanup removed collabio-postgres-test-1. Both health endpoints returned ok; review API and parser remain healthy.
+The separately synchronized remote Git tree remains at add05b4. Protected operator files remain excluded.

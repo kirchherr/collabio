@@ -1,8 +1,57 @@
 # Current Project Handoff
 
-Updated: 2026-11-13
+Updated: 2026-11-20
 
 ## Authoritative restart state
+
+Roadmap 1055 / PLANS 916 / ADR-0229 adds bounded DOCX run vertical position. The Office module documentation is at 0.9.40.
+The previous published closeout is `b1df8e8e` on `kirchherr/kb-write-unit-of-work`. The vertical-position block
+and its closeout are ready for the operator-authorized Git publication. Office remains ahead of CRM.
+
+The isolated parser admits direct baseline, superscript and subscript markers. Absence retains the prior run
+shape; explicit baseline stays distinct in source evidence and omits the native position attribute. Malformed,
+duplicate or misplaced markers and manual position shifts, including zero, refuse Office preview while text
+extraction stays available. The API independently validates positions and combines alignment with family, size,
+color and existing inline marks. Shared conversion covers headings, lists, cells, admitted links and page-break
+segments. Existing native alignment and declared font sizes apply; exact Word glyph-size reduction and style
+inheritance remain separate scope.
+
+Standard Work E2E seeds `work-e2e-stored-docx-vertical-position/stored-docx-vertical-position-v1` as a confidential
+stored source. The synthetic review is `http://192.168.0.108:42880/office?review=docx-vertical-position-adr0229`.
+
+Focused tests passed 573/573. The exact desktop/mobile check passed 2/2. The selected Chromium matrix passed
+45/45 in 6.3 minutes with retries explicitly disabled: 40 browser cases and five native model checks.
+It covers source denial, exact provenance, classification, confirmed save, readback, reopening, baseline omission,
+mixed formatting and all five actual print-media super/subscript assignments. Existing direct response observation
+and bounded PDF-artifact waits remain in use.
+
+Independent Poppler inspection confirms the superscript word above the baseline anchor and the subscript word
+below it within the same text row in both one-page PDFs. All mixed-format and table labels are present. Both full
+pages passed visual review without clipping or overlap. Preview captures show the visible part of the scrolling
+print preview; the complete PDFs cover all assignments.
+
+Full quality passed at 09:53 UTC on 2026-11-20 with Ruff, 1034 format-conformant files, Mypy over
+680 sources and Pytest at 100 percent with the known Starlette/AnyIO warning. Cleanup removed the temporary
+PostgreSQL test container. Both health endpoints returned `ok`, and review API/parser remain healthy. All nine
+source hashes and eight evidence hashes matched after transfer to the operator workstation.
+
+| Evidence under `e2e/work/artifacts/roadmap-1055/` and `tmp/` | SHA-256 |
+| --- | --- |
+| `results.json` | `958b23d6f1dcb4278f3f0f5f0d3cf2788593453d86c730012f0b8545e5686f8f` |
+| `office-docx-vertical-position-desktop-chromium.png` | `81f3cccd709303cf7c89f46c85135631ac442bbf8b467a67edd2605d327e525d` |
+| `office-docx-vertical-position-desktop-chromium.pdf` | `af83f06d9e0defc5b5ee62a40b830534e155bc814d41af96784c9982747c7a90` |
+| `office-docx-vertical-position-mobile-chromium.png` | `6daca3bc44949e9f9a4309bc97ac6ee923865117df35f32dfff9200567cb6674` |
+| `office-docx-vertical-position-mobile-chromium.pdf` | `e4f20351c1d168caddb7e701dd161fb42793c73ea7bc4252f9a8d316bae35acd` |
+| `office0229-sources.sha256` | `f92ccb3f45e8b6dcc4b1421f4bee540848ba77e8bbfc464265e305f61fcee097` |
+| `office0229-quality.log` | `5a0a2855c549293f3d94e09e4d03e85dc26c4456b7e7a515513eacfe1be5f94d` |
+| `office0229-pdf.log` | `8798e36979deb5d8f33a8bc93c0d54104dcec97a87403d23d354cc3b75f9b04e` |
+
+Use dev001 at `/home/extern/collabio` with explicit project `collabio`. Read `/home/extern/AGENTS.md`, inspect
+services and ports, acquire `build.lock` before `docker.lock`, and compare scoped baselines under `git.lock`.
+Preserve the separately synchronized tree at Git HEAD `add05b4`, the review override and protected local
+`.tmp/`, `erp_modul.md` and `review.md`.
+
+## Retained Roadmap 1047 restart state (2026-11-13)
 
 Roadmap 1047 / PLANS 908 / ADR-0228 adds bounded DOCX run font families. The Office module documentation is at 0.9.39.
 The implementation through ADR-0228 is published as `60ce6265` on `kirchherr/kb-write-unit-of-work`, above the
@@ -6208,7 +6257,7 @@ Primary code and runbooks:
 
 ## Continuation point
 
-Resume from Roadmap 1047 / PLANS 908 / ADR-0228 and the operator's next scope. Office remains ahead of CRM under the
+Resume from Roadmap 1055 / PLANS 916 / ADR-0229 and the operator's next scope. Office remains ahead of CRM under the
 existing priority decision. Preserve exact source/version authorization, text/structure consistency,
 classification and confirmed save. External destinations, fields, exact Word pagination, live collaboration,
 productive DOCX export and WOPI retain separate gates.
@@ -6249,9 +6298,9 @@ Copyable prompt for the next chat:
 ```text
 Arbeite in C:\Users\tkirchherr\Documents\suite am Collabio-Projekt weiter. Lies AGENTS.md und
 docs/CURRENT_HANDOFF.md vollständig, anschließend den aktuellen Office-Abschnitt in PLANS.md,
-docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0228.
+docs/ROADMAP.md, docs/modules/OFFICE_NATIVE_DOCUMENTS.md sowie ADR-0211 bis ADR-0229.
 
-Stand: Roadmap 1047 / PLANS 908 / ADR-0228, begrenzter Import direkter DOCX-Schriftfamilien.
+Stand: Roadmap 1055 / PLANS 916 / ADR-0229, begrenzter Import direkter DOCX-Zeichenlagen.
 Die Implementierung einschließlich ADR-0215 bis ADR-0228 ist bis 60ce6265 auf
 kirchherr/kb-write-unit-of-work gepusht. Der Dokumentationsabschluss folgt auf demselben Branch.
 Der begrenzte Importblock ist abgeschlossen. Prüfe vor Änderungen Log und Arbeitsbaum.
@@ -6263,7 +6312,7 @@ Vorher /home/extern/AGENTS.md lesen, Projekte/Container/Ports prüfen und Koordi
 SSH: extern@192.168.0.108, Identity C:\Users\tkirchherr\.ssh\id_ed25519_collabio_dev001, HostKeyAlias=dev001.
 Remote-Git ist älter und der Arbeitsbaum enthält synchronisierte Änderungen: nichts zurücksetzen oder blind pullen.
 Review benötigt docker-compose.yml plus tmp/roadmap-310-review.override.yml, Profil work-e2e.
-Review: http://192.168.0.108:42880/office?review=docx-font-family-adr0228
+Review: http://192.168.0.108:42880/office?review=docx-vertical-position-adr0229
 
 .tmp/, erp_modul.md und review.md unangetastet lassen. Keine Tenant-/Pilot-/Produktionsaktivierung ableiten.
 Implementiere den nächsten geschlossenen Block, prüfe ihn angemessen auf dev001 und aktualisiere Roadmap,

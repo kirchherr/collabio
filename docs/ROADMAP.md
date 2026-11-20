@@ -745,6 +745,8 @@ Aufgaben:
   Theme-Farben anzunaehern. Gemischte Formatierung und Druck nachweisen (Roadmap 1032-1039 / PLANS 893-900).
 - [x] Direkte gepaarte DOCX-Schriftfamilien fuer Arial, Georgia und Consolas begrenzt auf native Familien abbilden.
   Gemischte Formatierung und Schriftwahl im PDF nachweisen (Roadmap 1040-1047 / PLANS 901-908).
+- [x] Direktes DOCX-Hoch-/Tiefstellen und explizite Grundstellung begrenzt uebernehmen. Gemischte Formatierung,
+  Speichern und tatsaechliche Textlage im PDF nachweisen (Roadmap 1048-1055 / PLANS 909-916).
 - [x] Diktat in Dokumente ueber Voice Transcript Flow (Roadmap 760-767 / PLANS 621-628).
 - [x] Text-to-Speech Adapter Interface (Roadmap 768-775 / PLANS 629-636).
 - [x] Tests: AI darf Business Record nicht automatisch committen (Roadmap 641-647 / PLANS 502-508).

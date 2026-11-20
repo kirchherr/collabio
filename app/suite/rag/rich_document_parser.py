@@ -34,6 +34,7 @@ W = f"{{{WORD_NS}}}"
 DOCX_INLINE_MARKS = ("bold", "italic", "underline", "strike")
 DOCX_RUN_FONT_SIZES = {str(size * 2): size for size in (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48)}
 DOCX_RUN_FONT_FAMILIES = {"arial": "sans", "georgia": "serif", "consolas": "mono"}
+DOCX_RUN_VERTICAL_POSITIONS = {"baseline", "superscript", "subscript"}
 DOCX_RUN_TEXT_COLORS = {
     "111827": "black",
     "475569": "slate",
@@ -346,6 +347,7 @@ class RichDocumentParserWorker:
                 **self._docx_run_font_family(run),
                 **self._docx_run_font_size(run),
                 **self._docx_run_text_color(run),
+                **self._docx_run_vertical_position(run),
             }
             parts: list[str] = []
             for node in run:
@@ -385,6 +387,26 @@ class RichDocumentParserWorker:
             segments.append(current)
         current.append({"text": "".join(parts), "marks": marks, **style_attrs})
         parts.clear()
+
+    def _docx_run_vertical_position(self, run: ElementTree.Element) -> dict[str, object]:
+        markers = run.findall(f"{W}rPr/{W}vertAlign")
+        misplaced = run.find(f"{W}vertAlign") is not None
+        manual = run.find(f"{W}rPr/{W}position") is not None or run.find(f"{W}position") is not None
+        if not markers and not misplaced and not manual:
+            return {}
+        unsupported: dict[str, object] = {"unsupported_vertical_position": True}
+        if len(markers) != 1 or len(run.findall(f"{W}rPr")) != 1 or misplaced or manual:
+            return unsupported
+        marker = markers[0]
+        position = marker.get(f"{W}val", "")
+        if (
+            len(marker)
+            or (marker.text or "").strip()
+            or set(marker.attrib) != {f"{W}val"}
+            or position not in DOCX_RUN_VERTICAL_POSITIONS
+        ):
+            return unsupported
+        return {"vertical_position": position}
 
     def _docx_run_font_family(self, run: ElementTree.Element) -> dict[str, object]:
         markers = run.findall(f"{W}rPr/{W}rFonts")

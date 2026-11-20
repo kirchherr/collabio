@@ -17,6 +17,7 @@ from suite.platform.office_document_schema import (
     MAX_DOCUMENT_CHARACTERS,
     PARAGRAPH_VALUES,
     TEXT_COLORS,
+    VERTICAL_POSITIONS,
     validate_office_document,
 )
 from suite.platform.office_docx_images import DocxPreviewImages, ImageNormalizer
@@ -154,7 +155,9 @@ def _run_content(
             continue
         fields = set(value)
         linked = navigation and "target" in fields
-        allowed = {"text", "marks", "font_family", "font_size", "text_color"} | ({"target"} if navigation else set())
+        allowed = {"text", "marks", "font_family", "font_size", "text_color", "vertical_position"} | (
+            {"target"} if navigation else set()
+        )
         if not {"text", "marks"}.issubset(fields) or fields - allowed:
             raise OfficeImportPreviewInvalid("parser inline run is invalid")
         text = value["text"]
@@ -187,6 +190,12 @@ def _run_content(
             if not isinstance(color, str) or color not in TEXT_COLORS:
                 raise OfficeImportPreviewInvalid("parser text color is invalid")
             native_style["textColor"] = color
+        if "vertical_position" in value:
+            position = value["vertical_position"]
+            if not isinstance(position, str) or position not in VERTICAL_POSITIONS | {"baseline"}:
+                raise OfficeImportPreviewInvalid("parser vertical position is invalid")
+            if position != "baseline":
+                native_style["verticalPosition"] = position
         if native_style:
             native_marks.append({"type": "textStyle", "attrs": native_style})
         if linked:

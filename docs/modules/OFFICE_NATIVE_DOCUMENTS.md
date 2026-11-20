@@ -1,14 +1,33 @@
 # Native Office Documents
 
-Status: Roadmap 252–1047 implemented and validated; ordinary tenant and production admission remain closed
-Roadmap: 252 / PLANS 113 foundation through 1047 / PLANS 908 bounded DOCX run font families
-Module: `office_documents` / version 0.9.39
-Decisions: ADR-0079 through ADR-0228; current decision: `ARCHITECTURE_DECISIONS/ADR-0228-bounded-native-office-docx-run-font-families.md`
+Status: Roadmap 252–1055 implemented and validated; ordinary tenant and production admission remain closed
+Roadmap: 252 / PLANS 113 foundation through 1055 / PLANS 916 bounded DOCX run vertical position
+Module: `office_documents` / version 0.9.40
+Decisions: ADR-0079 through ADR-0229; current decision: `ARCHITECTURE_DECISIONS/ADR-0229-bounded-native-office-docx-run-vertical-position.md`
 
-Publication: the implementation through ADR-0228 is published as `60ce6265` on
+Publication: the previous implementation through ADR-0228 is published as `60ce6265` on
 `kirchherr/kb-write-unit-of-work`, above the previous closeout `5aef1464`.
 Publication closeout documentation follows on the same branch.
 The current restart instructions and complete evidence hashes are in `docs/CURRENT_HANDOFF.md`.
+
+## Bounded DOCX run vertical position (Roadmap 1048–1055)
+
+Direct baseline, superscript and subscript markers map to native run alignment. Absence keeps the prior run
+shape; explicit baseline stays distinct in source evidence and omits the native position attribute. Malformed,
+duplicate or misplaced declarations and manual position shifts refuse Office preview while text stays available.
+Existing native alignment and declared font sizes apply; exact Word glyph-size reduction and style inheritance
+remain outside this profile.
+
+The API independently validates positions and combines them with family, size, color and existing inline marks.
+Shared conversion covers headings, lists, cells, admitted links and page breaks. The stored synthetic source
+covers source authorization, exact provenance, classification, confirmed save, reopening and print alignment.
+
+Focused tests passed 573/573. The exact desktop/mobile check passed 2/2, followed by 45/45 selected Chromium
+checks in 6.3 minutes with retries disabled: 40 browser cases and five native model checks. Actual print CSS
+preserves super/subscript alignment and native baseline omission. Independent PDF inspection confirms the shifted
+text above/below the same-row baseline anchor. Both full pages passed visual review. Full quality passed at
+09:53 UTC on 2026-11-20 with Ruff, 1034 format-conformant files, Mypy over 680 sources and Pytest at
+100 percent. Evidence hashes and restart instructions are in the current handoff.
 
 ## Bounded DOCX run font families (Roadmap 1040–1047)
 
